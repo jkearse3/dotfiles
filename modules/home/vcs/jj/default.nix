@@ -1,0 +1,65 @@
+{
+  ...
+}:
+{
+  imports = [
+    ./jj-bookmark-current
+    ./jj-bookmark-default
+    ./jj-bookmark-nearest
+    ./jj-bookmark-previous
+    ./jj-bookmark-select
+    ./jj-bookmark-stacked
+    ./jj-change-select
+  ];
+  programs.jujutsu = {
+    enable = true;
+    settings = {
+      user = {
+        name = "Johnnie Kearse III";
+        email = "jkearse3@gmail.com";
+      };
+      ui = {
+        diff-editor = ":builtin";
+        paginate = "never";
+        default-command = [
+          "log"
+          "--reversed"
+        ];
+      };
+      revset-aliases = {
+        "closest_bookmark(to)" = "heads(::to & bookmarks())";
+        "closest_pushable(to)" =
+          ''heads(::to & mutable() & ~description(exact:"") & (~empty() | merges()))'';
+        # Skips past the branch's own bookmark to find the base bookmark below
+        # it (stacking-aware). Falls back to trunk() when no base bookmark exists.
+        "branch(rev)" = "heads((::(closest_bookmark(rev-)-) & bookmarks()) | trunk())..rev";
+        "branch()" = "branch(@)";
+        "focus" = "fork_point(@ | trunk())::heads(@::) | trunk()";
+        "clean" = "@ | ancestors(@, 30) & merges() | trunk()";
+      };
+      aliases = {
+        tug = [
+          "bookmark"
+          "move"
+          "--from"
+          "closest_bookmark(@)"
+          "--to"
+          "closest_pushable(@)"
+        ];
+        ll = [
+          "log"
+          "--reversed"
+          "-s"
+        ];
+        divergent = [
+          "log"
+          "-r"
+          "divergent()"
+          "--no-graph"
+          "-T"
+          ''change_id.shortest() ++ " -> " ++ commit_id.short() ++ " (" ++ format_timestamp(committer.timestamp()) ++ ")\n"''
+        ];
+      };
+    };
+  };
+}

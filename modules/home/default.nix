@@ -1,0 +1,30 @@
+{
+  ...
+}:
+{
+  imports = [
+    ./bash
+    ./build-deps
+    ./claude
+    ./containers
+    ./gcp
+    ./go
+    ./javascript
+    ./jsonnet
+    ./kdl
+    ./lua
+    ./markdown
+    ./media
+    ./neovim
+    ./nix
+    ./protobuf
+    ./python
+    ./rust
+    ./secrets
+    ./shell
+    ./terminal
+    ./toml
+    ./vcs
+    ./yaml
+  ];
+}
