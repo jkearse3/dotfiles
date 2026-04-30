@@ -45,6 +45,11 @@ done when the diff alone doesn't tell the full story. Open with the status quo o
 describe what the change does in response — the reader understands the fix faster when they
 understand the problem first.
 
+Bodies must explain the change on its own terms. Don't lean on session-internal artifacts — planning
+notes, scratch files, conversation transcripts, workflow-tool docs — even when those artifacts are
+tracked in the repo. Readers shouldn't need to chase pointers to understand the diff. Exception:
+commits whose primary change is the artifact itself.
+
 Use contextual mood: imperative for the change ("Replace the polling loop"), past tense for the bug
 or prior state ("The cache leaked under concurrent writes"), present tense for invariants ("The
 buffer is a fixed-size ring"). Short bodies often need only the imperative.
