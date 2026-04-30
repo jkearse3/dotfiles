@@ -10,25 +10,93 @@ history.
 
 `type(scope): description`
 
-- **type**: `feat`, `fix`, `refactor`, `style`, `chore`, `docs`, `test`, `ci`, `build`, `perf`
-- **scope**: optional — module, component, or area affected
-- **description**: imperative mood, lowercase, no period
+- **type**: one of
+  - `feat` — new feature
+  - `fix` — bug fix
+  - `refactor` — code change that neither adds a feature nor fixes a bug
+  - `perf` — a `refactor` specifically targeting performance
+  - `style` — formatting, whitespace, non-semantic changes
+  - `chore` — repo housekeeping that does not ship (gitignore, editor configs, internal tooling
+    configs)
+  - `docs` — documentation only
+  - `test` — adding or correcting tests
+  - `ci` — CI/CD pipelines, deploy scripts, IaC, monitoring, recovery procedures
+  - `build` — build system or external dependencies, including lockfile and manifest updates
+- **scope**: optional — module, component, or area affected. Do not use issue identifiers as scopes.
+- **description**: imperative mood, lowercase, no period. Think "This commit will `<description>`".
 - Keep the full subject under 72 characters
 - Breaking changes: `type(scope)!: description`
+
+Type follows behavioral effect, not file format. A markdown file the system reads as config (Claude
+rules, skills, prompts) takes `feat` when it changes behavior, `refactor` when it restructures, and
+`docs` only when the change doesn't affect what the system does.
 
 ### Body
 
 Optional — add one for anything non-obvious. Separate from subject with a blank line. Wrap at 72
-characters.
+characters. Unbreakable tokens — URLs, file paths, inline code spans, and quoted output (errors,
+logs, command lines) — are exceptions. Do not split them to fit; let the line exceed 72 rather than
+break the token. Prefer rephrasing first: move a long URL to a footer trailer (e.g., `Link: <url>`)
+or reference a short ticket ID instead of pasting a long search URL.
 
 The subject and diff show _what_ changed at a surface level. The body adds context they can't
 convey: the reasoning behind the change, and when needed, a higher-level description of _what_ was
-done when the diff alone doesn't tell the full story.
+done when the diff alone doesn't tell the full story. Open with the status quo or the bug, then
+describe what the change does in response — the reader understands the fix faster when they
+understand the problem first.
+
+Use contextual mood: imperative for the change ("Replace the polling loop"), past tense for the bug
+or prior state ("The cache leaked under concurrent writes"), present tense for invariants ("The
+buffer is a fixed-size ring"). Short bodies often need only the imperative.
+
+### Footer
+
+Optional, except when introducing breaking changes. Separate from body with a blank line.
+
+- Issue references: `Closes #123`, `Fixes JIRA-456`.
+- Breaking changes start with `BREAKING CHANGE:` followed by a description.
+
+### Special Cases
+
+These commits are exempt from Conventional Commits and use their conventional defaults:
+
+- Initial commit: `chore: init`
+- Merge commit: default git merge message (`Merge branch '<branch>'`)
+- Revert commit: default git revert message (`Revert "<subject>"`)
 
 ### Atomicity
 
 Prefer one logical change per commit. If the message needs "and", consider splitting — but use
 judgment. Don't split when separation makes the individual commits harder to understand.
+
+### Examples
+
+Subject + body explaining "why":
+
+```
+refactor: replace compiled regex set with prefix trie
+
+The previous code recompiled the full set on every request, which
+dominated the hot path. The trie precomputes once at startup and
+matches in O(k) on the request length.
+```
+
+Breaking change with `BREAKING CHANGE:` footer:
+
+```
+feat(auth)!: require signed tokens for all endpoints
+
+BREAKING CHANGE: Unsigned tokens are rejected. Clients must upgrade
+to the v2 SDK before deploying this change.
+```
+
+Subject with issue-ref footer:
+
+```
+fix(api): retry idempotent requests on 503
+
+Closes #482
+```
 
 ## Jujutsu (jj)
 
