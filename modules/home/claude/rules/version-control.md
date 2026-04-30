@@ -197,8 +197,6 @@ jj squash -r <rev> --into <target> -m "msg"   # explicit source/target
 - `git-branch-stacked` - list branches in stack from current to default
 - `git-branch-previous` - previous branch in stack
 - `git-branch-next` - next branch in stack (child)
-- `git-branch-checkout` - interactive branch checkout via fzf
-- `git-branch-delete` - interactive branch deletion via fzf
 
 ### GitHub
 
