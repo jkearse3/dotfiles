@@ -16,8 +16,8 @@ Read these sections:
 - `### Tasks` -- see completed work
 - `### Issues` -- existing issues for dedup
 
-Read the AC source file (`.claude/_goals/_current/00-main.md`) `## Acceptance Criteria` section for
-AC text -- used for AC validation in Step 6.
+Read the AC source file (`.goals/_current/00-main.md`) `## Acceptance Criteria` section for AC text
+-- used for AC validation in Step 6.
 
 ### Step 2: Check for Changes
 
@@ -122,7 +122,7 @@ If no new issues were found, proceed to Step 6.
 
 ### Step 6: AC Validation
 
-For each AC (from `.claude/_goals/_current/00-main.md` `## Acceptance Criteria`):
+For each AC (from `.goals/_current/00-main.md` `## Acceptance Criteria`):
 
 1. **Identify relevant code**: use completed tasks to find what was changed
 2. **Read the code**: examine the implementation

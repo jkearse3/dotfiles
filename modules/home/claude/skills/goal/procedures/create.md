@@ -37,14 +37,14 @@ Optional bookmark name. If provided, creates or moves to that bookmark.
 3. **Generate prefix**: `YYYY-MM-DD-HHMM` from current date and time (24-hour)
 
 4. **Resolve destination**:
-   - Check `.claude/_goals/_config.yaml` for `destination_pattern:`
+   - Check `.goals/_config.yaml` for `destination_pattern:`
      - If pattern exists: resolve token substitutions (`<year>`/`<y>`, `<month>`/`<m>`,
        `<day>`/`<d>`, `<time>`/`<t>`, `<name>`/`<n>`), use as destination (configured mode)
-     - If no config: destination is `.claude/_goals/<prefix>-<slug>` (default mode — real directory,
-       no symlink, no prompt)
+     - If no config: destination is `.goals/<prefix>-<slug>` (default mode — real directory, no
+       symlink, no prompt)
 
-5. **Check for duplicates**: If `.claude/_goals/<prefix>-<slug>` already exists, stop with error:
-   "Goal `<prefix>-<slug>` already exists. Use `/goal load` to load it."
+5. **Check for duplicates**: If `.goals/<prefix>-<slug>` already exists, stop with error: "Goal
+   `<prefix>-<slug>` already exists. Use `/goal load` to load it."
 
    Also check if any existing goal entry's extracted slug matches the new slug (strip
    `YYYY-MM-DD-HHMM-` prefix first; if no match, strip `YYYY-MM-DD-` prefix). If match found, stop
@@ -54,19 +54,18 @@ Optional bookmark name. If provided, creates or moves to that bookmark.
 6. **Create goal**:
 
    **Default mode** (no `_config.yaml`):
-   - Create directory: `mkdir -p ".claude/_goals/<prefix>-<slug>"`
+   - Create directory: `mkdir -p ".goals/<prefix>-<slug>"`
    - Write `00-main.md` in the directory using the New Goal template from the format reference
-   - Update `_current` symlink: `ln -sfn "<prefix>-<slug>" ".claude/_goals/_current"`
+   - Update `_current` symlink: `ln -sfn "<prefix>-<slug>" ".goals/_current"`
 
    **Configured mode** (with `_config.yaml`):
    - Create destination directory: `mkdir -p "<destination>"`
    - Write `00-main.md` at destination using the New Goal template from the format reference
-   - Create symlink in `.claude/_goals/`:
-     `ln -s "<relative-path-to-destination>" ".claude/_goals/<prefix>-<slug>"`
-   - Update `_current` symlink: `ln -sfn "<prefix>-<slug>" ".claude/_goals/_current"`
+   - Create symlink in `.goals/`: `ln -s "<relative-path-to-destination>" ".goals/<prefix>-<slug>"`
+   - Update `_current` symlink: `ln -sfn "<prefix>-<slug>" ".goals/_current"`
 
 7. **Load goal** (auto-load after creation):
-   - Resolve `.claude/_goals/_current` through to actual directory
+   - Resolve `.goals/_current` through to actual directory
    - Read `00-main.md`
    - Find focused phase (marked with `*` in `## Phases`)
 

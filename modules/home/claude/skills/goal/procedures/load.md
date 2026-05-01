@@ -36,7 +36,7 @@ Optional goal name or slug to load directly.
 3. **Route by argument**:
 
    **If argument provided**:
-   - Extract slug from each `.claude/_goals/` entry (exclude `_current`, `_config.yaml`): strip
+   - Extract slug from each `.goals/` entry (exclude `_current`, `_config.yaml`): strip
      `YYYY-MM-DD-HHMM-` prefix first; if no match, strip `YYYY-MM-DD-` prefix
    - Find entries whose extracted slug exactly matches the argument
    - If exactly one match: go to step 5 (handle selection) with that goal
@@ -44,7 +44,7 @@ Optional goal name or slug to load directly.
    - If no match: go to step 4 (list) with note: `No goal matching "<argument>".`
 
    **If no argument and branch detected (not trunk)**:
-   - Extract slug from each `.claude/_goals/` entry (same method as above)
+   - Extract slug from each `.goals/` entry (same method as above)
    - Find entries whose extracted slug exactly matches the branch slug
    - If exactly one match: go to step 5 (handle selection) — direct load, no list
    - If no match: offer to create — "No goal for branch `<branch-name>`. Want me to create one?"
@@ -53,7 +53,7 @@ Optional goal name or slug to load directly.
 
    **If no argument and on trunk**: go to step 4 (list)
 
-4. **List goals**: Find all entries in `.claude/_goals/` (exclude `_current`, `_config.yaml`)
+4. **List goals**: Find all entries in `.goals/` (exclude `_current`, `_config.yaml`)
    - Check each entry is valid (directory exists or symlink target exists); mark broken ones
    - Read `_current` symlink to identify current goal
    - If no goals exist: show hint and stop: "No goals found. Want me to create one?"
@@ -83,7 +83,7 @@ Optional goal name or slug to load directly.
    - Update `_current` symlink if different from selection
 
 6. **Load goal**:
-   - Resolve `.claude/_goals/_current` through to actual directory
+   - Resolve `.goals/_current` through to actual directory
    - Read `00-main.md` (index file: context, research, ACs, approach, phases index)
    - Find focused phase (marked with `*` in `## Phases`)
    - If focused phase has a linked file, read it; otherwise read the inline section (Phase

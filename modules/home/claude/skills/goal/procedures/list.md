@@ -4,12 +4,12 @@ List all goals in the current repository.
 
 ## Steps
 
-1. **Find goals**: List entries in `.claude/_goals/` (exclude `_current`, `_config.yaml`)
+1. **Find goals**: List entries in `.goals/` (exclude `_current`, `_config.yaml`)
    - If none: "No goals found."
    - Sort by name (which sorts chronologically due to date prefix)
    - Check each entry is valid (directory exists or symlink target exists)
 
-2. **Get current**: Read `.claude/_goals/_current` symlink target (if exists)
+2. **Get current**: Read `.goals/_current` symlink target (if exists)
 
 3. **Display**:
 

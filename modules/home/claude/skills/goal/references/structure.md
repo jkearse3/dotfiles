@@ -2,15 +2,15 @@
 
 ## Directory Structure
 
-`.claude/_goals/` is the goal registry. Entries are either real directories (default) or symlinks
-pointing to destination paths (configured). `_current` always points to the active entry.
+`.goals/` is the goal registry. Entries are either real directories (default) or symlinks pointing
+to destination paths (configured). `_current` always points to the active entry.
 
 ### Default Mode (no `_config.yaml`)
 
-Goal directories live directly in `.claude/_goals/`. No symlink indirection.
+Goal directories live directly in `.goals/`. No symlink indirection.
 
 ```
-.claude/_goals/
+.goals/
   _current -> 2024-01-15-1430-auth-refactor   # symlink to active goal directory
   2024-01-15-1430-auth-refactor/               # real directory
     00-main.md
@@ -21,11 +21,11 @@ Goal directories live directly in `.claude/_goals/`. No symlink indirection.
 
 ### Configured Mode (with `_config.yaml`)
 
-Goal entries are symlinks in `.claude/_goals/` pointing to destination directories. Files live at
+Goal entries are symlinks in `.goals/` pointing to destination directories. Files live at
 destination from the start.
 
 ```
-.claude/_goals/
+.goals/
   _current -> 2024-01-15-1430-auth-refactor   # symlink to active goal symlink
   _config.yaml                                 # destination config
   2024-01-15-1430-auth-refactor -> ../../docs/goals/2024-01-15-1430-auth-refactor/
@@ -43,8 +43,7 @@ docs/goals/2024-01-15-1430-auth-refactor/
 
 ## Configuration
 
-`.claude/_goals/_config.yaml` — optional. When present, enables symlink mode with custom
-destinations:
+`.goals/_config.yaml` — optional. When present, enables symlink mode with custom destinations:
 
 ```
 destination_pattern: docs/goals/<year>-<month>-<day>-<time>-<name>
@@ -59,7 +58,7 @@ Tokens (with shorthands):
 - `<name>` / `<n>` - goal slug (without date/time prefix)
 
 `/goal create` resolves destinations from this pattern. Without `_config.yaml`, goals are created as
-real directories in `.claude/_goals/` with no prompt.
+real directories in `.goals/` with no prompt.
 
 ## Naming Conventions
 

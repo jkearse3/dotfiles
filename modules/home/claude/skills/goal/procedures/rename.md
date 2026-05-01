@@ -15,7 +15,7 @@ Optional new name. If provided, performs a full rename. If omitted, syncs symlin
 
 ## Steps
 
-1. **Validate current goal**: Read `.claude/_goals/_current` symlink
+1. **Validate current goal**: Read `.goals/_current` symlink
    - If missing or broken: nudge — "No active goal. Want me to load or create one?"
 
 2. **Extract current symlink info**:
@@ -42,7 +42,7 @@ Optional new name. If provided, performs a full rename. If omitted, syncs symlin
 
    **If no argument**: stop — "Goal already matches branch `<branch-name>`."
 
-5. **Check for conflicts**: If `.claude/_goals/<prefix>-<new-slug>` already exists, error: "Goal
+5. **Check for conflicts**: If `.goals/<prefix>-<new-slug>` already exists, error: "Goal
    `<prefix>-<new-slug>` already exists. Cannot rename."
 
    Also check if any other existing goal symlink's extracted slug matches the new slug (strip
@@ -52,7 +52,7 @@ Optional new name. If provided, performs a full rename. If omitted, syncs symlin
 6. **Update destination** (argument mode only):
 
    **If argument provided**:
-   - Read `.claude/_goals/_config.yaml` for `destination_pattern:`
+   - Read `.goals/_config.yaml` for `destination_pattern:`
    - Resolve pattern with the preserved timestamp tokens and new slug
    - The `<name>`/`<n>` token uses the new slug; date/time tokens use the values from the existing
      timestamp prefix
@@ -64,11 +64,11 @@ Optional new name. If provided, performs a full rename. If omitted, syncs symlin
    **If no argument**: skip this step.
 
 7. **Update symlinks**:
-   - Remove old symlink: `rm .claude/_goals/<old-name>`
-   - Create new symlink: `ln -s "<target>" ".claude/_goals/<prefix>-<new-slug>"`
+   - Remove old symlink: `rm .goals/<old-name>`
+   - Create new symlink: `ln -s "<target>" ".goals/<prefix>-<new-slug>"`
      - Target is the new destination (relative path) if moved in step 6, otherwise the same target
        as before
-   - Update `_current`: `ln -sfn "<prefix>-<new-slug>" ".claude/_goals/_current"`
+   - Update `_current`: `ln -sfn "<prefix>-<new-slug>" ".goals/_current"`
 
 8. **Rename bookmark** (argument mode only):
 

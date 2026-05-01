@@ -26,7 +26,7 @@ Read these format references before executing this procedure:
 
    If no unresolved comments: "No unresolved comments found" → stop
 
-3. **Load goal**: `.claude/_goals/_current/00-main.md`
+3. **Load goal**: `.goals/_current/00-main.md`
    - If symlink broken: nudge — "No active goal. Want me to load or create one?"
 
 4. **Determine phase number**:

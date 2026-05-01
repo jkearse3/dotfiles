@@ -16,7 +16,7 @@ Optional topic to focus research on. If not provided, derive from goal context.
 
 ### Step 1: Load goal
 
-Read `.claude/_goals/_current/00-main.md`.
+Read `.goals/_current/00-main.md`.
 
 - If goal exists: proceed to Step 2.
 - If no goal: run the **auto-creation flow** below, then proceed to Step 2.

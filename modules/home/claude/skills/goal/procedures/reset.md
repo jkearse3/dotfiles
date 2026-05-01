@@ -8,11 +8,10 @@ Read this format reference before executing this procedure:
 
 ## Steps
 
-1. **Validate current goal**: Read `.claude/_goals/_current` symlink
+1. **Validate current goal**: Read `.goals/_current` symlink
    - If missing or broken: nudge — "No active goal. Want me to load or create one?"
 
-2. **Resolve path**: Follow `.claude/_goals/_current` through to actual directory, locate
-   `00-main.md`
+2. **Resolve path**: Follow `.goals/_current` through to actual directory, locate `00-main.md`
    - If `00-main.md` doesn't exist: error — "No `00-main.md` found at goal destination."
 
 3. **Confirm**: Show warning and wait for explicit approval:

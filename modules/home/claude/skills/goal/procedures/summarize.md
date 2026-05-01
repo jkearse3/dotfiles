@@ -12,7 +12,7 @@ Read this format reference before executing this procedure:
 
 ## Steps
 
-1. **Load goal**: `.claude/_goals/_current/00-main.md`
+1. **Load goal**: `.goals/_current/00-main.md`
    - If symlink broken: nudge — "No active goal. Want me to load or create one?"
 
 2. **Gather context**:

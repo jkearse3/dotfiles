@@ -40,7 +40,7 @@ For each changed file (excluding goals and generated files):
 Skip:
 
 - Generated files (\*.pb.go, wire_gen.go, etc.)
-- Goal files (.claude/\_goals/)
+- Goal files (.goals/)
 
 ### Step 4: Return Result
 

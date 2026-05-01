@@ -16,8 +16,8 @@ Read these sections:
 - `### Tasks` -- pending work items
 - `### Issues` -- unresolved problems
 
-Read the AC source file (`.claude/_goals/_current/00-main.md`) `## Acceptance Criteria` section for
-AC text -- this is used for testability assessment in Step 4.
+Read the AC source file (`.goals/_current/00-main.md`) `## Acceptance Criteria` section for AC text
+-- this is used for testability assessment in Step 4.
 
 ### Step 2: Handle Open Issues
 
@@ -45,7 +45,7 @@ After all tasks complete, for each AC referenced by a `satisfy` task:
 
 - If the AC has a `satisfy` task but no `codify` task, assess testability
 
-**Testability judgment** (use AC text from `.claude/_goals/_current/00-main.md`):
+**Testability judgment** (use AC text from `.goals/_current/00-main.md`):
 
 - AC describes observable behavior with clear inputs/outputs -- testable
 - AC describes internal structure, config, or prose content -- not testable

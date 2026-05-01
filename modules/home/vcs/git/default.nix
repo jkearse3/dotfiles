@@ -60,7 +60,7 @@
       "*.local"
       "*.local.*"
       ".DS_Store"
-      ".claude/_*/"
+      "/.goals/"
       ".jj"
       "**/.claude/settings.local.json"
     ];

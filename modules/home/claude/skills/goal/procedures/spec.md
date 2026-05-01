@@ -16,7 +16,7 @@ are appended to the existing list. When omitted, full re-review behavior.
 
 ## Steps
 
-1. **Load goal**: Read `.claude/_goals/_current/00-main.md`
+1. **Load goal**: Read `.goals/_current/00-main.md`
    - If no goal: nudge — "No active goal. Want me to load or create one?"
 
 2. **Review research**: Read Research section in `00-main.md`

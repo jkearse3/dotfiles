@@ -25,7 +25,7 @@ step number (e.g., "**Step 4: Run Implement**") to maintain orientation.
 
 ### Step 1: Load State
 
-Read `.claude/_goals/_current/00-main.md` fresh (never rely on prior context).
+Read `.goals/_current/00-main.md` fresh (never rely on prior context).
 
 - If no goal: nudge — "No active goal. Want me to load or create one?"
 - If no ACs in `## Acceptance Criteria`: nudge — "No acceptance criteria defined yet. Want me to run
@@ -83,7 +83,7 @@ prompt:
 Read the file at ~/.claude/skills/goal/briefs/phase-implement.md and execute the instructions within it.
 
 State file: <absolute path to phase file>
-AC source: .claude/_goals/_current/00-main.md
+AC source: .goals/_current/00-main.md
 ```
 
 **Always dispatch -- never skip based on task state.** The subagent decides whether work remains
@@ -105,7 +105,7 @@ Dispatch a verify subagent via the `Task` tool with `subagent_type: "general-pur
 Read the file at ~/.claude/skills/goal/briefs/phase-verify.md and execute the instructions within it.
 
 State file: <absolute path to phase file>
-AC source: .claude/_goals/_current/00-main.md
+AC source: .goals/_current/00-main.md
 ```
 
 **Capture AC assessments**: When verify returns AC validation results (Validated, Needs

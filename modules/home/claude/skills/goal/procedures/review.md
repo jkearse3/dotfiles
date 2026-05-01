@@ -39,7 +39,7 @@ Read these files before proceeding — they define phase file structure and atom
 
 ### Step 2: Load state
 
-- Read `.claude/_goals/_current/00-main.md`
+- Read `.goals/_current/00-main.md`
 - If no goal: nudge — "No active goal. Want me to load or create one?"
 
 ### Step 3: Load branch context

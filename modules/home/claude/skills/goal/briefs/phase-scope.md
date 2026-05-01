@@ -2,8 +2,8 @@
 
 ## Instructions
 
-Read the goal at `.claude/_goals/_current/00-main.md` and propose the next phase. On a valid
-proposal, write the phase file at the absolute path provided by the orchestrator.
+Read the goal at `.goals/_current/00-main.md` and propose the next phase. On a valid proposal, write
+the phase file at the absolute path provided by the orchestrator.
 
 ### Step 1: Read State
 

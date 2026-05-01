@@ -44,7 +44,7 @@ Before dispatch, resolve the four values that identify the phase file. Orchestra
 the scoping subagent (`procedures/phase-scope.md`, `procedures/phase-iterate.md`) compute these and
 pass them in the Task prompt:
 
-- Resolve `goal_dir`: absolute path of `.claude/_goals/_current` (resolve the symlink)
+- Resolve `goal_dir`: absolute path of `.goals/_current` (resolve the symlink)
 - Compute `P`: highest phase number in `## Phases` index + 1
 - Compute `NN`: highest `NN-` prefix in `goal_dir` + 1 (zero-padded to two digits)
 - Build absolute path: `<goal_dir>/NN-phase-P.md`

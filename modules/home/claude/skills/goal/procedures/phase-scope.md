@@ -12,7 +12,7 @@ Read these format references before executing this procedure:
 
 ## Steps
 
-1. **Load state**: Read `.claude/_goals/_current/00-main.md`
+1. **Load state**: Read `.goals/_current/00-main.md`
    - If no goal: nudge — "No active goal. Want me to load or create one?"
    - If no ACs in `## Acceptance Criteria`: nudge — "No acceptance criteria defined yet. Want me to
      run `/goal spec`?"

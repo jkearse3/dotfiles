@@ -13,7 +13,7 @@ Run these steps in order. Do not improvise or skip steps.
 
 ### Step 1: Pre-flight Confidence Gate
 
-Read `.claude/_goals/_current/00-main.md` fresh (never rely on prior context).
+Read `.goals/_current/00-main.md` fresh (never rely on prior context).
 
 Validate the spec is ready for autonomous execution. Check each condition and collect all gaps
 before stopping.
@@ -46,7 +46,7 @@ While uncompleted `[ ]` ACs remain (excluding `[-]` invalidated ACs):
 
 1. Read and follow `${CLAUDE_SKILL_DIR}/procedures/phase-iterate.md` with `--auto-commit`
 2. On `PHASE_COMPLETE`:
-   - Re-read `.claude/_goals/_current/00-main.md` to get updated AC state
+   - Re-read `.goals/_current/00-main.md` to get updated AC state
    - Check for `[!]` regressions — if any found, stop with diagnostic listing the regressed ACs
    - Continue to next iteration (iterate will auto-scope the next phase)
 3. On `PHASE_INCOMPLETE`: stop with diagnostic — report the phase number, reason, and specific
