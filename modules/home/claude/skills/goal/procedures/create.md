@@ -4,8 +4,8 @@ Create a new goal derived from the current branch/bookmark name.
 
 Read these format references before executing this procedure:
 
-- `${CLAUDE_SKILL_DIR}/references/structure.md`
-- `${CLAUDE_SKILL_DIR}/references/templates.md`
+- `references/structure.md`
+- `references/templates.md`
 
 ## Arguments
 

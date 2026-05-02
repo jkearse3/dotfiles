@@ -76,8 +76,8 @@ jj diff --git
 - Invoke `language-<lang>` skill for <lang> files
 ````
 
-Invoke `/code-review` with the composed arguments using the Skill tool. Wait for completion. Collect
-findings.
+Invoke the `code-review` skill via the Skill tool with the composed arguments. Wait for completion.
+Collect findings.
 
 ### Step 4: Convert Findings to Issues
 

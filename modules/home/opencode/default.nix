@@ -40,5 +40,6 @@ in
   ];
   home.file = {
     ".config/opencode/opencode.jsonc".source = mkSource ./opencode.jsonc;
+    ".config/opencode/agents".source = mkSource ./agents;
   };
 }

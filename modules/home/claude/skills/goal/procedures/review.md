@@ -87,7 +87,8 @@ the reviewer sees clean code.
 
 ### Step 6: Run code review
 
-Invoke `/code-review branch` via the Skill tool. Collect structured findings.
+Invoke the `code-review` skill via the Skill tool with `branch` as the argument. Collect structured
+findings.
 
 ### Step 7: Merge concerns
 
@@ -186,7 +187,7 @@ Focus the first created phase (`*` in index) if no phase is currently focused.
 
 ## Notes
 
-- Dispatched as Task subagent for autonomous execution (replaces `context: fork`).
+- Dispatched as Task subagent for autonomous execution.
 - REVIEW comment removal happens before code review — reviewer sees clean code.
 - Multiple review sessions accumulate — each creates new phases with incrementing review numbers.
 - REVIEW comments in files outside the branch diff are captured as `out-of-scope` and grouped into a

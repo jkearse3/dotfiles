@@ -7,8 +7,8 @@ written on the previous round, not carried in the prompt.
 
 Read these format references before executing this procedure:
 
-- `${CLAUDE_SKILL_DIR}/references/phases.md`
-- `${CLAUDE_SKILL_DIR}/references/templates.md`
+- `references/phases.md`
+- `references/templates.md`
 
 ## Steps
 
@@ -26,8 +26,8 @@ Read these format references before executing this procedure:
    stop: "Incomplete phase exists without focus. Mark it `[x]`, `[-]`, or add `*` to resume."
 
 4. **Compute phase-file path** (before dispatch, reused across refinement rounds): follow
-   `${CLAUDE_SKILL_DIR}/references/templates.md` § New Phase → Compute phase-file inputs. Hold these
-   four values (`goal_dir`, `P`, `NN`, path) for reuse in Steps 5, 7, and 8.
+   `references/templates.md` § New Phase → Compute phase-file inputs. Hold these four values
+   (`goal_dir`, `P`, `NN`, path) for reuse in Steps 5, 7, and 8.
 
 5. **Dispatch scoping subagent**: Invoke the `Task` tool with:
    - `subagent_type`: `"general-purpose"`

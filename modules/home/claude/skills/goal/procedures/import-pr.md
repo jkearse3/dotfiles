@@ -4,8 +4,8 @@ Import unresolved GitHub PR review comments as a new review phase file.
 
 Read these format references before executing this procedure:
 
-- `${CLAUDE_SKILL_DIR}/references/phases.md`
-- `${CLAUDE_SKILL_DIR}/references/templates.md`
+- `references/phases.md`
+- `references/templates.md`
 
 ## Steps
 

@@ -4,7 +4,7 @@ Synthesize Summary section for PR descriptions.
 
 Read this format reference before executing this procedure:
 
-- `${CLAUDE_SKILL_DIR}/references/phases.md`
+- `references/phases.md`
 
 ## Arguments
 

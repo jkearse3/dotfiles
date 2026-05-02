@@ -16,16 +16,16 @@ $ARGUMENTS
 
 Valid scopes: `branch` (default), `working`, or empty.
 
-**Validation**: If `$ARGUMENTS` is not empty and not one of `branch` or `working`, report error and
-stop:
+**Validation**: If the user-provided argument is not empty and not one of `branch` or `working`,
+report error and stop:
 
 ```
-Error: Invalid scope "$ARGUMENTS". Valid options: branch, working
+Error: Invalid scope "<provided value>". Valid options: branch, working
 ```
 
 ## Execution
 
-1. **Determine scope**: Use `$ARGUMENTS` if provided, otherwise default to `branch`.
+1. **Determine scope**: Use the user-provided argument if non-empty, otherwise default to `branch`.
 
 2. **Dispatch subagent**: Use the `Task` tool with `subagent_type: "general-purpose"` and prompt:
 

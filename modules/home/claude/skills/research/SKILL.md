@@ -20,8 +20,8 @@ If no topic provided, stop and say: "Usage: /research <topic>"
 
 ## Execution
 
-Take `$ARGUMENTS` as the topic. Review conversation context for what is already known — avoid
-re-investigating settled questions.
+Take the user-provided topic from the Arguments block as the topic. Review conversation context for
+what is already known — avoid re-investigating settled questions.
 
 ### Dispatch
 

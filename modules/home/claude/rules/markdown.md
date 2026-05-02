@@ -1,11 +1,11 @@
 # Markdown
 
-Rules for Claude-authored markdown: goal docs, skill references, rules files, and any other `.md`
+Rules for agent-authored markdown: goal docs, skill references, rules files, and any other `.md`
 output.
 
 ## Scope
 
-- Applies to all markdown Claude writes.
+- Applies to all markdown the agent writes.
 - Fenced code blocks and tables follow the rules of the content they carry, not this width cap.
 
 ## Width

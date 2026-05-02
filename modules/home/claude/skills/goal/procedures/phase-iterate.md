@@ -5,9 +5,9 @@ and commit. Auto-scopes via scoping subagent when no phase is active.
 
 Read these format references before executing this procedure:
 
-- `${CLAUDE_SKILL_DIR}/references/phases.md`
-- `${CLAUDE_SKILL_DIR}/references/templates.md`
-- `${CLAUDE_SKILL_DIR}/references/acceptance-criteria.md`
+- `references/phases.md`
+- `references/templates.md`
+- `references/acceptance-criteria.md`
 
 ## Arguments
 
@@ -42,10 +42,9 @@ independent of implementation. If the working copy contains only goal files, run
 Find focused phase (`*` in `## Phases`).
 
 - If focused phase exists: proceed to Step 3.
-- If no focused phase: compute the phase-file path before dispatch per
-  `${CLAUDE_SKILL_DIR}/references/templates.md` § New Phase → Compute phase-file inputs, then
-  dispatch the scoping subagent via the `Task` tool with `subagent_type: "general-purpose"` and
-  prompt:
+- If no focused phase: compute the phase-file path before dispatch per `references/templates.md` §
+  New Phase → Compute phase-file inputs, then dispatch the scoping subagent via the `Task` tool with
+  `subagent_type: "general-purpose"` and prompt:
 
   ```
   Read the file at ~/.claude/skills/goal/briefs/phase-scope.md and execute the instructions within it.
@@ -131,9 +130,8 @@ validation.
 - If verify found new issues (returned review-only summary with new issues): return to Step 4
   (implement will create tasks for new issues).
 - If verify's summary contains the exact string `No changes to verify.` (contract with
-  `${CLAUDE_SKILL_DIR}/briefs/phase-verify.md` Step 2 — do not change either without updating both):
-  proceed to Step 6 (termination check). Do not stop — state-file-only iterations still need
-  completion handling.
+  `briefs/phase-verify.md` Step 2 — do not change either without updating both): proceed to Step 6
+  (termination check). Do not stop — state-file-only iterations still need completion handling.
 - If verify completed AC validation:
   - Any `[~]` ACs not marked `(human)`: return to Step 4 (implement assesses testability)
   - All `[~]` are `(human)` or all ACs `[x]`: proceed to Step 6
@@ -245,8 +243,8 @@ before committing:
 
 **If user approves**:
 
-1. Read and follow `${CLAUDE_SKILL_DIR}/procedures/summarize.md` with `--auto` to ensure summary
-   reflects the final committed state.
+1. Read and follow `procedures/summarize.md` with `--auto` to ensure summary reflects the final
+   committed state.
 2. Commit the phase with `jj commit -m "<conventional commit message>"`.
 3. Note "Phase complete. Run `/goal phase-iterate` to scope and execute next phase."
 
@@ -259,8 +257,8 @@ before committing:
 
 After phase completion, auto-commit and return a structured result:
 
-1. Read and follow `${CLAUDE_SKILL_DIR}/procedures/summarize.md` with `--auto` to ensure summary
-   reflects the final committed state.
+1. Read and follow `procedures/summarize.md` with `--auto` to ensure summary reflects the final
+   committed state.
 2. Commit the phase with `jj commit -m "<conventional commit message>"`.
 3. Return a structured result to the caller:
    ```
@@ -276,7 +274,7 @@ After phase completion, auto-commit and return a structured result:
   (dispatch, AC status capture, termination), post-loop enrichment (AC status derivation and
   annotation), and lifecycle (commit, phase marking).
 - Scoping is dispatched as a Task subagent directly (isolated context). Scoping uses
-  `${CLAUDE_SKILL_DIR}/briefs/phase-scope.md`; phase-iterate auto-accepts.
+  `briefs/phase-scope.md`; phase-iterate auto-accepts.
 - State passes between steps via `00-main.md` (ACs, phases index) and phase files (tasks, issues,
   approach, context).
 - If any step fails or needs user input, stop and report.
@@ -298,7 +296,6 @@ When a step surfaces concerns and user provides direction:
 
 1. **Adding tasks or addressing issues**: Re-run Step 4 (the implement-verify loop picks up new
    tasks and open issues from the phase file)
-2. **Modifying ACs**: Read and follow `${CLAUDE_SKILL_DIR}/procedures/spec.md` with the requested
-   changes
+2. **Modifying ACs**: Read and follow `procedures/spec.md` with the requested changes
 
 Never process user decisions by editing repo files in the main thread.

@@ -4,8 +4,8 @@ Load a goal.
 
 Read these format references before executing this procedure:
 
-- `${CLAUDE_SKILL_DIR}/references/structure.md`
-- `${CLAUDE_SKILL_DIR}/references/phases.md`
+- `references/structure.md`
+- `references/phases.md`
 
 ## Arguments
 
@@ -29,7 +29,7 @@ Optional goal name or slug to load directly.
        - Wait for user response, then route:
          - **Switch**: go to step 3 "no argument and branch detected" path (finds matching goal by
            branch slug)
-         - **Create**: read and follow `${CLAUDE_SKILL_DIR}/procedures/create.md`
+         - **Create**: read and follow `procedures/create.md`
          - **Keep**: go to step 6 (load current goal as-is)
        - Stop here until user responds
 

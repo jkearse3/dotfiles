@@ -6,8 +6,8 @@ ACs live in `00-main.md` under `## Acceptance Criteria`. Phase sections referenc
 
 Read these format references before executing this procedure:
 
-- `${CLAUDE_SKILL_DIR}/references/acceptance-criteria.md`
-- `${CLAUDE_SKILL_DIR}/references/index-format.md`
+- `references/acceptance-criteria.md`
+- `references/index-format.md`
 
 ## Arguments
 
@@ -25,7 +25,8 @@ are appended to the existing list. When omitted, full re-review behavior.
    - Are there unresolved questions blocking AC definition?
    - If critical gaps: suggest `/goal research` first
 
-3. **Interrogate requirements**: Use AskUserQuestion tool for clarifying questions.
+3. **Interrogate requirements**: Use the structured-question tool, batching related questions in one
+   call.
 
    **If topic argument provided** (topic mode):
 
@@ -193,8 +194,8 @@ Writes to `00-main.md`:
 
 ## Notes
 
-- **Use AskUserQuestion**: All clarifying questions must go through the tool — don't just list
-  questions in text
+- **Use the structured-question tool, batching related questions in one call**: All clarifying
+  questions must go through the tool — don't just list questions in text
 - **Re-spec means re-review** (full mode only): Existing ACs aren't sacred — assess completeness
   against all dimensions every time
 - **Interrogate aggressively**: Ask all relevant questions upfront, batch by dimension

@@ -7,7 +7,7 @@ Rename the current goal. Two modes:
 
 Read this format reference before executing this procedure:
 
-- `${CLAUDE_SKILL_DIR}/references/structure.md`
+- `references/structure.md`
 
 ## Arguments
 

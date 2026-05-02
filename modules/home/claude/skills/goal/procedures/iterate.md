@@ -5,7 +5,7 @@ satisfied. Runs a pre-flight confidence gate before entering the loop.
 
 Read this format reference before executing this procedure:
 
-- `${CLAUDE_SKILL_DIR}/references/acceptance-criteria.md`
+- `references/acceptance-criteria.md`
 
 ## Execution
 
@@ -44,7 +44,7 @@ before stopping.
 
 While uncompleted `[ ]` ACs remain (excluding `[-]` invalidated ACs):
 
-1. Read and follow `${CLAUDE_SKILL_DIR}/procedures/phase-iterate.md` with `--auto-commit`
+1. Read and follow `procedures/phase-iterate.md` with `--auto-commit`
 2. On `PHASE_COMPLETE`:
    - Re-read `.goals/_current/00-main.md` to get updated AC state
    - Check for `[!]` regressions — if any found, stop with diagnostic listing the regressed ACs
@@ -56,14 +56,14 @@ While uncompleted `[ ]` ACs remain (excluding `[-]` invalidated ACs):
 
 When no `[ ]` ACs remain (all are `[x]`, `[~]`, or `[-]`):
 
-1. Read and follow `${CLAUDE_SKILL_DIR}/procedures/summarize.md` with `--auto`
+1. Read and follow `procedures/summarize.md` with `--auto`
 2. List any deferred `[~] (human)` ACs that need user sign-off
 3. Announce: "All phases complete. Run `/goal review` if you want a final review before merging."
 
 ## Rules
 
-- This procedure is the top-level orchestrator — do NOT use `context: fork`. It replaces the user's
-  manual `/goal phase-iterate` loop.
+- This procedure is the top-level orchestrator. It replaces the user's manual `/goal phase-iterate`
+  loop.
 - `[~] (human)` ACs do not block the loop. They are deferred and listed at completion.
 - Re-invoking `/goal iterate` after a stop resumes naturally: it reads `00-main.md`, finds completed
   phases already `[x]`, and the focused or next pending phase becomes the loop entry point.

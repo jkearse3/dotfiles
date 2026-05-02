@@ -4,7 +4,7 @@ Reset the current goal's `00-main.md` to a blank template. Destructive — confi
 
 Read this format reference before executing this procedure:
 
-- `${CLAUDE_SKILL_DIR}/references/templates.md`
+- `references/templates.md`
 
 ## Steps
 

@@ -3,8 +3,8 @@
 ## Commit Messages
 
 Conventional Commits format by default. Defer to a repo's own conventions when documented
-(CLAUDE.md, CONTRIBUTING.md, commitlint config). When undocumented, match existing style from recent
-history.
+(CLAUDE.md, AGENTS.md, CONTRIBUTING.md, commitlint config). When undocumented, match existing style
+from recent history.
 
 ### Subject
 
@@ -27,7 +27,7 @@ history.
 - Keep the full subject under 72 characters
 - Breaking changes: `type(scope)!: description`
 
-Type follows behavioral effect, not file format. A markdown file the system reads as config (Claude
+Type follows behavioral effect, not file format. A markdown file the system reads as config (agent
 rules, skills, prompts) takes `feat` when it changes behavior, `refactor` when it restructures, and
 `docs` only when the change doesn't affect what the system does.
 

@@ -6,7 +6,8 @@ argument-hint: "<intent or subcommand> [args]"
 
 # Goal
 
-Unified skill for the goal workflow. Routes `$ARGUMENTS` to the matching procedure file.
+Unified skill for the goal workflow. Routes the user-provided arguments to the matching procedure
+file.
 
 ## Arguments
 
@@ -16,11 +17,11 @@ $ARGUMENTS
 
 ## Routing
 
-Read the intent from `$ARGUMENTS` and match it to an entry below, then read and follow the matched
-procedure file. If the intent is ambiguous, ask the user to clarify. If `$ARGUMENTS` is empty, treat
-it as `load`.
+Read the intent from the user-provided arguments and match it to an entry below, then read and
+follow the matched procedure file. If the intent is ambiguous, ask the user to clarify. If no
+arguments were provided, treat the request as `load`.
 
-Procedure paths below are relative to `${CLAUDE_SKILL_DIR}/procedures/`.
+Procedure paths below are relative to `procedures/`.
 
 - `create [name]` — `create.md`: Create a new goal and branch
 - `load [name]` (or empty args) — `load.md`: Load an existing goal (branch-aware)
@@ -49,6 +50,5 @@ when the spike reveals concrete work.
 
 ## Cross-procedure references
 
-When a procedure needs behavior from another, read that procedure file at
-`${CLAUDE_SKILL_DIR}/procedures/<name>.md` and follow it inline — do not invoke the Skill tool to
-call `/goal` recursively.
+When a procedure needs behavior from another, read that procedure file at `procedures/<name>.md` and
+follow it inline — do not invoke the goal skill via the Skill tool to call it recursively.

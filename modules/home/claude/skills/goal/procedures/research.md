@@ -5,8 +5,8 @@ dispatch — this procedure handles persistence.
 
 Read these format references before executing this procedure:
 
-- `${CLAUDE_SKILL_DIR}/references/index-format.md`
-- `${CLAUDE_SKILL_DIR}/references/structure.md`
+- `references/index-format.md`
+- `references/structure.md`
 
 ## Arguments
 
@@ -31,8 +31,8 @@ Read `.goals/_current/00-main.md`.
 3. **Confirm with user**: Present the derived slug and ask for confirmation or override. Example:
    "Starting research spike. Branch and goal will be named `auth-token-refresh`. Proceed, or provide
    an alternative name?"
-4. **Create branch + goal**: Read and follow `${CLAUDE_SKILL_DIR}/procedures/create.md` with the
-   confirmed slug as the argument. This creates the bookmark, goal, and loads it.
+4. **Create branch + goal**: Read and follow `procedures/create.md` with the confirmed slug as the
+   argument. This creates the bookmark, goal, and loads it.
 5. **Continue**: The topic argument carries through to Step 2 (no re-derivation needed).
 
 ### Step 2: Derive topic
@@ -43,12 +43,12 @@ If no topic argument provided:
 - Synthesize a focused research topic from gaps and unanswered questions
 - If no gaps found: "No questions or research gaps. Provide a topic or add questions first."
 
-### Step 3: Invoke /research
+### Step 3: Invoke the research skill
 
-Invoke `/research` using the Skill tool with the topic from Step 2.
+Invoke the `research` skill via the Skill tool with the topic from Step 2.
 
-`/research` dispatches subagents and synthesizes results in a single pass. `/research` is not aware
-of goals — all persistence happens here.
+The research skill dispatches subagents and synthesizes results in a single pass. It is not aware of
+goals — all persistence happens here.
 
 Wait for the final structured results (Summary, Findings, Leads, Questions, Assumptions).
 
