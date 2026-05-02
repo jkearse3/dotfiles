@@ -18,6 +18,21 @@ let
       editable
       ;
   };
+
+  opencodeFishCompletion = # fish
+    ''
+      function __fish_opencode_completions
+          set -l tokens (commandline --current-process --tokenize --cut-at-cursor)
+          if string match -qr '\s$' -- (commandline --current-process --cut-at-cursor)
+              set tokens $tokens ""
+          end
+          opencode --get-yargs-completions $tokens 2>/dev/null \
+              | string match -v -r '^\$0:' \
+              | string replace -r '^([^:]+):(.*)$' '$1\t$2'
+      end
+      complete -c opencode -f -k -a '(__fish_opencode_completions)'
+    '';
+
   opencode-wrapped = pkgs.symlinkJoin {
     name = "opencode-wrapped";
     paths = [
@@ -41,5 +56,6 @@ in
   home.file = {
     ".config/opencode/opencode.jsonc".source = mkSource ./opencode.jsonc;
     ".config/opencode/agents".source = mkSource ./agents;
+    ".config/fish/completions/opencode.fish".text = opencodeFishCompletion;
   };
 }
