@@ -42,7 +42,7 @@ Create a numbered phase file and add a linked index entry in `00-main.md`.
 
 Before dispatch, resolve the four values that identify the phase file. Orchestrators that dispatch
 the scoping subagent (`procedures/phase-scope.md`, `procedures/phase-iterate.md`) compute these and
-pass them in the Task prompt:
+pass them in the prompt:
 
 - Resolve `goal_dir`: absolute path of `.goals/_current` (resolve the symlink)
 - Compute `P`: highest phase number in `## Phases` index + 1

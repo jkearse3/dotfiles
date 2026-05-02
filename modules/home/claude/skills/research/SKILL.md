@@ -35,11 +35,11 @@ into sub-topics when the topic has genuinely independent areas that cannot be ex
 Prefer fewer subagents — each one carries system context overhead. A single thorough investigation
 beats multiple shallow ones.
 
-For each sub-topic, invoke the `Task` tool in the same message (parallel dispatch):
+Dispatch subagents in the same message (parallel dispatch):
 
-- `subagent_type`: `"general-purpose"`
-- `prompt`: Compose from the sub-topic (with relevant conversation context), the `## Research Brief`
-  section, and the `## Output Format` section below. Paste both sections wholesale into the prompt.
+- Dispatch a subagent with a prompt composed from the sub-topic (with relevant conversation
+  context), the `## Research Brief` section, and the `## Output Format` section below. Paste both
+  sections wholesale into the prompt.
 
 If a subagent fails or returns no structured results, note its sub-topic as an unresolved question.
 
@@ -71,10 +71,10 @@ gaps.
 
 1. **Classify gaps**: For each question or lead, determine whether it is investigable (a targeted
    search could resolve it) or terminal (no available tool or source can answer it).
-2. **Dispatch targeted subagents**: For each investigable gap, invoke the `Task` tool with
-   `subagent_type: "general-purpose"` and a `prompt` composed from the specific question or lead,
-   relevant context from the initial findings, the `## Research Brief` section, and the
-   `## Output Format` section. Dispatch all targeted subagents in parallel.
+2. **Dispatch targeted subagents**: For each investigable gap, dispatch a subagent with a prompt
+   composed from the specific question or lead, relevant context from the initial findings, the
+   `## Research Brief` section, and the `## Output Format` section. Dispatch all targeted subagents
+   in parallel.
 3. **Re-synthesize**: Merge follow-up results into the existing draft — promote confirmed leads to
    findings, resolve questions, update the summary. Apply the same evidence scrutiny and dependency
    ordering as the initial synthesis.
@@ -143,7 +143,7 @@ Use this exact format for the final report:
 
 ## Research Brief
 
-Investigation instructions for subagents. Paste this section wholesale into Task prompts.
+Investigation instructions for subagents. Paste this section wholesale into subagent prompts.
 
 ---
 

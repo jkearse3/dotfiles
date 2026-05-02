@@ -43,8 +43,7 @@ Find focused phase (`*` in `## Phases`).
 
 - If focused phase exists: proceed to Step 3.
 - If no focused phase: compute the phase-file path before dispatch per `references/templates.md` §
-  New Phase → Compute phase-file inputs, then dispatch the scoping subagent via the `Task` tool with
-  `subagent_type: "general-purpose"` and prompt:
+  New Phase → Compute phase-file inputs, then dispatch a subagent with prompt:
 
   ```
   Read the file at ~/.claude/skills/goal/briefs/phase-scope.md and execute the instructions within it.
@@ -75,8 +74,7 @@ index entry has a markdown link, read that file; otherwise read the inline `## P
 
 ### Step 4: Run Implement
 
-Dispatch an implementation subagent via the `Task` tool with `subagent_type: "general-purpose"` and
-prompt:
+Dispatch an implementation subagent with prompt:
 
 ```
 Read the file at ~/.claude/skills/goal/briefs/phase-implement.md and execute the instructions within it.
@@ -98,7 +96,7 @@ Otherwise, proceed to Step 5.
 
 ### Step 5: Run Verify
 
-Dispatch a verify subagent via the `Task` tool with `subagent_type: "general-purpose"` and prompt:
+Dispatch a verify subagent with prompt:
 
 ```
 Read the file at ~/.claude/skills/goal/briefs/phase-verify.md and execute the instructions within it.
@@ -270,10 +268,10 @@ After phase completion, auto-commit and return a structured result:
 
 ## Rules
 
-- The implement-verify loop runs inline via Task subagent dispatch. Phase-iterate owns the loop
+- The implement-verify loop runs inline via subagent dispatch. Phase-iterate owns the loop
   (dispatch, AC status capture, termination), post-loop enrichment (AC status derivation and
   annotation), and lifecycle (commit, phase marking).
-- Scoping is dispatched as a Task subagent directly (isolated context). Scoping uses
+- Scoping is dispatched as a subagent directly (isolated context). Scoping uses
   `briefs/phase-scope.md`; phase-iterate auto-accepts.
 - State passes between steps via `00-main.md` (ACs, phases index) and phase files (tasks, issues,
   approach, context).

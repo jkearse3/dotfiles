@@ -6,7 +6,7 @@ argument-hint: "[branch|working]"
 
 # Diff Summarize
 
-Orchestrator — validates arguments and dispatches a Task subagent to analyze code changes.
+Orchestrator — validates arguments and dispatches a subagent to analyze code changes.
 
 ## Arguments
 
@@ -27,7 +27,7 @@ Error: Invalid scope "<provided value>". Valid options: branch, working
 
 1. **Determine scope**: Use the user-provided argument if non-empty, otherwise default to `branch`.
 
-2. **Dispatch subagent**: Use the `Task` tool with `subagent_type: "general-purpose"` and prompt:
+2. **Dispatch subagent**: Dispatch a subagent with prompt:
 
    ```
    Read the file at ~/.claude/skills/diff-summarize/brief.md and execute the instructions within it.

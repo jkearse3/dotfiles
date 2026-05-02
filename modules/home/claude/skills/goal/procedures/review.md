@@ -1,7 +1,7 @@
 # Review
 
 Autonomous review pipeline over current branch changes. Captures `REVIEW:` comments from code, runs
-code review, merges findings, and creates cleanup phases. Dispatched as a Task subagent for isolated
+code review, merges findings, and creates cleanup phases. Dispatched as a subagent for isolated
 execution.
 
 Can be run at any point — not tied to phase completion. Useful for self-review after committing a
@@ -9,8 +9,7 @@ phase, general cleanup passes, or pre-PR review.
 
 ## Execution
 
-Dispatch the review as a Task subagent via the `Task` tool with `subagent_type: "general-purpose"`
-and prompt:
+Dispatch the review as a subagent with prompt:
 
 ```
 Read the file at ~/.claude/skills/goal/procedures/review.md and follow the "Branch Review Pipeline" section.
@@ -28,7 +27,7 @@ Wait for the subagent to return its structured result. Present the summary to th
 
 ## Branch Review Pipeline
 
-This section documents the full pipeline for reference. The Task subagent executes it autonomously.
+This section documents the full pipeline for reference. The subagent executes it autonomously.
 
 ### Step 1: Load format references
 
@@ -187,7 +186,7 @@ Focus the first created phase (`*` in index) if no phase is currently focused.
 
 ## Notes
 
-- Dispatched as Task subagent for autonomous execution.
+- Dispatched as a subagent for autonomous execution.
 - REVIEW comment removal happens before code review — reviewer sees clean code.
 - Multiple review sessions accumulate — each creates new phases with incrementing review numbers.
 - REVIEW comments in files outside the branch diff are captured as `out-of-scope` and grouped into a

@@ -7,7 +7,7 @@ the phase file at the absolute path provided by the orchestrator.
 
 ### Step 1: Read State
 
-The orchestrator provides the following inputs in the Task prompt:
+The orchestrator provides the following inputs in the prompt:
 
 - `goal_dir` — absolute path to the active goal directory
 - `P` — next phase number (matches the `## Phases` index entry)
@@ -26,7 +26,7 @@ Read these sections from `00-main.md`:
 If a file already exists at the provided phase-file path, read it — this is a refinement round and
 the file holds the prior draft's approach and tasks. Carry that context forward when producing the
 revised proposal so unrelated decisions from the prior round are not lost. The existing-file read
-informs context only; when it conflicts with the user feedback in the Task prompt, the user feedback
+informs context only; when it conflicts with the user feedback in the prompt, the user feedback
 wins. The prior draft may be out of sync with the latest feedback — for example, if an earlier round
 returned Readiness Issues without overwriting the file.
 
@@ -106,8 +106,8 @@ Return:
 ## Rules
 
 - Write only the phase file at the provided path. Never modify `00-main.md` or any earlier phase's
-  file in the goal (phases with a number other than the `P` provided in the Task prompt). The
-  provided path itself may be overwritten on refinement rounds — see Step 4.
+  file in the goal (phases with a number other than the `P` provided in the prompt). The provided
+  path itself may be overwritten on refinement rounds — see Step 4.
 - Tasks should be atomic: one clear outcome each
 - Prefer codify-before-satisfy when practical (TDD)
 - Phase scoping is just-in-time: one phase at a time, informed by remaining ACs and prior learnings

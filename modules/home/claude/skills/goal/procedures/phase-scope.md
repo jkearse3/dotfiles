@@ -1,9 +1,9 @@
 # Phase Scope
 
-Scope the next phase when none is active. Orchestrates a scoping subagent via the Task tool,
-presents its proposal for user approval, and supports interactive refinement by re-dispatching a
-fresh scoping subagent per feedback round; prior-round context is recovered from the phase file
-written on the previous round, not carried in the prompt.
+Scope the next phase when none is active. Orchestrates a scoping subagent, presents its proposal for
+user approval, and supports interactive refinement by re-dispatching a fresh scoping subagent per
+feedback round; prior-round context is recovered from the phase file written on the previous round,
+not carried in the prompt.
 
 Read these format references before executing this procedure:
 
@@ -29,18 +29,17 @@ Read these format references before executing this procedure:
    `references/templates.md` § New Phase → Compute phase-file inputs. Hold these four values
    (`goal_dir`, `P`, `NN`, path) for reuse in Steps 5, 7, and 8.
 
-5. **Dispatch scoping subagent**: Invoke the `Task` tool with:
-   - `subagent_type`: `"general-purpose"`
+5. **Dispatch scoping subagent**: Dispatch a subagent with:
    - `prompt`:
 
-     ```
-     Read the file at ~/.claude/skills/goal/briefs/phase-scope.md and execute the instructions within it.
+   ```
+   Read the file at ~/.claude/skills/goal/briefs/phase-scope.md and execute the instructions within it.
 
-     goal_dir: <absolute path to goal directory>
-     P: <phase number>
-     NN: <sequence number, zero-padded>
-     Phase file: <absolute path to phase file>
-     ```
+   goal_dir: <absolute path to goal directory>
+   P: <phase number>
+   NN: <sequence number, zero-padded>
+   Phase file: <absolute path to phase file>
+   ```
 
 6. **Handle subagent return**:
 
@@ -55,28 +54,27 @@ Read these format references before executing this procedure:
 
 7. **Interactive refinement loop**:
    - **User approves**: Proceed to step 8.
-   - **User requests adjustments**: Re-dispatch a fresh scoping subagent via the `Task` tool,
-     reusing the same `goal_dir`, `P`, `NN`, and path from Step 4 so the subagent overwrites the
-     same phase file in place:
-     - `subagent_type`: `"general-purpose"`
+   - **User requests adjustments**: Re-dispatch a fresh scoping subagent, reusing the same
+     `goal_dir`, `P`, `NN`, and path from Step 4 so the subagent overwrites the same phase file in
+     place:
      - `prompt`: the standard brief invocation plus the reused path inputs, followed by the user's
        feedback. The brief's Step 1 reads the existing phase file at the provided path for prior
        approach/tasks context, so the prompt does not need to restate it. Use this shape:
 
-       ```
-       Read the file at ~/.claude/skills/goal/briefs/phase-scope.md and execute the instructions within it.
+     ```
+     Read the file at ~/.claude/skills/goal/briefs/phase-scope.md and execute the instructions within it.
 
-       goal_dir: <absolute path to goal directory>
-       P: <phase number>
-       NN: <sequence number, zero-padded>
-       Phase file: <absolute path to phase file>
+     goal_dir: <absolute path to goal directory>
+     P: <phase number>
+     NN: <sequence number, zero-padded>
+     Phase file: <absolute path to phase file>
 
-       User feedback:
-       <verbatim user feedback>
+     User feedback:
+     <verbatim user feedback>
 
-       Produce a revised proposal that addresses the feedback. Overwrite the phase file at the
-       provided path.
-       ```
+     Produce a revised proposal that addresses the feedback. Overwrite the phase file at the
+     provided path.
+     ```
 
      Handle the re-dispatch return:
      - **No work remaining**: Report "All ACs satisfied. No phase to scope." and stop the loop.
