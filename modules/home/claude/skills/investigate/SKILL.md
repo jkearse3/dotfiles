@@ -1,10 +1,10 @@
 ---
-name: research
+name: investigate
 description: Investigate a topic and return structured findings <topic>
 argument-hint: "<topic>"
 ---
 
-# Research
+# Investigate
 
 Investigate a topic using parallel subagents and return a structured report.
 
@@ -16,7 +16,7 @@ $ARGUMENTS
 
 Required: a topic or question to investigate.
 
-If no topic provided, stop and say: "Usage: /research <topic>"
+If no topic provided, stop and say: "Usage: /investigate <topic>"
 
 ## Execution
 

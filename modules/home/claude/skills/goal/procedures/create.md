@@ -72,4 +72,4 @@ Optional bookmark name. If provided, creates or moves to that bookmark.
 8. **Present context**:
    - Confirm creation: "Created goal `<prefix>-<slug>` for branch `<branch-name>`"
    - Show Context section
-   - Suggest next steps: start with `/goal research` or `/goal spec`
+   - Suggest next steps: start with `/goal investigate` or `/goal spec`

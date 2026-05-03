@@ -1,6 +1,6 @@
 ---
 name: goal
-description: Goal workflow — create, load, research, spec, scope, iterate, review, summarize
+description: Goal workflow — create, load, investigate, spec, scope, iterate, review, summarize
 argument-hint: "<intent or subcommand> [args]"
 ---
 
@@ -28,7 +28,7 @@ Procedure paths below are relative to `procedures/`.
 - `list` — `list.md`: List all goals
 - `reset` — `reset.md`: Reset current goal to blank template
 - `rename [name]` — `rename.md`: Rename goal, bookmark, and destination
-- `research [topic]` — `research.md`: Invoke `/research` and merge findings into goal
+- `investigate [topic]` — `investigate.md`: Invoke `/investigate` and merge findings into goal
 - `spec [topic]` — `spec.md`: Define acceptance criteria and approach
 - `phase-scope` (or `scope phase`) — `phase-scope.md`: Scope next phase (dispatches scoping
   subagent)
@@ -45,8 +45,8 @@ Procedure paths below are relative to `procedures/`.
 In goal mode, never edit repo files without an active goal with approved ACs; all repo edits go
 through `/goal phase-iterate` or `/goal iterate`.
 
-Research spikes are exempt: `/goal research` without an active goal is allowed and auto-creates one
-when the spike reveals concrete work.
+Research spikes are exempt: `/goal investigate` without an active goal is allowed and auto-creates
+one when the spike reveals concrete work.
 
 ## Cross-procedure references
 

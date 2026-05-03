@@ -1,7 +1,7 @@
-# Research
+# Investigate
 
-Invoke `/research` and merge structured results into the goal. `/research` handles decomposition and
-dispatch — this procedure handles persistence.
+Invoke `/investigate` and merge structured results into the goal. `/investigate` handles
+decomposition and dispatch — this procedure handles persistence.
 
 Read these format references before executing this procedure:
 
@@ -43,18 +43,18 @@ If no topic argument provided:
 - Synthesize a focused research topic from gaps and unanswered questions
 - If no gaps found: "No questions or research gaps. Provide a topic or add questions first."
 
-### Step 3: Invoke the research skill
+### Step 3: Invoke the investigate skill
 
-Invoke the `research` skill via the Skill tool with the topic from Step 2.
+Invoke the `investigate` skill via the Skill tool with the topic from Step 2.
 
-The research skill dispatches subagents and synthesizes results in a single pass. It is not aware of
-goals — all persistence happens here.
+The investigate skill dispatches subagents and synthesizes results in a single pass. It is not aware
+of goals — all persistence happens here.
 
 Wait for the final structured results (Summary, Findings, Leads, Questions, Assumptions).
 
 ### Step 4: Merge results
 
-Merge the `/research` results into `## Research` section in `00-main.md`:
+Merge the `/investigate` results into `## Research` section in `00-main.md`:
 
 - **Findings**: Append new findings to `### Findings` (dedupe against existing)
 - **Leads**: Append new leads to `### Assumptions` as `[ ]` items (dedupe against existing). Leads
@@ -81,12 +81,12 @@ Writes to `00-main.md`:
 - `## Research > ### Findings`
 - `## Research > ### Decisions`
 - `## Research > ### Questions`
-- `## Research > ### Assumptions` (includes leads merged from `/research`)
+- `## Research > ### Assumptions` (includes leads merged from `/investigate`)
 
 ## Notes
 
-- `/research` runs a single pass — it dispatches subagents and synthesizes results.
-- `/research` is not aware of goals. All persistence happens via Step 4 above.
-- For separate research sessions on different topics, invoke `/goal research` multiple times.
+- `/investigate` runs a single pass — it dispatches subagents and synthesizes results.
+- `/investigate` is not aware of goals. All persistence happens via Step 4 above.
+- For separate research sessions on different topics, invoke `/goal investigate` multiple times.
 - The goal is the persistent accumulator — no in-memory state to lose.
 - Findings inform Spec; don't define ACs here.

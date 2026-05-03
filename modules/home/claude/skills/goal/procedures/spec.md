@@ -23,7 +23,7 @@ are appended to the existing list. When omitted, full re-review behavior.
    - What do we know?
    - What constraints exist?
    - Are there unresolved questions blocking AC definition?
-   - If critical gaps: suggest `/goal research` first
+   - If critical gaps: suggest `/goal investigate` first
 
 3. **Interrogate requirements**: Use the structured-question tool, batching related questions in one
    call.
