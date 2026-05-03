@@ -174,11 +174,12 @@ which is not available. When a file needs hunk-level splitting:
 
 #### Squashing Revisions
 
-Always use `-m` to avoid interactive editor:
+Prefer `-m` to avoid interactive editor, but **capture the destination's full description first** —
+`-m` replaces the entire description, not just the subject:
 
 ```bash
-jj squash -m "message"                        # squash @ into @-
-jj squash -r <rev> --into <target> -m "msg"   # explicit source/target
+desc=$(jj log -r <dest> --no-graph -T 'description')
+jj squash -r <rev> -m "$desc"
 ```
 
 #### Anti-patterns
