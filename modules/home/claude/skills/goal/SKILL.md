@@ -28,6 +28,7 @@ Procedure paths below are relative to `procedures/`.
 - `list` — `list.md`: List all goals
 - `reset` — `reset.md`: Reset current goal to blank template
 - `rename [name]` — `rename.md`: Rename goal, bookmark, and destination
+- `interrogate [topic]` — `interrogate.md`: Invoke `/interrogate` and merge decisions into goal
 - `investigate [topic]` — `investigate.md`: Invoke `/investigate` and merge findings into goal
 - `spec [topic]` — `spec.md`: Define acceptance criteria and approach
 - `phase-scope` (or `scope phase`) — `phase-scope.md`: Scope next phase (dispatches scoping
@@ -46,7 +47,8 @@ In goal mode, never edit repo files without an active goal with approved ACs; al
 through `/goal phase-iterate` or `/goal iterate`.
 
 Research spikes are exempt: `/goal investigate` without an active goal is allowed and auto-creates
-one when the spike reveals concrete work.
+one when the spike reveals concrete work. Decision spikes via `/goal interrogate` share the same
+exemption.
 
 ## Cross-procedure references
 
