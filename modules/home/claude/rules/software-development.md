@@ -74,7 +74,7 @@ Apply when planning, writing, OR reviewing code.
    - Single caller: immediately after
    - Multiple callers: at bottom
 
-## Blockers (stop and ask)
+## Blockers
 
 - Architectural mismatch or API incompatibility requiring redesign
 - Multiple failed approaches with no clear path forward

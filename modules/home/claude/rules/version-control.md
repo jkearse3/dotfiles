@@ -11,18 +11,18 @@ from recent history.
 `type(scope): description`
 
 - **type**: one of
-  - `feat` — new feature
-  - `fix` — bug fix
-  - `refactor` — code change that neither adds a feature nor fixes a bug
-  - `perf` — a `refactor` specifically targeting performance
-  - `style` — formatting, whitespace, non-semantic changes
-  - `chore` — repo housekeeping that does not ship (gitignore, editor configs, internal tooling
+  - `feat`: new feature
+  - `fix`: bug fix
+  - `refactor`: code change that neither adds a feature nor fixes a bug
+  - `perf`: a `refactor` specifically targeting performance
+  - `style`: formatting, whitespace, non-semantic changes
+  - `chore`: repo housekeeping that does not ship (gitignore, editor configs, internal tooling
     configs)
-  - `docs` — documentation only
-  - `test` — adding or correcting tests
-  - `ci` — CI/CD pipelines, deploy scripts, IaC, monitoring, recovery procedures
-  - `build` — build system or external dependencies, including lockfile and manifest updates
-- **scope**: optional — module, component, or area affected. Do not use issue identifiers as scopes.
+  - `docs`: documentation only
+  - `test`: adding or correcting tests
+  - `ci`: CI/CD pipelines, deploy scripts, IaC, monitoring, recovery procedures
+  - `build`: build system or external dependencies, including lockfile and manifest updates
+- **scope**: optional: module, component, or area affected. Do not use issue identifiers as scopes.
 - **description**: imperative mood, lowercase, no period. Think "This commit will `<description>`".
 - Keep the full subject under 72 characters
 - Breaking changes: `type(scope)!: description`

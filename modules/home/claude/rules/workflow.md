@@ -3,9 +3,9 @@
 When a file-changing task is identified and no goal is loaded, present a concise prompt offering
 these modes:
 
-- **Direct** — investigate, present plan, get approval, edit. No goal, ACs, phases, or `/goal`
+- **Direct**: investigate, present plan, get approval, edit. No goal, ACs, phases, or `/goal`
   commands.
-- **Goal** — create or load a goal, then follow the `/goal` workflow (ACs, phases, iterate).
+- **Goal**: create or load a goal, then follow the `/goal` workflow (ACs, phases, iterate).
 
 Non-editing tasks (questions, research, explanations) are exempt — no prompt needed.
 
