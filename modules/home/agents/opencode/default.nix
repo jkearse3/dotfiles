@@ -4,6 +4,7 @@
   lib,
   self,
   llmAgents,
+  mkNonoWrapper,
   repoRoot,
   editable,
   ...
@@ -49,15 +50,29 @@ let
         --set OPENCODE_DISABLE_LSP_DOWNLOAD 1
     '';
   };
+
+  nono-opencode = mkNonoWrapper {
+    name = "opencode";
+    profile = "coding-agents";
+    command = "${opencode-wrapped}/bin/opencode";
+  };
 in
 {
   home.packages = [
     opencode-wrapped
+    nono-opencode
   ];
   home.file = {
     ".config/opencode/opencode.jsonc".source = mkSource ./opencode.jsonc;
     ".config/opencode/tui.json".source = mkSource ./tui.json;
     ".config/fish/completions/opencode.fish".text = opencodeFishCompletion;
+
+    # The sandboxed `nono-opencode` wrapper inherits opencode's dynamic yargs completion via fish's
+    # `--wraps`. The wrapped function calls the bare `opencode` binary, so tabbing never launches the
+    # sandbox. Autoloaded by command name, so it lives in its own file.
+    ".config/fish/completions/nono-opencode.fish".text = ''
+      complete -c nono-opencode --wraps opencode
+    '';
   }
   // renderSharedRules ".config/opencode/rules" [
     {

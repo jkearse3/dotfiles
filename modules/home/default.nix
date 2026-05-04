@@ -18,6 +18,7 @@
     ./media
     ./neovim
     ./nix
+    ./nono
     ./protobuf
     ./python
     ./rust

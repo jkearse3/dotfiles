@@ -4,6 +4,7 @@
   lib,
   self,
   llmAgents,
+  mkNonoWrapper,
   repoRoot,
   editable,
   ...
@@ -34,10 +35,17 @@ let
         --set CLAUDE_CONFIG_DIR ${config.home.homeDirectory}/.claude
     '';
   };
+
+  nono-claude = mkNonoWrapper {
+    name = "claude";
+    profile = "coding-agents";
+    command = "${claude-wrapped}/bin/claude";
+  };
 in
 {
   home.packages = [
     claude-wrapped
+    nono-claude
     llmAgents.ccusage
     (pkgs.writeShellScriptBin "claude-mcp-add-linear" ''
       exec claude mcp add linear-server -s local --transport http https://mcp.linear.app/mcp
@@ -51,6 +59,13 @@ in
     ".claude/settings.json".source = mkSource ./settings.json;
     ".claude/statusline.sh".source = mkSource ./statusline.sh;
     ".claude/detect-vcs.sh".source = mkSource ./detect-vcs.sh;
+
+    # The sandboxed `nono-claude` wrapper inherits claude's static fish-shipped completion via
+    # `--wraps`. claude.fish is pure `complete -c claude` declarations with no binary invocation,
+    # so this adds completion for the wrapper name at no runtime cost. Autoloaded by command name.
+    ".config/fish/completions/nono-claude.fish".text = ''
+      complete -c nono-claude --wraps claude
+    '';
   }
   // renderSharedRules ".claude/rules" [
     {
