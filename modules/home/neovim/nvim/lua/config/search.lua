@@ -13,7 +13,7 @@ require("lib.config").run({
 				fullscreen = true,
 				preview = {
 					layout = "vertical",
-					vertical = "down:40%",
+					vertical = "down:80%",
 				},
 			},
 			keymap = {
