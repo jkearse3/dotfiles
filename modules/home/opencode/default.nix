@@ -55,6 +55,7 @@ in
   ];
   home.file = {
     ".config/opencode/opencode.jsonc".source = mkSource ./opencode.jsonc;
+    ".config/opencode/tui.json".source = mkSource ./tui.json;
     ".config/opencode/agents".source = mkSource ./agents;
     ".config/fish/completions/opencode.fish".text = opencodeFishCompletion;
   };
