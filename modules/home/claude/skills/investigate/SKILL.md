@@ -91,9 +91,6 @@ Use this exact format for the final report:
 ```
 ## Research: <topic>
 
-### Summary
-<direct answer to the question>
-
 ### Findings
 - <finding with evidence>
   - <supporting detail if needed>
@@ -112,11 +109,14 @@ Use this exact format for the final report:
 ### Assumptions
 - [ ] <assumption and basis>
   - ref: `path/to/file.ext:line` — <what informed this>
+
+### Summary
+<direct answer to the question>
 ```
 
 **Section rules:**
 
-- **Summary**: Direct answer to the topic. Lead with this — should stand alone as a useful answer.
+- **Summary**: Direct answer to the topic. Should stand alone as a useful answer.
   Be concrete and opinionated where evidence supports it.
 - **Findings**: Facts discovered with source/evidence. Each finding should be independently useful.
   - Use bullet list items (not numbered) — sub-items allowed for supporting detail

@@ -50,7 +50,7 @@ Invoke the `investigate` skill via the Skill tool with the topic from Step 2.
 The investigate skill dispatches subagents and synthesizes results in a single pass. It is not aware
 of goals — all persistence happens here.
 
-Wait for the final structured results (Summary, Findings, Leads, Questions, Assumptions).
+Wait for the final structured results (Findings, Leads, Questions, Assumptions, Summary).
 
 ### Step 4: Merge results
 
