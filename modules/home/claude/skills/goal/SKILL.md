@@ -29,6 +29,8 @@ Procedure paths below are relative to `procedures/`.
 - `reset` — `reset.md`: Reset current goal to blank template
 - `rename [name]` — `rename.md`: Rename goal, bookmark, and destination
 - `interrogate [topic]` — `interrogate.md`: Invoke `/interrogate` and merge decisions into goal
+- `phase-interrogate [topic]` — `phase-interrogate.md`: Apply interrogate workflow at the phase
+  level
 - `investigate [topic]` — `investigate.md`: Invoke `/investigate` and merge findings into goal
 - `spec [topic]` — `spec.md`: Define acceptance criteria and approach
 - `phase-scope` (or `scope phase`) — `phase-scope.md`: Scope next phase (dispatches scoping
