@@ -49,7 +49,7 @@ NN: <sequence number, zero-padded>
 Phase file: <absolute path to phase file>
 ```
 
-**On no work remaining**: report "All ACs satisfied. Nothing to interrogate." and stop.
+**On no work remaining**: report "Nothing to interrogate." and stop.
 
 **On readiness issues**: surface them and stop.
 

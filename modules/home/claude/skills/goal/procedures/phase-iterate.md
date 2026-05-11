@@ -54,7 +54,7 @@ Find focused phase (`*` in `## Phases`).
   Phase file: <absolute path to phase file>
   ```
 
-  - **On no work remaining**: report "All ACs satisfied. Nothing to iterate." and stop.
+  - **On no work remaining**: report "Nothing to iterate." and stop.
   - **On readiness issues**: surface them and stop.
   - **On phase proposal**: auto-accept. The subagent has already written the phase file at the
     provided path. Update `00-main.md` immediately by adding a linked index entry to `## Phases`:
@@ -167,8 +167,10 @@ per-AC assessments. Each entry carries an AC number, status marker, and evidence
 last assessment.
 
 - For ACs present in `ac_status`: use the status and evidence directly
-- For ACs targeted by phase tasks but absent from `ac_status` (verify never assessed them): fall
-  back to `[~]` (implemented, awaiting verification) based on task completion
+- For ACs targeted by phase tasks but absent from `ac_status` (verify never assessed them):
+  - If all referencing tasks are `(enhance)`: preserve the existing marker from `00-main.md`
+    (the AC was already satisfied before this phase — enhancement doesn't change its status)
+  - Otherwise: fall back to `[~]` (implemented, awaiting verification) based on task completion
 - For ACs with `(human)` annotations in the phase file's `### Tasks`: preserve the `(human)` marker
   regardless of `ac_status`
 
@@ -207,7 +209,7 @@ If complete:
 
 - Mark phase complete in index (`[x]`)
 - Remove focus marker (`*`)
-- Collect targeted ACs from task references `(ACN, satisfy)` / `(ACN, codify)` for the summary
+- Collect targeted ACs from task references `(ACN, satisfy)` / `(ACN, codify)` / `(ACN, enhance)` for the summary
 - Proceed to Step 9 (review and commit)
 
 If `[~] (human)` ACs remain:

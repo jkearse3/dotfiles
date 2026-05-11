@@ -148,7 +148,7 @@ format reference:
   - **L<line>**: Concern description (source)
 
   ### Tasks
-  1. [ ] Task description (ACN, satisfy) or (IN)
+  1. [ ] Task description (ACN, satisfy/enhance) or (IN)
 
   ### Issues
   ```

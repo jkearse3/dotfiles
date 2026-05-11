@@ -16,7 +16,7 @@ The orchestrator provides the following inputs in the prompt:
 
 Read these sections from `00-main.md`:
 
-- `## Acceptance Criteria` — identify remaining `[ ]` ACs
+- `## Acceptance Criteria` — read all ACs and their markers
 - `## Approach` — implementation roadmap
 - `## Research` — findings, decisions, questions, assumptions
 - `## Phases` index — then use Phase Resolution for each phase: if the index entry has a markdown
@@ -31,13 +31,6 @@ wins. The prior draft may be out of sync with the latest feedback — for exampl
 returned Readiness Issues without overwriting the file.
 
 ### Step 2: Readiness Check
-
-If no remaining `[ ]` ACs exist, return:
-
-```
-## Result: No Work Remaining
-All ACs satisfied. No phase to scope.
-```
 
 Check for blockers. Push back if any of:
 
@@ -59,12 +52,26 @@ If no blockers, proceed to Step 3.
 
 ### Step 3: Propose Phase
 
-Scope the next slice of work:
+If after reviewing all ACs, Approach, Research, and prior phases there is no coherent
+work to scope — no tasks that serve ACs, no cleanup justified by prior phases, no
+direction from Approach or Research — return:
 
-- Select which `[ ]` ACs to target (prefer small, coherent slices)
+```
+## Result: No Work Remaining
+No phase to scope.
+```
+
+Otherwise, scope the next slice of work:
+
+- Review all ACs (any marker), Approach, Research, and prior phases to identify what to work on
 - Name the phase to reflect its scope
 - Write a brief approach summary (strategy, constraints, patterns)
-- Compose an initial task list with AC references
+- Compose tasks. For each task, map it to existing ACs regardless of marker:
+  - `(ACN, satisfy)` — task directly implements an AC that is not yet satisfied
+  - `(ACN, enhance)` — task improves or refines an already-satisfied AC
+  - No annotation — task is pure implementation detail (cleanup, refactoring, tooling)
+- Only propose a new AC when a task represents a genuinely new spec-level condition that
+  existing ACs don't cover
 
 ### Step 4: Write Phase File
 
@@ -82,8 +89,9 @@ Write the phase file at the absolute path provided by the orchestrator using the
 [Strategy and architectural notes]
 
 ### Tasks
-1. [ ] [task description] (ACN, satisfy)
-2. [ ] [task description] (ACM, satisfy)
+1. [ ] [task description] (AC1, satisfy)
+2. [ ] [task description] (AC2, enhance)
+3. [ ] [cleanup or refactoring task]
 
 ### Issues
 ```
@@ -93,7 +101,12 @@ already exists at the provided path (from a prior refinement round), overwrite i
 
 ### Step 5: Return Result
 
-Return:
+Return one of:
+
+```
+## Result: No Work Remaining
+No phase to scope.
+```
 
 ```
 ## Result: Phase Proposal
@@ -103,6 +116,8 @@ Return:
 **Written**: [absolute path to the phase file written in Step 4]
 ```
 
+(The `## Result: Readiness Issues` format is in Step 2.)
+
 ## Rules
 
 - Write only the phase file at the provided path. Never modify `00-main.md` or any earlier phase's
@@ -110,6 +125,9 @@ Return:
   path itself may be overwritten on refinement rounds — see Step 4.
 - Tasks should be atomic: one clear outcome each
 - Prefer codify-before-satisfy when practical (TDD)
+- AC annotations: `(ACN, satisfy)` for implementing a not-yet-satisfied AC,
+  `(ACN, enhance)` for refining an already-satisfied AC, no annotation for
+  implementation detail
 - Phase scoping is just-in-time: one phase at a time, informed by remaining ACs and prior learnings
 - AC changes require human approval — flag in readiness issues, do not modify
 - **Phase atomicity**: A phase must contain only interdependent tasks — tasks that must land
