@@ -142,6 +142,15 @@ cmd:nix-switch-system() {
 	cmd:nix-activate-system
 }
 
+cmd:nix-flake-update() {
+	if [[ $(jj log -r '@' --no-graph -T 'if(empty, "true", "false")') != true ]]; then
+		jj new
+	fi
+	nix flake update --accept-flake-config
+	cmd:nix-eval-home
+	jj commit -m "build(nix): update flake.lock"
+}
+
 cmd:fmt() {
 	snapshot
 	echo "Formatting..."
