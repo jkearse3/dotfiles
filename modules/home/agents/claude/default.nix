@@ -9,7 +9,7 @@
   ...
 }:
 let
-  mkSource = import ../mkSource.nix {
+  mkSource = import ../../mkSource.nix {
     inherit
       config
       self
@@ -48,7 +48,7 @@ in
     ".claude/settings.json".source = mkSource ./settings.json;
     ".claude/statusline.sh".source = mkSource ./statusline.sh;
     ".claude/detect-vcs.sh".source = mkSource ./detect-vcs.sh;
-    ".claude/skills".source = mkSource ./skills;
+    ".claude/skills".source = mkSource ../skills;
     ".claude/rules".source = mkSource ./rules;
   };
 }

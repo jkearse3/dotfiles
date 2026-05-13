@@ -9,7 +9,7 @@
   ...
 }:
 let
-  mkSource = import ../mkSource.nix {
+  mkSource = import ../../mkSource.nix {
     inherit
       config
       self

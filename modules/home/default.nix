@@ -3,9 +3,9 @@
 }:
 {
   imports = [
+    ./agents
     ./bash
     ./build-deps
-    ./claude
     ./containers
     ./gcp
     ./go
@@ -17,7 +17,6 @@
     ./media
     ./neovim
     ./nix
-    ./opencode
     ./protobuf
     ./python
     ./rust
