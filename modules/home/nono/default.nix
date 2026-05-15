@@ -102,6 +102,9 @@ let
         # Claude writes conversations, projects, backups, and relocated global config here.
         "${config.home.homeDirectory}/.claude"
 
+        # pi reads config/extensions from ~/.pi/agent and writes session state under ~/.pi.
+        "${config.home.homeDirectory}/.pi"
+
         # Tools need the per-session temp directory for sockets, scratch files, and caches.
         "$TMPDIR"
       ];

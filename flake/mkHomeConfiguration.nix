@@ -37,6 +37,7 @@ withSystem blueprint.system (
           herdr
           hunk
           opencode
+          pi
           ;
       };
       dotfilesSource = {

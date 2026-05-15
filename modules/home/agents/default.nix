@@ -17,6 +17,7 @@ in
     ./registries.nix
     ./claude
     ./opencode
+    ./pi
   ];
 
   config = {
@@ -33,6 +34,7 @@ in
         ];
         order = config.agents.sharedRuleOrder;
       };
+      ".agents/mcp.json".source = ./mcp.json;
       ".agents/skills" = renderSkillsDir { };
     };
   };

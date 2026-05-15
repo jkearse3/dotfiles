@@ -1,0 +1,7 @@
+{
+  "disableDefaultAgents": true,
+  "fallbackSubagent": "none",
+  "maxSubagentDepth": 1,
+  "backgroundByDefault": false,
+  "schedulingEnabled": false
+}
