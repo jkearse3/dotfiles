@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "exa": {
+      "url": "https://mcp.exa.ai/mcp",
+      "lifecycle": "lazy",
+      "requestTimeoutMs": 60000,
+      "includeTools": ["web_search_exa"],
+      "directTools": ["web_search_exa"]
+    }
+  }
+}
