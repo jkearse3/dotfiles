@@ -4,6 +4,9 @@
 
 from __future__ import annotations
 
+from collections.abc import MutableMapping
+from contextlib import AbstractContextManager
+
 import io
 import os
 import subprocess
@@ -32,7 +35,10 @@ class RepositoryFixture(unittest.TestCase):
         self.root = Path(self.temporary_directory.name).resolve()
         home = self.root / "home"
         (home / ".config").mkdir(parents=True)
-        environment = patch.dict(
+        # `patch.dict` is untyped, so bind it to the context-manager protocol it
+        # implements and let `enterContext` own the teardown; calling `start` and
+        # `stop` through the unannotated value spreads Any into `addCleanup`.
+        environment: AbstractContextManager[MutableMapping[str, str]] = patch.dict(
             os.environ,
             {
                 "HOME": str(home),
@@ -41,8 +47,7 @@ class RepositoryFixture(unittest.TestCase):
                 "XDG_STATE_HOME": str(home / ".state"),
             },
         )
-        environment.start()
-        self.addCleanup(environment.stop)
+        self.enterContext(environment)
         self.primary = self.root / "primary"
         self.primary.mkdir()
         _ = run("git", "init", str(self.primary))
