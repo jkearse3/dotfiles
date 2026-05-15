@@ -74,6 +74,12 @@
         };
         nix-cleanup = pkgs.callPackage ../packages/nix-cleanup/package.nix { };
         nvim-pack-prune = pkgs.callPackage ../packages/nvim-pack-prune/package.nix { };
+        # The types must come from the same pi the home modules install, so this
+        # takes the llm-agents package rather than the nixpkgs pi-coding-agent.
+        pi-extension-types = pkgs.callPackage ../packages/pi-extension-types/package.nix {
+          inherit (inputs.llm-agents.packages.${system}) pi;
+          inherit (unstablePkgs) nodejs;
+        };
         playwright-cli = pkgs.callPackage ../packages/playwright-cli/package.nix { };
         port-listeners-kill = pkgs.callPackage ../packages/port-listeners-kill/package.nix {
           inherit port-listeners-list;

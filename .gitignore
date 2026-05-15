@@ -1,4 +1,7 @@
 result*
 .direnv/
-node_modules/
+# Matches the directory and the pi extension types symlink the devshell
+# links in, which a trailing-slash pattern would not cover.
+node_modules
 __pycache__/
+*.py[cod]
