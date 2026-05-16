@@ -52,9 +52,9 @@ If no blockers, proceed to Step 3.
 
 ### Step 3: Propose Phase
 
-If after reviewing all ACs, Approach, Research, and prior phases there is no coherent
-work to scope — no tasks that serve ACs, no cleanup justified by prior phases, no
-direction from Approach or Research — return:
+If after reviewing all ACs, Approach, Research, and prior phases there is no coherent work to scope
+— no tasks that serve ACs, no cleanup justified by prior phases, no direction from Approach or
+Research — return:
 
 ```
 ## Result: No Work Remaining
@@ -70,8 +70,8 @@ Otherwise, scope the next slice of work:
   - `(ACN, satisfy)` — task directly implements an AC that is not yet satisfied
   - `(ACN, enhance)` — task improves or refines an already-satisfied AC
   - No annotation — task is pure implementation detail (cleanup, refactoring, tooling)
-- Only propose a new AC when a task represents a genuinely new spec-level condition that
-  existing ACs don't cover
+- Only propose a new AC when a task represents a genuinely new spec-level condition that existing
+  ACs don't cover
 
 ### Step 4: Write Phase File
 
@@ -125,9 +125,8 @@ No phase to scope.
   path itself may be overwritten on refinement rounds — see Step 4.
 - Tasks should be atomic: one clear outcome each
 - Prefer codify-before-satisfy when practical (TDD)
-- AC annotations: `(ACN, satisfy)` for implementing a not-yet-satisfied AC,
-  `(ACN, enhance)` for refining an already-satisfied AC, no annotation for
-  implementation detail
+- AC annotations: `(ACN, satisfy)` for implementing a not-yet-satisfied AC, `(ACN, enhance)` for
+  refining an already-satisfied AC, no annotation for implementation detail
 - Phase scoping is just-in-time: one phase at a time, informed by remaining ACs and prior learnings
 - AC changes require human approval — flag in readiness issues, do not modify
 - **Phase atomicity**: A phase must contain only interdependent tasks — tasks that must land

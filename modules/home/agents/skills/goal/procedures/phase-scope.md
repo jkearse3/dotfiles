@@ -41,15 +41,15 @@ Read these format references before executing this procedure:
    Phase file: <absolute path to phase file>
    ```
 
- 6. **Handle subagent return**:
+6. **Handle subagent return**:
 
-    The subagent returns structured output. Three cases:
-    - **No work remaining**: Report "No phase to scope." and stop.
-    - **Readiness issues**: Surface each issue to the user with the subagent's suggested resolution.
-      Stop and wait for user to address.
-    - **Phase proposal**: The subagent has written the phase file at the provided path. Read that
-      file and present its contents (name, approach, tasks) plus the targeted ACs from the return
-      shape. Wait for approval.
+   The subagent returns structured output. Three cases:
+   - **No work remaining**: Report "No phase to scope." and stop.
+   - **Readiness issues**: Surface each issue to the user with the subagent's suggested resolution.
+     Stop and wait for user to address.
+   - **Phase proposal**: The subagent has written the phase file at the provided path. Read that
+     file and present its contents (name, approach, tasks) plus the targeted ACs from the return
+     shape. Wait for approval.
 
 7. **Interactive refinement loop**:
    - **User approves**: Proceed to step 8.
@@ -75,8 +75,8 @@ Read these format references before executing this procedure:
      provided path.
      ```
 
-      Handle the re-dispatch return:
-      - **No work remaining**: Report "No phase to scope." and stop the loop.
+     Handle the re-dispatch return:
+     - **No work remaining**: Report "No phase to scope." and stop the loop.
      - **Readiness issues**: Surface each issue to the user with the subagent's suggested resolution
        and stop the loop.
      - **Phase proposal**: Re-read the phase file and present the updated proposal. Repeat this step

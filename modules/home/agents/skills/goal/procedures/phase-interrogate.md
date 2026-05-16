@@ -35,8 +35,8 @@ Find the focused phase (`*` in `## Phases` index in `00-main.md`).
 
 #### Step 2a: Auto-scope dispatch
 
-Compute the phase-file path first: follow `references/templates.md` § New Phase → Compute
-phase-file inputs.
+Compute the phase-file path first: follow `references/templates.md` § New Phase → Compute phase-file
+inputs.
 
 Dispatch a subagent with prompt:
 
@@ -73,9 +73,9 @@ If no topic argument:
 - If nothing available: "No content to interrogate. Provide a topic or populate the phase context
   first."
 
-**Nudge for missing/satisfied ACs**: If the phase has no tasks referencing any AC, or all
-referenced ACs are already `[x]`, nudge: "This phase has no pending ACs — interrogation can still
-surface design decisions and new AC candidates." Do not block — proceed with the derived topic.
+**Nudge for missing/satisfied ACs**: If the phase has no tasks referencing any AC, or all referenced
+ACs are already `[x]`, nudge: "This phase has no pending ACs — interrogation can still surface
+design decisions and new AC candidates." Do not block — proceed with the derived topic.
 
 ### Step 4: Invoke the interrogate skill
 

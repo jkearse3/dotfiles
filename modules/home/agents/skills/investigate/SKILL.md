@@ -116,8 +116,8 @@ Use this exact format for the final report:
 
 **Section rules:**
 
-- **Summary**: Direct answer to the topic. Should stand alone as a useful answer.
-  Be concrete and opinionated where evidence supports it.
+- **Summary**: Direct answer to the topic. Should stand alone as a useful answer. Be concrete and
+  opinionated where evidence supports it.
 - **Findings**: Facts discovered with source/evidence. Each finding should be independently useful.
   - Use bullet list items (not numbered) — sub-items allowed for supporting detail
   - State what was found, not just where

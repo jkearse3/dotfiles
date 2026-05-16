@@ -41,8 +41,8 @@ Update the state file after each task -- do not batch updates.
 
 ### Step 4: Assess Testability
 
-After all tasks complete, for each AC referenced by a `satisfy` task (not `enhance` — those
-target already-validated ACs and don't need codify):
+After all tasks complete, for each AC referenced by a `satisfy` task (not `enhance` — those target
+already-validated ACs and don't need codify):
 
 - If the AC has a `satisfy` task but no `codify` task, assess testability
 
