@@ -24,6 +24,7 @@ in
     ./opencode
   ];
   home.file = {
+    ".agents/rules".source = mkSource ./rules;
     ".agents/skills".source = mkSource ./skills;
   };
 }

@@ -49,6 +49,6 @@ in
     ".claude/statusline.sh".source = mkSource ./statusline.sh;
     ".claude/detect-vcs.sh".source = mkSource ./detect-vcs.sh;
     ".claude/skills".source = mkSource ../skills;
-    ".claude/rules".source = mkSource ./rules;
+    ".claude/rules".source = mkSource ../rules;
   };
 }

@@ -8,7 +8,7 @@
     }
   },
   "autoupdate": false,
-  "instructions": ["~/.claude/rules/*.md"],
+  "instructions": ["~/.agents/rules/*.md"],
   "permission": {
     "*": "ask",
     "read": "allow",
@@ -124,7 +124,7 @@
       "zsh *": "allow"
     },
     "external_directory": {
-      "~/.claude/**": "allow"
+      "~/.agents/**": "allow"
     }
   }
 }
