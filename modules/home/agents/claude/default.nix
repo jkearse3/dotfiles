@@ -48,7 +48,10 @@ in
     ".claude/settings.json".source = mkSource ./settings.json;
     ".claude/statusline.sh".source = mkSource ./statusline.sh;
     ".claude/detect-vcs.sh".source = mkSource ./detect-vcs.sh;
-    ".claude/skills".source = mkSource ../skills;
     ".claude/rules".source = mkSource ../rules;
-  };
+  }
+  // lib.mapAttrs' (name: src: {
+    name = ".claude/skills/${name}";
+    value.source = mkSource src;
+  }) config.agents.skillSources;
 }

@@ -9,6 +9,7 @@
     ./containers
     ./gcp
     ./go
+    ./hunk
     ./javascript
     ./jsonnet
     ./kdl
