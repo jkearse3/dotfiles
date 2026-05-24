@@ -147,6 +147,10 @@ cmd:nix-flake-update() {
 		jj new
 	fi
 	nix flake update --accept-flake-config
+	if ! jj diff -r @ --name-only | grep -qx 'flake.lock'; then
+		echo "flake.lock unchanged, skipping eval and commit"
+		return
+	fi
 	cmd:nix-eval-home
 	jj commit -m "build(nix): update flake.lock"
 }
