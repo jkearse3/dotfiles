@@ -28,7 +28,8 @@ let
     ];
     postBuild = ''
       wrapProgram $out/bin/claude \
-        --set CLAUDE_CODE_DISABLE_BACKGROUND_TASKS 1
+        --set CLAUDE_CODE_DISABLE_BACKGROUND_TASKS 1 \
+        --set CLAUDE_CONFIG_DIR ${config.home.homeDirectory}/.claude
     '';
   };
 in
