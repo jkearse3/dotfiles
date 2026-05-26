@@ -1,5 +1,8 @@
 # Acceptance Criteria
 
+An AC is a desired end state or behavior of the finished system — not a task or implementation step.
+See `references/index-format.md` for the precision rules that govern how to phrase one.
+
 ## AC States
 
 | Marker | Meaning                                     |

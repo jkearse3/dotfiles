@@ -71,7 +71,9 @@ Otherwise, scope the next slice of work:
   - `(ACN, enhance)` — task improves or refines an already-satisfied AC
   - No annotation — task is pure implementation detail (cleanup, refactoring, tooling)
 - Only propose a new AC when a task represents a genuinely new spec-level condition that existing
-  ACs don't cover
+  ACs don't cover. An AC describes a desired end state or behavior of the finished system; a task
+  describes an implementation step that reaches it. If the candidate reads as a step, it is a task,
+  not an AC.
 
 ### Step 4: Write Phase File
 

@@ -112,9 +112,9 @@ are appended to the existing list. When omitted, full re-review behavior.
 
    **Process**:
    1. For each category, derive concrete scenarios from the interrogation answers
-   2. Apply precision rules from the format reference to each candidate — it must state what happens
-      (not what doesn't), include concrete values where applicable, and describe an observable
-      outcome
+   2. Apply precision rules from the format reference to each candidate — it must declare a state or
+      behavior (not a step), state what happens (not what doesn't), include concrete values where
+      applicable, and describe an observable outcome
    3. Discard vague candidates that can't be made precise
    4. Present surviving scenarios to the user as candidates for inclusion as ACs
    5. User includes or excludes each candidate before proceeding to AC definition
@@ -133,8 +133,8 @@ are appended to the existing list. When omitted, full re-review behavior.
    - Each AC should map to a specific answer from interrogation
 
    **Both modes**:
-   - Apply precision rules from the format reference — state what happens (not what doesn't),
-     include concrete values, describe observable outcomes
+   - Apply precision rules from the format reference — declare a state or behavior (not a step),
+     state what happens (not what doesn't), include concrete values, describe observable outcomes
    - Mark `(human)` for criteria requiring user sign-off
 
 6. **Conflict check** (topic mode only — skip in full mode):
