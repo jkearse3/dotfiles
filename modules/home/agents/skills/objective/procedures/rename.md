@@ -2,87 +2,75 @@
 
 Rename the current objective. Two modes:
 
-- **No argument**: Sync — rename symlink to match current branch (existing behavior).
-- **With argument**: Full rename — rename bookmark, symlink, and destination directory.
-
-Read this format reference before executing this procedure:
-
-- `references/structure.md`
+- No argument: sync — rename the symlink to match the current branch.
+- With argument: full rename — rename bookmark, symlink, and destination directory.
 
 ## Arguments
 
-Optional new name. If provided, performs a full rename. If omitted, syncs symlink to current branch.
+Optional new name. If provided, performs a full rename. If omitted, syncs the symlink to the current
+branch.
+
+## References
+
+- `references/contracts.md` — file conventions, Slugify, Extract Objective Slug, Load Current
+  Objective, invariants.
+- `references/structure.md` — objective registry and symlink layout.
 
 ## Steps
 
-1. **Validate current objective**: Read `.objectives/_current` symlink
-   - If missing or broken: nudge — "No active objective. Want me to load or create one?"
+1. Validate the current objective per `references/contracts.md` § Load Current Objective (stops with
+   the no-active-objective nudge if missing or broken).
 
-2. **Extract current symlink info**:
-   - Read `_current` symlink target name (e.g. `2024-01-15-1430-auth-refactor`)
-   - Extract timestamp prefix: `YYYY-MM-DD-HHMM-` first; fallback `YYYY-MM-DD-`
-   - Extract current slug from the remainder
-   - Read the symlink's target path (the destination it points to)
+2. Extract current symlink info.
+   - Read the `_current` symlink target name (e.g. `2024-01-15-1430-auth-refactor`).
+   - Extract the timestamp prefix (`YYYY-MM-DD-HHMM-` first; fallback `YYYY-MM-DD-`) and the current
+     slug from the remainder, per `references/contracts.md` § Extract Objective Slug.
+   - Read the symlink's target path (the destination it points to).
 
-3. **Derive new slug**:
+3. Derive the new slug via `references/contracts.md` § Slugify.
 
-   **If argument provided**:
-   - Slugify argument: lowercase, replace `/` with `-`, strip non-alphanumeric (except `-`). This is
-     the new slug.
+   If argument provided: slugify the argument. This is the new slug.
 
-   **If no argument**:
-   - Run `jj-bookmark-current` and `jj-bookmark-default`
-   - If empty or matches default branch: error — "On trunk. Cannot rename."
-   - Slugify branch name: lowercase, replace `/` with `-`, strip non-alphanumeric (except `-`). This
-     is the new slug.
+   If no argument:
+   - Run `jj-bookmark-current` and `jj-bookmark-default`.
+   - If empty or matches the default branch: error — "On trunk. Cannot rename."
+   - Slugify the branch name. This is the new slug.
 
-4. **Check if already matching**: If current slug equals new slug:
+4. Check if already matching. If the current slug equals the new slug:
+   - If argument provided: stop — "Objective already uses name `<new-slug>`."
+   - If no argument: stop — "Objective already matches branch `<branch-name>`."
 
-   **If argument provided**: stop — "Objective already uses name `<new-slug>`."
+5. Check for conflicts.
+   - If `.objectives/<prefix>-<new-slug>` already exists, error: "Objective `<prefix>-<new-slug>`
+     already exists. Cannot rename."
+   - Also check whether any other existing objective symlink's slug (per `references/contracts.md` §
+     Extract Objective Slug) matches the new slug. If a match is found, error: "Objective already
+     exists for this branch: `<existing-symlink-name>`. Cannot rename."
 
-   **If no argument**: stop — "Objective already matches branch `<branch-name>`."
+6. Update destination (argument mode only). If no argument, skip this step.
+   - Read `.objectives/_config.yaml` for `destination_pattern:`.
+   - Resolve the pattern with the preserved timestamp tokens and the new slug. The `<name>`/`<n>`
+     token uses the new slug; date/time tokens use the values from the existing timestamp prefix.
+   - Move the destination directory: `mv <old-destination> <new-destination>`.
+     - `<old-destination>` is the resolved path the current symlink points to.
+     - `<new-destination>` is the resolved path with the new slug.
+     - If old and new destinations are the same (the pattern doesn't include `<name>`), skip.
 
-5. **Check for conflicts**: If `.objectives/<prefix>-<new-slug>` already exists, error: "Objective
-   `<prefix>-<new-slug>` already exists. Cannot rename."
+7. Update symlinks.
+   - Remove the old symlink: `rm .objectives/<old-name>`.
+   - Create the new symlink: `ln -s "<target>" ".objectives/<prefix>-<new-slug>"`. The target is the
+     new destination (relative path) if moved in step 6, otherwise the same target as before.
+   - Update `_current`: `ln -sfn "<prefix>-<new-slug>" ".objectives/_current"`.
 
-   Also check if any other existing objective symlink's extracted slug matches the new slug (strip
-   `YYYY-MM-DD-HHMM-` prefix first; if no match, strip `YYYY-MM-DD-` prefix). If match found, error:
-   "Objective already exists for this branch: `<existing-symlink-name>`. Cannot rename."
+8. Rename bookmark (argument mode only). If no argument, skip this step.
+   - Get the current bookmark: `jj-bookmark-current`.
+   - Get the default branch: `jj-bookmark-default`.
+   - If not empty and not the default branch: `jj bookmark rename <current-bookmark> <new-slug>`.
+   - If on trunk (empty or default): skip the bookmark rename (no bookmark to rename).
 
-6. **Update destination** (argument mode only):
+9. Report.
 
-   **If argument provided**:
-   - Read `.objectives/_config.yaml` for `destination_pattern:`
-   - Resolve pattern with the preserved timestamp tokens and new slug
-   - The `<name>`/`<n>` token uses the new slug; date/time tokens use the values from the existing
-     timestamp prefix
-   - Move destination directory: `mv <old-destination> <new-destination>`
-     - `<old-destination>` is the resolved path the current symlink points to
-     - `<new-destination>` is the resolved path with new slug
-     - If old and new destinations are the same (pattern doesn't include `<name>`), skip
-
-   **If no argument**: skip this step.
-
-7. **Update symlinks**:
-   - Remove old symlink: `rm .objectives/<old-name>`
-   - Create new symlink: `ln -s "<target>" ".objectives/<prefix>-<new-slug>"`
-     - Target is the new destination (relative path) if moved in step 6, otherwise the same target
-       as before
-   - Update `_current`: `ln -sfn "<prefix>-<new-slug>" ".objectives/_current"`
-
-8. **Rename bookmark** (argument mode only):
-
-   **If argument provided**:
-   - Get current bookmark: `jj-bookmark-current`
-   - Get default branch: `jj-bookmark-default`
-   - If not empty and not default branch: `jj bookmark rename <current-bookmark> <new-slug>`
-   - If on trunk (empty or default): skip bookmark rename (no bookmark to rename)
-
-   **If no argument**: skip this step.
-
-9. **Report**:
-
-   **If argument provided**:
+   If argument provided:
 
    ```
    Renamed: <old-name> → <prefix>-<new-slug>
@@ -90,19 +78,22 @@ Optional new name. If provided, performs a full rename. If omitted, syncs symlin
    Destination: <old-destination> → <new-destination>
    ```
 
-   Omit Bookmark line if no bookmark was renamed. Omit Destination line if destination unchanged.
+   Omit the Bookmark line if no bookmark was renamed. Omit the Destination line if the destination
+   is unchanged.
 
-   **If no argument**:
+   If no argument:
 
    ```
    Synced: <old-name> → <prefix>-<new-slug>
    ```
 
-## Notes
+## Contracts
 
-- Sync mode only renames the symlink — destination directory is unchanged
-- Full rename is local only — does not push or delete remote branches
-- If the bookmark was already pushed, user must manually sync remotes:
-  `jj git push --bookmark <new> && jj git push --bookmark <old> --deleted`
-- Preserves the original timestamp prefix in both modes
-- Relative overflow file links survive destination renames since they move with the directory
+- Preserve the trunk error, conflict errors, "already matches" stops, and both report blocks
+  verbatim.
+- Preserve the original timestamp prefix in both modes.
+- Sync mode renames only the symlink; the destination directory is unchanged.
+- Full rename is local only — it does not push or delete remote branches. If the bookmark was
+  already pushed, the user must manually sync remotes:
+  `jj git push --bookmark <new> && jj git push --bookmark <old> --deleted`.
+- Relative overflow file links survive destination renames because they move with the directory.

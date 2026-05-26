@@ -3,36 +3,38 @@
 Reset the current objective's `00-main.md` to a blank template. Destructive — confirms before
 proceeding.
 
-Read this format reference before executing this procedure:
+## References
 
-- `references/templates.md`
+- `references/contracts.md` — file conventions, Load Current Objective, invariants.
+- `references/templates.md` — New Objective template.
 
 ## Steps
 
-1. **Validate current objective**: Read `.objectives/_current` symlink
-   - If missing or broken: nudge — "No active objective. Want me to load or create one?"
+1. Validate the current objective per `references/contracts.md` § Load Current Objective (stops with
+   the no-active-objective nudge if missing or broken).
 
-2. **Resolve path**: Follow `.objectives/_current` through to actual directory, locate `00-main.md`
+2. Resolve the path. Follow `.objectives/_current` through to the actual directory and locate
+   `00-main.md`.
    - If `00-main.md` doesn't exist: error — "No `00-main.md` found at objective destination."
 
-3. **Confirm**: Show warning and wait for explicit approval:
+3. Confirm. Show the warning and wait for explicit approval:
 
    ```
    This will erase all contents of <objective-name>/00-main.md and replace with a blank template.
    This cannot be undone (except via version control). Proceed? (yes/no)
    ```
 
-   - Only proceed on explicit "yes"
+   - Only proceed on an explicit "yes".
    - Any other response: abort with "Reset cancelled."
 
-4. **Reset**: Overwrite `00-main.md` using the New Objective template from the format reference
+4. Reset. Overwrite `00-main.md` using the New Objective template.
 
-5. **Report**: "Reset `<objective-name>/00-main.md` to blank template."
+5. Report: "Reset `<objective-name>/00-main.md` to blank template."
 
-## Notes
+## Contracts
 
-- Only resets `00-main.md` — phase files and other supplementary files in the directory are
-  untouched
-- To fully reset, manually delete phase files (`NN-phase-*.md`) from the objective directory
-- Symlink and directory structure are preserved
-- Use version control (`jj`) to recover if needed
+- Preserve the destructive-confirm block, the abort message, and the report verbatim.
+- Proceed only on an explicit "yes".
+- Reset only `00-main.md` — phase files (`NN-phase-*.md`) and other supplementary files in the
+  directory are untouched. To fully reset, the user manually deletes the phase files.
+- The symlink and directory structure are preserved. Recovery is via version control (`jj`).

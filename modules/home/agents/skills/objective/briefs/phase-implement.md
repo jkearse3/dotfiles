@@ -1,64 +1,56 @@
 # Phase Implement Brief
 
-## Instructions
+Implement tasks for a phase of the objective workflow: execute pending tasks and update the state
+file in real-time.
 
-You are implementing tasks for a phase of the objective workflow. Read the state file, execute
-tasks, and update the state file in real-time.
+## References
 
-### Step 1: Load State
+- `references/contracts.md` — file conventions and § Invariants (the single-revision rule and
+  caller-token preservation).
 
-Read the state file at the path provided by the orchestrator.
+## Steps
 
-Read these sections:
+1. Load state. Read the state file at the path provided by the orchestrator:
+   - `### Context` — intent and any delegated context.
+   - `### Approach` — strategy, constraints, and patterns guiding implementation.
+   - `### Tasks` — pending work items.
+   - `### Issues` — unresolved problems.
 
-- `### Context` -- understand the intent and any delegated context
-- `### Approach` -- strategy, constraints, and patterns guiding implementation
-- `### Tasks` -- pending work items
-- `### Issues` -- unresolved problems
+   Read the AC source file (`.objectives/_current/00-main.md`) `## Acceptance Criteria` section for
+   AC text — used for testability assessment in Step 4.
 
-Read the AC source file (`.objectives/_current/00-main.md`) `## Acceptance Criteria` section for AC
-text -- this is used for testability assessment in Step 4.
+2. Handle open issues. For each open issue `[ ]` in `### Issues` without a corresponding pending
+   task in `### Tasks`:
+   - Create a task to fix it `(IN)`, append to `### Tasks`, and write the update immediately.
+   - Never leave issues open without a pending task.
+   - Never defer to "tech debt" or "future work" — if documented, fix now.
 
-### Step 2: Handle Open Issues
+3. Execute tasks. For each pending task `[ ]` in order:
+   1. Implement the task (write code, tests, etc.).
+   2. On success: mark `[x]` in the state file immediately.
+   3. On blocked: mark `[!]` with reason, then continue to the next task:
+      `N. [!] Task description — blocked: reason`.
 
-For each open issue `[ ]` in `### Issues` without a corresponding pending task in `### Tasks`:
+   Update the state file after each task — do not batch updates.
 
-- Create a task to fix it `(IN)`, append to `### Tasks`
-- Write the update to the state file immediately
-- Never leave issues open without a pending task
-- Never defer to "tech debt" or "future work" -- if documented, fix now
+4. Assess testability. After all tasks complete, for each AC referenced by a `satisfy` task (not
+   `enhance` — those target already-validated ACs and don't need codify):
+   - If the AC has a `satisfy` task but no `codify` task, assess testability using AC text from
+     `.objectives/_current/00-main.md`:
+     - AC describes observable behavior with clear inputs/outputs — testable.
+     - AC describes internal structure, config, or prose content — not testable.
+   - **If testable**: create a `(ACN, codify)` task in `### Tasks`, then execute it.
+   - **If not testable**: annotate the AC directly in `### Tasks` by appending a `(human)` marker to
+     the relevant satisfy task (e.g., `N. [x] Task description (ACM, satisfy) (human: reason)`).
+     Also note it in the summary.
 
-### Step 3: Execute Tasks
+5. Return summary. Return the `## Result: Implementation Summary` block (see Contracts).
 
-For each pending task `[ ]` in order:
+## Contracts
 
-1. Implement the task (write code, tests, etc.)
-2. On success: mark as `[x]` in the state file immediately
-3. On blocked: mark as `[!]` in the state file with reason, continue to next task:
-   `N. [!] Task description — blocked: reason`
+### Result Block
 
-Update the state file after each task -- do not batch updates.
-
-### Step 4: Assess Testability
-
-After all tasks complete, for each AC referenced by a `satisfy` task (not `enhance` — those target
-already-validated ACs and don't need codify):
-
-- If the AC has a `satisfy` task but no `codify` task, assess testability
-
-**Testability judgment** (use AC text from `.objectives/_current/00-main.md`):
-
-- AC describes observable behavior with clear inputs/outputs -- testable
-- AC describes internal structure, config, or prose content -- not testable
-
-**If testable**: Create `(ACN, codify)` task in the state file's `### Tasks`, then execute it. **If
-not testable**: Annotate the AC directly in the state file's `### Tasks` section by appending a
-`(human)` marker to the relevant satisfy task (e.g.,
-`N. [x] Task description (ACM, satisfy) (human: reason)`). Also note in the summary.
-
-### Step 5: Return Summary
-
-Return a structured summary:
+Headings and fields are caller-parsed — do not rename or reorder.
 
 ```
 ## Result: Implementation Summary
@@ -79,7 +71,7 @@ Return a structured summary:
 - [any issues requiring user input, or "None"]
 ```
 
-## Task Format
+### Task Format
 
 ```markdown
 ### Tasks
@@ -91,14 +83,14 @@ Return a structured summary:
 
 Tasks are a flat numbered list. No groupings or sub-headers.
 
-References:
+### Task Annotations
 
-- `(ACN, satisfy)` - implement behavior for ACN
-- `(ACN, enhance)` - improve or refine an already-satisfied ACN
-- `(ACN, codify)` - write test that verifies ACN
-- `(IN)` - address issue N
+- `(ACN, satisfy)` — implement behavior for ACN.
+- `(ACN, enhance)` — improve or refine an already-satisfied ACN.
+- `(ACN, codify)` — write test that verifies ACN.
+- `(IN)` — address issue N.
 
-## Task Markers
+### Task Markers
 
 | Marker | Meaning  |
 | ------ | -------- |
@@ -106,11 +98,11 @@ References:
 | `[x]`  | Complete |
 | `[!]`  | Blocked  |
 
-## Rules
+### Rules
 
-- Mark progress in real-time (don't batch updates)
-- If blocked, document why and continue
-- State file is the single source of truth -- all progress is written there
-- **Single-revision invariant**: Never run `jj commit`, `jj new`, or `jj split` during
-  implementation. All changes must stay in `@`. The orchestrator owns revision lifecycle — commits
-  happen only after verify completes and the phase is approved.
+- Mark progress in real-time (don't batch updates).
+- If blocked, document why and continue.
+- State file is the single source of truth — all progress is written there.
+- **Single-revision invariant** (`references/contracts.md` § Invariants): never run `jj commit`,
+  `jj new`, or `jj split` during implementation. All changes must stay in `@`. The orchestrator owns
+  revision lifecycle — commits happen only after verify completes and the phase is approved.

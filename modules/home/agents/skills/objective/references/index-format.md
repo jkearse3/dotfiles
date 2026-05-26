@@ -1,7 +1,14 @@
 # Index File Format
 
-`00-main.md` is the objective index. It contains Context, Research, Acceptance Criteria, Approach,
-and the Phases index. Phase content lives in separate files (see Phase Sections and Templates).
+Annotated specimen for `00-main.md`, the objective index.
+
+## References
+
+- `references/phases.md` — § Phase Sections for per-phase content.
+- `references/templates.md` — phase-file template and creation rules.
+
+`00-main.md` carries Context, Research, Acceptance Criteria, Approach, and the Phases index. Phase
+content lives in separate files (see Phase Sections and Templates).
 
 ```markdown
 ## Context

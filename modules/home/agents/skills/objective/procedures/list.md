@@ -2,16 +2,23 @@
 
 List all objectives in the current repository.
 
+## References
+
+- `references/contracts.md` — file conventions, shared operations, invariants.
+- `references/structure.md` — objective registry and symlink layout.
+
 ## Steps
 
-1. **Find objectives**: List entries in `.objectives/` (exclude `_current`, `_config.yaml`)
-   - If none: "No objectives found."
-   - Sort by name (which sorts chronologically due to date prefix)
-   - Check each entry is valid (directory exists or symlink target exists)
+1. Find objectives.
+   - List entries in `.objectives/` excluding `_current` and `_config.yaml`.
+   - Sort by name, most recent first.
+   - Check whether each entry is valid: directory exists or symlink target exists.
+   - Stop if none: `No objectives found.`
 
-2. **Get current**: Read `.objectives/_current` symlink target (if exists)
+2. Get current.
+   - Read `.objectives/_current` symlink target if it exists.
 
-3. **Display**:
+3. Display objectives.
 
    ```
    Objectives:
@@ -22,7 +29,12 @@ List all objectives in the current repository.
    Use /objective load to switch, /objective create to create.
    ```
 
-   - Show entry name (and symlink target path if entry is a symlink)
-   - Mark current with `*`
-   - Mark broken entries with `[broken]`
-   - Most recent first
+   - Show entry name.
+   - Include symlink target path when the entry is a symlink.
+   - Mark current with `*`.
+   - Mark broken entries with `[broken]`.
+
+## Contracts
+
+- Do not modify objective files.
+- Do not update `.objectives/_current`.

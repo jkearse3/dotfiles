@@ -1,9 +1,15 @@
 # Structure
 
+Objective registry layout, configuration, and file naming.
+
+## References
+
+- `references/templates.md` — phase-file template that phase files follow.
+
 ## Directory Structure
 
 `.objectives/` is the objective registry. Entries are either real directories (default) or symlinks
-pointing to destination paths (configured). `_current` always points to the active entry.
+to destination paths (configured). `_current` always points to the active entry.
 
 ### Default Mode (no `_config.yaml`)
 
@@ -69,15 +75,15 @@ created as real directories in `.objectives/` with no prompt.
 
 ## Sequence Counter
 
-All files in the directory share a single sequence counter. Next number = highest existing `NN-`
-prefix in the directory + 1. Gaps are fine. `00-main.md` is always the root.
+All files in the directory share one sequence counter. The next number is the highest existing `NN-`
+prefix plus one; gaps are fine. `00-main.md` is always the root.
 
-The counter applies to all file types — phases, research, summaries, or any other supplementary
-content. This keeps creation order visible in the directory listing.
+- Applies to all file types — phases, research, summaries, supplementary content.
+- Keeps creation order visible in the directory listing.
 
 ## Supplementary Files
 
-For overflow content (verbose research, benchmark data, etc.), create sequenced supplementary files:
+For overflow content (verbose research, benchmark data), create sequenced supplementary files:
 
 ```
 03-research-api-analysis.md    # supplementary: detailed API research

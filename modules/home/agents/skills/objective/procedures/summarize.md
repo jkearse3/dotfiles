@@ -1,30 +1,35 @@
 # Summarize
 
-Synthesize Summary section for PR descriptions.
-
-Read this format reference before executing this procedure:
-
-- `references/phases.md`
+Synthesize the Summary section for PR descriptions.
 
 ## Arguments
 
-- `--auto` — Write summary without presenting for review (used by automated workflows)
+- `--auto` — Write the summary without presenting for review (used by automated workflows).
+
+## References
+
+- `references/contracts.md` — § Load Current Objective for the load/nudge gate, and § Invariants.
+- `references/phases.md` — § Phase Resolution for reading each phase's content from its linked file.
 
 ## Steps
 
-1. **Load objective**: `.objectives/_current/00-main.md`
-   - If symlink broken: nudge — "No active objective. Want me to load or create one?"
+1. Load the current objective per `references/contracts.md` § Load Current Objective. Stop with this
+   nudge if no valid objective is active:
 
-2. **Gather context**:
-   - Read `00-main.md` (Context, Research, Acceptance Criteria, Phases index)
+   ```text
+   No active objective. Want me to load or create one?
+   ```
+
+2. Gather context:
+   - Read `00-main.md` (Context, Research, Acceptance Criteria, Phases index).
    - Use Phase Resolution to read each phase's content from its linked file (or inline section for
-     legacy)
-   - Use `/diff-summarize` for file-level diff analysis
+     legacy).
+   - Use `/diff-summarize` for file-level diff analysis.
 
-3. **Synthesize Summary**:
-   - Use research findings and phase approach sections for reasoning and decisions
-   - Use diff summary to verify actual implementation
-   - Format: behavior-first with supporting details
+3. Synthesize the Summary:
+   - Use research findings and phase approach sections for reasoning and decisions.
+   - Use the diff summary to verify actual implementation.
+   - Format behavior-first with supporting details:
 
      ```markdown
      ## Summary
@@ -38,26 +43,29 @@ Read this format reference before executing this procedure:
      - **Area**: Another relevant detail
      ```
 
-   - Summary bullets: behavior/value changes, assume no prior context. Focus on behavior change, not
-     implementation mechanics.
+   - Summary bullets state behavior/value changes; assume no prior context. Focus on behavior
+     change, not implementation mechanics.
    - Sub-bullets are optional — use them for causal chains or relationships between changes (e.g.,
-     "X required Y which surfaced Z"), not for every bullet
-   - Implementation Notes: only include details that help reviewers understand non-obvious choices,
-     tradeoffs, or areas needing attention
-   - Omit Implementation Notes section if changes are self-explanatory
+     "X required Y which surfaced Z"), not for every bullet.
+   - Implementation Notes only include details that help reviewers understand non-obvious choices,
+     tradeoffs, or areas needing attention.
+   - Omit the Implementation Notes section if changes are self-explanatory.
 
-4. **Present for review** (skip if `--auto`): Show summary, ask if it looks good
-   - If changes requested: revise and re-present
-   - If rejected: stop without writing
+4. Present for review (skip if `--auto`). Show the summary and ask if it looks good.
+   - If changes requested: revise and re-present.
+   - If rejected: stop without writing.
 
-5. **Write**: Write Summary section to objective
-   - If Summary section exists: replace content
-   - If no Summary section: append as last section of the file
+5. Write the Summary section to the objective.
+   - If a Summary section exists: replace its content.
+   - If no Summary section exists: append it as the last section of the file.
 
-6. **Report**: "Summary written to objective."
+6. Report: `Summary written to objective.`
 
-## Notes
+## Contracts
 
-- Summary is external-facing — assume reader has no other context
-- Used for PR/MR descriptions
-- Run after implementation is complete, not during planning
+- The Summary is external-facing — assume the reader has no other context.
+- Used for PR/MR descriptions.
+- Run after implementation is complete, not during planning.
+- Preserve verbatim: the `No active objective. Want me to load or create one?` nudge, the `--auto`
+  skip behavior, the Summary/Implementation Notes output template, and the
+  `Summary written to objective.` report string.

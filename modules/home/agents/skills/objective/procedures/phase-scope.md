@@ -1,66 +1,51 @@
 # Phase Scope
 
-Scope the next phase when none is active. Orchestrates a scoping subagent, presents its proposal for
-user approval, and supports interactive refinement by re-dispatching a fresh scoping subagent per
-feedback round; prior-round context is recovered from the phase file written on the previous round,
-not carried in the prompt.
+Scope the next phase when none is active: orchestrate a scoping subagent, present its proposal for
+user approval, and refine interactively by re-dispatching a fresh scoping subagent per feedback
+round.
 
-Read these format references before executing this procedure:
+## References
 
-- `references/phases.md`
-- `references/templates.md`
+- `references/contracts.md` — file conventions, Auto-scope Dispatch, and invariants.
+- `references/phases.md` — phase numbering and section layout.
+- `references/templates.md` — New Phase (compute phase-file inputs before dispatch).
 
 ## Steps
 
-1. **Load state**: Read `.objectives/_current/00-main.md`
+1. Load state. Read `.objectives/_current/00-main.md`.
    - If no objective: nudge — "No active objective. Want me to load or create one?"
    - If no ACs in `## Acceptance Criteria`: nudge — "No acceptance criteria defined yet. Want me to
      run `/objective spec`?"
 
-2. **Find focused phase** (`*` in `## Phases`):
-   - If focused phase exists: stop, say "Phase already in focus. Run `/objective phase-iterate` to
+2. Find focused phase (`*` in `## Phases`).
+   - If a focused phase exists: stop — "Phase already in focus. Run `/objective phase-iterate` to
      execute."
-   - If no focused phase: continue
+   - If none: go to Step 3.
 
-3. **Gate check**: All existing phases must be `[x]` or `[-]`. If any phase is `[ ]` without `*`,
-   stop: "Incomplete phase exists without focus. Mark it `[x]`, `[-]`, or add `*` to resume."
+3. Gate check. All existing phases must be `[x]` or `[-]`. If any phase is `[ ]` without `*`, stop —
+   "Incomplete phase exists without focus. Mark it `[x]`, `[-]`, or add `*` to resume."
 
-4. **Compute phase-file path** (before dispatch, reused across refinement rounds): follow
-   `references/templates.md` § New Phase → Compute phase-file inputs. Hold these four values
-   (`objective_dir`, `P`, `NN`, path) for reuse in Steps 5, 7, and 8.
+4. Compute phase-file inputs. Follow `references/templates.md` § New Phase → Compute phase-file
+   inputs. Hold the four values (`objective_dir`, `P`, `NN`, path) for reuse across Steps 5, 7, and
+   8 — the same inputs scope every refinement round so the subagent overwrites the same file in
+   place.
 
-5. **Dispatch scoping subagent**: Dispatch a subagent with:
-   - `prompt`:
+5. Dispatch scoping subagent. Run `references/contracts.md` § Auto-scope Dispatch with these
+   procedure-specific results:
+   - No work remaining: report "No phase to scope." and stop.
+   - Readiness issues: surface each issue with the subagent's suggested resolution; stop and wait
+     for the user to address them.
+   - Phase proposal: the subagent has written the phase file at the computed path. Read it and
+     present its contents (name, approach, tasks) plus the targeted ACs from the return shape. Wait
+     for approval — do not auto-accept.
 
-   ```
-   Read the file at ~/.claude/skills/objective/briefs/phase-scope.md and execute the instructions within it.
+6. Refinement loop.
+   - User approves: go to Step 7.
+   - User requests adjustments: re-dispatch a fresh scoping subagent, reusing `objective_dir`, `P`,
+     `NN`, and path from Step 4. The brief's Step 1 reads the existing phase file for prior
+     approach/tasks context, so the prompt does not restate it. Append the user's feedback:
 
-   objective_dir: <absolute path to objective directory>
-   P: <phase number>
-   NN: <sequence number, zero-padded>
-   Phase file: <absolute path to phase file>
-   ```
-
-6. **Handle subagent return**:
-
-   The subagent returns structured output. Three cases:
-   - **No work remaining**: Report "No phase to scope." and stop.
-   - **Readiness issues**: Surface each issue to the user with the subagent's suggested resolution.
-     Stop and wait for user to address.
-   - **Phase proposal**: The subagent has written the phase file at the provided path. Read that
-     file and present its contents (name, approach, tasks) plus the targeted ACs from the return
-     shape. Wait for approval.
-
-7. **Interactive refinement loop**:
-   - **User approves**: Proceed to step 8.
-   - **User requests adjustments**: Re-dispatch a fresh scoping subagent, reusing the same
-     `objective_dir`, `P`, `NN`, and path from Step 4 so the subagent overwrites the same phase file
-     in place:
-     - `prompt`: the standard brief invocation plus the reused path inputs, followed by the user's
-       feedback. The brief's Step 1 reads the existing phase file at the provided path for prior
-       approach/tasks context, so the prompt does not need to restate it. Use this shape:
-
-     ```
+     ```text
      Read the file at ~/.claude/skills/objective/briefs/phase-scope.md and execute the instructions within it.
 
      objective_dir: <absolute path to objective directory>
@@ -75,17 +60,22 @@ Read these format references before executing this procedure:
      provided path.
      ```
 
-     Handle the re-dispatch return:
-     - **No work remaining**: Report "No phase to scope." and stop the loop.
-     - **Readiness issues**: Surface each issue to the user with the subagent's suggested resolution
-       and stop the loop.
-     - **Phase proposal**: Re-read the phase file and present the updated proposal. Repeat this step
-       until approved or user abandons.
+     Handle the return:
+     - No work remaining: report "No phase to scope." and stop the loop.
+     - Readiness issues: surface each issue with the subagent's suggested resolution; stop the loop.
+     - Phase proposal: re-read the phase file and present the updated proposal. Repeat until
+       approved or abandoned.
 
-     Each round dispatches a new subagent — there is no session continuity; the prior draft is
-     recovered by the brief's Step 1 read of the existing phase file.
+7. Register phase in index (on approval). Add a linked entry to `## Phases` in `00-main.md`:
+   `P. [ ] [Phase Name](./NN-phase-P.md) *`. Move `*` from any previously focused phase to the new
+   entry. Present a summary confirming phase creation.
 
-8. **Register phase in index** (on approval):
-   - Add linked entry to `## Phases` in `00-main.md`: `P. [ ] [Phase Name](./NN-phase-P.md) *`
-   - Move `*` from any previously focused phase to the new entry
-   - Present summary confirming phase creation
+## Contracts
+
+- Preserve verbatim: the two nudges, the focused-phase stop string, the gate-check stop string, the
+  Auto-scope Dispatch no-work message ("No phase to scope."), the index entry
+  `P. [ ] [Phase Name](./NN-phase-P.md) *`, and the refinement-loop dispatch prompt.
+- This procedure presents the proposal and waits for approval — it does not auto-accept (unlike
+  `phase-iterate` Step 2).
+- Each refinement round dispatches a new subagent. There is no session continuity; the prior draft
+  is recovered by the brief's Step 1 read of the existing phase file.

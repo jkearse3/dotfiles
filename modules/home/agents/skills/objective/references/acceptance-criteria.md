@@ -1,5 +1,11 @@
 # Acceptance Criteria
 
+AC marker states, validation evidence, stability rules, and termination conditions.
+
+## References
+
+- `references/index-format.md` — precision rules that govern how to phrase an AC.
+
 An AC is a desired end state or behavior of the finished system — not a task or implementation step.
 See `references/index-format.md` for the precision rules that govern how to phrase one.
 

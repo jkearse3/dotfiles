@@ -1,136 +1,95 @@
 # Phase Interrogate
 
-Apply the interrogate workflow at the phase level: load state, resolve the focused phase, derive a
-topic, invoke the interrogate skill, merge decisions into the phase file, and surface new AC
-candidates to the objective.
-
-Read these format references before executing this procedure:
-
-- `references/phases.md`
-- `references/index-format.md`
-- `references/acceptance-criteria.md`
+Apply the interrogate workflow at the phase level: resolve the focused phase, derive a topic, invoke
+the interrogate skill, merge decisions into the phase file, and surface new AC candidates to the
+objective.
 
 ## Arguments
 
-Optional topic to focus interrogation. If not provided, derive from the full phase content (Context,
+Optional topic to focus interrogation. If omitted, derive from the full phase content (Context,
 Approach, Tasks, Issues).
+
+## References
+
+- `references/contracts.md` — file conventions, Load Current Objective, Auto-scope Dispatch, and
+  invariants.
+- `references/phases.md` — Phase Resolution (locate focused phase content).
+- `references/templates.md` — New Phase (compute phase-file inputs before dispatch).
+- `references/index-format.md` — `00-main.md` section layout and marker semantics.
+- `references/acceptance-criteria.md` — AC format for new candidates.
 
 ## Steps
 
-### Step 1: Load objective
+1. Load objective. Read `.objectives/_current/00-main.md`.
+   - If an objective exists: go to Step 2.
+   - If no objective: nudge and stop — "No active objective. Phase-interrogate requires an active
+     objective (phases are objective-scoped)."
 
-Read `.objectives/_current/00-main.md`.
+2. Resolve focused phase. Find the focused phase (`*` in the `## Phases` index in `00-main.md`).
+   - If a focused phase exists: resolve its content per `references/phases.md` § Phase Resolution,
+     then go to Step 3.
+   - If no focused phase: run auto-scope dispatch (Step 2a), then go to Step 3.
 
-- If objective exists: proceed to Step 2.
-- If no objective: nudge — "No active objective. Phase-interrogate requires an active objective
-  (phases are objective-scoped)." and stop.
+   Step 2a — Auto-scope dispatch. Run `references/contracts.md` § Auto-scope Dispatch with these
+   procedure-specific results:
+   - No work remaining: report "Nothing to interrogate." and stop.
+   - Readiness issues: surface them and stop.
+   - Phase proposal: auto-accept (no user approval). The subagent has already written the phase file
+     at the computed path. Update `00-main.md` immediately by adding a linked index entry to
+     `## Phases`: `P. [ ] [Phase Name](./NN-phase-P.md) *`. Then re-read `00-main.md`, resolve the
+     new phase content, and go to Step 3.
 
-### Step 2: Resolve focused phase
+3. Derive topic. If a topic argument was provided, use it directly. Otherwise:
+   - Read the phase file (or inline phase section) `### Context`, `### Approach`, `### Tasks`, and
+     `### Issues`.
+   - Synthesize a focused interrogate topic from the full phase content, combining all four
+     sections.
+   - If the phase content provides no actionable direction, fall back to the objective-level Context
+     and Approach from `00-main.md`.
+   - If nothing is available, stop: "No content to interrogate. Provide a topic or populate the
+     phase context first."
 
-Find the focused phase (`*` in `## Phases` index in `00-main.md`).
+   Nudge for missing/satisfied ACs: if the phase has no tasks referencing any AC, or all referenced
+   ACs are already `[x]`, nudge: "This phase has no pending ACs — interrogation can still surface
+   design decisions and new AC candidates." Do not block — proceed with the derived topic.
 
-- If focused phase exists: resolve its content per Phase Resolution (`references/phases.md` § Phase
-  Resolution). Proceed to Step 3.
-- If no focused phase: run auto-scope dispatch (Step 2a), then proceed to Step 3.
+4. Invoke the interrogate skill via the Skill tool with the topic from Step 3. The skill walks
+   through decisions one at a time, recording resolved and outstanding choices. It is not aware of
+   objectives or phases. Wait for the session to complete, capturing the full decisions log.
 
-#### Step 2a: Auto-scope dispatch
+5. Merge decisions.
+   - Phase file: read the phase file (or inline phase section). Add a `### Decisions` section if one
+     does not exist. Append resolved decisions as `[x]` items and open items as `[ ]` items. Dedupe
+     against existing `### Decisions` items by content match — skip any that already appear. Do not
+     overwrite or remove existing decisions.
+   - Objective ACs: for each new AC candidate that surfaced during interrogation, read the existing
+     `## Acceptance Criteria` in `00-main.md`, dedupe by content match (exact text match on the
+     condition, ignoring numbering and markers), and append new unique candidates at the next
+     available AC number. Follow `references/acceptance-criteria.md`.
 
-Compute the phase-file path first: follow `references/templates.md` § New Phase → Compute phase-file
-inputs.
+6. Present summary.
+   - Key decisions made this session (from the interrogate log).
+   - Open decisions requiring future resolution (from interrogate open items).
+   - New AC candidates added to the objective (count and brief list, if any).
+   - If no ACs were referenced, nudge: "No ACs were targeted — consider running `/objective spec` to
+     define criteria if this design needs validation."
+   - Suggest next: more interrogation, or ready for `/objective phase-scope` or
+     `/objective phase-iterate`.
 
-Dispatch a subagent with prompt:
+## Contracts
 
-```
-Read the file at ~/.claude/skills/objective/briefs/phase-scope.md and execute the instructions within it.
-
-objective_dir: <absolute path to objective directory>
-P: <phase number>
-NN: <sequence number, zero-padded>
-Phase file: <absolute path to phase file>
-```
-
-**On no work remaining**: report "Nothing to interrogate." and stop.
-
-**On readiness issues**: surface them and stop.
-
-**On phase proposal**: auto-accept. The subagent has already written the phase file at the provided
-path. Update `00-main.md` immediately by adding a linked index entry to `## Phases`:
-`P. [ ] [Phase Name](./NN-phase-P.md) *`. Do not wait for user approval.
-
-Re-read `00-main.md` and resolve the new phase content. Proceed to Step 3.
-
-### Step 3: Derive topic
-
-If a topic argument was provided, use it directly.
-
-If no topic argument:
-
-- Read the phase file (or inline phase section) for `### Context`, `### Approach`, `### Tasks`, and
-  `### Issues`
-- Synthesize a focused interrogate topic from the full phase content combining all four sections
-- If the phase content provides no actionable direction, fall back to the objective-level Context
-  and Approach from `00-main.md`
-- If nothing available: "No content to interrogate. Provide a topic or populate the phase context
-  first."
-
-**Nudge for missing/satisfied ACs**: If the phase has no tasks referencing any AC, or all referenced
-ACs are already `[x]`, nudge: "This phase has no pending ACs — interrogation can still surface
-design decisions and new AC candidates." Do not block — proceed with the derived topic.
-
-### Step 4: Invoke the interrogate skill
-
-Invoke the `interrogate` skill via the Skill tool with the topic from Step 3.
-
-The interrogate skill systematically walks through decisions, recording a log of resolved and
-outstanding choices. It is not aware of objectives or phases — all persistence happens here.
-
-Wait for the interrogate session to complete, capturing the full decisions log.
-
-### Step 5: Merge decisions
-
-Merge the deliberative decisions from the interrogation:
-
-**Phase file**: Read the phase file (or inline phase section). Add a `### Decisions` section if one
-does not exist. Append:
-
-- Resolved decisions as `[x]` items
-- Open items as `[ ]` items
-
-Dedupe against existing `### Decisions` items in the phase file — skip any that already appear
-(content match). Do not overwrite or remove existing decisions.
-
-**Objective ACs**: For each new AC candidate that surfaced during interrogation:
-
-- Read the existing `## Acceptance Criteria` in `00-main.md`
-- Dedupe against existing ACs by content match — skip any that already appear (exact text match on
-  the condition, ignoring numbering and markers)
-- Append new unique AC candidates at the next available AC number
-
-Follow the AC format from `references/acceptance-criteria.md`.
-
-### Step 6: Present summary
-
-- Key decisions made during this session (from the interrogate log)
-- Open decisions requiring future resolution (from interrogate open items)
-- New AC candidates added to objective (count and brief list, if any)
-- Nudge if no ACs were referenced: "No ACs were targeted — consider running `/objective spec` to
-  define criteria if this design needs validation."
-- Suggest next: more interrogation, or ready for `/objective phase-scope` or
-  `/objective phase-iterate`
-
-## Outputs
-
-Writes to:
-
-- Phase file (or inline phase section): `### Decisions` — resolved and open decisions
-- `00-main.md`: `## Acceptance Criteria` — new AC candidates (deduped, appended)
-
-## Notes
-
-- Phase-interrogate is interactive (via the interrogate skill) — it asks questions one at a time
-- The guardrail prevents operation without an active objective — phases are objective-scoped
-- Auto-scope dispatch matches the phase-iterate Step 2 pattern (auto-accept)
-- Silent merge: no confirmation gate, consistent with objective-level interrogate
+- Writes to the phase file (or inline phase section): `### Decisions` (resolved and open). Writes to
+  `00-main.md`: `## Acceptance Criteria` (new candidates, deduped and appended) and, in Step 2a, the
+  `## Phases` index entry.
+- Preserve verbatim: the objective-scoped guardrail nudge, the topic-derivation fallback, the
+  missing/satisfied-AC nudge, the no-ACs-targeted nudge, the Step 2a no-work message ("Nothing to
+  interrogate."), the index entry `P. [ ] [Phase Name](./NN-phase-P.md) *`, and the
+  phase-`### Decisions` plus objective-AC merge semantics.
+- The guardrail prevents operation without an active objective — phases are objective-scoped.
+- Auto-scope dispatch matches the phase-iterate pattern (auto-accept, no approval gate).
+- Silent merge — no confirmation gate, consistent with objective-level interrogate.
+- The interrogate skill is interactive and objective/phase-unaware — all persistence happens in
+  Step 5.
 - Cross-procedure references read `procedures/interrogate.md`, `procedures/phase-scope.md`, and
-  `briefs/phase-scope.md` inline — no recursive Skill tool invocation
-- Nudges on missing/satisfied ACs do not block — design exploration is valid without ACs
+  `briefs/phase-scope.md` inline — no recursive Skill tool invocation.
+- Missing/satisfied-AC nudges do not block; design exploration is valid without ACs.

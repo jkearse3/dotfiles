@@ -56,3 +56,9 @@ share the same exemption.
 
 When a procedure needs behavior from another, read that procedure file at `procedures/<name>.md` and
 follow it inline — do not invoke the objective skill via the Skill tool to call it recursively.
+
+## File conventions
+
+Procedure, brief, and reference files may include `## References`. Before executing such a file,
+read every listed reference. Treat references as imported instructions: formats, shared contracts,
+and reusable operations in referenced sections govern the procedure steps.

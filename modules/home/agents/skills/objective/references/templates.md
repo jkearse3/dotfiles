@@ -1,10 +1,16 @@
 # Templates
 
+Canonical templates and phase-file creation rules.
+
+## References
+
+- `references/contracts.md` — file conventions and shared invariants.
+
 ## New Objective
 
-When creating, generate:
+Generate `00-main.md` with this content:
 
-**00-main.md**:
+### `00-main.md`
 
 ```markdown
 ## Context
@@ -40,19 +46,16 @@ Create a numbered phase file and add a linked index entry in `00-main.md`.
 
 ### Compute phase-file inputs
 
-Before dispatch, resolve the four values that identify the phase file. Orchestrators that dispatch
-the scoping subagent (`procedures/phase-scope.md`, `procedures/phase-iterate.md`) compute these and
-pass them in the prompt:
+Resolve these before dispatching the scoping subagent:
 
 - Resolve `objective_dir`: absolute path of `.objectives/_current` (resolve the symlink)
 - Compute `P`: highest phase number in `## Phases` index + 1
 - Compute `NN`: highest `NN-` prefix in `objective_dir` + 1 (zero-padded to two digits)
 - Build absolute path: `<objective_dir>/NN-phase-P.md`
 
-With the inputs resolved above, the remaining steps write the phase file and register it in
-`00-main.md`.
+Use these values to write the phase file and register it in `00-main.md`.
 
-**Step 1**: Create `NN-phase-P.md` at the computed absolute path:
+1. Create `NN-phase-P.md` at the computed absolute path.
 
 ```markdown
 ## Phase P: Phase Name
@@ -69,10 +72,16 @@ With the inputs resolved above, the remaining steps write the phase file and reg
 ### Issues
 ```
 
-**Step 2**: Add a linked index entry in the `## Phases` section of `00-main.md`:
+2. Add a linked index entry in `00-main.md` under `## Phases`.
 
 ```markdown
 P. [ ] [Phase Name](./NN-phase-P.md) *
 ```
 
-Move `*` from the previously focused phase to the new entry.
+3. Move `*` from the previously focused phase to the new entry.
+
+## Contracts
+
+- `00-main.md` remains the objective index.
+- Phase files contain only the phase content; registration happens in `00-main.md`.
+- Phase-file input computation is shared by all auto-scope callers.
