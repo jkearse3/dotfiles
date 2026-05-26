@@ -1,7 +1,7 @@
 # Interrogate
 
-Invoke `/interrogate` and merge deliberative decisions into the goal. `/interrogate` systematically
-interviews the user — this procedure handles persistence.
+Invoke `/interrogate` and merge deliberative decisions into the objective. `/interrogate`
+systematically interviews the user — this procedure handles persistence.
 
 Read these format references before executing this procedure:
 
@@ -10,29 +10,30 @@ Read these format references before executing this procedure:
 
 ## Arguments
 
-Optional topic to interrogate. If not provided, derive from goal context or conversation history.
+Optional topic to interrogate. If not provided, derive from objective context or conversation
+history.
 
 ## Steps
 
-### Step 1: Load goal
+### Step 1: Load objective
 
-Read `.goals/_current/00-main.md`.
+Read `.objectives/_current/00-main.md`.
 
-- If goal exists: proceed to Step 2.
-- If no goal: run the **auto-creation flow** below, then proceed to Step 2.
+- If objective exists: proceed to Step 2.
+- If no objective: run the **auto-creation flow** below, then proceed to Step 2.
 
-**Auto-creation flow** (no active goal):
+**Auto-creation flow** (no active objective):
 
-1. **Require topic**: If no topic argument was provided, nudge: "No active goal. Provide a topic to
-   start a decision spike, or want me to load/create a goal?"
+1. **Require topic**: If no topic argument was provided, nudge: "No active objective. Provide a
+   topic to start a decision spike, or want me to load/create an objective?"
 2. **Extract slug**: From the topic, extract 2-3 key terms that form a compact, descriptive slug
    (lowercase, hyphen-separated). Drop filler words. Example: "what database should we use for the
    new service" → `database-decision`.
 3. **Confirm with user**: Present the derived slug and ask for confirmation or override. Example:
-   "Starting decision spike. Branch and goal will be named `database-decision`. Proceed, or provide
-   an alternative name?"
-4. **Create branch + goal**: Read and follow `procedures/create.md` with the confirmed slug as the
-   argument. This creates the bookmark, goal, and loads it.
+   "Starting decision spike. Branch and objective will be named `database-decision`. Proceed, or
+   provide an alternative name?"
+4. **Create branch + objective**: Read and follow `procedures/create.md` with the confirmed slug as
+   the argument. This creates the bookmark, objective, and loads it.
 5. **Continue**: The topic argument carries through to Step 2 (no re-derivation needed).
 
 ### Step 2: Derive topic
@@ -44,7 +45,7 @@ If no topic argument provided:
   - `## Research > ### Questions`: uses unanswered questions to drive deliberation
   - `## Context`: uses stated motivation and background
   - `## Approach`: uses proposed strategy and architecture
-- If no goal content provides direction, derive the topic from the conversation history
+- If no objective content provides direction, derive the topic from the conversation history
 - If nothing available: "No questions or context to interrogate. Provide a topic or add questions
   first."
 
@@ -53,7 +54,7 @@ If no topic argument provided:
 Invoke the `interrogate` skill via the Skill tool with the topic from Step 2.
 
 The interrogate skill systematically walks through decisions, recording a log of resolved and
-outstanding choices. It is not aware of goals — all persistence happens here.
+outstanding choices. It is not aware of objectives — all persistence happens here.
 
 Wait for the interrogate session to complete, capturing the full decisions log.
 
@@ -73,7 +74,7 @@ Merge the deliberative decisions from the interrogation into `## Research > ### 
 - Key decisions made during this session
 - Open decisions requiring future resolution
 - New questions that surfaced during interrogation
-- Suggest next: more interrogation, or ready for `/goal spec`
+- Suggest next: more interrogation, or ready for `/objective spec`
 
 ## Outputs
 
@@ -85,8 +86,8 @@ Writes to `00-main.md`:
 
 - `/interrogate` is an interactive process — it asks questions one at a time until all branches are
   resolved.
-- `/interrogate` is not aware of goals. All persistence happens via Step 4 above.
-- For separate interrogation sessions on different topics, invoke `/goal interrogate` multiple
+- `/interrogate` is not aware of objectives. All persistence happens via Step 4 above.
+- For separate interrogation sessions on different topics, invoke `/objective interrogate` multiple
   times.
-- The goal is the persistent accumulator — no in-memory state to lose.
+- The objective is the persistent accumulator — no in-memory state to lose.
 - Decisions inform Spec and Approach; don't define ACs here.

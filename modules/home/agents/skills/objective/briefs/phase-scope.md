@@ -2,17 +2,17 @@
 
 ## Instructions
 
-Read the goal at `.goals/_current/00-main.md` and propose the next phase. On a valid proposal, write
-the phase file at the absolute path provided by the orchestrator.
+Read the objective at `.objectives/_current/00-main.md` and propose the next phase. On a valid
+proposal, write the phase file at the absolute path provided by the orchestrator.
 
 ### Step 1: Read State
 
 The orchestrator provides the following inputs in the prompt:
 
-- `goal_dir` — absolute path to the active goal directory
+- `objective_dir` — absolute path to the active objective directory
 - `P` — next phase number (matches the `## Phases` index entry)
 - `NN` — next sequence number for the phase filename
-- `Phase file` — absolute path to the phase file to write (i.e., `<goal_dir>/NN-phase-P.md`)
+- `Phase file` — absolute path to the phase file to write (i.e., `<objective_dir>/NN-phase-P.md`)
 
 Read these sections from `00-main.md`:
 
@@ -121,8 +121,8 @@ No phase to scope.
 ## Rules
 
 - Write only the phase file at the provided path. Never modify `00-main.md` or any earlier phase's
-  file in the goal (phases with a number other than the `P` provided in the prompt). The provided
-  path itself may be overwritten on refinement rounds — see Step 4.
+  file in the objective (phases with a number other than the `P` provided in the prompt). The
+  provided path itself may be overwritten on refinement rounds — see Step 4.
 - Tasks should be atomic: one clear outcome each
 - Prefer codify-before-satisfy when practical (TDD)
 - AC annotations: `(ACN, satisfy)` for implementing a not-yet-satisfied AC, `(ACN, enhance)` for

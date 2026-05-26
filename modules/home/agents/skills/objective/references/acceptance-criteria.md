@@ -68,4 +68,5 @@ Rules:
 
 Phase complete when: All phase tasks `[x]` + all phase issues resolved
 
-Goal complete when: All active ACs `[x]` in `00-main.md` + all phases complete (`[-]` ACs excluded)
+Objective complete when: All active ACs `[x]` in `00-main.md` + all phases complete (`[-]` ACs
+excluded)

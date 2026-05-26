@@ -1,6 +1,6 @@
 # Spec
 
-Define acceptance criteria at goal level and validate they're achievable.
+Define acceptance criteria at objective level and validate they're achievable.
 
 ACs live in `00-main.md` under `## Acceptance Criteria`. Phase sections reference ACs by number.
 
@@ -16,14 +16,14 @@ are appended to the existing list. When omitted, full re-review behavior.
 
 ## Steps
 
-1. **Load goal**: Read `.goals/_current/00-main.md`
-   - If no goal: nudge — "No active goal. Want me to load or create one?"
+1. **Load objective**: Read `.objectives/_current/00-main.md`
+   - If no objective: nudge — "No active objective. Want me to load or create one?"
 
 2. **Review research**: Read Research section in `00-main.md`
    - What do we know?
    - What constraints exist?
    - Are there unresolved questions blocking AC definition?
-   - If critical gaps: suggest `/goal investigate` first
+   - If critical gaps: suggest `/objective investigate` first
 
 3. **Interrogate requirements**: Use the structured-question tool, batching related questions in one
    call.
@@ -182,7 +182,7 @@ are appended to the existing list. When omitted, full re-review behavior.
    - List ACs with status (including any invalidated ACs with cross-references)
    - Approach summary
    - Validation concerns (if any)
-   - Suggest next: refine ACs/approach, more research, or ready for `/goal phase-iterate`
+   - Suggest next: refine ACs/approach, more research, or ready for `/objective phase-iterate`
 
 ## Outputs
 
@@ -204,5 +204,5 @@ Writes to `00-main.md`:
   validation. Only ask open-ended questions for genuinely ambiguous dimensions.
 - ACs are the contract — changes require user approval
 - User drives outer loop: research ↔ spec until confident
-- Don't define tasks here — tasks are scoped by `/goal phase-scope`
+- Don't define tasks here — tasks are scoped by `/objective phase-scope`
 - Mark `(human)` for subjective criteria (UX, feel, etc.)

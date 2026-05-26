@@ -60,7 +60,7 @@
       "*.local"
       "*.local.*"
       ".DS_Store"
-      "/.goals/"
+      "/.objectives/"
       ".jj"
       "**/.claude/settings.local.json"
     ];

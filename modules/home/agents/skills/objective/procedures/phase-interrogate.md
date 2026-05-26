@@ -2,7 +2,7 @@
 
 Apply the interrogate workflow at the phase level: load state, resolve the focused phase, derive a
 topic, invoke the interrogate skill, merge decisions into the phase file, and surface new AC
-candidates to the goal.
+candidates to the objective.
 
 Read these format references before executing this procedure:
 
@@ -17,13 +17,13 @@ Approach, Tasks, Issues).
 
 ## Steps
 
-### Step 1: Load goal
+### Step 1: Load objective
 
-Read `.goals/_current/00-main.md`.
+Read `.objectives/_current/00-main.md`.
 
-- If goal exists: proceed to Step 2.
-- If no goal: nudge — "No active goal. Phase-interrogate requires an active goal (phases are
-  goal-scoped)." and stop.
+- If objective exists: proceed to Step 2.
+- If no objective: nudge — "No active objective. Phase-interrogate requires an active objective
+  (phases are objective-scoped)." and stop.
 
 ### Step 2: Resolve focused phase
 
@@ -41,9 +41,9 @@ inputs.
 Dispatch a subagent with prompt:
 
 ```
-Read the file at ~/.claude/skills/goal/briefs/phase-scope.md and execute the instructions within it.
+Read the file at ~/.claude/skills/objective/briefs/phase-scope.md and execute the instructions within it.
 
-goal_dir: <absolute path to goal directory>
+objective_dir: <absolute path to objective directory>
 P: <phase number>
 NN: <sequence number, zero-padded>
 Phase file: <absolute path to phase file>
@@ -68,8 +68,8 @@ If no topic argument:
 - Read the phase file (or inline phase section) for `### Context`, `### Approach`, `### Tasks`, and
   `### Issues`
 - Synthesize a focused interrogate topic from the full phase content combining all four sections
-- If the phase content provides no actionable direction, fall back to the goal-level Context and
-  Approach from `00-main.md`
+- If the phase content provides no actionable direction, fall back to the objective-level Context
+  and Approach from `00-main.md`
 - If nothing available: "No content to interrogate. Provide a topic or populate the phase context
   first."
 
@@ -82,7 +82,7 @@ design decisions and new AC candidates." Do not block — proceed with the deriv
 Invoke the `interrogate` skill via the Skill tool with the topic from Step 3.
 
 The interrogate skill systematically walks through decisions, recording a log of resolved and
-outstanding choices. It is not aware of goals or phases — all persistence happens here.
+outstanding choices. It is not aware of objectives or phases — all persistence happens here.
 
 Wait for the interrogate session to complete, capturing the full decisions log.
 
@@ -99,7 +99,7 @@ does not exist. Append:
 Dedupe against existing `### Decisions` items in the phase file — skip any that already appear
 (content match). Do not overwrite or remove existing decisions.
 
-**Goal ACs**: For each new AC candidate that surfaced during interrogation:
+**Objective ACs**: For each new AC candidate that surfaced during interrogation:
 
 - Read the existing `## Acceptance Criteria` in `00-main.md`
 - Dedupe against existing ACs by content match — skip any that already appear (exact text match on
@@ -112,10 +112,11 @@ Follow the AC format from `references/acceptance-criteria.md`.
 
 - Key decisions made during this session (from the interrogate log)
 - Open decisions requiring future resolution (from interrogate open items)
-- New AC candidates added to goal (count and brief list, if any)
-- Nudge if no ACs were referenced: "No ACs were targeted — consider running `/goal spec` to define
-  criteria if this design needs validation."
-- Suggest next: more interrogation, or ready for `/goal phase-scope` or `/goal phase-iterate`
+- New AC candidates added to objective (count and brief list, if any)
+- Nudge if no ACs were referenced: "No ACs were targeted — consider running `/objective spec` to
+  define criteria if this design needs validation."
+- Suggest next: more interrogation, or ready for `/objective phase-scope` or
+  `/objective phase-iterate`
 
 ## Outputs
 
@@ -127,9 +128,9 @@ Writes to:
 ## Notes
 
 - Phase-interrogate is interactive (via the interrogate skill) — it asks questions one at a time
-- The guardrail prevents operation without an active goal — phases are goal-scoped
+- The guardrail prevents operation without an active objective — phases are objective-scoped
 - Auto-scope dispatch matches the phase-iterate Step 2 pattern (auto-accept)
-- Silent merge: no confirmation gate, consistent with goal-level interrogate
+- Silent merge: no confirmation gate, consistent with objective-level interrogate
 - Cross-procedure references read `procedures/interrogate.md`, `procedures/phase-scope.md`, and
   `briefs/phase-scope.md` inline — no recursive Skill tool invocation
 - Nudges on missing/satisfied ACs do not block — design exploration is valid without ACs

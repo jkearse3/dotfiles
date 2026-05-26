@@ -12,8 +12,8 @@ Read this format reference before executing this procedure:
 
 ## Steps
 
-1. **Load goal**: `.goals/_current/00-main.md`
-   - If symlink broken: nudge — "No active goal. Want me to load or create one?"
+1. **Load objective**: `.objectives/_current/00-main.md`
+   - If symlink broken: nudge — "No active objective. Want me to load or create one?"
 
 2. **Gather context**:
    - Read `00-main.md` (Context, Research, Acceptance Criteria, Phases index)
@@ -50,11 +50,11 @@ Read this format reference before executing this procedure:
    - If changes requested: revise and re-present
    - If rejected: stop without writing
 
-5. **Write**: Write Summary section to goal
+5. **Write**: Write Summary section to objective
    - If Summary section exists: replace content
    - If no Summary section: append as last section of the file
 
-6. **Report**: "Summary written to goal."
+6. **Report**: "Summary written to objective."
 
 ## Notes
 

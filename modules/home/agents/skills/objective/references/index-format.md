@@ -1,12 +1,12 @@
 # Index File Format
 
-`00-main.md` is the goal index. It contains Context, Research, Acceptance Criteria, Approach, and
-the Phases index. Phase content lives in separate files (see Phase Sections and Templates).
+`00-main.md` is the objective index. It contains Context, Research, Acceptance Criteria, Approach,
+and the Phases index. Phase content lives in separate files (see Phase Sections and Templates).
 
 ```markdown
 ## Context
 
-Why this goal exists. Background and motivation.
+Why this objective exists. Background and motivation.
 
 ## Research
 

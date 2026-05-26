@@ -1,6 +1,6 @@
 # Rename
 
-Rename the current goal. Two modes:
+Rename the current objective. Two modes:
 
 - **No argument**: Sync — rename symlink to match current branch (existing behavior).
 - **With argument**: Full rename — rename bookmark, symlink, and destination directory.
@@ -15,8 +15,8 @@ Optional new name. If provided, performs a full rename. If omitted, syncs symlin
 
 ## Steps
 
-1. **Validate current goal**: Read `.goals/_current` symlink
-   - If missing or broken: nudge — "No active goal. Want me to load or create one?"
+1. **Validate current objective**: Read `.objectives/_current` symlink
+   - If missing or broken: nudge — "No active objective. Want me to load or create one?"
 
 2. **Extract current symlink info**:
    - Read `_current` symlink target name (e.g. `2024-01-15-1430-auth-refactor`)
@@ -38,21 +38,21 @@ Optional new name. If provided, performs a full rename. If omitted, syncs symlin
 
 4. **Check if already matching**: If current slug equals new slug:
 
-   **If argument provided**: stop — "Goal already uses name `<new-slug>`."
+   **If argument provided**: stop — "Objective already uses name `<new-slug>`."
 
-   **If no argument**: stop — "Goal already matches branch `<branch-name>`."
+   **If no argument**: stop — "Objective already matches branch `<branch-name>`."
 
-5. **Check for conflicts**: If `.goals/<prefix>-<new-slug>` already exists, error: "Goal
+5. **Check for conflicts**: If `.objectives/<prefix>-<new-slug>` already exists, error: "Objective
    `<prefix>-<new-slug>` already exists. Cannot rename."
 
-   Also check if any other existing goal symlink's extracted slug matches the new slug (strip
+   Also check if any other existing objective symlink's extracted slug matches the new slug (strip
    `YYYY-MM-DD-HHMM-` prefix first; if no match, strip `YYYY-MM-DD-` prefix). If match found, error:
-   "Goal already exists for this branch: `<existing-symlink-name>`. Cannot rename."
+   "Objective already exists for this branch: `<existing-symlink-name>`. Cannot rename."
 
 6. **Update destination** (argument mode only):
 
    **If argument provided**:
-   - Read `.goals/_config.yaml` for `destination_pattern:`
+   - Read `.objectives/_config.yaml` for `destination_pattern:`
    - Resolve pattern with the preserved timestamp tokens and new slug
    - The `<name>`/`<n>` token uses the new slug; date/time tokens use the values from the existing
      timestamp prefix
@@ -64,11 +64,11 @@ Optional new name. If provided, performs a full rename. If omitted, syncs symlin
    **If no argument**: skip this step.
 
 7. **Update symlinks**:
-   - Remove old symlink: `rm .goals/<old-name>`
-   - Create new symlink: `ln -s "<target>" ".goals/<prefix>-<new-slug>"`
+   - Remove old symlink: `rm .objectives/<old-name>`
+   - Create new symlink: `ln -s "<target>" ".objectives/<prefix>-<new-slug>"`
      - Target is the new destination (relative path) if moved in step 6, otherwise the same target
        as before
-   - Update `_current`: `ln -sfn "<prefix>-<new-slug>" ".goals/_current"`
+   - Update `_current`: `ln -sfn "<prefix>-<new-slug>" ".objectives/_current"`
 
 8. **Rename bookmark** (argument mode only):
 

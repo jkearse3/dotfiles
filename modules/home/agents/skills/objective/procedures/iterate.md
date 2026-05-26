@@ -13,7 +13,7 @@ Run these steps in order. Do not improvise or skip steps.
 
 ### Step 1: Pre-flight Confidence Gate
 
-Read `.goals/_current/00-main.md` fresh (never rely on prior context).
+Read `.objectives/_current/00-main.md` fresh (never rely on prior context).
 
 Validate the spec is ready for autonomous execution. Check each condition and collect all gaps
 before stopping.
@@ -46,7 +46,7 @@ While uncompleted `[ ]` ACs remain (excluding `[-]` invalidated ACs):
 
 1. Read and follow `procedures/phase-iterate.md` with `--auto-commit`
 2. On `PHASE_COMPLETE`:
-   - Re-read `.goals/_current/00-main.md` to get updated AC state
+   - Re-read `.objectives/_current/00-main.md` to get updated AC state
    - Check for `[!]` regressions — if any found, stop with diagnostic listing the regressed ACs
    - Continue to next iteration (iterate will auto-scope the next phase)
 3. On `PHASE_INCOMPLETE`: stop with diagnostic — report the phase number, reason, and specific
@@ -58,15 +58,17 @@ When no `[ ]` ACs remain (all are `[x]`, `[~]`, or `[-]`):
 
 1. Read and follow `procedures/summarize.md` with `--auto`
 2. List any deferred `[~] (human)` ACs that need user sign-off
-3. Announce: "All phases complete. Run `/goal review` if you want a final review before merging."
+3. Announce: "All phases complete. Run `/objective review` if you want a final review before
+   merging."
 
 ## Rules
 
-- This procedure is the top-level orchestrator. It replaces the user's manual `/goal phase-iterate`
-  loop.
+- This procedure is the top-level orchestrator. It replaces the user's manual
+  `/objective phase-iterate` loop.
 - `[~] (human)` ACs do not block the loop. They are deferred and listed at completion.
-- Re-invoking `/goal iterate` after a stop resumes naturally: it reads `00-main.md`, finds completed
-  phases already `[x]`, and the focused or next pending phase becomes the loop entry point.
+- Re-invoking `/objective iterate` after a stop resumes naturally: it reads `00-main.md`, finds
+  completed phases already `[x]`, and the focused or next pending phase becomes the loop entry
+  point.
 - All edits happen through the Phase Iterate procedure. This procedure only reads `00-main.md` and
   orchestrates.
 - If Phase Iterate returns `PHASE_INCOMPLETE`, stop immediately. Do not retry — the user must

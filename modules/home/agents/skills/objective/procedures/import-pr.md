@@ -26,8 +26,8 @@ Read these format references before executing this procedure:
 
    If no unresolved comments: "No unresolved comments found" → stop
 
-3. **Load goal**: `.goals/_current/00-main.md`
-   - If symlink broken: nudge — "No active goal. Want me to load or create one?"
+3. **Load objective**: `.objectives/_current/00-main.md`
+   - If symlink broken: nudge — "No active objective. Want me to load or create one?"
 
 4. **Determine phase number**:
    - Find highest phase number in `## Phases` index in `00-main.md`
@@ -37,7 +37,7 @@ Read these format references before executing this procedure:
    - Search existing phases for `PR Review N` pattern
    - Next review = highest + 1 (start at 1 if none)
 
-6. **Determine sequence number**: Scan goal directory for highest `NN-` prefix + 1
+6. **Determine sequence number**: Scan objective directory for highest `NN-` prefix + 1
 
 7. **Group comments by independence**:
    - Classify comments into groups where each group addresses one cohesive concern

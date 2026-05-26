@@ -2,8 +2,8 @@
 
 ## Instructions
 
-You are implementing tasks for a phase of the goal workflow. Read the state file, execute tasks, and
-update the state file in real-time.
+You are implementing tasks for a phase of the objective workflow. Read the state file, execute
+tasks, and update the state file in real-time.
 
 ### Step 1: Load State
 
@@ -16,8 +16,8 @@ Read these sections:
 - `### Tasks` -- pending work items
 - `### Issues` -- unresolved problems
 
-Read the AC source file (`.goals/_current/00-main.md`) `## Acceptance Criteria` section for AC text
--- this is used for testability assessment in Step 4.
+Read the AC source file (`.objectives/_current/00-main.md`) `## Acceptance Criteria` section for AC
+text -- this is used for testability assessment in Step 4.
 
 ### Step 2: Handle Open Issues
 
@@ -46,7 +46,7 @@ already-validated ACs and don't need codify):
 
 - If the AC has a `satisfy` task but no `codify` task, assess testability
 
-**Testability judgment** (use AC text from `.goals/_current/00-main.md`):
+**Testability judgment** (use AC text from `.objectives/_current/00-main.md`):
 
 - AC describes observable behavior with clear inputs/outputs -- testable
 - AC describes internal structure, config, or prose content -- not testable

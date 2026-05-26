@@ -1,6 +1,6 @@
 # Investigate
 
-Invoke `/investigate` and merge structured results into the goal. `/investigate` handles
+Invoke `/investigate` and merge structured results into the objective. `/investigate` handles
 decomposition and dispatch — this procedure handles persistence.
 
 Read these format references before executing this procedure:
@@ -10,29 +10,29 @@ Read these format references before executing this procedure:
 
 ## Arguments
 
-Optional topic to focus research on. If not provided, derive from goal context.
+Optional topic to focus research on. If not provided, derive from objective context.
 
 ## Steps
 
-### Step 1: Load goal
+### Step 1: Load objective
 
-Read `.goals/_current/00-main.md`.
+Read `.objectives/_current/00-main.md`.
 
-- If goal exists: proceed to Step 2.
-- If no goal: run the **auto-creation flow** below, then proceed to Step 2.
+- If objective exists: proceed to Step 2.
+- If no objective: run the **auto-creation flow** below, then proceed to Step 2.
 
-**Auto-creation flow** (no active goal):
+**Auto-creation flow** (no active objective):
 
-1. **Require topic**: If no topic argument was provided, nudge: "No active goal. Provide a topic to
-   start a research spike, or want me to load/create a goal?"
+1. **Require topic**: If no topic argument was provided, nudge: "No active objective. Provide a
+   topic to start a research spike, or want me to load/create an objective?"
 2. **Extract slug**: From the topic, extract 2-3 key terms that form a compact, descriptive slug
    (lowercase, hyphen-separated). Drop filler words. Example: "how does the auth middleware handle
    token refresh" → `auth-token-refresh`.
 3. **Confirm with user**: Present the derived slug and ask for confirmation or override. Example:
-   "Starting research spike. Branch and goal will be named `auth-token-refresh`. Proceed, or provide
-   an alternative name?"
-4. **Create branch + goal**: Read and follow `procedures/create.md` with the confirmed slug as the
-   argument. This creates the bookmark, goal, and loads it.
+   "Starting research spike. Branch and objective will be named `auth-token-refresh`. Proceed, or
+   provide an alternative name?"
+4. **Create branch + objective**: Read and follow `procedures/create.md` with the confirmed slug as
+   the argument. This creates the bookmark, objective, and loads it.
 5. **Continue**: The topic argument carries through to Step 2 (no re-derivation needed).
 
 ### Step 2: Derive topic
@@ -48,7 +48,7 @@ If no topic argument provided:
 Invoke the `investigate` skill via the Skill tool with the topic from Step 2.
 
 The investigate skill dispatches subagents and synthesizes results in a single pass. It is not aware
-of goals — all persistence happens here.
+of objectives — all persistence happens here.
 
 Wait for the final structured results (Findings, Leads, Questions, Assumptions, Summary).
 
@@ -58,8 +58,8 @@ Merge the `/investigate` results into `## Research` section in `00-main.md`:
 
 - **Findings**: Append new findings to `### Findings` (dedupe against existing)
 - **Leads**: Append new leads to `### Assumptions` as `[ ]` items (dedupe against existing). Leads
-  are unconfirmed hypotheses — they map to assumptions in the goal. Preserve the "what would confirm
-  or refute" detail.
+  are unconfirmed hypotheses — they map to assumptions in the objective. Preserve the "what would
+  confirm or refute" detail.
 - **Questions**: Append new questions to `### Questions` (dedupe against existing)
 - **Assumptions**: Append new assumptions to `### Assumptions` (dedupe against existing)
 - Do not overwrite existing content — merge additively
@@ -72,7 +72,7 @@ Merge the `/investigate` results into `## Research` section in `00-main.md`:
 - Key findings from this research session
 - New questions added (if any)
 - Questions resolved (moved to findings/decisions)
-- Suggest next: more research, or ready for `/goal spec`
+- Suggest next: more research, or ready for `/objective spec`
 
 ## Outputs
 
@@ -86,7 +86,8 @@ Writes to `00-main.md`:
 ## Notes
 
 - `/investigate` runs a single pass — it dispatches subagents and synthesizes results.
-- `/investigate` is not aware of goals. All persistence happens via Step 4 above.
-- For separate research sessions on different topics, invoke `/goal investigate` multiple times.
-- The goal is the persistent accumulator — no in-memory state to lose.
+- `/investigate` is not aware of objectives. All persistence happens via Step 4 above.
+- For separate research sessions on different topics, invoke `/objective investigate` multiple
+  times.
+- The objective is the persistent accumulator — no in-memory state to lose.
 - Findings inform Spec; don't define ACs here.

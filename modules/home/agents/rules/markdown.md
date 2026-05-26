@@ -1,7 +1,7 @@
 # Markdown
 
-Rules for agent-authored markdown: goal docs, skill references, rules files, and any other `.md`
-output.
+Rules for agent-authored markdown: objective docs, skill references, rules files, and any other
+`.md` output.
 
 ## Scope
 

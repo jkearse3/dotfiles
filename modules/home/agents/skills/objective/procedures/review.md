@@ -12,7 +12,7 @@ phase, general cleanup passes, or pre-PR review.
 Dispatch the review as a subagent with prompt:
 
 ```
-Read the file at ~/.claude/skills/goal/procedures/review.md and follow the "Branch Review Pipeline" section.
+Read the file at ~/.claude/skills/objective/procedures/review.md and follow the "Branch Review Pipeline" section.
 
 Context: This is an autonomous branch-level review (not a per-phase inner-loop review). The pipeline
 is in this file. Per-phase inner-loop verify is handled inline by `phase-iterate`.
@@ -23,7 +23,7 @@ Wait for the subagent to return its structured result. Present the summary to th
 - Phases created (count and names)
 - Concern counts by source (human REVIEW comments vs. code review findings)
 - Out-of-scope concerns flagged (count, if any)
-- Suggest: `/goal phase-iterate` to execute
+- Suggest: `/objective phase-iterate` to execute
 
 ## Branch Review Pipeline
 
@@ -33,13 +33,13 @@ This section documents the full pipeline for reference. The subagent executes it
 
 Read these files before proceeding — they define phase file structure and atomicity constraints:
 
-- `~/.claude/skills/goal/references/phases.md`
-- `~/.claude/skills/goal/references/templates.md`
+- `~/.claude/skills/objective/references/phases.md`
+- `~/.claude/skills/objective/references/templates.md`
 
 ### Step 2: Load state
 
-- Read `.goals/_current/00-main.md`
-- If no goal: nudge — "No active goal. Want me to load or create one?"
+- Read `.objectives/_current/00-main.md`
+- If no objective: nudge — "No active objective. Want me to load or create one?"
 
 ### Step 3: Load branch context
 
@@ -130,7 +130,7 @@ For each group, create a phase file and update `00-main.md` using the New Phase 
 format reference:
 
 - Determine next phase number: highest existing phase number in `## Phases` index + 1
-- Determine next sequence number: scan goal directory for highest `NN-` prefix + 1
+- Determine next sequence number: scan objective directory for highest `NN-` prefix + 1
 - Determine review number: search existing phases for `Review N` pattern, next = highest + 1
 - Create phase file `NN-phase-P-review-M.md`:
 
@@ -165,7 +165,7 @@ Focus the first created phase (`*` in index) if no phase is currently focused.
 - Phases created (count and names)
 - Concern counts by source (human REVIEW comments vs. code review findings)
 - Out-of-scope concerns flagged (count, if any)
-- Suggest: `/goal phase-iterate` to execute
+- Suggest: `/objective phase-iterate` to execute
 
 ## REVIEW Comment Convention
 

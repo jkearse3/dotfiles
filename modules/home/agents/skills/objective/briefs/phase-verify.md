@@ -2,8 +2,8 @@
 
 ## Instructions
 
-You are verifying working changes for a phase of the goal workflow: first code review for quality
-issues, then AC validation if review is clean.
+You are verifying working changes for a phase of the objective workflow: first code review for
+quality issues, then AC validation if review is clean.
 
 ### Step 1: Load State
 
@@ -16,16 +16,16 @@ Read these sections:
 - `### Tasks` -- see completed work
 - `### Issues` -- existing issues for dedup
 
-Read the AC source file (`.goals/_current/00-main.md`) `## Acceptance Criteria` section for AC text
--- used for AC validation in Step 6.
+Read the AC source file (`.objectives/_current/00-main.md`) `## Acceptance Criteria` section for AC
+text -- used for AC validation in Step 6.
 
 ### Step 2: Check for Changes
 
 Run `jj diff --stat` (or `git diff --stat` if jj is unavailable).
 
 - If no changes: stop and return the summary below. The exact string `No changes to verify.` is a
-  contract consumed by `skills/goal/procedures/phase-iterate.md` Step 5 branch detection — do not
-  change the wording without updating the caller.
+  contract consumed by `skills/objective/procedures/phase-iterate.md` Step 5 branch detection — do
+  not change the wording without updating the caller.
 
   ```
   ## Result: Verify Summary
@@ -122,7 +122,7 @@ If no new issues were found, proceed to Step 6.
 
 ### Step 6: AC Validation
 
-For each AC (from `.goals/_current/00-main.md` `## Acceptance Criteria`):
+For each AC (from `.objectives/_current/00-main.md` `## Acceptance Criteria`):
 
 1. **Identify relevant code**: use completed tasks to find what was changed
 2. **Read the code**: examine the implementation

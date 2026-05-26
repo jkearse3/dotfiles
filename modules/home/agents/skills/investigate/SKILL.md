@@ -164,7 +164,7 @@ Investigate your assigned topic using available tools. Return structured finding
 - Ground claims in concrete evidence.
 - If the topic is too broad, narrow to the most relevant aspects and note what was excluded.
 - Do not modify any files. This investigation is read-only.
-- Do not create goals or update existing ones.
+- Do not create objectives or update existing ones.
 
 **Evidence requirements:**
 

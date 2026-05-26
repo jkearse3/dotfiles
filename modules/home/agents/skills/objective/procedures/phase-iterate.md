@@ -25,17 +25,17 @@ step number (e.g., "**Step 4: Run Implement**") to maintain orientation.
 
 ### Step 1: Load State
 
-Read `.goals/_current/00-main.md` fresh (never rely on prior context).
+Read `.objectives/_current/00-main.md` fresh (never rely on prior context).
 
-- If no goal: nudge — "No active goal. Want me to load or create one?"
+- If no objective: nudge — "No active objective. Want me to load or create one?"
 - If no ACs in `## Acceptance Criteria`: nudge — "No acceptance criteria defined yet. Want me to run
-  `/goal spec`?"
+  `/objective spec`?"
 
-**Goal commit** (one-time, before first phase): If no phases exist yet and goal files are tracked in
-version control (check with `jj st`), commit the goal to preserve the spec as a checkpoint
-independent of implementation. If the working copy contains only goal files, run
+**Objective commit** (one-time, before first phase): If no phases exist yet and objective files are
+tracked in version control (check with `jj st`), commit the objective to preserve the spec as a
+checkpoint independent of implementation. If the working copy contains only objective files, run
 `jj commit -m "docs: <brief description>"`. If other files are also present, use
-`jj split -m "docs: <brief description>" <goal-files>` to commit only the goal files.
+`jj split -m "docs: <brief description>" <objective-files>` to commit only the objective files.
 
 ### Step 2: Ensure Focused Phase
 
@@ -46,9 +46,9 @@ Find focused phase (`*` in `## Phases`).
   New Phase → Compute phase-file inputs, then dispatch a subagent with prompt:
 
   ```
-  Read the file at ~/.claude/skills/goal/briefs/phase-scope.md and execute the instructions within it.
+  Read the file at ~/.claude/skills/objective/briefs/phase-scope.md and execute the instructions within it.
 
-  goal_dir: <absolute path to goal directory>
+  objective_dir: <absolute path to objective directory>
   P: <phase number>
   NN: <sequence number, zero-padded>
   Phase file: <absolute path to phase file>
@@ -77,10 +77,10 @@ index entry has a markdown link, read that file; otherwise read the inline `## P
 Dispatch an implementation subagent with prompt:
 
 ```
-Read the file at ~/.claude/skills/goal/briefs/phase-implement.md and execute the instructions within it.
+Read the file at ~/.claude/skills/objective/briefs/phase-implement.md and execute the instructions within it.
 
 State file: <absolute path to phase file>
-AC source: .goals/_current/00-main.md
+AC source: .objectives/_current/00-main.md
 ```
 
 **Always dispatch -- never skip based on task state.** The subagent decides whether work remains
@@ -99,10 +99,10 @@ Otherwise, proceed to Step 5.
 Dispatch a verify subagent with prompt:
 
 ```
-Read the file at ~/.claude/skills/goal/briefs/phase-verify.md and execute the instructions within it.
+Read the file at ~/.claude/skills/objective/briefs/phase-verify.md and execute the instructions within it.
 
 State file: <absolute path to phase file>
-AC source: .goals/_current/00-main.md
+AC source: .objectives/_current/00-main.md
 ```
 
 **Capture AC assessments**: When verify returns AC validation results (Validated, Needs
@@ -159,8 +159,8 @@ another cycle.
 
 ### Step 7: Post-Loop Enrichment
 
-After the loop completes, run enrichment that requires goal-level context (AC status derivation and
-annotation).
+After the loop completes, run enrichment that requires objective-level context (AC status derivation
+and annotation).
 
 **7a. Derive AC status**: Use the `ac_status` snapshot captured in Step 5 as the primary source for
 per-AC assessments. Each entry carries an AC number, status marker, and evidence note from verify's
@@ -216,7 +216,7 @@ If complete:
 If `[~] (human)` ACs remain:
 
 - Stop loop, present ACs needing human verification
-- Phase can still be complete if tasks and issues are resolved — AC validation is a goal-level
+- Phase can still be complete if tasks and issues are resolved — AC validation is an objective-level
   concern
 
 If not complete for other reasons:
@@ -247,7 +247,7 @@ before committing:
 1. Read and follow `procedures/summarize.md` with `--auto` to ensure summary reflects the final
    committed state.
 2. Commit the phase with `jj commit -m "<conventional commit message>"`.
-3. Note "Phase complete. Run `/goal phase-iterate` to scope and execute next phase."
+3. Note "Phase complete. Run `/objective phase-iterate` to scope and execute next phase."
 
 **If user requests tweaks**:
 

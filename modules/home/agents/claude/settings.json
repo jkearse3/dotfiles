@@ -105,7 +105,7 @@
       "Bash(whoami)",
       "Bash(xargs ls:*)",
       "Bash(zsh:*)",
-      "Read(.goals/**)",
+      "Read(.objectives/**)",
       "Read(//nix/store/**)",
       "Read(~/.claude/**)",
       "Skill(code-review)",

@@ -12,13 +12,13 @@ Read these format references before executing this procedure:
 
 ## Steps
 
-1. **Load state**: Read `.goals/_current/00-main.md`
-   - If no goal: nudge — "No active goal. Want me to load or create one?"
+1. **Load state**: Read `.objectives/_current/00-main.md`
+   - If no objective: nudge — "No active objective. Want me to load or create one?"
    - If no ACs in `## Acceptance Criteria`: nudge — "No acceptance criteria defined yet. Want me to
-     run `/goal spec`?"
+     run `/objective spec`?"
 
 2. **Find focused phase** (`*` in `## Phases`):
-   - If focused phase exists: stop, say "Phase already in focus. Run `/goal phase-iterate` to
+   - If focused phase exists: stop, say "Phase already in focus. Run `/objective phase-iterate` to
      execute."
    - If no focused phase: continue
 
@@ -27,15 +27,15 @@ Read these format references before executing this procedure:
 
 4. **Compute phase-file path** (before dispatch, reused across refinement rounds): follow
    `references/templates.md` § New Phase → Compute phase-file inputs. Hold these four values
-   (`goal_dir`, `P`, `NN`, path) for reuse in Steps 5, 7, and 8.
+   (`objective_dir`, `P`, `NN`, path) for reuse in Steps 5, 7, and 8.
 
 5. **Dispatch scoping subagent**: Dispatch a subagent with:
    - `prompt`:
 
    ```
-   Read the file at ~/.claude/skills/goal/briefs/phase-scope.md and execute the instructions within it.
+   Read the file at ~/.claude/skills/objective/briefs/phase-scope.md and execute the instructions within it.
 
-   goal_dir: <absolute path to goal directory>
+   objective_dir: <absolute path to objective directory>
    P: <phase number>
    NN: <sequence number, zero-padded>
    Phase file: <absolute path to phase file>
@@ -54,16 +54,16 @@ Read these format references before executing this procedure:
 7. **Interactive refinement loop**:
    - **User approves**: Proceed to step 8.
    - **User requests adjustments**: Re-dispatch a fresh scoping subagent, reusing the same
-     `goal_dir`, `P`, `NN`, and path from Step 4 so the subagent overwrites the same phase file in
-     place:
+     `objective_dir`, `P`, `NN`, and path from Step 4 so the subagent overwrites the same phase file
+     in place:
      - `prompt`: the standard brief invocation plus the reused path inputs, followed by the user's
        feedback. The brief's Step 1 reads the existing phase file at the provided path for prior
        approach/tasks context, so the prompt does not need to restate it. Use this shape:
 
      ```
-     Read the file at ~/.claude/skills/goal/briefs/phase-scope.md and execute the instructions within it.
+     Read the file at ~/.claude/skills/objective/briefs/phase-scope.md and execute the instructions within it.
 
-     goal_dir: <absolute path to goal directory>
+     objective_dir: <absolute path to objective directory>
      P: <phase number>
      NN: <sequence number, zero-padded>
      Phase file: <absolute path to phase file>

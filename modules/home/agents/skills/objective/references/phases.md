@@ -30,7 +30,7 @@ inline or file-based directly.
 3. If the index entry has no link (plain text) → phase is an inline `## Phase N: Name` section in
    `00-main.md` (legacy)
 
-Both formats can coexist in the same goal (e.g., during mid-flight migration). Dropping legacy
+Both formats can coexist in the same objective (e.g., during mid-flight migration). Dropping legacy
 support later means removing step 3.
 
 ## Phase Sections
@@ -42,7 +42,7 @@ Each phase contains only:
 - `### Tasks` - flat numbered list
 - `### Issues` - flat numbered list
 
-No Research in phases — all research lives at goal level under `## Research`.
+No Research in phases — all research lives at objective level under `## Research`.
 
 Each phase is scoped as a single commit of work. A phase is atomic when all its tasks serve one
 cohesive change — if any task could land independently without the others, it belongs in its own

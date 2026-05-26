@@ -30,7 +30,7 @@ None
 
 ### Step 3: Analyze Each Changed File
 
-For each changed file (excluding goals and generated files):
+For each changed file (excluding objectives and generated files):
 
 - Branch: `jj diff --from "$(jj-bookmark-previous)" --git <file>`
 - Working: `jj diff --git <file>`
@@ -40,7 +40,7 @@ For each changed file (excluding goals and generated files):
 Skip:
 
 - Generated files (\*.pb.go, wire_gen.go, etc.)
-- Goal files (.goals/)
+- Objective files (.objectives/)
 
 ### Step 4: Return Result
 
