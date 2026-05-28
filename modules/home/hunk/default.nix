@@ -4,5 +4,5 @@
 }:
 {
   home.packages = [ hunk ];
-  agents.skillSources."hunk-review" = "${hunk.outPath}/skills/hunk-review";
+  agents.sharedSkills."hunk-review" = [ "${hunk.outPath}/skills/hunk-review" ];
 }

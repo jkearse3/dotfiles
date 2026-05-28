@@ -18,6 +18,7 @@ let
       editable
       ;
   };
+  renderSharedSkills = import ../renderSharedSkills.nix { inherit lib mkSource; };
   claude-wrapped = pkgs.symlinkJoin {
     name = "claude-code-wrapped";
     paths = [
@@ -51,8 +52,5 @@ in
     ".claude/detect-vcs.sh".source = mkSource ./detect-vcs.sh;
     ".claude/rules".source = mkSource ../rules;
   }
-  // lib.mapAttrs' (name: src: {
-    name = ".claude/skills/${name}";
-    value.source = mkSource src;
-  }) config.agents.skillSources;
+  // renderSharedSkills ".claude/skills" config.agents.sharedSkills;
 }
