@@ -167,12 +167,12 @@
     "type": "command",
     "command": "~/.claude/statusline.sh"
   },
-  "effortLevel": "xhigh",
+  "effortLevel": "high",
   "promptSuggestionEnabled": false,
+  "tui": "fullscreen",
   "autoMemoryEnabled": false,
   "theme": "dark-ansi",
   "editorMode": "vim",
   "verbose": true,
-  "skipAutoPermissionPrompt": true,
-  "tui": "fullscreen"
+  "skipAutoPermissionPrompt": true
 }
