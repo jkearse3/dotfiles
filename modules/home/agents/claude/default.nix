@@ -19,6 +19,7 @@ let
       ;
   };
   renderSharedSkills = import ../renderSharedSkills.nix { inherit lib mkSource; };
+  renderSharedRules = import ../renderSharedRules.nix { inherit lib mkSource; };
   claude-wrapped = pkgs.symlinkJoin {
     name = "claude-code-wrapped";
     paths = [
@@ -50,7 +51,16 @@ in
     ".claude/settings.json".source = mkSource ./settings.json;
     ".claude/statusline.sh".source = mkSource ./statusline.sh;
     ".claude/detect-vcs.sh".source = mkSource ./detect-vcs.sh;
-    ".claude/rules".source = mkSource ../rules;
   }
+  // renderSharedRules ".claude/rules" [
+    {
+      name = "shared";
+      sources = config.agents.sharedRules;
+    }
+    {
+      name = "claude";
+      sources = config.agents.claudeRules;
+    }
+  ]
   // renderSharedSkills ".claude/skills" config.agents.sharedSkills;
 }

@@ -8,7 +8,7 @@
     }
   },
   "autoupdate": false,
-  "instructions": ["~/.agents/rules/*.md"],
+  "instructions": ["~/.config/opencode/rules/*.md"],
   "permission": {
     "*": "ask",
     "read": "allow",

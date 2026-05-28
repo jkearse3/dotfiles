@@ -18,6 +18,7 @@ let
       editable
       ;
   };
+  renderSharedRules = import ../renderSharedRules.nix { inherit lib mkSource; };
 
   opencodeFishCompletion = # fish
     ''
@@ -57,5 +58,15 @@ in
     ".config/opencode/opencode.jsonc".source = mkSource ./opencode.jsonc;
     ".config/opencode/tui.json".source = mkSource ./tui.json;
     ".config/fish/completions/opencode.fish".text = opencodeFishCompletion;
-  };
+  }
+  // renderSharedRules ".config/opencode/rules" [
+    {
+      name = "shared";
+      sources = config.agents.sharedRules;
+    }
+    {
+      name = "opencode";
+      sources = config.agents.opencodeRules;
+    }
+  ];
 }
