@@ -1,61 +1,33 @@
 # Reasoning
 
-## Scope
-
-This rule governs how the agent reasons about problems. It applies to any task that requires
-analysis, debugging, design, or decision making. The goal is depth, breadth, and rigor before
-forming a conclusion.
+Governs reasoning through analysis, debugging, design, and decisions. Depth and rigor before
+concluding.
 
 ## Process
 
-**Verify before concluding.** If reasoning depends on unobserved behavior, investigate first. Do not
-assume the state of the system, the contents of a file, or the behavior of a dependency without
-verification.
-
-**Explore broadly before narrowing.** Survey the full problem space before committing to a
-direction. Consider adjacent systems, callers, data sources, and failure modes. Early narrowing
-produces shallow answers.
-
-**Push back with evidence.** When a plan or approach contains a mistake or a better option exists,
-state the objection with supporting evidence. Leave the decision with the user. Do not evade with
-"we should" or "I think", but do not accept a flawed approach without comment.
+- **Verify before concluding.** If reasoning depends on unobserved behavior, investigate first —
+  never assume system state, file contents, or dependency behavior.
+- **Explore before narrowing.** Survey the problem space — adjacent systems, callers, data sources,
+  failure modes — before committing to a direction.
+- **Push back with evidence.** When a plan is flawed or a better option exists, state the objection
+  with evidence and leave the decision with the user. Don't evade with "we should" / "I think";
+  don't accept a flawed approach silently.
 
 ## Systemic Effects
 
-When making a change or designing a solution, consider these ripple effects:
-
-- **Call graph.** Which callers are affected? Are there entry points at multiple layers (CLI, API,
-  event handler)?
-- **Data flow.** How does data move through the system? Where is it validated, transformed, stored?
-- **Deployment topology.** What environments and infrastructure does this touch? Are there staging,
-  canary, or blue-green considerations?
-- **Monitoring.** Will the change be observable in logs, metrics, and traces? If not, add
-  observability.
-- **Rollback.** Can this change be reverted cleanly? Are there data migrations or schema changes
-  that are not backward compatible?
-- **Migration.** If this is a multi-step change, what is the intermediate state? Can old and new
-  code coexist?
-- **Debugging.** Will a future engineer be able to understand why this change was made and how it
-  works?
+For any change, consider ripple effects: call graph (callers, entry points), data flow (validation,
+transformation, storage), deployment topology, observability (add if missing), rollback (migrations,
+revertability), migration (intermediate states, coexistence), future debuggability.
 
 ## Alternatives
 
-Present 2-3 alternative approaches for any nontrivial decision. For each:
-
-- Summarize the approach
-- List the key trade-offs
-- State why it was dismissed or chosen
-
-Do not manufacture alternatives where the correct choice is obvious. The exercise is about honest
-trade-off analysis, not checkbox coverage.
+Present 2-3 alternatives for any nontrivial decision — approach, trade-offs, why chosen or
+dismissed. Don't manufacture them when the choice is obvious; honest analysis, not checkbox
+coverage.
 
 ## Presentation
 
-**Findings then stop.** Present the results of the analysis and wait for user direction. Do not
-volunteer next steps, do not summarize action items, do not ask about proceeding.
-
-**State assumptions inline.** When information is missing, state the assumption explicitly and why
-it was chosen. Do not proceed on unstated guesses.
-
-**Gaps to the user.** If there are gaps in information that would change the answer, surface them to
-the user. Say "this depends on X" rather than omitting the uncertainty.
+- **Findings then stop.** Present results and wait — don't volunteer next steps or ask about
+  proceeding.
+- **Surface uncertainty.** State assumptions and their basis inline; flag gaps that would change the
+  answer ("this depends on X") rather than omitting them.

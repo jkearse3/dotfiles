@@ -33,26 +33,22 @@ rules, skills, prompts) takes `feat` when it changes behavior, `refactor` when i
 
 ### Body
 
-Optional — add one for anything non-obvious. Separate from subject with a blank line. Wrap at 72
-characters. Unbreakable tokens — URLs, file paths, inline code spans, and quoted output (errors,
-logs, command lines) — are exceptions. Do not split them to fit; let the line exceed 72 rather than
-break the token. Prefer rephrasing first: move a long URL to a footer trailer (e.g., `Link: <url>`)
-or reference a short ticket ID instead of pasting a long search URL.
+Optional — add for anything non-obvious; separate from subject with a blank line. Wrap at 72
+columns; unbreakable-token handling follows `markdown.md` § Width (cap 72; quoted output — errors,
+logs, command lines — counts as unbreakable). Prefer rephrasing over overrun: long URL → footer
+trailer (`Link: <url>`), or reference a short ticket ID.
 
-The subject and diff show _what_ changed at a surface level. The body adds context they can't
-convey: the reasoning behind the change, and when needed, a higher-level description of _what_ was
-done when the diff alone doesn't tell the full story. Open with the status quo or the bug, then
-describe what the change does in response — the reader understands the fix faster when they
-understand the problem first.
+The subject and diff show _what_; the body adds the _why_, plus a higher-level _what_ when the diff
+isn't self-explanatory. Open with the status quo or bug, then the change in response.
 
-Bodies must explain the change on its own terms. Don't lean on session-internal artifacts — planning
-notes, scratch files, conversation transcripts, workflow-tool docs — even when those artifacts are
-tracked in the repo. Readers shouldn't need to chase pointers to understand the diff. Exception:
-commits whose primary change is the artifact itself.
+Explain the change on its own terms, in domain language — describe intent and domain context, not
+the workflow that produced it (its stages, task IDs, or tooling). Don't lean on session-internal
+artifacts — planning notes, scratch files, transcripts, workflow-tool docs — even when tracked;
+readers shouldn't chase pointers. Exception: commits whose primary change is the artifact itself.
 
-Use contextual mood: imperative for the change ("Replace the polling loop"), past tense for the bug
-or prior state ("The cache leaked under concurrent writes"), present tense for invariants ("The
-buffer is a fixed-size ring"). Short bodies often need only the imperative.
+Contextual mood: imperative for the change ("Replace the polling loop"), past for the prior state
+("The cache leaked under concurrent writes"), present for invariants ("The buffer is a fixed-size
+ring").
 
 ### Footer
 
@@ -63,42 +59,26 @@ Optional, except when introducing breaking changes. Separate from body with a bl
 
 ### Special Cases
 
-These commits are exempt from Conventional Commits and use their conventional defaults:
-
-- Initial commit: `chore: init`
-- Merge commit: default git merge message (`Merge branch '<branch>'`)
-- Revert commit: default git revert message (`Revert "<subject>"`)
+Exempt from Conventional Commits, use git defaults: initial commit `chore: init`; merge
+`Merge branch '<branch>'`; revert `Revert "<subject>"`.
 
 ### Atomicity
 
 Prefer one logical change per commit. If the message needs "and", consider splitting — but use
 judgment. Don't split when separation makes the individual commits harder to understand.
 
-### Examples
+### Example
 
-Subject + body explaining "why":
-
-```
-refactor: replace compiled regex set with prefix trie
-
-The previous code recompiled the full set on every request, which
-dominated the hot path. The trie precomputes once at startup and
-matches in O(k) on the request length.
-```
-
-Breaking change with `BREAKING CHANGE:` footer:
+Exhaustive — scope, breaking `!`, why-first body with contextual mood, and both footers:
 
 ```
-feat(auth)!: require signed tokens for all endpoints
+feat(auth)!: require signed tokens on all endpoints
 
-BREAKING CHANGE: Unsigned tokens are rejected. Clients must upgrade
-to the v2 SDK before deploying this change.
-```
+Unsigned tokens were accepted on internal routes, leaving a forgery gap.
+All endpoints now verify the signature and reject unsigned tokens.
 
-Subject with issue-ref footer:
-
-```
-fix(api): retry idempotent requests on 503
+BREAKING CHANGE: Unsigned tokens are rejected. Clients must upgrade to
+the v2 SDK before deploying.
 
 Closes #482
 ```

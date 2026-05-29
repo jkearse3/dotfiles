@@ -1,24 +1,19 @@
 # Workflow
 
-When a file-changing task is identified and no objective is loaded, present a concise prompt
-offering these modes:
+On a file-changing task with no objective loaded, offer two modes (skip for non-editing tasks —
+questions, research, explanations):
 
-- **Direct**: investigate, present plan, get approval, edit. No objective, ACs, phases, or
-  `/objective` commands.
+- **Direct**: investigate → plan → approval → edit. No objective, ACs, or phases.
 - **Objective**: create or load an objective, then follow the `/objective` workflow (ACs, phases,
   iterate).
 
-Non-editing tasks (questions, research, explanations) are exempt — no prompt needed.
+Skip the prompt when context implies a mode: an objective is already loaded, or the user invokes
+`/objective` → objective mode.
 
-**Skip the prompt when context already implies a mode:**
+VCS placement:
 
-- An objective is already loaded → objective mode.
-- The user explicitly invokes `/objective` → objective mode.
+- **On trunk**: ask for a bookmark name before any file edits, regardless of mode.
+- **On a bookmark**: stack new work on top (stacked PRs); no need to return to trunk first.
 
-**On trunk**: ask for a bookmark name before file edits regardless of workflow mode.
-
-**On a bookmark**: new work stacks on top of the current bookmark (stacked PRs). No need to return
-to trunk first.
-
-Full workflow details, format spec, and phase structure are in the `/objective` skill — invoke it
-when executing any `/objective` command.
+Full workflow details, format spec, and phase structure live in the `/objective` skill — invoke it
+for any `/objective` command.
