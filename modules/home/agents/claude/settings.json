@@ -78,6 +78,7 @@
       "Bash(mv:*)",
       "Bash(printf:*)",
       "Bash(pwd)",
+      "Bash(python3:*)",
       "Bash(read:*)",
       "Bash(readlink:*)",
       "Bash(realpath:*)",
