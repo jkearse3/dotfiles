@@ -53,7 +53,7 @@ in
         inherit (inputs) self;
         repoRoot = "dotfiles";
         llmAgents = llmAgents.${system};
-        hunk = inputs.hunk.packages.${system}.default;
+        hunk = llmAgents.${system}.hunk;
       };
     }
   );
