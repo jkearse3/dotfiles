@@ -104,6 +104,7 @@
       "mv *": "allow",
       "printf *": "allow",
       "pwd": "allow",
+      "python3 *": "allow",
       "read *": "allow",
       "readlink *": "allow",
       "realpath *": "allow",
