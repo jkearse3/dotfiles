@@ -17,9 +17,6 @@
       window-width = 190;
       command = "${lib.getExe pkgs.fish} --login --interactive";
       theme = "tokyonight";
-      keybind = [
-        "shift+enter=text:\\n"
-      ];
     };
   };
 }
