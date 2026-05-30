@@ -94,20 +94,17 @@ let
         "${config.home.homeDirectory}/.ssh/known_hosts"
       ];
       suppress_save_prompt = [
+        # Suppress save-profile suggestions for the entire home directory. Agents probe
+        # many denied dotfiles and Application Support paths every run; this silences the
+        # recurring prompt across the whole subtree. Matching is by subtree, so this
+        # subsumes the browser-data paths (Arc, Brave, Chromium, Chrome, Edge, Vivaldi,
+        # Opera) that remain denied by deny_browser_data_macos. Enforcement is unchanged:
+        # suppression only hides the suggestion; it never grants access or removes a deny.
+        "${config.home.homeDirectory}"
+
         # Node.js and Claude probe Linux home-discovery paths. `/home` does not exist on macOS;
         # suppressing it only removes the recurring save-profile suggestion.
         "/home"
-
-        # Browser profiles contain cookies and session state, so they stay denied by
-        # deny_browser_data_macos. Suppress only the grant-suggestion prompt from Claude's browser
-        # detection paths.
-        "${config.home.homeDirectory}/Library/Application Support/Arc/User Data"
-        "${config.home.homeDirectory}/Library/Application Support/BraveSoftware/Brave-Browser"
-        "${config.home.homeDirectory}/Library/Application Support/Chromium"
-        "${config.home.homeDirectory}/Library/Application Support/Google/Chrome"
-        "${config.home.homeDirectory}/Library/Application Support/Microsoft Edge"
-        "${config.home.homeDirectory}/Library/Application Support/Vivaldi"
-        "${config.home.homeDirectory}/Library/Application Support/com.operasoftware.Opera"
       ];
     };
     rollback = {
