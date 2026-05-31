@@ -13,6 +13,12 @@ code review, merge findings, and create cleanup phases.
   the index-entry registration; the review-specific filename, content, and review-number computation
   are in Contracts below.
 
+## Write Permissions
+
+- Write phase files at computed paths (create review phase files per § Phase File)
+- Modify entries in `## Phases` in `00-main.md` (register new phase index entries; never renumber
+  existing phases)
+
 ## Steps
 
 1. Load branch context. Run `jj diff --from "$(jj-bookmark-previous)" --stat` for the list of

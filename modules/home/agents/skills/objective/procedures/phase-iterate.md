@@ -126,39 +126,7 @@ Run in order. Do not improvise or skip steps. Announce each step number before e
      another cycle.
    - If complete: go to Step 7.
 
-7. Post-loop enrichment. Run enrichment that requires objective-level context (AC status derivation
-   and annotation).
-
-   7a. Derive AC status. Use the `ac_status` snapshot from Step 5 as the primary source for per-AC
-   assessments. Each entry carries an AC number, status marker, and evidence note from verify's last
-   assessment.
-   - ACs present in `ac_status`: use the status and evidence directly.
-   - ACs targeted by phase tasks but absent from `ac_status` (verify never assessed them):
-     - All referencing tasks are `(enhance)`: preserve the existing marker from `00-main.md` (the AC
-       was already satisfied before this phase — enhancement doesn't change its status).
-     - Otherwise: fall back to `[~]` (implemented, awaiting verification) based on task completion.
-   - ACs with `(human)` annotations in the phase file's `### Tasks`: preserve the `(human)` marker
-     regardless of `ac_status`.
-
-   7b. AC evidence annotation. Update `## Acceptance Criteria` in `00-main.md`:
-   - For each AC targeted by this phase, update the marker using the status from Step 7a.
-   - Add evidence notes from `ac_status` entries. For ACs without verify evidence, derive brief
-     notes from task descriptions and `(human)` annotations:
-
-     ```markdown
-     1. [~] Component renders with buttons
-        - src/components/header.tsx:98-112 renders all four buttons. 4 tests pass.
-     2. [~] Export handles large files (human)
-        - Needs manual testing with 10MB+ files.
-     ```
-
-   - Evidence format: fully qualified paths (`src/path/file.ts:lines`), test results.
-   - Preserve existing AC text and `(human)` annotations.
-   - All status changes happen in a single edit.
-
-   Go to Step 8.
-
-8. Present summary and check phase termination. Summarize:
+7. Present summary and check phase termination. Summarize:
    - Tasks: total / completed / blocked (from phase file).
    - Issues: total open (by severity).
    - ACs: status changes, regressions (`[!]`), remaining `[~]` (with human/test distinction).
@@ -173,7 +141,7 @@ Run in order. Do not improvise or skip steps. Announce each step number before e
      - Remove focus marker (`*`).
      - Collect targeted ACs from task references (`(ACN, satisfy)` / `(ACN, codify)` /
        `(ACN, enhance)`) for the summary.
-     - Go to Step 9 (review and commit).
+     - Go to Step 8 (review and commit).
    - If `[~] (human)` ACs remain: stop the loop and present the ACs needing human verification. The
      phase can still be complete if tasks and issues are resolved — AC validation is an
      objective-level concern.
@@ -188,7 +156,7 @@ Run in order. Do not improvise or skip steps. Announce each step number before e
        details: <specific blockers or concerns>
        ```
 
-9. Review and commit.
+8. Review and commit.
 
    Without `--auto-commit`: announce that the phase is ready for review and wait for user approval
    before committing.
@@ -223,20 +191,20 @@ Run in order. Do not improvise or skip steps. Announce each step number before e
   invocations, the Step 2 no-work message ("Nothing to iterate.") and index entry
   `P. [ ] [Phase Name](./NN-phase-P.md) *`, the implement/verify dispatch prompts, the
   `No changes to verify.` contract string, the `ac_status` section→marker mapping, the
-  `PHASE_INCOMPLETE` / `PHASE_COMPLETE` blocks and their fields, and the Step 9
+  `PHASE_INCOMPLETE` / `PHASE_COMPLETE` blocks and their fields, and the Step 8
   `jj commit -m "<conventional commit message>"` invocation.
 - Loop ownership: phase-iterate owns the implement-verify loop (dispatch, AC status capture,
-  termination), post-loop enrichment (AC status derivation and annotation), and lifecycle (commit,
-  phase marking). Scoping is dispatched as an isolated subagent via `briefs/phase-scope.md`;
+  termination) and lifecycle (commit, phase marking). AC derivation and annotation are now handled
+  by `phase-verify`. Scoping is dispatched as an isolated subagent via `briefs/phase-scope.md`;
   phase-iterate auto-accepts.
 - State passes between steps via `00-main.md` (ACs, phases index) and phase files (tasks, issues,
   approach, context).
 - Never pause between steps. After each step completes, immediately proceed to the next unless the
-  step requires user input (Steps 8 and 9 without `--auto-commit`, and blockers in Step 6). If any
+  step requires user input (Steps 7 and 8 without `--auto-commit`, and blockers in Step 6). If any
   step fails or needs user input, stop and report.
 - Never edit repo files directly — phase-iterate is orchestration only. All repo edits go through
   the dispatched implement/verify subagents, except: commits, the `00-main.md` index entry update in
-  Step 2, AC annotation in Step 7b, and user-directed tweaks in Step 9.
+  Step 2, and user-directed tweaks in Step 8.
 - Single-revision invariant (`references/contracts.md` § Invariants): all phase changes must live in
   `@` when verify runs — no intermediate `jj commit`, `jj new`, or `jj split` during the loop, so
   `jj diff` always captures the complete phase diff. Phase-iterate owns revision lifecycle.

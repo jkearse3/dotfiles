@@ -67,7 +67,8 @@ instead presents it and waits for approval before accepting.
 
 - Preserve exact result tokens and strings consumed by callers.
 - Preserve approval gates; do not turn user-approved steps into automatic writes.
-- Preserve subagent write boundaries.
+- Subagents may write only what their brief's `## Write Permissions` section declares; anything not
+  listed is denied.
 - Preserve AC numbering and marker semantics.
 - Preserve phase numbering and focus semantics.
 - Preserve the single-revision invariant: no `jj commit`, `jj new`, or `jj split` inside

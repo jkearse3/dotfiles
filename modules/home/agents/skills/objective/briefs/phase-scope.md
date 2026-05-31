@@ -18,6 +18,10 @@ The orchestrator provides these inputs in the prompt:
   preservation).
 - `references/phases.md` — phase resolution (linked file vs. inline `## Phase N:` section).
 
+## Write Permissions
+
+- Write the phase file at the provided path (create, overwrite on refinement rounds)
+
 ## Steps
 
 1. Read state. From `00-main.md`, read:

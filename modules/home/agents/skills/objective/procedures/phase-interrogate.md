@@ -64,8 +64,25 @@ Approach, Tasks, Issues).
      overwrite or remove existing decisions.
    - Objective ACs: for each new AC candidate that surfaced during interrogation, read the existing
      `## Acceptance Criteria` in `00-main.md`, dedupe by content match (exact text match on the
-     condition, ignoring numbering and markers), and append new unique candidates at the next
-     available AC number. Follow `references/acceptance-criteria.md`.
+     condition, ignoring numbering and markers), then proceed to Step 5a for conflict checking
+     before writing.
+
+   5a. Conflict check. If there are new AC candidates after deduplication, scan existing ACs for
+   conflicts before writing:
+   - For each existing AC, check if any new AC candidate contradicts, overlaps with, or supersedes
+     it.
+   - **Unlocked ACs** (marker is `[ ]` and no task references `(ACN, ...)`): update in place.
+   - **Locked ACs** (marker is not `[ ]`, or task references exist): invalidate using `[-]` +
+     strikethrough + cross-reference per the AC stability rules in
+     `references/acceptance-criteria.md`.
+
+   Present the conflict analysis to the user: which ACs will be updated, which invalidated, and what
+   new ACs will be added. Require user approval before writing. If no conflicts: present the drafted
+   AC candidates for user approval.
+
+   After approval, write all ACs (existing + new, with any updates/invalidations applied) to
+   `## Acceptance Criteria` in `00-main.md`, numbering new ACs sequentially after the highest
+   existing AC number. Follow `references/acceptance-criteria.md`.
 
 6. Present summary.
    - Key decisions made this session (from the interrogate log).
@@ -79,15 +96,18 @@ Approach, Tasks, Issues).
 ## Contracts
 
 - Writes to the phase file (or inline phase section): `### Decisions` (resolved and open). Writes to
-  `00-main.md`: `## Acceptance Criteria` (new candidates, deduped and appended) and, in Step 2a, the
-  `## Phases` index entry.
+  `00-main.md`: `## Acceptance Criteria` (new candidates, deduped, conflict-checked, and appended)
+  and, in Step 2a, the `## Phases` index entry.
 - Preserve verbatim: the objective-scoped guardrail nudge, the topic-derivation fallback, the
   missing/satisfied-AC nudge, the no-ACs-targeted nudge, the Step 2a no-work message ("Nothing to
   interrogate."), the index entry `P. [ ] [Phase Name](./NN-phase-P.md) *`, and the
   phase-`### Decisions` plus objective-AC merge semantics.
 - The guardrail prevents operation without an active objective — phases are objective-scoped.
 - Auto-scope dispatch matches the phase-iterate pattern (auto-accept, no approval gate).
-- Silent merge — no confirmation gate, consistent with objective-level interrogate.
+- AC conflict check (Step 5a) is an approval gate — user must approve conflict analysis and new AC
+  candidates before any write to `## Acceptance Criteria`.
+- Silent merge for phase-file decisions — no confirmation gate, consistent with objective-level
+  interrogate.
 - The interrogate skill is interactive and objective/phase-unaware — all persistence happens in
   Step 5.
 - Cross-procedure references read `procedures/interrogate.md`, `procedures/phase-scope.md`, and

@@ -8,6 +8,12 @@ then AC validation if review is clean.
 - `references/contracts.md` — file conventions and § Invariants (caller-token preservation and the
   single-revision rule).
 
+## Write Permissions
+
+- Write the phase file at the provided path (update issues and write result summary)
+- Modify entries in `## Acceptance Criteria` in `00-main.md` (AC markers and evidence notes for ACs
+  assessed by this subagent; preserve existing AC text and `(human)` annotations, single edit)
+
 ## Steps
 
 1. Load state. Read the state file at the path provided by the orchestrator:
@@ -67,15 +73,33 @@ then AC validation if review is clean.
       - `[!]` — previously satisfied but no longer (regression).
       - `[ ]` — not yet implemented.
 
-   Include the determined status for each AC in the Step 8 summary.
+   Include the determined status for each AC in the Step 9 summary.
 
-7. Confirm issue persistence. Re-read the state file and confirm every new Step 4 finding has been
+7. AC derivation. For each AC targeted by phase tasks (identified by `(ACN, satisfy/enhance)`
+   annotations in the phase file `### Tasks`):
+   1. **enhance-preservation**: If all referencing tasks are `(ACN, enhance)`, preserve the existing
+      AC marker and text from `00-main.md` as-is (enhancement doesn't change satisfaction status).
+   2. **human-preservation**: ACs with `(human)` annotations in the phase file are never modified —
+      preserve both the marker and the annotation.
+   3. **fallback**: If a task is `(ACN, satisfy)` but no matching AC exists in `00-main.md`, flag it
+      as a readiness issue in `### Issues` rather than silently creating one.
+   4. **satisfy derivation**: For `(ACN, satisfy)` tasks with a matching AC, use the AC validation
+      status from Step 6. If the AC was validated `[x]`, mark it `[x]` with evidence notes. If
+      validated `[~]`, mark it `[~]` with evidence notes.
+
+   Update `## Acceptance Criteria` in `00-main.md` in a single edit:
+   - Update markers using the derived status.
+   - Add evidence notes from Step 6 validation (fully qualified paths, test results).
+   - Preserve existing AC text and `(human)` annotations.
+
+8. Confirm issue persistence. Re-read the state file and confirm every new Step 4 finding has been
    appended to `### Issues` with the correct format
    (`N. [ ] path:line (type, severity): description`). If any are missing — write skipped or dedup
-   decision reversed — append them now. The Step 8 summary is not a substitute for state-file
+   decision reversed — append them now. The Step 9 summary is not a substitute for state-file
    persistence; the orchestrator loop relies on `### Issues` to dispatch follow-up work.
 
-8. Present summary. Return the full `## Result: Verify Summary` block (see Contracts).
+9. Present summary. Return the full `## Result: Verify Summary` block (see Contracts). Include AC
+   derivation results (which ACs were updated, which were preserved, any readiness issues flagged).
 
 ## Contracts
 
@@ -106,7 +130,7 @@ Review gate (Step 5, new issues created):
 - [address high-severity issues before next cycle]
 ```
 
-Full summary (Step 8):
+Full summary (Step 9):
 
 ```
 ## Result: Verify Summary

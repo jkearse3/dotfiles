@@ -8,6 +8,10 @@ file in real-time.
 - `references/contracts.md` — file conventions and § Invariants (the single-revision rule and
   caller-token preservation).
 
+## Write Permissions
+
+- Write the phase file at the provided path (update task markers and append tasks)
+
 ## Steps
 
 1. Load state. Read the state file at the path provided by the orchestrator:
