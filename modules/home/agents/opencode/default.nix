@@ -51,10 +51,17 @@ let
     '';
   };
 
+  opencode-nono-entrypoint = pkgs.writeShellScript "opencode-nono-entrypoint" ''
+    if [[ -z "''${NONO_OPENCODE_USE_PERMISSIONS:-}" ]]; then
+      export OPENCODE_PERMISSION='{"*":"allow","bash":{"*":"allow"}}'
+    fi
+    exec "${opencode-wrapped}/bin/opencode" "$@"
+  '';
+
   nono-opencode = mkNonoWrapper {
     name = "opencode";
     profile = "coding-agents";
-    command = "${opencode-wrapped}/bin/opencode";
+    command = "${opencode-nono-entrypoint}";
   };
 in
 {
