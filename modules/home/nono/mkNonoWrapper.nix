@@ -43,7 +43,7 @@ let
       fi
 
       nono_cmd=(
-        "$nono_bin" "run" "--profile" "$profile_arg"
+        "$nono_bin" "wrap" "--profile" "$profile_arg"
       )
       [[ -n "$cwd_flag" ]] && nono_cmd+=("$cwd_flag")
       if [[ -n "$SSH_AUTH_SOCK" && -S "$SSH_AUTH_SOCK" ]]; then
@@ -75,8 +75,8 @@ pkgs.runCommandLocal "nono-${wrapperName}"
       || { echo "FAIL: missing NONO_WRAPPER_DISABLE" >&2; exit 1; }
     grep -q 'NONO_WRAPPER_VERBOSE' "$wrapper" \
       || { echo "FAIL: missing NONO_WRAPPER_VERBOSE" >&2; exit 1; }
-    grep -q 'nono.*run.*--profile' "$wrapper" \
-      || { echo "FAIL: missing exec nono run pattern" >&2; exit 1; }
+    grep -q 'nono.*wrap.*--profile' "$wrapper" \
+      || { echo "FAIL: missing exec nono wrap pattern" >&2; exit 1; }
     grep -q '\.nono/profile\.json' "$wrapper" \
       || { echo "FAIL: missing .nono/profile.json overlay detection" >&2; exit 1; }
     grep -q 'no .*extends.* key' "$wrapper" \
