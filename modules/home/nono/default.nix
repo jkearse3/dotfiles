@@ -56,6 +56,9 @@ let
 
         # Claude probes this custom npm prefix for npm/yarn availability; installs use handoff.
         "${config.home.homeDirectory}/.npm-global"
+
+        # Nix Home Manager symlinks configs from dotfiles; agents need to read the real paths.
+        "${config.home.homeDirectory}/dotfiles"
       ];
       allow = [
         # Writable state for Nix, fish, and jj workflows used during agent sessions.
