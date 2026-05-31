@@ -35,6 +35,10 @@ Error: expected [--single] [revision]
      - What it uses (imports, references)
      - Type of change (conventional commits)
      - Scope (component/area affected)
+   - For body content, identify:
+     - Status quo or problem being solved
+     - What the change does in response
+     - Any breaking changes or related issues
 
 3. **Group and order** (skip if `--single`):
    - Group files by semantic purpose (same feature + scope)
@@ -50,12 +54,19 @@ Error: expected [--single] [revision]
 
 4. **Present proposal**:
 
+   Follow [commit message rules](~/.config/opencode/rules/version-control.md) when composing —
+   type/scope taxonomy, subject format (72 chars, imperative mood, no period), body (status quo
+   first, then change; contextual mood; domain language; wrap at 72), footer (breaking change
+   trailer, issue refs).
+
    If atomic (1 group):
 
    ```
    ## Atomic
 
    type(scope): description
+
+   Status quo or problem, then change in response.
 
    **Files**: file1.ext, file2.ext
    **Reasoning**: [why atomic, why this message]
@@ -67,9 +78,15 @@ Error: expected [--single] [revision]
    ## Split into N commits
 
    ### 1. type(scope): description
+
+   Status quo or problem, then change in response.
+
    - file.ext (+X -Y): what changed
 
    ### 2. type(scope): description
+
+   Status quo or problem, then change in response.
+
    - file.ext (+X -Y): what changed
 
    **Ordering**: [why this order]
@@ -79,6 +96,12 @@ Error: expected [--single] [revision]
 
 6. **Execute** using multi-commit splitting pattern from
    [version-control rules](~/.claude/rules/version-control.md):
+   - Compose each full description (subject + body + footer) per the commit rules above
+   - Use ANSI-C quoting (`$'...'`) with `\n\n` to embed body and footer in the description:
+     ```bash
+     desc=$'type(scope): description\n\nStatus quo or problem, then change in response.'
+     jj split -r <target> -m "$desc" file1 file2
+     ```
    - Track `first_commit` and `target` through splits
    - Show result with `jj log -r '<first>::<last>'`
    - If original target was `@`: run `jj new` to create fresh working copy
