@@ -59,12 +59,20 @@ let
 
         # Nix Home Manager symlinks configs from dotfiles; agents need to read the real paths.
         "${config.home.homeDirectory}/dotfiles"
+
+        # Neovim config for inline editing from the sandbox.
+        "${config.home.homeDirectory}/.config/nvim"
       ];
       allow = [
         # Writable state for Nix, fish, and jj workflows used during agent sessions.
         "${config.home.homeDirectory}/.cache/nix"
         "${config.home.homeDirectory}/.local/share/fish"
         "${config.home.homeDirectory}/.config/jj"
+
+        # Neovim data, state, and cache for inline editing from the sandbox.
+        "${config.home.homeDirectory}/.cache/nvim"
+        "${config.home.homeDirectory}/.local/share/nvim"
+        "${config.home.homeDirectory}/.local/state/nvim"
 
         # opencode config, cache, state, and data directories.
         "${config.home.homeDirectory}/.config/opencode"
