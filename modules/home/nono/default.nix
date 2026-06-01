@@ -60,6 +60,9 @@ let
         # Nix Home Manager symlinks configs from dotfiles; agents need to read the real paths.
         "${config.home.homeDirectory}/dotfiles"
 
+        # Nix consults flake trust metadata before some evals; keep it readable but immutable.
+        "${config.home.homeDirectory}/.local/share/nix"
+
         # Neovim config for inline editing from the sandbox.
         "${config.home.homeDirectory}/.config/nvim"
       ];
