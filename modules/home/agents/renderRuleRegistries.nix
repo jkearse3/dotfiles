@@ -20,9 +20,9 @@
 #
 # Usage:
 #   let
-#     renderSharedRules = import ./renderSharedRules.nix { inherit lib mkSource; };
+#     renderRuleRegistries = import ./renderRuleRegistries.nix { inherit lib mkSource; };
 #   in {
-#     home.file = renderSharedRules ".claude/rules" [
+#     home.file = renderRuleRegistries ".claude/rules" [
 #       { name = "shared"; sources = config.agents.sharedRules; }
 #       { name = "claude"; sources = config.agents.claudeRules; }
 #     ];
@@ -48,7 +48,7 @@ let
   );
   collisionMessages = lib.mapAttrsToList (
     name: matches:
-    "renderSharedRules: name '${name}' is defined in registries '${
+    "renderRuleRegistries: name '${name}' is defined in registries '${
       lib.concatStringsSep "' and '" (map (entry: entry.registryName) matches)
     }'"
   ) collisions;
@@ -61,7 +61,7 @@ let
     if lib.hasSuffix ".md" sourcePath then
       entry.src
     else
-      throw "renderSharedRules: source for rule '${entry.name}' in registry '${entry.registryName}' must end in .md: ${sourcePath}";
+      throw "renderRuleRegistries: source for rule '${entry.name}' in registry '${entry.registryName}' must end in .md: ${sourcePath}";
 in
 if collisionMessages != [ ] then
   throw (lib.concatStringsSep "; " collisionMessages)

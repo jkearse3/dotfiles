@@ -20,7 +20,7 @@ let
       ;
   };
   renderSharedSkills = import ../renderSharedSkills.nix { inherit lib mkSource; };
-  renderSharedRules = import ../renderSharedRules.nix { inherit lib mkSource; };
+  renderRuleRegistries = import ../renderRuleRegistries.nix { inherit lib mkSource; };
   claude-wrapped = pkgs.symlinkJoin {
     name = "claude-code-wrapped";
     paths = [
@@ -67,7 +67,7 @@ in
       complete -c nono-claude --wraps claude
     '';
   }
-  // renderSharedRules ".claude/rules" [
+  // renderRuleRegistries ".claude/rules" [
     {
       name = "shared";
       sources = config.agents.sharedRules;

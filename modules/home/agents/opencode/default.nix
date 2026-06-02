@@ -19,7 +19,7 @@ let
       editable
       ;
   };
-  renderSharedRules = import ../renderSharedRules.nix { inherit lib mkSource; };
+  renderRuleRegistries = import ../renderRuleRegistries.nix { inherit lib mkSource; };
 
   opencodeFishCompletion = # fish
     ''
@@ -81,7 +81,7 @@ in
       complete -c nono-opencode --wraps opencode
     '';
   }
-  // renderSharedRules ".config/opencode/rules" [
+  // renderRuleRegistries ".config/opencode/rules" [
     {
       name = "shared";
       sources = config.agents.sharedRules;

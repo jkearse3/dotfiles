@@ -17,7 +17,7 @@ let
       ;
   };
   renderSharedSkills = import ./renderSharedSkills.nix { inherit lib mkSource; };
-  renderSharedRules = import ./renderSharedRules.nix { inherit lib mkSource; };
+  renderRuleRegistries = import ./renderRuleRegistries.nix { inherit lib mkSource; };
 
   mkRuleRegistryOption =
     registryName:
@@ -135,7 +135,7 @@ in
     agents.opencodeRules = autoRegisterRules ./opencode/rules;
 
     home.file =
-      renderSharedRules ".agents/rules" [
+      renderRuleRegistries ".agents/rules" [
         {
           name = "shared";
           sources = config.agents.sharedRules;
