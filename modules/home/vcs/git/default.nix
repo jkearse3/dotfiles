@@ -61,6 +61,7 @@
       "*.local.*"
       ".DS_Store"
       "/.objectives/"
+      ".nono/"
       ".jj"
       "**/.claude/settings.local.json"
     ];

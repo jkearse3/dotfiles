@@ -54,6 +54,9 @@ let
         # Agent rules and skills are consumed read-only by coding agents.
         "${config.home.homeDirectory}/.agents"
 
+        # Local profile overlays inherit generated profiles from this directory.
+        "${config.home.homeDirectory}/.config/nono"
+
         # Claude probes this custom npm prefix for npm/yarn availability; installs use handoff.
         "${config.home.homeDirectory}/.npm-global"
 
