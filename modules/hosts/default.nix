@@ -5,6 +5,7 @@
 }:
 {
   imports = [
+    ./device-003
     ./mbp-hf-2
     ./mbp-personal
   ];
