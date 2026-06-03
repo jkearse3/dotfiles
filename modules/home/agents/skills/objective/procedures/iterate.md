@@ -42,8 +42,11 @@ Run in order. Do not improvise or skip steps.
       - Check for `[!]` regressions — if any found, stop with a diagnostic listing the regressed
         ACs.
       - Continue to the next iteration (iterate will auto-scope the next phase).
-   3. On `PHASE_INCOMPLETE`: stop with a diagnostic — report the phase number, reason, and specific
-      blockers.
+   3. On `PHASE_INCOMPLETE`: re-read `.objectives/_current/00-main.md`, resolve the focused phase,
+      and read its `### Continuation` section when present. Stop with a diagnostic — report the
+      phase number, reason, and specific blockers. If continuation exists, surface Status, Source,
+      Route, Summary, Clear when, and any Payload as resume state. Do not write, clear, or otherwise
+      take ownership of `### Continuation`.
 
 3. Completion. When no `[ ]` ACs remain (all are `[x]`, `[~]`, or `[-]`):
    1. Read and follow `procedures/summarize.md` with `--auto`.
@@ -56,7 +59,8 @@ Run in order. Do not improvise or skip steps.
 - Preserve verbatim: the pre-flight gate checks, the `--auto` summarize/phase-iterate invocations,
   the `PHASE_COMPLETE` / `PHASE_INCOMPLETE` handling, and the completion announcement.
 - Top-level orchestrator: replaces the user's manual `/objective phase-iterate` loop. All edits
-  happen through Phase Iterate; this procedure only reads `00-main.md` and orchestrates.
+  happen through Phase Iterate; this procedure only reads `00-main.md`, focused phase state, and
+  orchestrates.
 - `[~] (human)` ACs do not block the loop — they are deferred and listed at completion.
 - On `PHASE_INCOMPLETE`, stop immediately. Do not retry — the user must resolve the blocker.
 - Resumable: re-invoking `/objective iterate` after a stop reads `00-main.md`, finds completed

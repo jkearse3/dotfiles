@@ -42,7 +42,9 @@ Generate `00-main.md` with this content:
 
 ## New Phase
 
-Create a numbered phase file and add a linked index entry in `00-main.md`.
+Create a numbered phase file and add a linked index entry in `00-main.md`. New phase files include
+only required sections by default. Add optional phase-local sections from `references/phases.md`
+only when they have content.
 
 ### Compute phase-file inputs
 
@@ -84,4 +86,6 @@ P. [ ] [Phase Name](./NN-phase-P.md) *
 
 - `00-main.md` remains the objective index.
 - Phase files contain only the phase content; registration happens in `00-main.md`.
+- New phase templates do not include empty optional sections. Add `### Decisions` or
+  `### Continuation` only when phase-local content exists.
 - Phase-file input computation is shared by all auto-scope callers.

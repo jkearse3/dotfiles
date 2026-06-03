@@ -21,6 +21,10 @@ then AC validation if review is clean.
    - `### Approach` — strategy and constraints guiding the implementation.
    - `### Tasks` — completed work.
    - `### Issues` — existing issues for dedup.
+   - `### Continuation` — read-only resume context from a routed follow-up, if present.
+
+   Use `### Continuation` only to understand why verification resumed. Do not create, update, clear,
+   or route continuation; lifecycle decisions remain with the orchestrating procedure.
 
    Read the AC source file (`.objectives/_current/00-main.md`) `## Acceptance Criteria` section for
    AC text — used for AC validation in Step 6.

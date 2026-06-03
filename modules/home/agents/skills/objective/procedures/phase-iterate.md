@@ -54,6 +54,13 @@ Run in order. Do not improvise or skip steps. Announce each step number before e
    - Open issues (count).
    - Targeted ACs (from task references).
 
+   If the focused phase contains `### Continuation`, read Status, Source, Route, Summary, Clear
+   when, and any Payload before deciding where to resume. Treat Route as the primary resume
+   instruction and do not rely on prior chat context. If Route names a step in this procedure,
+   resume at that step after this announcement. If Route names another objective procedure, stop and
+   report the continuation details so the caller can run the routed procedure without mutating the
+   continuation.
+
 4. Run implement. Dispatch an implementation subagent with prompt:
 
    ```text
@@ -138,8 +145,7 @@ Run in order. Do not improvise or skip steps. Announce each step number before e
    - All phase issues resolved.
 
    - If complete:
-     - Mark phase complete in index (`[x]`).
-     - Remove focus marker (`*`).
+     - Keep the phase focused and incomplete in the index until explicit Step 8 approval/commit.
      - Collect targeted ACs from task references (`(ACN, satisfy)` / `(ACN, codify)` /
        `(ACN, enhance)`) for the summary.
      - Go to Step 8 (review and commit).
@@ -165,21 +171,45 @@ Run in order. Do not improvise or skip steps. Announce each step number before e
       the diff — the user reviews it independently.
    2. Wait for the user, who either approves or requests tweaks.
    - If the user approves:
-     1. Read and follow `procedures/summarize.md` with `--auto` to ensure the summary reflects the
+     1. Mark phase complete in index (`[x]`) and remove the focus marker (`*`).
+     2. Read and follow `procedures/summarize.md` with `--auto` to ensure the summary reflects the
         final committed state.
-     2. Compose the full revision description using the repo's version-control rules.
-     3. Commit the phase with `jj commit -m "$desc"`.
-     4. Note "Phase complete. Run `/objective phase-iterate` to scope and execute next phase."
+     3. Compose the full revision description using the repo's version-control rules.
+     4. Commit the phase with `jj commit -m "$desc"`.
+     5. Note "Phase complete. Run `/objective phase-iterate` to scope and execute next phase."
    - If the user requests tweaks:
-     1. Apply the requested changes in the working copy.
-     2. Re-run Step 4 (the implement-verify loop verifies the tweaks).
+     1. Dispatch a reconciliation subagent with prompt:
+
+        ```text
+        Read the file at ~/.claude/skills/objective/briefs/phase-reconcile.md and execute the instructions within it.
+
+        State file: <absolute path to phase file>
+        AC source: .objectives/_current/00-main.md
+        Review feedback:
+        <verbatim user feedback>
+        ```
+
+     2. Route the reconciliation `### Top-Level Status` deterministically:
+        - `NO_ACTION`: return to Step 8 approval.
+        - `NEEDS_IMPLEMENTATION`: return to Step 4.
+        - `NEEDS_USER_INPUT`: stop and surface reconciliation concerns to the user.
+        - `NEEDS_RESEARCH`: read and follow `procedures/investigate.md`.
+        - `NEEDS_DECISION`: read the focused phase `### Continuation` Payload. If it has
+          `Scope: phase` or routes to `procedures/phase-interrogate.md`, read and follow
+          `procedures/phase-interrogate.md`. If it has `Scope: objective` or routes to
+          `procedures/interrogate.md`, read and follow `procedures/interrogate.md`. If the payload
+          does not identify a decision scope, stop and surface the reconciliation concern.
+        - `SPEC_CHANGE_REQUIRED`: read and follow `procedures/spec.md`, then resume at Step 3.
+     3. Keep the phase focused and incomplete until explicit Step 8 approval/commit, regardless of
+        the reconciliation route.
 
    With `--auto-commit`: auto-commit and return a structured result.
-   1. Read and follow `procedures/summarize.md` with `--auto` to ensure the summary reflects the
+   1. Mark phase complete in index (`[x]`) and remove the focus marker (`*`).
+   2. Read and follow `procedures/summarize.md` with `--auto` to ensure the summary reflects the
       final committed state.
-   2. Compose the full revision description using the repo's version-control rules.
-   3. Commit the phase with `jj commit -m "$desc"`.
-   4. Return:
+   3. Compose the full revision description using the repo's version-control rules.
+   4. Commit the phase with `jj commit -m "$desc"`.
+   5. Return:
 
       ```text
       PHASE_COMPLETE
@@ -200,13 +230,13 @@ Run in order. Do not improvise or skip steps. Announce each step number before e
   by `phase-verify`. Scoping is dispatched as an isolated subagent via `briefs/phase-scope.md`;
   phase-iterate auto-accepts.
 - State passes between steps via `00-main.md` (ACs, phases index) and phase files (tasks, issues,
-  approach, context).
+  approach, context, continuation).
 - Never pause between steps. After each step completes, immediately proceed to the next unless the
   step requires user input (Steps 7 and 8 without `--auto-commit`, and blockers in Step 6). If any
   step fails or needs user input, stop and report.
 - Never edit repo files directly — phase-iterate is orchestration only. All repo edits go through
-  the dispatched implement/verify subagents, except: commits, the `00-main.md` index entry update in
-  Step 2, and user-directed tweaks in Step 8.
+  the dispatched implement/verify/reconciliation subagents, except: commits, the `00-main.md` index
+  entry update in Step 2, and Step 8 approval/commit phase-index updates.
 - Single-revision invariant (`references/contracts.md` § Invariants): all phase changes must live in
   `@` when verify runs — no intermediate `jj commit`, `jj new`, or `jj split` during the loop, so
   `jj diff` always captures the complete phase diff. Phase-iterate owns revision lifecycle.

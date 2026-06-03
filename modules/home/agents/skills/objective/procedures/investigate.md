@@ -5,17 +5,20 @@ decomposition and dispatch; this procedure handles persistence.
 
 ## Arguments
 
-Optional topic to focus research on. If omitted, derive from objective context.
+Optional topic to focus research on. If omitted, derive from focused phase continuation when it has
+status `NEEDS_RESEARCH`; otherwise derive from objective context.
 
 ## References
 
-- `references/contracts.md` — file conventions and invariants.
+- `references/contracts.md` — file conventions, invariants, and Continuation Lifecycle.
 - `references/index-format.md` — `00-main.md` section layout and marker semantics.
+- `references/phases.md` — Phase Resolution for locating focused phase continuation.
 - `references/structure.md` — objective registry and symlink layout.
 
 ## Steps
 
-1. Load objective. Read `.objectives/_current/00-main.md`.
+1. Load objective. Read `.objectives/_current/00-main.md`. If a focused phase exists, resolve its
+   content per `references/phases.md` § Phase Resolution and read `### Continuation` when present.
    - If an objective exists: go to Step 2.
    - If no objective: run the auto-creation flow below, then go to Step 2.
 
@@ -33,10 +36,12 @@ Optional topic to focus research on. If omitted, derive from objective context.
    5. Continue. The topic argument carries through to Step 2 (no re-derivation needed).
 
 2. Derive topic. If no topic argument was provided:
-   - Read `## Context` and `## Research > ### Questions` from `00-main.md`.
-   - Synthesize a focused research topic from gaps and unanswered questions.
-   - If no gaps are found, stop: "No questions or research gaps. Provide a topic or add questions
-     first."
+   - If a focused phase exists and contains `### Continuation` with `Status: NEEDS_RESEARCH`, use
+     its Summary, Route, Clear when, and any Payload as the default research topic and context.
+   - Otherwise, read `## Context` and `## Research > ### Questions` from `00-main.md`, then
+     synthesize a focused research topic from gaps and unanswered questions.
+   - If no continuation context or objective gaps are found, stop: "No questions or research gaps.
+     Provide a topic or add questions first."
 
 3. Invoke the investigate skill via the Skill tool with the topic from Step 2. The skill dispatches
    subagents and synthesizes results in a single pass. It is not aware of objectives. Wait for the
@@ -54,16 +59,23 @@ Optional topic to focus research on. If omitted, derive from objective context.
      deliberative choices (picking between options) go to Decisions with rationale.
    - If a finding validates a prior assumption, remove the assumption and add it to Findings.
 
-5. Present summary.
+5. Clear or update continuation. After Step 4 has persisted objective-wide research results to
+   `00-main.md`, apply `references/contracts.md` § Continuation Lifecycle for
+   `Status: NEEDS_RESEARCH`.
+
+6. Present summary.
    - Key findings from this research session.
    - New questions added (if any).
    - Questions resolved (moved to findings/decisions).
+   - Continuation cleared or updated, including the next resume route when applicable.
    - Suggest next: more research, or ready for `/objective spec`.
 
 ## Contracts
 
 - Writes to `00-main.md`: `### Findings`, `### Decisions`, `### Questions`, and `### Assumptions`
-  (the last includes leads merged from `/investigate`), all under `## Research`.
+  (the last includes leads merged from `/investigate`), all under `## Research`. Writes to the
+  focused phase file (or inline phase section): `### Continuation`, per `references/contracts.md` §
+  Continuation Lifecycle.
 - Preserve the research-spike nudge, the no-gaps fallback, and the
   findings/leads/questions/assumptions merge rules verbatim.
 - The investigate skill runs a single pass and is objective-unaware — all persistence happens in
@@ -71,3 +83,5 @@ Optional topic to focus research on. If omitted, derive from objective context.
 - Run `/objective investigate` again per topic for separate sessions; the objective accumulates
   state, so nothing is lost between runs.
 - Findings inform Spec. Do not define ACs here.
+- Focused phase `### Continuation` with `Status: NEEDS_RESEARCH` is the default topic and context
+  when no explicit topic argument is provided.

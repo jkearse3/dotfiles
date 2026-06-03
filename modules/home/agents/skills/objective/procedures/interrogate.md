@@ -5,17 +5,21 @@ interviews the user; this procedure handles persistence.
 
 ## Arguments
 
-Optional topic to interrogate. If omitted, derive from objective context or conversation history.
+Optional topic to interrogate. If omitted, derive from focused phase continuation when it has status
+`NEEDS_DECISION` with `Scope: objective`; otherwise derive from objective context or conversation
+history.
 
 ## References
 
-- `references/contracts.md` — file conventions and invariants.
+- `references/contracts.md` — file conventions, invariants, and Continuation Lifecycle.
 - `references/index-format.md` — `00-main.md` section layout and marker semantics.
+- `references/phases.md` — Phase Resolution for locating focused phase continuation.
 - `references/structure.md` — objective registry and symlink layout.
 
 ## Steps
 
-1. Load objective. Read `.objectives/_current/00-main.md`.
+1. Load objective. Read `.objectives/_current/00-main.md`. If a focused phase exists, resolve its
+   content per `references/phases.md` § Phase Resolution and read `### Continuation` when present.
    - If an objective exists: go to Step 2.
    - If no objective: run the auto-creation flow below, then go to Step 2.
 
@@ -33,9 +37,12 @@ Optional topic to interrogate. If omitted, derive from objective context or conv
    5. Continue. The topic argument carries through to Step 2 (no re-derivation needed).
 
 2. Derive topic. If no topic argument was provided:
-   - Read `## Research > ### Questions`, `## Context`, then `## Approach` from `00-main.md` (in
-     order).
-   - Synthesize a focused interrogate topic from the first section with unresolved items:
+   - If a focused phase exists and contains `### Continuation` with `Status: NEEDS_DECISION` and
+     objective scope in its Payload or Route, use its Summary, Route, Clear when, and any Payload as
+     the default interrogation topic and context.
+   - Otherwise, read `## Research > ### Questions`, `## Context`, then `## Approach` from
+     `00-main.md` (in order), then synthesize a focused interrogate topic from the first section
+     with unresolved items:
      - `## Research > ### Questions`: unanswered questions drive deliberation.
      - `## Context`: stated motivation and background.
      - `## Approach`: proposed strategy and architecture.
@@ -54,18 +61,26 @@ Optional topic to interrogate. If omitted, derive from objective context or conv
    - Do not overwrite or remove existing decisions.
    - Merge decisions only — no findings, questions, or assumptions (unlike `/investigate`).
 
-5. Present summary.
+5. Clear or update continuation. After Step 4 has persisted objective-wide decisions to
+   `00-main.md`, apply `references/contracts.md` § Continuation Lifecycle for
+   `Status: NEEDS_DECISION` with objective scope.
+
+6. Present summary.
    - Key decisions made this session.
    - Open decisions requiring future resolution.
    - New questions that surfaced during interrogation.
+   - Continuation cleared or updated, including the next resume route when applicable.
    - Suggest next: more interrogation, or ready for `/objective spec`.
 
 ## Contracts
 
-- Writes `## Research > ### Decisions` in `00-main.md` only.
+- Writes `## Research > ### Decisions` in `00-main.md`. Writes to the focused phase file (or inline
+  phase section): `### Continuation`, per `references/contracts.md` § Continuation Lifecycle.
 - Preserve the auto-creation nudge, the topic-derivation fallback, and the decisions-merge semantics
   verbatim.
 - The interrogate skill is interactive and objective-unaware — all persistence happens in Step 4.
 - Run `/objective interrogate` again per topic for separate sessions; the objective accumulates
   state, so nothing is lost between runs.
 - Decisions inform Spec and Approach. Do not define ACs here.
+- Focused phase `### Continuation` with `Status: NEEDS_DECISION` and objective scope is the default
+  topic and context when no explicit topic argument is provided.

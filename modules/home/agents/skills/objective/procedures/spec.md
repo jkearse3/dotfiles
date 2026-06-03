@@ -7,12 +7,14 @@ ACs live in `00-main.md` under `## Acceptance Criteria`. Phase sections referenc
 ## Arguments
 
 Optional topic to scope interrogation. When provided, interrogation focuses on the topic and new ACs
-are appended to the existing list. When omitted, full re-review behavior.
+are appended to the existing list. When omitted, use focused phase continuation when it has status
+`SPEC_CHANGE_REQUIRED`; otherwise use full re-review behavior.
 
 ## References
 
-- `references/contracts.md` — § Load Current Objective for the load/nudge gate; § Invariants for
-  approval gates and AC semantics.
+- `references/contracts.md` — § Load Current Objective for the load/nudge gate; § Continuation
+  Lifecycle; § Invariants for approval gates and AC semantics.
+- `references/phases.md` — Phase Resolution for locating focused phase continuation.
 - `references/acceptance-criteria.md` — AC precision rules, stability/locking semantics, and the
   `[-]` invalidation format that govern AC definition and conflict checks.
 - `references/index-format.md` — AC numbering and marker format consumed when writing
@@ -21,7 +23,8 @@ are appended to the existing list. When omitted, full re-review behavior.
 ## Steps
 
 1. Load objective. Read `.objectives/_current/00-main.md` per `references/contracts.md` § Load
-   Current Objective.
+   Current Objective. If a focused phase exists, resolve its content per `references/phases.md` §
+   Phase Resolution and read `### Continuation` when present.
    - If no objective: nudge — "No active objective. Want me to load or create one?"
 
 2. Review research. Read the Research section in `00-main.md`:
@@ -31,11 +34,13 @@ are appended to the existing list. When omitted, full re-review behavior.
    - If critical gaps: suggest `/objective investigate` first.
 
 3. Interrogate requirements. Use the structured-question tool, batching related questions in one
-   call.
+   call. If no topic argument was provided and the focused phase contains `### Continuation` with
+   `Status: SPEC_CHANGE_REQUIRED`, use its Summary, Route, Clear when, and any Payload as the
+   default spec-change topic and context.
 
-   Topic mode (topic argument provided) — scope interrogation to the topic. Only assess dimensions
-   relevant to the new scope; skip dimensions already fully covered by existing ACs unless the topic
-   introduces new concerns:
+   Topic mode (topic argument provided or defaulted from `SPEC_CHANGE_REQUIRED` continuation) —
+   scope interrogation to the topic. Only assess dimensions relevant to the new scope; skip
+   dimensions already fully covered by existing ACs unless the topic introduces new concerns:
    - Read existing ACs to understand current coverage.
    - Focus on what the topic adds or changes: new behavior, new constraints, new edge cases.
    - Pre-fill aggressively from context, research, and existing ACs — the topic narrows the search
@@ -43,10 +48,10 @@ are appended to the existing list. When omitted, full re-review behavior.
    - Ask only about genuinely ambiguous aspects of the topic.
    - Iterate until the topic's scope is clear.
 
-   Full mode (no topic argument) — proportional investigation: check all 5 dimensions, but pre-fill
-   obvious answers from context and research. Only ask about genuinely ambiguous dimensions. For
-   trivial changes most dimensions have obvious answers — present them for quick validation instead
-   of open-ended questions.
+   Full mode (no topic argument and no `SPEC_CHANGE_REQUIRED` continuation) — proportional
+   investigation: check all 5 dimensions, but pre-fill obvious answers from context and research.
+   Only ask about genuinely ambiguous dimensions. For trivial changes most dimensions have obvious
+   answers — present them for quick validation instead of open-ended questions.
    - If ACs already exist: review current ACs against all dimensions, assess whether any dimensions
      are uncovered or any ACs vague/incomplete, present current ACs with gap analysis, ask
      clarifying questions for any gaps, and continue until all dimensions are addressed.
@@ -89,9 +94,9 @@ are appended to the existing list. When omitted, full re-review behavior.
    - **State & ordering**: transitions, sequencing, concurrency, partial completion.
    - **Degradation**: failure modes, fallbacks, error messages, partial success.
 
-   Topic mode: scope the cross-check to the topic's domain. Only walk categories relevant to what
-   the topic introduces or changes. Check candidate scenarios against existing ACs to avoid
-   duplication.
+   Topic mode: scope the cross-check to the topic's domain, including any default topic/context from
+   `SPEC_CHANGE_REQUIRED` continuation. Only walk categories relevant to what the topic introduces
+   or changes. Check candidate scenarios against existing ACs to avoid duplication.
 
    Full mode: walk all categories against the full set of dimension answers.
 
@@ -106,13 +111,14 @@ are appended to the existing list. When omitted, full re-review behavior.
 
 5. Define ACs. From answers and included scenarios, establish acceptance criteria.
 
-   Topic mode (topic argument provided) — draft only, do not write yet:
+   Topic mode (topic argument provided or defaulted from `SPEC_CHANGE_REQUIRED` continuation) —
+   draft only, do not write yet:
    - Draft new ACs starting at the next number after the highest existing AC.
    - Do not rewrite or renumber existing ACs.
    - Each new AC should map to answers from the topic-scoped interrogation.
    - Proceed to the conflict check (Step 6) before presenting or writing.
 
-   Full mode (no topic argument):
+   Full mode (no topic argument and no `SPEC_CHANGE_REQUIRED` continuation):
    - Clear, verifiable conditions for "done".
    - Number ACs for task references.
    - Each AC should map to a specific answer from interrogation.
@@ -162,16 +168,22 @@ are appended to the existing list. When omitted, full re-review behavior.
    user input. If the user's answers are vague, push for specifics. Write to `## Approach` in
    `00-main.md`.
 
-9. Present summary:
-   - List ACs with status (including any invalidated ACs with cross-references).
-   - Approach summary.
-   - Validation concerns (if any).
-   - Suggest next: refine ACs/approach, more research, or ready for `/objective phase-iterate`.
+9. Clear or update continuation. After approved AC, Approach, and validation-finding writes are
+   persisted to `00-main.md`, apply `references/contracts.md` § Continuation Lifecycle for
+   `Status: SPEC_CHANGE_REQUIRED`.
+
+10. Present summary:
+    - List ACs with status (including any invalidated ACs with cross-references).
+    - Approach summary.
+    - Validation concerns (if any).
+    - Continuation cleared or updated, including the next resume route when applicable.
+    - Suggest next: refine ACs/approach, more research, or ready for `/objective phase-iterate`.
 
 ## Contracts
 
 - Writes to `00-main.md`: `## Acceptance Criteria`, `## Approach`, and validation findings under
-  `## Research > ### Findings`.
+  `## Research > ### Findings`. Writes to the focused phase file (or inline phase section):
+  `### Continuation`, per `references/contracts.md` § Continuation Lifecycle.
 - Preserve verbatim: the no-objective nudge, the five interrogation dimensions and their
   sub-questions, the scenario cross-check categories and skip condition, the AC-definition rules,
   and the conflict-check markers/invalidation format.
@@ -179,6 +191,8 @@ are appended to the existing list. When omitted, full re-review behavior.
   one call — don't just list questions in text.
 - ACs are the contract — changes require user approval. Conflict check (Step 6) is an approval gate,
   not an automatic write.
+- Focused phase `### Continuation` with `Status: SPEC_CHANGE_REQUIRED` is the default spec-change
+  topic and context when no explicit topic argument is provided.
 - Re-spec means re-review (full mode only): existing ACs aren't sacred — assess completeness against
   all dimensions every time.
 - Interrogate aggressively (ask all relevant questions upfront), iterate until clear (if answers

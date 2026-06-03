@@ -63,6 +63,21 @@ The Phase proposal handler is a default callers may override, consistent with th
 gates" invariant. `phase-iterate` and `phase-interrogate` auto-accept the proposal; `phase-scope`
 instead presents it and waits for approval before accepting.
 
+### Continuation Lifecycle
+
+Apply this operation after a routed action has persisted its declared result:
+
+1. Inspect the focused phase `### Continuation`.
+2. If the continuation status matches the completed route and the result makes the next resume point
+   unambiguous, remove `### Continuation` or replace it with the next required route.
+3. If the next resume point is still ambiguous, update `### Continuation` with a precise Status,
+   Source, Route, Summary, Clear when, and any needed Payload. Do not clear it.
+4. Never clear or update continuation before the routed action's declared result write is complete.
+
+When a phase-local route discovers that objective-level follow-up is required, update
+`### Continuation` to the appropriate objective-level route only after the phase-local result is
+persisted. The routed objective-level procedure owns any later `00-main.md` write.
+
 ## Invariants
 
 - Preserve exact result tokens and strings consumed by callers.
@@ -73,3 +88,6 @@ instead presents it and waits for approval before accepting.
 - Preserve phase numbering and focus semantics.
 - Preserve the single-revision invariant: no `jj commit`, `jj new`, or `jj split` inside
   implement/verify loops; the orchestrator owns revision lifecycle.
+- Persist phase-local continuation before any procedure stops or routes away because unresolved
+  phase-local follow-up cannot be completed in the current path.
+- Clear phase-local continuation per `references/contracts.md` § Continuation Lifecycle.

@@ -41,19 +41,44 @@ removing step 3.
 
 ## Phase Sections
 
-Each phase contains only:
+Each phase contains these required sections:
 
 - `### Context` — what/why: intent and motivation for this phase.
 - `### Approach` — strategy, architectural notes, constraints.
 - `### Tasks` — flat numbered list.
 - `### Issues` — flat numbered list.
 
-No Research in phases — all research lives at objective level under `## Research`.
+Optional phase-local sections may be added when needed:
+
+- `### Decisions` — phase-local decisions from phase interrogation. Objective-wide decisions remain
+  in `00-main.md` under `## Research > ### Decisions`.
+- `### Continuation` — phase-local resume state for unresolved follow-up, route changes, or
+  compaction recovery. Objective-wide state remains in `00-main.md`.
+
+### Continuation Schema
+
+When present, `### Continuation` uses this minimal schema:
+
+```markdown
+### Continuation
+
+Status: <status token>
+Source: <where the continuation was created>
+Route: <procedure or step to resume>
+Summary: <one-paragraph resume context>
+Clear when: <condition that makes the next resume point unambiguous>
+
+#### Payload
+
+[Optional structured details needed by the routed procedure]
+```
+
+`#### Payload` is optional. Omit it when the fixed labels provide enough resume context.
 
 A phase is scoped as a single commit of work. It is atomic when all its tasks serve one cohesive
 change — if any task could land independently, it belongs in its own phase.
 
-| Form             | Location                                   | Heading            | Notes                                                            |
-| ---------------- | ------------------------------------------ | ------------------ | ---------------------------------------------------------------- |
-| File-based (new) | Separate `NN-phase-P.md` file              | `## Phase P: Name` | Holds only the sections above; `### Context` empty until scoped. |
-| Inline (legacy)  | `## Phase N: Name` section in `00-main.md` | `## Phase N: Name` | —                                                                |
+| Form             | Location                                   | Heading            | Notes                                                                 |
+| ---------------- | ------------------------------------------ | ------------------ | --------------------------------------------------------------------- |
+| File-based (new) | Separate `NN-phase-P.md` file              | `## Phase P: Name` | Holds required sections and any needed optional phase-local sections. |
+| Inline (legacy)  | `## Phase N: Name` section in `00-main.md` | `## Phase N: Name` | —                                                                     |

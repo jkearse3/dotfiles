@@ -65,8 +65,10 @@ The orchestrator provides these inputs in the prompt:
      task, not an AC.
 
 4. Write phase file. Write at the absolute path provided by the orchestrator using the New Phase
-   template (see Contracts). Use the `P` value in the `## Phase P: Phase Name` header. If a file
-   already exists at the provided path (prior refinement round), overwrite it.
+   template (see Contracts). Use the `P` value in the `## Phase P: Phase Name` header. Include only
+   required sections unless optional phase-local sections from `references/phases.md` already have
+   content to preserve from a refinement round. If a file already exists at the provided path (prior
+   refinement round), overwrite it.
 
 5. Return result. Return one `## Result:` block (see Contracts): `Phase Proposal` on success,
    `No Work Remaining` if nothing to scope, or `Readiness Issues` if Step 2 found blockers.
@@ -136,6 +138,8 @@ No phase to scope.
 - Tasks should be atomic: one clear outcome each.
 - Prefer codify-before-satisfy when practical (TDD).
 - Phase scoping is just-in-time: one phase at a time, informed by remaining ACs and prior learnings.
+- Do not add empty optional sections to new phases. Add `### Decisions` or `### Continuation` only
+  when the phase has phase-local content for that section.
 - **Phase atomicity**: a phase must contain only interdependent tasks — tasks that must land
   together for the change to make sense. If a task could be committed independently without breaking
   the others, it belongs in a separate phase. Example: "add helper function" and "update caller to

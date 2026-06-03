@@ -87,9 +87,14 @@ Optional objective name or slug to load directly.
    - Find the focused phase (marked with `*` in `## Phases`).
    - If the focused phase has a linked file, read it; otherwise read the inline section (Phase
      Resolution).
+   - If the focused phase contains `### Continuation`, read it as the primary resume state. Do not
+     modify or clear it while loading.
 
 7. Present context.
    - Show Context, Research summary, and the Phases list.
+   - If a focused phase exists and contains `### Continuation`: show Status, Source, Route, Summary,
+     Clear when, and any Payload before pending tasks. Present this continuation as the next resume
+     instruction after load or compaction.
    - If a focused phase exists: show the phase's approach and pending tasks.
    - Suggest next steps based on state (informational, don't ask interactively):
      - No phases yet: suggest starting research or creating the first phase.

@@ -7,7 +7,7 @@ round.
 ## References
 
 - `references/contracts.md` — file conventions, Auto-scope Dispatch, and invariants.
-- `references/phases.md` — phase numbering and section layout.
+- `references/phases.md` — phase numbering, required sections, and optional phase-local sections.
 - `references/templates.md` — New Phase (compute phase-file inputs before dispatch).
 
 ## Steps
