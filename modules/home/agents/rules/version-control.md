@@ -87,6 +87,22 @@ Closes #482
 
 Using jj collocated with git. Always in detached HEAD state; use git for read-only ops only.
 
+### Setup Pre-Flight
+
+Before file-changing or VCS-affecting work, detect repository state with read-only commands: check
+for initialized jj first, then check whether the directory is a git repository without jj. Prefer jj
+for file-changing or VCS-affecting work in git repositories.
+
+When a git work repository lacks jj initialization, the approved plan must explicitly include
+`jj git init --colocate` before edits or VCS-mutating commands proceed. Treat the plan approval as
+approval to run that initialization command. After initialization, verify bookmark and
+default-branch state before edits or VCS-mutating commands proceed; apply the VCS placement rules
+below using jj bookmarks.
+
+Reference-only clones, research, questions, and explanations do not trigger jj initialization unless
+the user asks to modify the repository or run VCS-mutating commands. Directories without git are not
+initialized with jj unless the user explicitly asks to initialize a new repository.
+
 ### Terminology
 
 - Revision description: the message content stored on a jj revision, composed from the subject,
