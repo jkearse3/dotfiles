@@ -4,8 +4,8 @@ description: Atomize jj revision into conventional commits [revision]
 argument-hint: "[revision-id]"
 ---
 
-Analyze revision and either describe (if atomic) or split into multiple atomic commits with
-conventional commit messages.
+Analyze revision and either describe it (if atomic) or split it into multiple atomic commits with
+full jj revision descriptions.
 
 ## Arguments
 
@@ -54,10 +54,10 @@ Error: expected [--single] [revision]
 
 4. **Present proposal**:
 
-   Follow [commit message rules](~/.config/opencode/rules/version-control.md) when composing —
-   type/scope taxonomy, subject format (72 chars, imperative mood, no period), body (status quo
-   first, then change; contextual mood; domain language; wrap at 72), footer (breaking change
-   trailer, issue refs).
+   Follow the repo's version-control rules when composing revision descriptions — type/scope
+   taxonomy, subject format (72 chars, imperative mood, no period), body (status quo first, then
+   change; contextual mood; domain language; wrap at 72), footer (breaking change trailer, issue
+   refs).
 
    If atomic (1 group):
 
@@ -94,14 +94,18 @@ Error: expected [--single] [revision]
 
 5. **Iterate** based on feedback until confirmed.
 
-6. **Execute** using multi-commit splitting pattern from
-   [version-control rules](~/.claude/rules/version-control.md):
-   - Compose each full description (subject + body + footer) per the commit rules above
-   - Use ANSI-C quoting (`$'...'`) with `\n\n` to embed body and footer in the description:
+6. **Execute** using the multi-commit splitting pattern from the repo's version-control rules:
+   - Compose each full revision description (subject + body + footer) per the rules above
+   - Assign multi-line revision descriptions to a shell variable and pass the quoted variable to
+     `-m`:
+
      ```bash
-     desc=$'type(scope): description\n\nStatus quo or problem, then change in response.'
+     desc='type(scope): description
+
+     Status quo or problem, then change in response.'
      jj split -r <target> -m "$desc" file1 file2
      ```
+
    - Track `first_commit` and `target` through splits
    - Show result with `jj log -r '<first>::<last>'`
    - If original target was `@`: run `jj new` to create fresh working copy

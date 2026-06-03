@@ -30,9 +30,10 @@ Run in order. Do not improvise or skip steps. Announce each step number before e
 
    Objective commit (one-time, before first phase): if no phases exist yet and objective files are
    tracked in version control (check with `jj st`), commit the objective to preserve the spec as a
-   checkpoint independent of implementation. If the working copy contains only objective files, run
-   `jj commit -m "docs: <brief description>"`. If other files are also present, use
-   `jj split -m "docs: <brief description>" <objective-files>` to commit only the objective files.
+   checkpoint independent of implementation. Compose the full revision description using the repo's
+   version-control rules. If the working copy contains only objective files, commit them with
+   `jj commit -m "$desc"`. If other files are also present, use
+   `jj split -m "$desc" <objective-files>` to commit only the objective files.
 
 2. Ensure focused phase. Find the focused phase (`*` in `## Phases`).
    - If a focused phase exists: go to Step 3.
@@ -166,8 +167,9 @@ Run in order. Do not improvise or skip steps. Announce each step number before e
    - If the user approves:
      1. Read and follow `procedures/summarize.md` with `--auto` to ensure the summary reflects the
         final committed state.
-     2. Commit the phase with `jj commit -m "<conventional commit message>"`.
-     3. Note "Phase complete. Run `/objective phase-iterate` to scope and execute next phase."
+     2. Compose the full revision description using the repo's version-control rules.
+     3. Commit the phase with `jj commit -m "$desc"`.
+     4. Note "Phase complete. Run `/objective phase-iterate` to scope and execute next phase."
    - If the user requests tweaks:
      1. Apply the requested changes in the working copy.
      2. Re-run Step 4 (the implement-verify loop verifies the tweaks).
@@ -175,24 +177,24 @@ Run in order. Do not improvise or skip steps. Announce each step number before e
    With `--auto-commit`: auto-commit and return a structured result.
    1. Read and follow `procedures/summarize.md` with `--auto` to ensure the summary reflects the
       final committed state.
-   2. Commit the phase with `jj commit -m "<conventional commit message>"`.
-   3. Return:
+   2. Compose the full revision description using the repo's version-control rules.
+   3. Commit the phase with `jj commit -m "$desc"`.
+   4. Return:
 
       ```text
       PHASE_COMPLETE
       phase: <N>
-      commit_message: <the conventional commit message used>
+      commit_message: <the full revision description used>
       ac_status: <list of AC number and new status, e.g. "AC1: [~], AC3: [~]">
       ```
 
 ## Contracts
 
 - Preserve verbatim: the two Step 1 nudges, the Step 1 objective-commit `jj commit` / `jj split`
-  invocations, the Step 2 no-work message ("Nothing to iterate.") and index entry
+  command shapes, the Step 2 no-work message ("Nothing to iterate.") and index entry
   `P. [ ] [Phase Name](./NN-phase-P.md) *`, the implement/verify dispatch prompts, the
-  `No changes to verify.` contract string, the `ac_status` section→marker mapping, the
-  `PHASE_INCOMPLETE` / `PHASE_COMPLETE` blocks and their fields, and the Step 8
-  `jj commit -m "<conventional commit message>"` invocation.
+  `No changes to verify.` contract string, the `ac_status` section→marker mapping, and the
+  `PHASE_INCOMPLETE` / `PHASE_COMPLETE` blocks and their fields.
 - Loop ownership: phase-iterate owns the implement-verify loop (dispatch, AC status capture,
   termination) and lifecycle (commit, phase marking). AC derivation and annotation are now handled
   by `phase-verify`. Scoping is dispatched as an isolated subagent via `briefs/phase-scope.md`;
