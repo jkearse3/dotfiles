@@ -51,6 +51,10 @@
           "--reversed"
           "-s"
         ];
+        stat = [
+          "show"
+          "--stat"
+        ];
         divergent = [
           "log"
           "-r"
