@@ -25,7 +25,6 @@ require("lib.config").run({
 				hide_during_completion = false,
 				accept = false,
 			},
-			copilot_model = "gpt-41-copilot",
 		})
 
 		local suggestion = require("copilot.suggestion")
