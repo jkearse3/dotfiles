@@ -4,8 +4,8 @@ Classify non-auto Step 8 review feedback and persist the next route in the focus
 
 ## References
 
-- `references/contracts.md` — file conventions and invariants (caller-token preservation,
-  continuation persistence, and write boundaries).
+- `references/contracts.md` — file conventions, Reconciliation Result Contract, and invariants
+  (caller-token preservation, continuation persistence, and write boundaries).
 - `references/phases.md` — `### Continuation` labels.
 
 ## Arguments
@@ -67,7 +67,8 @@ The orchestrator provides these inputs in the prompt:
    `### Continuation` in the phase file using `references/phases.md` continuation labels:
    - `Status`: the top-level status.
    - `Source`: `phase-iterate Step 8 reconciliation`.
-   - `Route`: the deterministic next route from the status (see Contracts § Status Routes).
+   - `Route`: the deterministic next route from the status (see `references/contracts.md` §
+     Reconciliation Result Contract).
    - `Summary`: concise summary of the unresolved feedback.
    - `Clear when`: the routed procedure has persisted its result and the next resume point is
      unambiguous.
@@ -80,39 +81,10 @@ The orchestrator provides these inputs in the prompt:
    Do not write `### Continuation` for `NO_ACTION` or `NEEDS_IMPLEMENTATION`, because those statuses
    return directly to Step 8 approval or Step 4 implementation.
 
-6. Return summary. Return the `## Result: Reconciliation Summary` block (see Contracts).
+6. Return summary. Return the `## Result: Reconciliation Summary` block from
+   `references/contracts.md` § Reconciliation Result Contract.
 
 ## Contracts
-
-### Result Block
-
-Headings and fields are caller-parsed — do not rename or reorder.
-
-```
-## Result: Reconciliation Summary
-
-### Top-Level Status
-- <NO_ACTION|NEEDS_USER_INPUT|NEEDS_IMPLEMENTATION|NEEDS_RESEARCH|NEEDS_DECISION|SPEC_CHANGE_REQUIRED>
-
-### Dispositions
-- [itemized feedback disposition list]
-
-### Phase File Updates
-- [issues, tasks, or continuation written; or "None"]
-
-### Concerns
-- [any issue requiring user input, or "None"]
-```
-
-### Status Routes
-
-- `NO_ACTION` — return to Step 8 approval.
-- `NEEDS_IMPLEMENTATION` — return to Step 4 implementation.
-- `NEEDS_USER_INPUT` — stop and surface concerns to the user.
-- `NEEDS_RESEARCH` — run `procedures/investigate.md`.
-- `NEEDS_DECISION` — run `procedures/interrogate.md` for `Scope: objective`, or
-  `procedures/phase-interrogate.md` for `Scope: phase`.
-- `SPEC_CHANGE_REQUIRED` — run `procedures/spec.md`, then resume phase iteration at Step 3.
 
 ### Rules
 

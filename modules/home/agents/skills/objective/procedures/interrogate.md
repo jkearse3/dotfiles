@@ -23,18 +23,15 @@ history.
    - If an objective exists: go to Step 2.
    - If no objective: run the auto-creation flow below, then go to Step 2.
 
-   Auto-creation flow (no active objective):
-   1. Require topic. If no topic argument was provided, nudge and stop: "No active objective.
-      Provide a topic to start a decision spike, or want me to load/create an objective?"
-   2. Extract slug. From the topic, take 2-3 key terms forming a compact, descriptive slug
-      (lowercase, hyphen-separated). Drop filler words. Example: "what database should we use for
-      the new service" → `database-decision`.
-   3. Confirm with user. Present the derived slug and ask for confirmation or override. Example:
-      "Starting decision spike. Branch and objective will be named `database-decision`. Proceed, or
-      provide an alternative name?"
-   4. Create branch + objective. Read and follow `procedures/create.md` with the confirmed slug as
-      the argument. This creates the bookmark and objective and loads it.
-   5. Continue. The topic argument carries through to Step 2 (no re-derivation needed).
+   Auto-creation flow (no active objective): apply `references/contracts.md` § Spike Auto-Creation
+   with these caller parameters:
+   - Spike kind: `decision spike`.
+   - Require-topic nudge: "No active objective. Provide a topic to start a decision spike, or want
+     me to load/create an objective?"
+   - Slug example: "what database should we use for the new service" → `database-decision`.
+   - Confirmation example: "Starting decision spike. Branch and objective will be named
+     `database-decision`. Proceed, or provide an alternative name?"
+   - Create argument: confirmed slug.
 
 2. Derive topic. If no topic argument was provided:
    - If a focused phase exists and contains `### Continuation` with `Status: NEEDS_DECISION` and

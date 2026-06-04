@@ -2,10 +2,6 @@
 
 Objective registry layout, configuration, and file naming.
 
-## References
-
-- `references/templates.md` — phase-file template that phase files follow.
-
 ## Directory Structure
 
 `.objectives/` is the objective registry. Entries are either real directories (default) or symlinks
@@ -102,4 +98,4 @@ Rules:
 - `00-main.md` is always the primary index — supplementary files are linked from it
 - Supplementary files are freeform (no required structure)
 - Never put ACs, approach, or the phases index in supplementary files
-- Phase files follow the phase template (see Templates)
+- Phase files contain phase content and are registered from `00-main.md`

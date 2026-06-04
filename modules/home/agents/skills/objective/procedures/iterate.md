@@ -5,7 +5,7 @@ Autonomous outer loop: run a pre-flight confidence gate, then invoke Phase Itera
 
 ## References
 
-- `references/contracts.md` — file conventions and invariants.
+- `references/contracts.md` — file conventions, Phase Iterate Result Blocks, and invariants.
 - `references/acceptance-criteria.md` — AC verifiability and marker semantics.
 
 ## Steps
@@ -37,16 +37,17 @@ Run in order. Do not improvise or skip steps.
 
 2. Enter outer loop. While uncompleted `[ ]` ACs remain (excluding `[-]` invalidated ACs):
    1. Read and follow `procedures/phase-iterate.md` with `--auto-commit`.
-   2. On `PHASE_COMPLETE`:
+   2. On `PHASE_COMPLETE` per `references/contracts.md` § Phase Iterate Result Blocks:
       - Re-read `.objectives/_current/00-main.md` to get updated AC state.
       - Check for `[!]` regressions — if any found, stop with a diagnostic listing the regressed
         ACs.
       - Continue to the next iteration (iterate will auto-scope the next phase).
-   3. On `PHASE_INCOMPLETE`: re-read `.objectives/_current/00-main.md`, resolve the focused phase,
-      and read its `### Continuation` section when present. Stop with a diagnostic — report the
-      phase number, reason, and specific blockers. If continuation exists, surface Status, Source,
-      Route, Summary, Clear when, and any Payload as resume state. Do not write, clear, or otherwise
-      take ownership of `### Continuation`.
+   3. On `PHASE_INCOMPLETE` per `references/contracts.md` § Phase Iterate Result Blocks: re-read
+      `.objectives/_current/00-main.md`, resolve the focused phase, and read its `### Continuation`
+      section when present. Stop with a diagnostic — report the phase number, reason, and specific
+      blockers. If continuation exists, surface Status, Source, Route, Summary, Clear when, and any
+      Payload as resume state. Do not write, clear, or otherwise take ownership of
+      `### Continuation`.
 
 3. Completion. When no `[ ]` ACs remain (all are `[x]`, `[~]`, or `[-]`):
    1. Read and follow `procedures/summarize.md` with `--auto`.
@@ -57,7 +58,8 @@ Run in order. Do not improvise or skip steps.
 ## Contracts
 
 - Preserve verbatim: the pre-flight gate checks, the `--auto` summarize/phase-iterate invocations,
-  the `PHASE_COMPLETE` / `PHASE_INCOMPLETE` handling, and the completion announcement.
+  the `PHASE_COMPLETE` / `PHASE_INCOMPLETE` handling per `references/contracts.md` § Phase Iterate
+  Result Blocks, and the completion announcement.
 - Top-level orchestrator: replaces the user's manual `/objective phase-iterate` loop. All edits
   happen through Phase Iterate; this procedure only reads `00-main.md`, focused phase state, and
   orchestrates.

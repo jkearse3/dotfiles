@@ -13,12 +13,8 @@ Synthesize the Summary section for PR descriptions.
 
 ## Steps
 
-1. Load the current objective per `references/contracts.md` § Load Current Objective. Stop with this
-   nudge if no valid objective is active:
-
-   ```text
-   No active objective. Want me to load or create one?
-   ```
+1. Load the current objective per `references/contracts.md` § Load Current Objective, including its
+   no-objective nudge.
 
 2. Gather context:
    - Read `00-main.md` (Context, Research, Acceptance Criteria, Phases index).
@@ -66,6 +62,5 @@ Synthesize the Summary section for PR descriptions.
 - The Summary is external-facing — assume the reader has no other context.
 - Used for PR/MR descriptions.
 - Run after implementation is complete, not during planning.
-- Preserve verbatim: the `No active objective. Want me to load or create one?` nudge, the `--auto`
-  skip behavior, the Summary/Implementation Notes output template, and the
-  `Summary written to objective.` report string.
+- Preserve verbatim: the `--auto` skip behavior, the Summary/Implementation Notes output template,
+  and the `Summary written to objective.` report string.

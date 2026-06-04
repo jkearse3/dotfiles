@@ -2,10 +2,6 @@
 
 Phase index format, content resolution, and per-phase section structure.
 
-## References
-
-- `references/templates.md` — phase-file template and creation rules.
-
 ## Phase Index
 
 Compact numbered list linking to phase files. Never renumber.

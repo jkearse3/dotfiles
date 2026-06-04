@@ -12,8 +12,9 @@ then enrich AC status and commit.
 
 ## References
 
-- `references/contracts.md` — file conventions, Auto-scope Dispatch, and invariants (single-revision
-  rule).
+- `references/contracts.md` — file conventions, Phase Iterate Result Blocks, Reconciliation Result
+  Contract, and invariants (single-revision rule).
+- `references/auto-scope-dispatch.md` — Auto-scope Dispatch.
 - `references/phases.md` — Phase Resolution (locate focused phase content).
 - `references/templates.md` — New Phase (compute phase-file inputs before dispatch).
 - `references/acceptance-criteria.md` — AC marker and evidence semantics.
@@ -23,8 +24,8 @@ then enrich AC status and commit.
 Run in order. Do not improvise or skip steps. Announce each step number before executing it (e.g.,
 "Step 4: Run Implement") to maintain orientation.
 
-1. Load state. Read `.objectives/_current/00-main.md` fresh (never rely on prior context).
-   - If no objective: nudge — "No active objective. Want me to load or create one?"
+1. Load state. Read `.objectives/_current/00-main.md` fresh (never rely on prior context) per
+   `references/contracts.md` § Load Current Objective, including its no-objective nudge.
    - If no ACs in `## Acceptance Criteria`: nudge — "No acceptance criteria defined yet. Want me to
      run `/objective spec`?"
 
@@ -37,14 +38,12 @@ Run in order. Do not improvise or skip steps. Announce each step number before e
 
 2. Ensure focused phase. Find the focused phase (`*` in `## Phases`).
    - If a focused phase exists: go to Step 3.
-   - If none: run `references/contracts.md` § Auto-scope Dispatch with these procedure-specific
-     results:
+   - If none: run `references/auto-scope-dispatch.md` § Dispatch with these procedure-specific
+     results, using the default auto-accept Phase proposal handler:
      - No work remaining: report "Nothing to iterate." and stop.
      - Readiness issues: surface them and stop.
-     - Phase proposal: auto-accept (no user approval). The subagent has already written the phase
-       file at the computed path. Update `00-main.md` immediately by adding a linked index entry to
-       `## Phases`: `P. [ ] [Phase Name](./NN-phase-P.md) *`. Then re-read `00-main.md` to pick up
-       the new phase and go to Step 3.
+     - Phase proposal: auto-accept (no user approval), re-read `00-main.md` to pick up the new
+       phase, and go to Step 3.
 
 3. Announce scope. Locate the focused phase content per `references/phases.md` § Phase Resolution:
    if the index entry has a markdown link, read that file; otherwise read the inline `## Phase N:`
@@ -121,14 +120,9 @@ Run in order. Do not improvise or skip steps. Announce each step number before e
    - No tasks are blocked `[!]`.
 
    - If blocked tasks exist: stop and surface them — report which tasks are blocked and why; wait
-     for user direction. With `--auto-commit`, return instead:
-
-     ```text
-     PHASE_INCOMPLETE
-     phase: <N>
-     reason: <blocked_tasks|unresolved_issues|implement_concerns>
-     details: <specific blockers or concerns>
-     ```
+     for user direction. With `--auto-commit`, return `PHASE_INCOMPLETE` per
+     `references/contracts.md` § Phase Iterate Result Blocks with reason `blocked_tasks` and blocker
+     details.
 
    - If not complete (pending tasks or open issues remain but no blockers): return to Step 4 for
      another cycle.
@@ -154,14 +148,8 @@ Run in order. Do not improvise or skip steps. Announce each step number before e
      objective-level concern.
    - If not complete for other reasons:
      - Without `--auto-commit`: stop. User decides whether to run another cycle.
-     - With `--auto-commit`: return a structured diagnostic:
-
-       ```text
-       PHASE_INCOMPLETE
-       phase: <N>
-       reason: <blocked_tasks|unresolved_issues|implement_concerns>
-       details: <specific blockers or concerns>
-       ```
+     - With `--auto-commit`: return `PHASE_INCOMPLETE` per `references/contracts.md` § Phase Iterate
+       Result Blocks using the matching reason and details.
 
 8. Review and commit.
 
@@ -189,34 +177,24 @@ Run in order. Do not improvise or skip steps. Announce each step number before e
         <verbatim user feedback>
         ```
 
-     2. Route the reconciliation `### Top-Level Status` deterministically:
-        - `NO_ACTION`: return to Step 8 approval.
-        - `NEEDS_IMPLEMENTATION`: return to Step 4.
-        - `NEEDS_USER_INPUT`: stop and surface reconciliation concerns to the user.
-        - `NEEDS_RESEARCH`: read and follow `procedures/investigate.md`.
-        - `NEEDS_DECISION`: read the focused phase `### Continuation` Payload. If it has
-          `Scope: phase` or routes to `procedures/phase-interrogate.md`, read and follow
-          `procedures/phase-interrogate.md`. If it has `Scope: objective` or routes to
-          `procedures/interrogate.md`, read and follow `procedures/interrogate.md`. If the payload
-          does not identify a decision scope, stop and surface the reconciliation concern.
-        - `SPEC_CHANGE_REQUIRED`: read and follow `procedures/spec.md`, then resume at Step 3.
+     2. Route the reconciliation `### Top-Level Status` deterministically per
+        `references/contracts.md` § Reconciliation Result Contract. For `NEEDS_DECISION`, read the
+        focused phase `### Continuation` Payload. If it has `Scope: phase` or routes to
+        `procedures/phase-interrogate.md`, read and follow `procedures/phase-interrogate.md`. If it
+        has `Scope: objective` or routes to `procedures/interrogate.md`, read and follow
+        `procedures/interrogate.md`. If the payload does not identify a decision scope, stop and
+        surface the reconciliation concern.
      3. Keep the phase focused and incomplete until explicit Step 8 approval/commit, regardless of
         the reconciliation route.
 
-   With `--auto-commit`: auto-commit and return a structured result.
+   With `--auto-commit`: auto-commit and return `PHASE_COMPLETE` per `references/contracts.md` §
+   Phase Iterate Result Blocks.
    1. Mark phase complete in index (`[x]`) and remove the focus marker (`*`).
    2. Read and follow `procedures/summarize.md` with `--auto` to ensure the summary reflects the
       final committed state.
    3. Compose the full revision description using the repo's version-control rules.
    4. Commit the phase with `jj commit -m "$desc"`.
-   5. Return:
-
-      ```text
-      PHASE_COMPLETE
-      phase: <N>
-      commit_message: <the full revision description used>
-      ac_status: <list of AC number and new status, e.g. "AC1: [~], AC3: [~]">
-      ```
+   5. Return the structured result.
 
 ## Contracts
 
@@ -224,11 +202,13 @@ Run in order. Do not improvise or skip steps. Announce each step number before e
   command shapes, the Step 2 no-work message ("Nothing to iterate.") and index entry
   `P. [ ] [Phase Name](./NN-phase-P.md) *`, the implement/verify dispatch prompts, the
   `No changes to verify.` contract string, the `ac_status` section→marker mapping, and the
-  `PHASE_INCOMPLETE` / `PHASE_COMPLETE` blocks and their fields.
+  `PHASE_INCOMPLETE` / `PHASE_COMPLETE` blocks from `references/contracts.md` § Phase Iterate Result
+  Blocks.
 - Loop ownership: phase-iterate owns the implement-verify loop (dispatch, AC status capture,
   termination) and lifecycle (commit, phase marking). AC derivation and annotation are now handled
   by `phase-verify`. Scoping is dispatched as an isolated subagent via `briefs/phase-scope.md`;
-  phase-iterate auto-accepts.
+  phase-iterate uses the shared Auto-scope Dispatch auto-accept handler from
+  `references/auto-scope-dispatch.md` § Dispatch.
 - State passes between steps via `00-main.md` (ACs, phases index) and phase files (tasks, issues,
   approach, context, continuation).
 - Never pause between steps. After each step completes, immediately proceed to the next unless the

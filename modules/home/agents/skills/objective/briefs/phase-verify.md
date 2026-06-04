@@ -7,6 +7,7 @@ then AC validation if review is clean.
 
 - `references/contracts.md` — file conventions and § Invariants (caller-token preservation and the
   single-revision rule).
+- `references/acceptance-criteria.md` — AC states, evidence, and § AC Validation And Derivation.
 
 ## Write Permissions
 
@@ -16,18 +17,8 @@ then AC validation if review is clean.
 
 ## Steps
 
-1. Load state. Read the state file at the path provided by the orchestrator:
-   - `### Context` — intent.
-   - `### Approach` — strategy and constraints guiding the implementation.
-   - `### Tasks` — completed work.
-   - `### Issues` — existing issues for dedup.
-   - `### Continuation` — read-only resume context from a routed follow-up, if present.
-
-   Use `### Continuation` only to understand why verification resumed. Do not create, update, clear,
-   or route continuation; lifecycle decisions remain with the orchestrating procedure.
-
-   Read the AC source file (`.objectives/_current/00-main.md`) `## Acceptance Criteria` section for
-   AC text — used for AC validation in Step 6.
+1. Load state. Apply `references/contracts.md` § Load Phase Subagent State. Use AC text for AC
+   validation in Step 6.
 
 2. Check for changes. Run `jj diff --stat` (or `git diff --stat` if jj is unavailable). If no
    changes, stop and return the no-changes `## Result: Verify Summary` block (see Contracts). The
@@ -65,36 +56,14 @@ then AC validation if review is clean.
    `## Result: Verify Summary` block (see Contracts). Do not proceed to AC validation — the
    orchestrator loop will dispatch implement to address the issues. If no new issues, proceed.
 
-6. AC validation. For each AC (from `.objectives/_current/00-main.md` `## Acceptance Criteria`):
-   1. **Identify relevant code** — use completed tasks to find what changed.
-   2. **Read the code** — examine the implementation.
-   3. **Assess satisfaction** — does this code actually fulfill the AC?
-   4. **Reference existing tests** — if tests exist, cite them as supporting evidence.
-   5. **Determine status**:
-      - `[x]` — code satisfies AC AND you're confident (has tests, or implementation is trivial).
-      - `[~]` — code appears to satisfy AC but needs verification (implement decides: tests or
-        human).
-      - `[!]` — previously satisfied but no longer (regression).
-      - `[ ]` — not yet implemented.
+6. AC validation. Apply `references/acceptance-criteria.md` § AC Validation And Derivation to
+   inspect changed code, cite supporting tests, select AC statuses, and prepare evidence for each AC
+   from `.objectives/_current/00-main.md` `## Acceptance Criteria`.
 
-   Include the determined status for each AC in the Step 9 summary.
-
-7. AC derivation. For each AC targeted by phase tasks (identified by `(ACN, satisfy/enhance)`
-   annotations in the phase file `### Tasks`):
-   1. **enhance-preservation**: If all referencing tasks are `(ACN, enhance)`, preserve the existing
-      AC marker and text from `00-main.md` as-is (enhancement doesn't change satisfaction status).
-   2. **human-preservation**: ACs with `(human)` annotations in the phase file are never modified —
-      preserve both the marker and the annotation.
-   3. **fallback**: If a task is `(ACN, satisfy)` but no matching AC exists in `00-main.md`, flag it
-      as a readiness issue in `### Issues` rather than silently creating one.
-   4. **satisfy derivation**: For `(ACN, satisfy)` tasks with a matching AC, use the AC validation
-      status from Step 6. If the AC was validated `[x]`, mark it `[x]` with evidence notes. If
-      validated `[~]`, mark it `[~]` with evidence notes.
-
-   Update `## Acceptance Criteria` in `00-main.md` in a single edit:
-   - Update markers using the derived status.
-   - Add evidence notes from Step 6 validation (fully qualified paths, test results).
-   - Preserve existing AC text and `(human)` annotations.
+7. AC derivation. Apply `references/acceptance-criteria.md` § AC Validation And Derivation for ACs
+   targeted by `(ACN, satisfy/enhance)` phase task annotations. Preserve enhancement-only ACs,
+   preserve human-marked ACs, flag missing satisfy targets as readiness issues in `### Issues`, and
+   update `## Acceptance Criteria` in `00-main.md` in a single edit.
 
 8. Confirm issue persistence. Re-read the state file and confirm every new Step 4 finding has been
    appended to `### Issues` with the correct format

@@ -2,13 +2,8 @@
 
 Annotated specimen for `00-main.md`, the objective index.
 
-## References
-
-- `references/phases.md` — § Phase Sections for per-phase content.
-- `references/templates.md` — phase-file template and creation rules.
-
 `00-main.md` carries Context, Research, Acceptance Criteria, Approach, and the Phases index. Phase
-content lives in separate files (see Phase Sections and Templates).
+content lives in separate files (see `references/phases.md` § Phase Sections).
 
 ```markdown
 ## Context

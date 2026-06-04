@@ -46,6 +46,33 @@ Create a numbered phase file and add a linked index entry in `00-main.md`. New p
 only required sections by default. Add optional phase-local sections from `references/phases.md`
 only when they have content.
 
+Use this template for new phase files:
+
+```markdown
+## Phase P: Phase Name
+
+### Context
+
+[Brief summary of what this phase addresses and why]
+
+### Approach
+
+[Strategy and architectural notes]
+
+### Tasks
+1. [ ] [task description] (AC1, satisfy)
+2. [ ] [task description] (AC2, enhance)
+3. [ ] [cleanup or refactoring task]
+
+### Issues
+```
+
+Task annotations:
+
+- `(ACN, satisfy)` — task directly implements an AC that is not yet satisfied.
+- `(ACN, enhance)` — task improves or refines an already-satisfied AC.
+- No annotation — task is pure implementation detail: cleanup, refactoring, or tooling.
+
 ### Compute phase-file inputs
 
 Resolve these before dispatching the scoping subagent:
@@ -57,22 +84,7 @@ Resolve these before dispatching the scoping subagent:
 
 Use these values to write the phase file and register it in `00-main.md`.
 
-1. Create `NN-phase-P.md` at the computed absolute path.
-
-```markdown
-## Phase P: Phase Name
-
-### Context
-
-### Approach
-
-[Strategy and architectural notes for this phase]
-
-### Tasks
-1. [ ] Define scope
-
-### Issues
-```
+1. Create `NN-phase-P.md` at the computed absolute path using the New Phase template.
 
 2. Add a linked index entry in `00-main.md` under `## Phases`.
 

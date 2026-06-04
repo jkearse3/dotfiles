@@ -7,15 +7,17 @@ code review, merge findings, and create cleanup phases.
 
 - `references/contracts.md` — § Invariants for the subagent write boundary and caller-token
   preservation.
+- `references/branch-review.md` — § Autonomous Branch Review Conventions for the report fields,
+  review phase numbering, review filename, phase-file shape, and index-entry shape.
 - `references/phases.md` — Phase Index format and "never renumber" rule for the index entry written
   in Step 8.
 - `references/templates.md` — New Phase template and § Compute phase-file inputs for `P`/`NN` and
-  the index-entry registration; the review-specific filename, content, and review-number computation
-  are in Contracts below.
+  the index-entry registration.
 
 ## Write Permissions
 
-- Write phase files at computed paths (create review phase files per § Phase File)
+- Write phase files at computed paths (create review phase files per `references/branch-review.md` §
+  Autonomous Branch Review Conventions)
 - Modify entries in `## Phases` in `00-main.md` (register new phase index entries; never renumber
   existing phases)
 
@@ -72,59 +74,10 @@ code review, merge findings, and create cleanup phases.
 
 8. Write phases. For each group, create a phase file and register it in `00-main.md` per
    `references/templates.md` New Phase template and § Compute phase-file inputs, with the
-   review-specific overrides in § Phase File and § Index Entry below. Focus the first created phase
-   (`*` in index) if no phase is currently focused.
+   review-specific conventions in `references/branch-review.md` § Autonomous Branch Review
+   Conventions. Focus the first created phase (`*` in index) if no phase is currently focused.
 
 ## Contracts
-
-### Report
-
-The subagent returns, and the orchestrator presents, this summary:
-
-- Phases created (count and names).
-- Concern counts by source (human REVIEW comments vs. code review findings).
-- Out-of-scope concerns flagged (count, if any).
-- Suggest: `/objective phase-iterate` to execute.
-
-### Phase Numbering
-
-Computed via `references/templates.md` § Compute phase-file inputs, with two review-specific values:
-
-- Review number `M`: search existing phases for the `Review N` pattern; next `M` = highest + 1.
-- Filename is `NN-phase-P-review-M.md` (not the base `NN-phase-P.md`).
-
-### Phase File
-
-Write `NN-phase-P-review-M.md` using the New Phase template, overriding the heading and
-`### Approach` with review content:
-
-```markdown
-## Phase P: Review M: <description>
-
-### Context
-
-### Approach
-
-Address review feedback from autonomous review of branch changes.
-
-#### path/file.ext
-
-- **L<line>**: Concern description (source)
-
-### Tasks
-1. [ ] Task description (ACN, satisfy/enhance) or (IN)
-
-### Issues
-```
-
-### Index Entry
-
-Add a linked entry to `## Phases` in `00-main.md` per `references/phases.md` Phase Index — never
-renumber existing phases:
-
-```markdown
-P. [ ] [Review M: <description>](./NN-phase-P-review-M.md)
-```
 
 ### REVIEW Comment Convention
 
@@ -149,8 +102,9 @@ Multi-line (explicit `/REVIEW` terminator):
   user-facing summary.
 - Preserve verbatim: the no-objective nudge, the REVIEW regex and `/REVIEW` terminator pattern, the
   `No concerns found` early-exit string, the `Review M: Pre-existing concerns` phase name, the
-  `NN-phase-P-review-M.md` filename, the phase-file and index-entry templates, the `human`/`review`
-  source tags, and the `in-scope`/`out-of-scope` scope tags.
+  `NN-phase-P-review-M.md` filename, the phase-file and index-entry templates in
+  `references/branch-review.md` § Autonomous Branch Review Conventions, the `human`/`review` source
+  tags, and the `in-scope`/`out-of-scope` scope tags.
 - REVIEW comment removal (Step 3) happens before code review — the reviewer sees clean code.
 - Multiple review sessions accumulate — each creates new phases with incrementing review numbers.
 - REVIEW comments in files outside the branch diff are captured as `out-of-scope` and grouped into a

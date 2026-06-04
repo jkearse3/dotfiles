@@ -6,14 +6,15 @@ round.
 
 ## References
 
-- `references/contracts.md` — file conventions, Auto-scope Dispatch, and invariants.
+- `references/contracts.md` — file conventions and invariants.
+- `references/auto-scope-dispatch.md` — Auto-scope Dispatch.
 - `references/phases.md` — phase numbering, required sections, and optional phase-local sections.
 - `references/templates.md` — New Phase (compute phase-file inputs before dispatch).
 
 ## Steps
 
-1. Load state. Read `.objectives/_current/00-main.md`.
-   - If no objective: nudge — "No active objective. Want me to load or create one?"
+1. Load state. Read `.objectives/_current/00-main.md` per `references/contracts.md` § Load Current
+   Objective, including its no-objective nudge.
    - If no ACs in `## Acceptance Criteria`: nudge — "No acceptance criteria defined yet. Want me to
      run `/objective spec`?"
 
@@ -30,7 +31,7 @@ round.
    8 — the same inputs scope every refinement round so the subagent overwrites the same file in
    place.
 
-5. Dispatch scoping subagent. Run `references/contracts.md` § Auto-scope Dispatch with these
+5. Dispatch scoping subagent. Run `references/auto-scope-dispatch.md` § Dispatch with these
    procedure-specific results:
    - No work remaining: report "No phase to scope." and stop.
    - Readiness issues: surface each issue with the subagent's suggested resolution; stop and wait
@@ -41,26 +42,9 @@ round.
 
 6. Refinement loop.
    - User approves: go to Step 7.
-   - User requests adjustments: re-dispatch a fresh scoping subagent, reusing `objective_dir`, `P`,
-     `NN`, and path from Step 4. The brief's Step 1 reads the existing phase file for prior
-     approach/tasks context, so the prompt does not restate it. Append the user's feedback:
-
-     ```text
-     Read the file at ~/.claude/skills/objective/briefs/phase-scope.md and execute the instructions within it.
-
-     objective_dir: <absolute path to objective directory>
-     P: <phase number>
-     NN: <sequence number, zero-padded>
-     Phase file: <absolute path to phase file>
-
-     User feedback:
-     <verbatim user feedback>
-
-     Produce a revised proposal that addresses the feedback. Overwrite the phase file at the
-     provided path.
-     ```
-
-     Handle the return:
+   - User requests adjustments: re-dispatch a fresh scoping subagent per
+     `references/auto-scope-dispatch.md` § Dispatch refinement behavior, reusing the Step 4 inputs
+     and appending the user's feedback. Handle the return:
      - No work remaining: report "No phase to scope." and stop the loop.
      - Readiness issues: surface each issue with the subagent's suggested resolution; stop the loop.
      - Phase proposal: re-read the phase file and present the updated proposal. Repeat until
@@ -72,9 +56,10 @@ round.
 
 ## Contracts
 
-- Preserve verbatim: the two nudges, the focused-phase stop string, the gate-check stop string, the
+- Preserve verbatim: the AC nudge, the focused-phase stop string, the gate-check stop string, the
   Auto-scope Dispatch no-work message ("No phase to scope."), the index entry
-  `P. [ ] [Phase Name](./NN-phase-P.md) *`, and the refinement-loop dispatch prompt.
+  `P. [ ] [Phase Name](./NN-phase-P.md) *`, and the refinement-loop dispatch prompt from
+  `references/auto-scope-dispatch.md` § Dispatch.
 - This procedure presents the proposal and waits for approval — it does not auto-accept (unlike
   `phase-iterate` Step 2).
 - Each refinement round dispatches a new subagent. There is no session continuity; the prior draft

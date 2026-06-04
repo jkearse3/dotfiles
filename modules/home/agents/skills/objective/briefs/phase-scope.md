@@ -16,6 +16,7 @@ The orchestrator provides these inputs in the prompt:
 
 - `references/contracts.md` — file conventions and invariants (single-revision rule, caller-token
   preservation).
+- `references/templates.md` — New Phase template, task annotations, and phase-file creation rules.
 - `references/phases.md` — phase resolution (linked file vs. inline `## Phase N:` section).
 
 ## Write Permissions
@@ -55,20 +56,18 @@ The orchestrator provides these inputs in the prompt:
    - Review all ACs (any marker), Approach, Research, and prior phases to identify what to work on.
    - Name the phase to reflect its scope.
    - Write a brief approach summary (strategy, constraints, patterns).
-   - Compose tasks. Map each task to existing ACs regardless of marker:
-     - `(ACN, satisfy)` — task directly implements an AC that is not yet satisfied.
-     - `(ACN, enhance)` — task improves or refines an already-satisfied AC.
-     - No annotation — task is pure implementation detail (cleanup, refactoring, tooling).
+   - Compose tasks using `references/templates.md` § New Phase task annotations. Map each task to
+     existing ACs regardless of marker.
    - Only propose a new AC when a task represents a genuinely new spec-level condition that existing
      ACs don't cover. An AC describes a desired end state or behavior of the finished system; a task
      describes an implementation step that reaches it. If the candidate reads as a step, it is a
      task, not an AC.
 
-4. Write phase file. Write at the absolute path provided by the orchestrator using the New Phase
-   template (see Contracts). Use the `P` value in the `## Phase P: Phase Name` header. Include only
-   required sections unless optional phase-local sections from `references/phases.md` already have
-   content to preserve from a refinement round. If a file already exists at the provided path (prior
-   refinement round), overwrite it.
+4. Write phase file. Write at the absolute path provided by the orchestrator using
+   `references/templates.md` § New Phase. Use the `P` value in the `## Phase P: Phase Name` header.
+   Include only required sections unless optional phase-local sections from `references/phases.md`
+   already have content to preserve from a refinement round. If a file already exists at the
+   provided path (prior refinement round), overwrite it.
 
 5. Return result. Return one `## Result:` block (see Contracts): `Phase Proposal` on success,
    `No Work Remaining` if nothing to scope, or `Readiness Issues` if Step 2 found blockers.
@@ -98,33 +97,6 @@ No phase to scope.
 **Targeted ACs**: [list of AC numbers]
 **Written**: [absolute path to the phase file written in Step 4]
 ```
-
-### New Phase Template
-
-```markdown
-## Phase P: Phase Name
-
-### Context
-
-[Brief summary of what this phase addresses and why]
-
-### Approach
-
-[Strategy and architectural notes]
-
-### Tasks
-1. [ ] [task description] (AC1, satisfy)
-2. [ ] [task description] (AC2, enhance)
-3. [ ] [cleanup or refactoring task]
-
-### Issues
-```
-
-### AC Annotations
-
-- `(ACN, satisfy)` — implement a not-yet-satisfied AC.
-- `(ACN, enhance)` — refine an already-satisfied AC.
-- No annotation — implementation detail.
 
 ### Write Boundary
 

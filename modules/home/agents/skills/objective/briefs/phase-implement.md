@@ -14,18 +14,8 @@ file in real-time.
 
 ## Steps
 
-1. Load state. Read the state file at the path provided by the orchestrator:
-   - `### Context` — intent and any delegated context.
-   - `### Approach` — strategy, constraints, and patterns guiding implementation.
-   - `### Tasks` — pending work items.
-   - `### Issues` — unresolved problems.
-   - `### Continuation` — read-only resume context from a routed follow-up, if present.
-
-   Use `### Continuation` only to understand why implementation resumed. Do not create, update,
-   clear, or route continuation; lifecycle decisions remain with the orchestrating procedure.
-
-   Read the AC source file (`.objectives/_current/00-main.md`) `## Acceptance Criteria` section for
-   AC text — used for testability assessment in Step 4.
+1. Load state. Apply `references/contracts.md` § Load Phase Subagent State. Use AC text for
+   testability assessment in Step 4.
 
 2. Handle open issues. For each open issue `[ ]` in `### Issues` without a corresponding pending
    task in `### Tasks`:
