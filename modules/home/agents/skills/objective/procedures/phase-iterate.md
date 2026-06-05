@@ -63,7 +63,7 @@ Run in order. Do not improvise or skip steps. Announce each step number before e
 4. Run implement. Dispatch an implementation subagent with prompt:
 
    ```text
-   Read the file at ~/.claude/skills/objective/briefs/phase-implement.md and execute the instructions within it.
+   Read the bundled skill resource `briefs/phase-implement.md` and execute the instructions within it.
 
    State file: <absolute path to phase file>
    AC source: .objectives/_current/00-main.md
@@ -80,7 +80,7 @@ Run in order. Do not improvise or skip steps. Announce each step number before e
 5. Run verify. Dispatch a verify subagent with prompt:
 
    ```text
-   Read the file at ~/.claude/skills/objective/briefs/phase-verify.md and execute the instructions within it.
+   Read the bundled skill resource `briefs/phase-verify.md` and execute the instructions within it.
 
    State file: <absolute path to phase file>
    AC source: .objectives/_current/00-main.md
@@ -169,7 +169,7 @@ Run in order. Do not improvise or skip steps. Announce each step number before e
      1. Dispatch a reconciliation subagent with prompt:
 
         ```text
-        Read the file at ~/.claude/skills/objective/briefs/phase-reconcile.md and execute the instructions within it.
+        Read the bundled skill resource `briefs/phase-reconcile.md` and execute the instructions within it.
 
         State file: <absolute path to phase file>
         AC source: .objectives/_current/00-main.md

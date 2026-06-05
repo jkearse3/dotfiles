@@ -20,7 +20,7 @@ phase, general cleanup passes, or pre-PR review.
 2. Dispatch the pipeline. Dispatch a subagent with prompt:
 
    ```text
-   Read the file at ~/.claude/skills/objective/briefs/branch-review.md and execute the instructions within it.
+   Read the bundled skill resource `briefs/branch-review.md` and execute the instructions within it.
 
    Context: This is an autonomous branch-level review (not a per-phase inner-loop review). Per-phase
    inner-loop verify is handled inline by `phase-iterate`.

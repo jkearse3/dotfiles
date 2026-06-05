@@ -12,7 +12,7 @@ Shared auto-scope dispatch mechanics for objective phase callers.
 Compute phase-file inputs per `references/templates.md`, then dispatch a subagent with:
 
 ```text
-Read the file at ~/.claude/skills/objective/briefs/phase-scope.md and execute the instructions within it.
+Read the bundled skill resource `briefs/phase-scope.md` and execute the instructions within it.
 
 objective_dir: <absolute path to objective directory>
 P: <phase number>
