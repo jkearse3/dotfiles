@@ -9,8 +9,9 @@ cross-checks.
 
 Apply proportional interrogation:
 
-- Use the structured-question tool for all clarifying questions, batching related questions in one
-  call.
+- Use the agent's structured question mechanism for all clarifying questions when available;
+  otherwise ask the question in text and stop until the user answers. Batch related questions in one
+  structured prompt or call when using a structured mechanism.
 - If an answer is obvious from context, research, or existing ACs, state it as a pre-filled
   assumption for the user to confirm or correct.
 - Ask open-ended questions only for genuinely ambiguous dimensions.

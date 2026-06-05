@@ -95,8 +95,8 @@ are appended to the existing list. When omitted, use focused phase continuation 
 - Preserve verbatim: the five interrogation dimensions and their sub-questions, the scenario
   cross-check categories and skip condition, the AC-definition rules, and the shared conflict-check
   approval gate plus markers/invalidation format.
-- Structured-question tool: all clarifying questions go through the tool, batched by dimension in
-  one call — don't just list questions in text.
+- Structured questions follow `references/spec-definition.md` § Spec Definition structured-question
+  behavior.
 - ACs are the contract — changes require user approval. Conflict check (Step 6) is an approval gate,
   not an automatic write.
 - Focused phase `### Continuation` with `Status: SPEC_CHANGE_REQUIRED` is the default spec-change
