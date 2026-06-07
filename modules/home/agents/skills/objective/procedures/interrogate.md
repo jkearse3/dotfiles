@@ -71,8 +71,8 @@ history.
 
 ## Contracts
 
-- Writes `## Research > ### Decisions` in `00-main.md`. Writes to the focused phase file (or inline
-  phase section): `### Continuation`, per `references/contracts.md` § Continuation Lifecycle.
+- Writes `## Research > ### Decisions` in `00-main.md`. Writes to the focused phase file:
+  `### Continuation`, per `references/contracts.md` § Continuation Lifecycle.
 - Preserve the auto-creation nudge, the topic-derivation fallback, and the decisions-merge semantics
   verbatim.
 - The interrogate skill is interactive and objective-unaware — all persistence happens in Step 4.

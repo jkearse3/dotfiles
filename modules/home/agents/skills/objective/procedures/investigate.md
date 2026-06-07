@@ -71,8 +71,7 @@ status `NEEDS_RESEARCH`; otherwise derive from objective context.
 
 - Writes to `00-main.md`: `### Findings`, `### Decisions`, `### Questions`, and `### Assumptions`
   (the last includes leads merged from `/investigate`), all under `## Research`. Writes to the
-  focused phase file (or inline phase section): `### Continuation`, per `references/contracts.md` §
-  Continuation Lifecycle.
+  focused phase file: `### Continuation`, per `references/contracts.md` § Continuation Lifecycle.
 - Preserve the research-spike nudge, the no-gaps fallback, and the
   findings/leads/questions/assumptions merge rules verbatim.
 - The investigate skill runs a single pass and is objective-unaware — all persistence happens in

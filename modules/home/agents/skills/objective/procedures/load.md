@@ -85,8 +85,7 @@ Optional objective name or slug to load directly.
    - Resolve `.objectives/_current` through to the actual directory.
    - Read `00-main.md` (index file: context, research, ACs, approach, phases index).
    - Find the focused phase (marked with `*` in `## Phases`).
-   - If the focused phase has a linked file, read it; otherwise read the inline section (Phase
-     Resolution).
+   - Resolve and read the focused phase file via `references/phases.md` § Phase Resolution.
    - If the focused phase contains `### Continuation`, read it as the primary resume state. Do not
      modify or clear it while loading.
 

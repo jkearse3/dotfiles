@@ -90,8 +90,8 @@ are appended to the existing list. When omitted, use focused phase continuation 
 ## Contracts
 
 - Writes to `00-main.md`: `## Acceptance Criteria`, `## Approach`, and validation findings under
-  `## Research > ### Findings`. Writes to the focused phase file (or inline phase section):
-  `### Continuation`, per `references/contracts.md` § Continuation Lifecycle.
+  `## Research > ### Findings`. Writes to the focused phase file: `### Continuation`, per
+  `references/contracts.md` § Continuation Lifecycle.
 - Preserve verbatim: the five interrogation dimensions and their sub-questions, the scenario
   cross-check categories and skip condition, the AC-definition rules, and the shared conflict-check
   approval gate plus markers/invalidation format.

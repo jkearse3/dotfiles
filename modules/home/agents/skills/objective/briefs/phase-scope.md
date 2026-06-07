@@ -17,7 +17,7 @@ The orchestrator provides these inputs in the prompt:
 - `references/contracts.md` — file conventions and invariants (single-revision rule, caller-token
   preservation).
 - `references/templates.md` — New Phase template, task annotations, and phase-file creation rules.
-- `references/phases.md` — phase resolution (linked file vs. inline `## Phase N:` section).
+- `references/phases.md` — phase resolution for linked phase files.
 
 ## Write Permissions
 
@@ -29,9 +29,8 @@ The orchestrator provides these inputs in the prompt:
    - `## Acceptance Criteria` — all ACs and their markers.
    - `## Approach` — implementation roadmap.
    - `## Research` — findings, decisions, questions, assumptions.
-   - `## Phases` index — apply Phase Resolution to each phase (read the linked file if the index
-     entry has a markdown link; otherwise read the inline `## Phase N:` section). Review prior
-     learnings, completed task patterns, and issues encountered.
+   - `## Phases` index — apply Phase Resolution to each phase. Review prior learnings, completed
+     task patterns, and issues encountered.
    - If a file already exists at the provided phase-file path, read it — this is a refinement round
      holding the prior draft's approach and tasks. Carry that context forward so unrelated prior
      decisions are not lost. The existing-file read informs context only; when it conflicts with the

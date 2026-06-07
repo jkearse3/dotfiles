@@ -18,8 +18,7 @@ Synthesize the Summary section for PR descriptions.
 
 2. Gather context:
    - Read `00-main.md` (Context, Research, Acceptance Criteria, Phases index).
-   - Use Phase Resolution to read each phase's content from its linked file (or inline section for
-     legacy).
+   - Use Phase Resolution to read each phase's content from its linked file.
    - Use `/diff-summarize` for file-level diff analysis.
 
 3. Synthesize the Summary:

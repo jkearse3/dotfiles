@@ -45,9 +45,8 @@ Run in order. Do not improvise or skip steps. Announce each step number before e
      - Phase proposal: auto-accept (no user approval), re-read `00-main.md` to pick up the new
        phase, and go to Step 3.
 
-3. Announce scope. Locate the focused phase content per `references/phases.md` § Phase Resolution:
-   if the index entry has a markdown link, read that file; otherwise read the inline `## Phase N:`
-   section in `00-main.md`. Announce before executing:
+3. Announce scope. Locate the focused phase file per `references/phases.md` § Phase Resolution.
+   Announce before executing:
    - Phase name and number.
    - Pending tasks (count and brief list).
    - Open issues (count).

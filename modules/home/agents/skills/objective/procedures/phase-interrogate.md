@@ -43,8 +43,7 @@ it has status `NEEDS_DECISION` with `Scope: phase`; otherwise derive from the fu
    - If the focused phase contains `### Continuation` with `Status: NEEDS_DECISION` and phase scope
      in its Payload or Route, use its Summary, Route, Clear when, and any Payload as the default
      interrogation topic and context.
-   - Otherwise, read the phase file (or inline phase section) `### Context`, `### Approach`,
-     `### Tasks`, and `### Issues`.
+   - Otherwise, read the phase file `### Context`, `### Approach`, `### Tasks`, and `### Issues`.
    - Synthesize a focused interrogate topic from the full phase content, combining all four
      sections.
    - If the phase content provides no actionable direction, fall back to the objective-level Context
@@ -61,12 +60,12 @@ it has status `NEEDS_DECISION` with `Scope: phase`; otherwise derive from the fu
    objectives or phases. Wait for the session to complete, capturing the full decisions log.
 
 5. Merge decisions.
-   - Phase file: read the phase file (or inline phase section). Add a `### Decisions` section if one
-     does not exist. Append resolved decisions as `[x]` items and open items as `[ ]` items. Dedupe
-     against existing `### Decisions` items by content match — skip any that already appear. Do not
-     overwrite or remove existing decisions. Phase interrogation decisions remain phase-local in
-     `### Decisions`; objective-wide decisions remain in `00-main.md` and are owned by the
-     objective-level interrogation flow.
+   - Phase file: read the phase file. Add a `### Decisions` section if one does not exist. Append
+     resolved decisions as `[x]` items and open items as `[ ]` items. Dedupe against existing
+     `### Decisions` items by content match — skip any that already appear. Do not overwrite or
+     remove existing decisions. Phase interrogation decisions remain phase-local in `### Decisions`;
+     objective-wide decisions remain in `00-main.md` and are owned by the objective-level
+     interrogation flow.
    - Objective ACs: for each new AC candidate that surfaced during interrogation, read the existing
      `## Acceptance Criteria` in `00-main.md`, dedupe by content match (exact text match on the
      condition, ignoring numbering and markers), then proceed to Step 5a for conflict checking
@@ -94,10 +93,10 @@ it has status `NEEDS_DECISION` with `Scope: phase`; otherwise derive from the fu
 
 ## Contracts
 
-- Writes to the phase file (or inline phase section): `### Decisions` (resolved and open) and, only
-  after decisions are persisted, `### Continuation` per `references/contracts.md` § Continuation
-  Lifecycle. Writes to `00-main.md`: `## Acceptance Criteria` (new candidates, deduped,
-  conflict-checked, and appended) and, in Step 2a, the `## Phases` index entry.
+- Writes to the phase file: `### Decisions` (resolved and open) and, only after decisions are
+  persisted, `### Continuation` per `references/contracts.md` § Continuation Lifecycle. Writes to
+  `00-main.md`: `## Acceptance Criteria` (new candidates, deduped, conflict-checked, and appended)
+  and, in Step 2a, the `## Phases` index entry.
 - Preserve verbatim: the objective-scoped guardrail nudge, the topic-derivation fallback, the
   missing/satisfied-AC nudge, the no-ACs-targeted nudge, the Step 2a no-work message ("Nothing to
   interrogate."), the index entry `P. [ ] [Phase Name](./NN-phase-P.md) *`, and the
