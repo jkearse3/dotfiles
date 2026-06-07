@@ -11,8 +11,8 @@ create cleanup phases for actionable findings.
   review phase numbering, review filename, phase-file shape, and index-entry shape.
 - `references/phases.md` — Phase Index format and "never renumber" rule for the index entry written
   in Step 7.
-- `references/templates.md` — New Phase template and § Compute phase-file inputs for `P`/`NN` and
-  the index-entry registration.
+- `references/templates.md` — New Phase template, § Phase Task Boundary, and § Compute phase-file
+  inputs for `P`/`NN` and the index-entry registration.
 
 ## Write Permissions
 
@@ -45,10 +45,11 @@ create cleanup phases for actionable findings.
    naming fixes, all error handling), or logical dependency (fix X before Y). If only one coherent
    group, create a single phase.
 
-7. Write phases. For each group, create a phase file and register it in `00-main.md` per
-   `references/templates.md` New Phase template and § Compute phase-file inputs, with the
-   review-specific conventions in `references/branch-review.md` § Autonomous Branch Review
-   Conventions. Focus the first created phase (`*` in index) if no phase is currently focused.
+7. Write phases. For each group, create a phase file whose tasks satisfy `references/templates.md` §
+   Phase Task Boundary, and register it in `00-main.md` per `references/templates.md` New Phase
+   template and § Compute phase-file inputs, with the review-specific conventions in
+   `references/branch-review.md` § Autonomous Branch Review Conventions. Focus the first created
+   phase (`*` in index) if no phase is currently focused.
 
 ## Contracts
 

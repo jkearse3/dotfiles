@@ -7,6 +7,7 @@ Classify non-auto Step 8 review feedback and persist the next route in the focus
 - `references/contracts.md` — file conventions, Reconciliation Result Contract, and invariants
   (caller-token preservation, continuation persistence, and write boundaries).
 - `references/phases.md` — `### Continuation` labels.
+- `references/templates.md` — § Phase Task Boundary for direct task append validity.
 
 ## Arguments
 
@@ -50,7 +51,10 @@ The orchestrator provides these inputs in the prompt:
    - Append to `### Issues` by default using the next sequential issue number:
      `N. [ ] (human, medium): <feedback summary>`.
    - Append directly to `### Tasks` only when the feedback is already an unambiguous mechanical work
-     item with a clear completion condition.
+     item with a clear completion condition and satisfies `references/templates.md` § Phase Task
+     Boundary.
+   - If feedback requests a lifecycle action that violates the boundary, classify it as
+     `NEEDS_USER_INPUT` unless it is approval-like feedback already handled by `NO_ACTION`.
    - Deduplicate against existing open issues and pending tasks before appending.
 
 4. Select one top-level status. If dispositions are mixed, route blockers before implementation in

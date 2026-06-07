@@ -36,7 +36,7 @@ Address review feedback from autonomous review of branch changes.
 - **L<line>**: Concern description
 
 ### Tasks
-1. [ ] Task description (ACN, satisfy/enhance) or (IN)
+1. [ ] Task description satisfying `references/templates.md` § Phase Task Boundary (ACN, satisfy/enhance) or (IN)
 
 ### Issues
 ```

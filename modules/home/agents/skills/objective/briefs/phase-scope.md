@@ -16,7 +16,8 @@ The orchestrator provides these inputs in the prompt:
 
 - `references/contracts.md` — file conventions and invariants (single-revision rule, caller-token
   preservation).
-- `references/templates.md` — New Phase template, task annotations, and phase-file creation rules.
+- `references/templates.md` — New Phase template, task annotations, Phase Task Boundary, and
+  phase-file creation rules.
 - `references/phases.md` — phase resolution for linked phase files.
 
 ## Write Permissions
@@ -55,8 +56,8 @@ The orchestrator provides these inputs in the prompt:
    - Review all ACs (any marker), Approach, Research, and prior phases to identify what to work on.
    - Name the phase to reflect its scope.
    - Write a brief approach summary (strategy, constraints, patterns).
-   - Compose tasks using `references/templates.md` § New Phase task annotations. Map each task to
-     existing ACs regardless of marker.
+   - Compose tasks using `references/templates.md` § New Phase task annotations and § Phase Task
+     Boundary. Map each task to existing ACs regardless of marker.
    - Only propose a new AC when a task represents a genuinely new spec-level condition that existing
      ACs don't cover. An AC describes a desired end state or behavior of the finished system; a task
      describes an implementation step that reaches it. If the candidate reads as a step, it is a
@@ -111,6 +112,7 @@ No phase to scope.
 - Phase scoping is just-in-time: one phase at a time, informed by remaining ACs and prior learnings.
 - Do not add empty optional sections to new phases. Add `### Decisions` or `### Continuation` only
   when the phase has phase-local content for that section.
+- Generated phase tasks must satisfy `references/templates.md` § Phase Task Boundary.
 - **Phase atomicity**: a phase must contain only interdependent tasks — tasks that must land
   together for the change to make sense. If a task could be committed independently without breaking
   the others, it belongs in a separate phase. Example: "add helper function" and "update caller to

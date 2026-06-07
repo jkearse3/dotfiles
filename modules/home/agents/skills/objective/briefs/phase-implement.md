@@ -7,6 +7,7 @@ file in real-time.
 
 - `references/contracts.md` — file conventions and § Invariants (the single-revision rule and
   caller-token preservation).
+- `references/templates.md` — § Phase Task Boundary for task validity.
 
 ## Write Permissions
 
@@ -19,14 +20,20 @@ file in real-time.
 
 2. Handle open issues. For each open issue `[ ]` in `### Issues` without a corresponding pending
    task in `### Tasks`:
-   - Create a task to fix it `(IN)`, append to `### Tasks`, and write the update immediately.
-   - Never leave issues open without a pending task.
+   - Create a task to fix it `(IN)` only when the task satisfies `references/templates.md` § Phase
+     Task Boundary. Append it to `### Tasks`, and write the update immediately.
+   - If the required fix would violate the boundary, leave the issue open and report it in
+     `### Concerns` instead of creating a task.
+   - Never leave issues open without a pending task unless the boundary prevents creating a valid
+     task; report any such issue in `### Concerns`.
    - Never defer to "tech debt" or "future work" — if documented, fix now.
 
 3. Execute tasks. For each pending task `[ ]` in order:
-   1. Implement the task (write code, tests, etc.).
-   2. On success: mark `[x]` in the state file immediately.
-   3. On blocked: mark `[!]` with reason, then continue to the next task:
+   1. Check the task against `references/templates.md` § Phase Task Boundary. If it violates the
+      boundary, mark `[!]` with reason and do not execute it.
+   2. Implement the task (write code, tests, etc.).
+   3. On success: mark `[x]` in the state file immediately.
+   4. On blocked: mark `[!]` with reason, then continue to the next task:
       `N. [!] Task description — blocked: reason`.
 
    Update the state file after each task — do not batch updates.
@@ -37,7 +44,10 @@ file in real-time.
      `.objectives/_current/00-main.md`:
      - AC describes observable behavior with clear inputs/outputs — testable.
      - AC describes internal structure, config, or prose content — not testable.
-   - **If testable**: create a `(ACN, codify)` task in `### Tasks`, then execute it.
+   - **If testable**: create a `(ACN, codify)` task in `### Tasks` only when it satisfies
+     `references/templates.md` § Phase Task Boundary, then execute it. If the codify task would
+     violate the boundary, mark the relevant satisfy task with
+     `(human: codify task violates phase task boundary)` and note it in the summary.
    - **If not testable**: annotate the AC directly in `### Tasks` by appending a `(human)` marker to
      the relevant satisfy task (e.g., `N. [x] Task description (ACM, satisfy) (human: reason)`).
      Also note it in the summary.
@@ -101,6 +111,8 @@ Tasks are a flat numbered list. No groupings or sub-headers.
 - Mark progress in real-time (don't batch updates).
 - If blocked, document why and continue.
 - State file is the single source of truth — all progress is written there.
-- **Single-revision invariant** (`references/contracts.md` § Invariants): never run `jj commit`,
-  `jj new`, or `jj split` during implementation. All changes must stay in `@`. The orchestrator owns
-  revision lifecycle — commits happen only after verify completes and the phase is approved.
+- **Phase Task Boundary**: never execute a task that violates `references/templates.md` § Phase Task
+  Boundary. Mark it `[!]` with a reason instead.
+- **Single-revision invariant** (`references/contracts.md` § Invariants): all phase changes must
+  stay in `@` during implementation. The orchestrator owns revision lifecycle — commits happen only
+  after verify completes and the phase is approved.

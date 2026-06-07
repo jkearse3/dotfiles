@@ -170,8 +170,10 @@ persisted. The routed objective-level procedure owns any later `00-main.md` writ
   listed is denied.
 - Preserve AC numbering and marker semantics.
 - Preserve phase numbering and focus semantics.
-- Preserve the single-revision invariant: no `jj commit`, `jj new`, or `jj split` inside
-  implement/verify loops; the orchestrator owns revision lifecycle.
+- Preserve the single-revision invariant: during implement/verify loops, all phase work stays in the
+  current working-copy revision `@`; no command may move phase work out of `@`, change the current
+  working-copy revision, or make `jj diff` stop representing the complete phase diff. The
+  orchestrator owns revision lifecycle.
 - Persist phase-local continuation before any procedure stops or routes away because unresolved
   phase-local follow-up cannot be completed in the current path.
 - Clear phase-local continuation per `references/contracts.md` § Continuation Lifecycle.
