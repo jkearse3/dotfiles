@@ -23,8 +23,8 @@ branch.
 
 2. Extract current symlink info.
    - Read the `_current` symlink target name (e.g. `2024-01-15-1430-auth-refactor`).
-   - Extract the timestamp prefix (`YYYY-MM-DD-HHMM-` first; fallback `YYYY-MM-DD-`) and the current
-     slug from the remainder, per `references/contracts.md` § Extract Objective Slug.
+   - Extract the timestamp prefix (`YYYY-MM-DD-HHMM-`) and the current slug from the remainder, per
+     `references/contracts.md` § Extract Objective Slug.
    - Read the symlink's target path (the destination it points to).
 
 3. Derive the new slug via `references/contracts.md` § Slugify.

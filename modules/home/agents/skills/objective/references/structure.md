@@ -17,7 +17,7 @@ Objective directories live directly in `.objectives/`. No symlink indirection.
   2024-01-15-1430-auth-refactor/               # real directory
     00-main.md
     01-phase-1.md
-  2024-01-10-fix-bug/                          # old format coexists
+  2024-01-10-0930-fix-bug/
     00-main.md
 ```
 
@@ -31,7 +31,7 @@ destination from the start.
   _current -> 2024-01-15-1430-auth-refactor   # symlink to active objective symlink
   _config.yaml                                 # destination config
   2024-01-15-1430-auth-refactor -> ../../docs/objectives/2024-01-15-1430-auth-refactor/
-  2024-01-10-fix-bug -> ../../docs/objectives/2024-01-10-fix-bug/
+  2024-01-10-0930-fix-bug -> ../../docs/objectives/2024-01-10-0930-fix-bug/
 ```
 
 Actual files at destination:
@@ -65,7 +65,6 @@ created as real directories in `.objectives/` with no prompt.
 ## Naming Conventions
 
 - **Objective entry**: `<YYYY-MM-DD-HHMM>-<slug>` (date+time prefix for intra-day ordering)
-- **Old format**: `<YYYY-MM-DD>-<slug>` (coexists with new format, no migration)
 - **Slugs**: lowercase, hyphens for spaces
 - **Symlink targets** (configured mode): Always relative paths
 

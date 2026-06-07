@@ -28,7 +28,7 @@ effect is negligible.
 
 ### Extract Objective Slug
 
-Strip `YYYY-MM-DD-HHMM-`; if absent, strip `YYYY-MM-DD-`.
+Strip `YYYY-MM-DD-HHMM-`.
 
 ### Load Current Objective
 
