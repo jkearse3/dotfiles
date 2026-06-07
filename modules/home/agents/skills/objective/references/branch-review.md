@@ -9,8 +9,8 @@ Branch-level autonomous review uses these caller-visible conventions.
 Report fields:
 
 - Phases created (count and names).
-- Concern counts by source (human REVIEW comments vs. code review findings).
-- Out-of-scope concerns flagged (count, if any).
+- Actionable findings grouped (count).
+- Findings filtered out as non-actionable, duplicate, or outside branch scope (count, if any).
 - Suggest: `/objective phase-iterate` to execute.
 
 Phase numbering and file naming are computed via `references/templates.md` § Compute phase-file
@@ -33,7 +33,7 @@ Address review feedback from autonomous review of branch changes.
 
 #### path/file.ext
 
-- **L<line>**: Concern description (source)
+- **L<line>**: Concern description
 
 ### Tasks
 1. [ ] Task description (ACN, satisfy/enhance) or (IN)
@@ -48,7 +48,5 @@ renumber existing phases:
 P. [ ] [Review M: <description>](./NN-phase-P-review-M.md)
 ```
 
-Preserve verbatim: the `No concerns found` early-exit string, the `Review M: Pre-existing concerns`
-phase name, the `NN-phase-P-review-M.md` filename, the phase-file template, the index-entry
-template, the `human`/`review` source tags, the `in-scope`/`out-of-scope` scope tags, and the report
-fields.
+Preserve verbatim: the `No concerns found` early-exit string, the `NN-phase-P-review-M.md` filename,
+the phase-file template, the index-entry template, and the report fields.

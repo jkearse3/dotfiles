@@ -1,10 +1,10 @@
 # Review
 
-Orchestrate the autonomous branch-review pipeline: load the current objective, dispatch the pipeline
-as a subagent, and present the returned summary.
+Orchestrate the autonomous branch-review pipeline: load the current objective, dispatch an
+objective-context branch review as a subagent, and present the returned summary.
 
-Can be run at any point — not tied to phase completion. Useful for self-review after committing a
-phase, general cleanup passes, or pre-PR review.
+Can be run at any point — not tied to phase completion. Useful for whole-objective review after
+committing a phase, general cleanup passes, or pre-PR review.
 
 ## References
 
