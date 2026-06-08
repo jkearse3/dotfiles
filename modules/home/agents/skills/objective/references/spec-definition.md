@@ -65,7 +65,7 @@ Scenario categories:
 - **Degradation**: failure modes, fallbacks, error messages, partial success.
 
 For each applicable category, derive concrete scenarios from interrogation answers, apply the
-precision rules from `references/index-format.md`, discard vague candidates, present surviving
+precision rules from `references/ac-precision.md`, discard vague candidates, present surviving
 scenarios to the user as AC candidates, and have the user include or exclude each candidate before
 AC definition.
 
@@ -73,11 +73,11 @@ Draft ACs from validated answers and included scenarios:
 
 - Topic mode: draft only. Start at the next number after the highest existing AC, do not rewrite or
   renumber existing ACs, map each new AC to the topic-scoped interrogation, deduplicate against
-  existing coverage, then run `references/acceptance-criteria.md` § AC Conflict Check before
+  existing coverage, then run `references/ac-conflict-check.md` § AC Conflict Check before
   presenting or writing.
 - Full mode: define clear, verifiable conditions for "done", number ACs for task references, and map
   each AC to a specific answer from interrogation.
-- Both modes: apply the precision rules from `references/index-format.md` — declare a state or
+- Both modes: apply the precision rules from `references/ac-precision.md` — declare a state or
   behavior, not a step; state what happens, not what doesn't; include concrete values where
   applicable; describe observable outcomes.
 - Mark `(human)` for criteria requiring user sign-off, including subjective criteria such as UX or

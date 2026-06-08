@@ -12,22 +12,22 @@ branch.
 
 ## References
 
-- `references/contracts.md` — file conventions, Slugify, Extract Objective Slug, Load Current
-  Objective, invariants.
-- `references/structure.md` — objective registry and symlink layout.
+- `references/current-objective.md` — § Load Current Objective for the active objective gate.
+- `references/objective-names.md` — Slugify and Extract Objective Slug.
+- `references/objective-registry.md` — registry modes and `_current` updates.
 
 ## Steps
 
-1. Validate the current objective per `references/contracts.md` § Load Current Objective (stops with
-   the no-active-objective nudge if missing or broken).
+1. Validate the current objective per `references/current-objective.md` § Load Current Objective
+   (stops with the no-active-objective nudge if missing or broken).
 
 2. Extract current symlink info.
    - Read the `_current` symlink target name (e.g. `2024-01-15-1430-auth-refactor`).
    - Extract the timestamp prefix (`YYYY-MM-DD-HHMM-`) and the current slug from the remainder, per
-     `references/contracts.md` § Extract Objective Slug.
+     `references/objective-names.md` § Extract Objective Slug.
    - Read the symlink's target path (the destination it points to).
 
-3. Derive the new slug via `references/contracts.md` § Slugify.
+3. Derive the new slug via `references/objective-names.md` § Slugify.
 
    If argument provided: slugify the argument. This is the new slug.
 
@@ -43,9 +43,10 @@ branch.
 5. Check for conflicts.
    - If `.objectives/<prefix>-<new-slug>` already exists, error: "Objective `<prefix>-<new-slug>`
      already exists. Cannot rename."
-   - Also check whether any other existing objective symlink's slug (per `references/contracts.md` §
-     Extract Objective Slug) matches the new slug. If a match is found, error: "Objective already
-     exists for this branch: `<existing-symlink-name>`. Cannot rename."
+   - Also check whether any other existing objective symlink's slug (per
+     `references/objective-names.md` § Extract Objective Slug) matches the new slug. If a match is
+     found, error: "Objective already exists for this branch: `<existing-symlink-name>`. Cannot
+     rename."
 
 6. Update destination (argument mode only). If no argument, skip this step.
    - Read `.objectives/_config.yaml` for `destination_pattern:`.

@@ -12,13 +12,15 @@ it has status `NEEDS_DECISION` with `Scope: phase`; otherwise derive from the fu
 
 ## References
 
-- `references/contracts.md` — file conventions, Load Current Objective, Continuation Lifecycle, and
-  invariants.
+- `references/current-objective.md` — § Load Current Objective for the active objective gate.
+- `references/workflow-invariants.md` — § Continuation Lifecycle and § Invariants for approval gates
+  and caller-token preservation.
 - `references/auto-scope-dispatch.md` — Auto-scope Dispatch.
-- `references/phases.md` — Phase Resolution (locate focused phase content).
-- `references/templates.md` — New Phase (compute phase-file inputs before dispatch).
-- `references/index-format.md` — `00-main.md` section layout and marker semantics.
-- `references/acceptance-criteria.md` — AC format for new candidates.
+- `references/phase-index.md` — Phase Resolution (locate focused phase content).
+- `references/phase-file-inputs.md` — Compute Phase-File Inputs and phase-index entry shape.
+- `references/objective-index-format.md` — `00-main.md` section layout.
+- `references/ac-precision.md` — AC format for new candidates.
+- `references/ac-conflict-check.md` — approval-gated conflict checks.
 
 ## Steps
 
@@ -28,8 +30,8 @@ it has status `NEEDS_DECISION` with `Scope: phase`; otherwise derive from the fu
      objective (phases are objective-scoped)."
 
 2. Resolve focused phase. Find the focused phase (`*` in the `## Phases` index in `00-main.md`).
-   - If a focused phase exists: resolve its content per `references/phases.md` § Phase Resolution,
-     then go to Step 3.
+   - If a focused phase exists: resolve its content per `references/phase-index.md` § Phase
+     Resolution, then go to Step 3.
    - If no focused phase: run auto-scope dispatch (Step 2a), then go to Step 3.
 
    Step 2a — Auto-scope dispatch. Run `references/auto-scope-dispatch.md` § Dispatch with these
@@ -72,14 +74,14 @@ it has status `NEEDS_DECISION` with `Scope: phase`; otherwise derive from the fu
      before writing.
 
    5a. Conflict check. If there are new AC candidates after deduplication, apply
-   `references/acceptance-criteria.md` § AC Conflict Check before writing. The new AC candidates are
+   `references/ac-conflict-check.md` § AC Conflict Check before writing. The new AC candidates are
    the post-deduped objective ACs surfaced during interrogation. Preserve the approval gate:
    conflict analysis and AC candidates require user approval before writing `## Acceptance Criteria`
    in `00-main.md`.
 
 6. Clear or update continuation. After Step 5 has persisted phase-local decisions, and after any
-   approved objective AC writes are complete, apply `references/contracts.md` § Continuation
-   Lifecycle for `Status: NEEDS_DECISION` with phase scope.
+   approved objective AC writes are complete, apply `references/workflow-invariants.md` §
+   Continuation Lifecycle for `Status: NEEDS_DECISION` with phase scope.
 
 7. Present summary.
    - Key decisions made this session (from the interrogate log).
@@ -94,9 +96,9 @@ it has status `NEEDS_DECISION` with `Scope: phase`; otherwise derive from the fu
 ## Contracts
 
 - Writes to the phase file: `### Decisions` (resolved and open) and, only after decisions are
-  persisted, `### Continuation` per `references/contracts.md` § Continuation Lifecycle. Writes to
-  `00-main.md`: `## Acceptance Criteria` (new candidates, deduped, conflict-checked, and appended)
-  and, in Step 2a, the `## Phases` index entry.
+  persisted, `### Continuation` per `references/workflow-invariants.md` § Continuation Lifecycle.
+  Writes to `00-main.md`: `## Acceptance Criteria` (new candidates, deduped, conflict-checked, and
+  appended) and, in Step 2a, the `## Phases` index entry.
 - Preserve verbatim: the objective-scoped guardrail nudge, the topic-derivation fallback, the
   missing/satisfied-AC nudge, the no-ACs-targeted nudge, the Step 2a no-work message ("Nothing to
   interrogate."), the index entry `P. [ ] [Phase Name](./NN-phase-P.md) *`, and the
@@ -105,7 +107,7 @@ it has status `NEEDS_DECISION` with `Scope: phase`; otherwise derive from the fu
 - Auto-scope dispatch uses the shared auto-accept handler from `references/auto-scope-dispatch.md` §
   Dispatch with no approval gate.
 - AC conflict check (Step 5a) is an approval gate — user must approve conflict analysis and new AC
-  candidates before any write to `## Acceptance Criteria`; use `references/acceptance-criteria.md` §
+  candidates before any write to `## Acceptance Criteria`; use `references/ac-conflict-check.md` §
   AC Conflict Check.
 - Silent merge for phase-file decisions — no confirmation gate, consistent with objective-level
   interrogate.

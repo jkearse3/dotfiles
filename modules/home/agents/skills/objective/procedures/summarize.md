@@ -8,13 +8,16 @@ Synthesize the Summary section for PR descriptions.
 
 ## References
 
-- `references/contracts.md` — § Load Current Objective for the load/nudge gate, and § Invariants.
-- `references/phases.md` — § Phase Resolution for reading each phase's content from its linked file.
+- `references/current-objective.md` — § Load Current Objective for the load/nudge gate.
+- `references/workflow-invariants.md` — § Invariants for caller-token preservation and approval
+  gates.
+- `references/phase-index.md` — § Phase Resolution for reading each phase's content from its linked
+  file.
 
 ## Steps
 
-1. Load the current objective per `references/contracts.md` § Load Current Objective, including its
-   no-objective nudge.
+1. Load the current objective per `references/current-objective.md` § Load Current Objective,
+   including its no-objective nudge.
 
 2. Gather context:
    - Read `00-main.md` (Context, Research, Acceptance Criteria, Phases index).

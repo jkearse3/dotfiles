@@ -6,15 +6,16 @@ round.
 
 ## References
 
-- `references/contracts.md` — file conventions and invariants.
+- `references/current-objective.md` — Load Current Objective.
 - `references/auto-scope-dispatch.md` — Auto-scope Dispatch.
-- `references/phases.md` — phase numbering, required sections, and optional phase-local sections.
-- `references/templates.md` — New Phase (compute phase-file inputs before dispatch).
+- `references/phase-index.md` — Phase Index.
+- `references/phase-file-inputs.md` — Compute Phase-File Inputs and phase-index entry shape.
+- `references/workflow-invariants.md` — approval-gate and phase-focus invariants.
 
 ## Steps
 
-1. Load state. Read `.objectives/_current/00-main.md` per `references/contracts.md` § Load Current
-   Objective, including its no-objective nudge.
+1. Load state. Read `.objectives/_current/00-main.md` per `references/current-objective.md` § Load
+   Current Objective, including its no-objective nudge.
    - If no ACs in `## Acceptance Criteria`: nudge — "No acceptance criteria defined yet. Want me to
      run `/objective spec`?"
 
@@ -26,10 +27,9 @@ round.
 3. Gate check. All existing phases must be `[x]` or `[-]`. If any phase is `[ ]` without `*`, stop —
    "Incomplete phase exists without focus. Mark it `[x]`, `[-]`, or add `*` to resume."
 
-4. Compute phase-file inputs. Follow `references/templates.md` § New Phase → Compute phase-file
-   inputs. Hold the four values (`objective_dir`, `P`, `NN`, path) for reuse across Steps 5, 7, and
-   8 — the same inputs scope every refinement round so the subagent overwrites the same file in
-   place.
+4. Compute phase-file inputs. Follow `references/phase-file-inputs.md` § Compute Phase-File Inputs.
+   Hold the four values (`objective_dir`, `P`, `NN`, path) for reuse across Steps 5, 7, and 8 — the
+   same inputs scope every refinement round so the subagent overwrites the same file in place.
 
 5. Dispatch scoping subagent. Run `references/auto-scope-dispatch.md` § Dispatch with these
    procedure-specific results:

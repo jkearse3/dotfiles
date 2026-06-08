@@ -5,13 +5,13 @@ proceeding.
 
 ## References
 
-- `references/contracts.md` — file conventions, Load Current Objective, invariants.
-- `references/templates.md` — New Objective template.
+- `references/current-objective.md` — § Load Current Objective for the active objective gate.
+- `references/objective-template.md` — New Objective template.
 
 ## Steps
 
-1. Validate the current objective per `references/contracts.md` § Load Current Objective (stops with
-   the no-active-objective nudge if missing or broken).
+1. Validate the current objective per `references/current-objective.md` § Load Current Objective
+   (stops with the no-active-objective nudge if missing or broken).
 
 2. Resolve the path. Follow `.objectives/_current` through to the actual directory and locate
    `00-main.md`.

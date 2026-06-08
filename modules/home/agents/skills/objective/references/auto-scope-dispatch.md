@@ -4,12 +4,11 @@ Shared auto-scope dispatch mechanics for objective phase callers.
 
 ## References
 
-- `references/contracts.md` — file conventions and shared invariants.
-- `references/templates.md` — New Phase input computation.
+- `references/phase-file-inputs.md` — Compute Phase-File Inputs and phase-index entry shape.
 
 ## Dispatch
 
-Compute phase-file inputs per `references/templates.md`, then dispatch a subagent with:
+Compute phase-file inputs per `references/phase-file-inputs.md`, then dispatch a subagent with:
 
 ```text
 Read the bundled skill resource `briefs/phase-scope.md` and execute the instructions within it.
@@ -40,8 +39,8 @@ Handle results:
 - Phase proposal: the subagent has written the phase file at the computed path; read it if the
   caller needs to present proposal contents.
 
-Default Phase proposal acceptance is automatic: add a linked entry to `## Phases` in `00-main.md`,
-`P. [ ] [Phase Name](./NN-phase-P.md) *`, move focus to it, then re-read `00-main.md` before
-continuing. Callers may override this, consistent with the "Preserve approval gates" invariant.
-`phase-iterate` and `phase-interrogate` use default auto-accept; `phase-scope` instead presents the
-proposal and waits for approval before accepting.
+Default Phase proposal acceptance is automatic: add the linked entry from
+`references/phase-file-inputs.md` § Compute Phase-File Inputs to `## Phases` in `00-main.md`, move
+focus to it, then re-read `00-main.md` before continuing. Callers may override this, consistent with
+the "Preserve approval gates" invariant. `phase-iterate` and `phase-interrogate` use default
+auto-accept; `phase-scope` instead presents the proposal and waits for approval before accepting.

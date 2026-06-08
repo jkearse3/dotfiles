@@ -14,11 +14,12 @@ The orchestrator provides these inputs in the prompt:
 
 ## References
 
-- `references/contracts.md` — file conventions and invariants (single-revision rule, caller-token
-  preservation).
-- `references/templates.md` — New Phase template, task annotations, Phase Task Boundary, and
-  phase-file creation rules.
-- `references/phases.md` — phase resolution for linked phase files.
+- `references/workflow-invariants.md` — invariants (single-revision rule, caller-token preservation,
+  and write boundaries).
+- `references/phase-file-template.md` — New Phase template and task annotations.
+- `references/phase-task-boundary.md` — Phase Task Boundary.
+- `references/phase-scope-results.md` — caller-parsed phase scope result blocks.
+- `references/phase-index.md` — phase resolution for linked phase files.
 
 ## Write Permissions
 
@@ -56,18 +57,19 @@ The orchestrator provides these inputs in the prompt:
    - Review all ACs (any marker), Approach, Research, and prior phases to identify what to work on.
    - Name the phase to reflect its scope.
    - Write a brief approach summary (strategy, constraints, patterns).
-   - Compose tasks using `references/templates.md` § New Phase task annotations and § Phase Task
-     Boundary. Map each task to existing ACs regardless of marker.
+   - Compose tasks using `references/phase-file-template.md` § New Phase task annotations and
+     `references/phase-task-boundary.md` § Phase Task Boundary. Map each task to existing ACs
+     regardless of marker.
    - Only propose a new AC when a task represents a genuinely new spec-level condition that existing
      ACs don't cover. An AC describes a desired end state or behavior of the finished system; a task
      describes an implementation step that reaches it. If the candidate reads as a step, it is a
      task, not an AC.
 
 4. Write phase file. Write at the absolute path provided by the orchestrator using
-   `references/templates.md` § New Phase. Use the `P` value in the `## Phase P: Phase Name` header.
-   Include only required sections unless optional phase-local sections from `references/phases.md`
-   already have content to preserve from a refinement round. If a file already exists at the
-   provided path (prior refinement round), overwrite it.
+   `references/phase-file-template.md` § New Phase. Use the `P` value in the
+   `## Phase P: Phase Name` header. Include only required sections unless optional phase-local
+   sections already have content to preserve from a refinement round. If a file already exists at
+   the provided path (prior refinement round), overwrite it.
 
 5. Return result. Return one `## Result:` block (see Contracts): `Phase Proposal` on success,
    `No Work Remaining` if nothing to scope, or `Readiness Issues` if Step 2 found blockers.
@@ -76,27 +78,7 @@ The orchestrator provides these inputs in the prompt:
 
 ### Result Blocks
 
-Return exactly one. Headings and fields are caller-parsed — do not rename or reorder.
-
-```
-## Result: Readiness Issues
-
-1. [issue description] — suggested resolution
-2. ...
-```
-
-```
-## Result: No Work Remaining
-No phase to scope.
-```
-
-```
-## Result: Phase Proposal
-
-**Name**: [phase name]
-**Targeted ACs**: [list of AC numbers]
-**Written**: [absolute path to the phase file written in Step 4]
-```
+Apply `references/phase-scope-results.md` § Phase Scope Result Blocks.
 
 ### Write Boundary
 
@@ -112,7 +94,7 @@ No phase to scope.
 - Phase scoping is just-in-time: one phase at a time, informed by remaining ACs and prior learnings.
 - Do not add empty optional sections to new phases. Add `### Decisions` or `### Continuation` only
   when the phase has phase-local content for that section.
-- Generated phase tasks must satisfy `references/templates.md` § Phase Task Boundary.
+- Generated phase tasks must satisfy `references/phase-task-boundary.md` § Phase Task Boundary.
 - **Phase atomicity**: a phase must contain only interdependent tasks — tasks that must land
   together for the change to make sense. If a task could be committed independently without breaking
   the others, it belongs in a separate phase. Example: "add helper function" and "update caller to

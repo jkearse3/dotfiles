@@ -12,21 +12,25 @@ are appended to the existing list. When omitted, use focused phase continuation 
 
 ## References
 
-- `references/contracts.md` — § Load Current Objective for the load/nudge gate; § Continuation
-  Lifecycle; § Invariants for approval gates and AC semantics.
-- `references/phases.md` — Phase Resolution for locating focused phase continuation.
+- `references/current-objective.md` — § Load Current Objective for the load/nudge gate.
+- `references/workflow-invariants.md` — § Continuation Lifecycle and § Invariants for approval gates
+  and AC semantics.
+- `references/phase-index.md` — Phase Resolution for locating focused phase continuation.
 - `references/spec-definition.md` — § Spec Definition for interrogation, scenario cross-check, and
   AC drafting.
-- `references/acceptance-criteria.md` — AC precision rules, stability/locking semantics, and the
-  `[-]` invalidation format that govern conflict checks.
-- `references/index-format.md` — AC numbering and marker format consumed when writing
+- `references/ac-precision.md` — AC precision rules.
+- `references/ac-stability.md` — stability/locking semantics and the `[-]` invalidation format that
+  govern conflict checks.
+- `references/ac-conflict-check.md` — approval-gated conflict checks.
+- `references/ac-markers.md` — AC marker states and evidence format consumed when writing
   `## Acceptance Criteria`.
 
 ## Steps
 
-1. Load objective. Read `.objectives/_current/00-main.md` per `references/contracts.md` § Load
-   Current Objective, including its no-objective nudge. If a focused phase exists, resolve its
-   content per `references/phases.md` § Phase Resolution and read `### Continuation` when present.
+1. Load objective. Read `.objectives/_current/00-main.md` per `references/current-objective.md` §
+   Load Current Objective, including its no-objective nudge. If a focused phase exists, resolve its
+   content per `references/phase-index.md` § Phase Resolution and read `### Continuation` when
+   present.
 
 2. Review research. Read the Research section in `00-main.md`:
    - What do we know?
@@ -47,8 +51,8 @@ are appended to the existing list. When omitted, use focused phase continuation 
    `references/spec-definition.md` § Spec Definition.
 
 6. Conflict check (topic mode only — skip in full mode). Using the drafted ACs from Step 5, apply
-   `references/acceptance-criteria.md` § AC Conflict Check before writing. The drafted ACs are the
-   new AC candidates, after any topic-mode deduplication against existing coverage. Preserve the
+   `references/ac-conflict-check.md` § AC Conflict Check before writing. The drafted ACs are the new
+   AC candidates, after any topic-mode deduplication against existing coverage. Preserve the
    approval gate: conflict analysis and drafted ACs require user approval before writing
    `## Acceptance Criteria` in `00-main.md`.
 
@@ -77,7 +81,7 @@ are appended to the existing list. When omitted, use focused phase continuation 
    `00-main.md`.
 
 9. Clear or update continuation. After approved AC, Approach, and validation-finding writes are
-   persisted to `00-main.md`, apply `references/contracts.md` § Continuation Lifecycle for
+   persisted to `00-main.md`, apply `references/workflow-invariants.md` § Continuation Lifecycle for
    `Status: SPEC_CHANGE_REQUIRED`.
 
 10. Present summary:
@@ -91,7 +95,7 @@ are appended to the existing list. When omitted, use focused phase continuation 
 
 - Writes to `00-main.md`: `## Acceptance Criteria`, `## Approach`, and validation findings under
   `## Research > ### Findings`. Writes to the focused phase file: `### Continuation`, per
-  `references/contracts.md` § Continuation Lifecycle.
+  `references/workflow-invariants.md` § Continuation Lifecycle.
 - Preserve verbatim: the five interrogation dimensions and their sub-questions, the scenario
   cross-check categories and skip condition, the AC-definition rules, and the shared conflict-check
   approval gate plus markers/invalidation format.

@@ -12,12 +12,14 @@ then enrich AC status and commit.
 
 ## References
 
-- `references/contracts.md` — file conventions, Phase Iterate Result Blocks, Reconciliation Result
-  Contract, and invariants (single-revision rule).
+- `references/current-objective.md` — Load Current Objective.
+- `references/phase-iterate-results.md` — Phase Iterate Result Blocks.
+- `references/reconciliation-routing.md` — Reconciliation Result Contract.
+- `references/workflow-invariants.md` — approval-gate, continuation, and single-revision invariants.
 - `references/auto-scope-dispatch.md` — Auto-scope Dispatch.
-- `references/phases.md` — Phase Resolution (locate focused phase content).
-- `references/templates.md` — New Phase (compute phase-file inputs before dispatch).
-- `references/acceptance-criteria.md` — AC marker and evidence semantics.
+- `references/phase-index.md` — Phase Resolution (locate focused phase content).
+- `references/phase-file-inputs.md` — Compute Phase-File Inputs and phase-index entry shape.
+- `references/ac-markers.md` — AC marker and evidence semantics.
 
 ## Steps
 
@@ -25,7 +27,7 @@ Run in order. Do not improvise or skip steps. Announce each step number before e
 "Step 4: Run Implement") to maintain orientation.
 
 1. Load state. Read `.objectives/_current/00-main.md` fresh (never rely on prior context) per
-   `references/contracts.md` § Load Current Objective, including its no-objective nudge.
+   `references/current-objective.md` § Load Current Objective, including its no-objective nudge.
    - If no ACs in `## Acceptance Criteria`: nudge — "No acceptance criteria defined yet. Want me to
      run `/objective spec`?"
 
@@ -45,7 +47,7 @@ Run in order. Do not improvise or skip steps. Announce each step number before e
      - Phase proposal: auto-accept (no user approval), re-read `00-main.md` to pick up the new
        phase, and go to Step 3.
 
-3. Announce scope. Locate the focused phase file per `references/phases.md` § Phase Resolution.
+3. Announce scope. Locate the focused phase file per `references/phase-index.md` § Phase Resolution.
    Announce before executing:
    - Phase name and number.
    - Pending tasks (count and brief list).
@@ -120,8 +122,8 @@ Run in order. Do not improvise or skip steps. Announce each step number before e
 
    - If blocked tasks exist: stop and surface them — report which tasks are blocked and why; wait
      for user direction. With `--auto-commit`, return `PHASE_INCOMPLETE` per
-     `references/contracts.md` § Phase Iterate Result Blocks with reason `blocked_tasks` and blocker
-     details.
+     `references/phase-iterate-results.md` § Phase Iterate Result Blocks with reason `blocked_tasks`
+     and blocker details.
 
    - If not complete (pending tasks or open issues remain but no blockers): return to Step 4 for
      another cycle.
@@ -147,8 +149,8 @@ Run in order. Do not improvise or skip steps. Announce each step number before e
      objective-level concern.
    - If not complete for other reasons:
      - Without `--auto-commit`: stop. User decides whether to run another cycle.
-     - With `--auto-commit`: return `PHASE_INCOMPLETE` per `references/contracts.md` § Phase Iterate
-       Result Blocks using the matching reason and details.
+     - With `--auto-commit`: return `PHASE_INCOMPLETE` per `references/phase-iterate-results.md` §
+       Phase Iterate Result Blocks using the matching reason and details.
 
 8. Review and commit.
 
@@ -177,17 +179,17 @@ Run in order. Do not improvise or skip steps. Announce each step number before e
         ```
 
      2. Route the reconciliation `### Top-Level Status` deterministically per
-        `references/contracts.md` § Reconciliation Result Contract. For `NEEDS_DECISION`, read the
-        focused phase `### Continuation` Payload. If it has `Scope: phase` or routes to
-        `procedures/phase-interrogate.md`, read and follow `procedures/phase-interrogate.md`. If it
-        has `Scope: objective` or routes to `procedures/interrogate.md`, read and follow
-        `procedures/interrogate.md`. If the payload does not identify a decision scope, stop and
-        surface the reconciliation concern.
+        `references/reconciliation-routing.md` § Reconciliation Result Contract. For
+        `NEEDS_DECISION`, read the focused phase `### Continuation` Payload. If it has
+        `Scope: phase` or routes to `procedures/phase-interrogate.md`, read and follow
+        `procedures/phase-interrogate.md`. If it has `Scope: objective` or routes to
+        `procedures/interrogate.md`, read and follow `procedures/interrogate.md`. If the payload
+        does not identify a decision scope, stop and surface the reconciliation concern.
      3. Keep the phase focused and incomplete until explicit Step 8 approval/commit, regardless of
         the reconciliation route.
 
-   With `--auto-commit`: auto-commit and return `PHASE_COMPLETE` per `references/contracts.md` §
-   Phase Iterate Result Blocks.
+   With `--auto-commit`: auto-commit and return `PHASE_COMPLETE` per
+   `references/phase-iterate-results.md` § Phase Iterate Result Blocks.
    1. Mark phase complete in index (`[x]`) and remove the focus marker (`*`).
    2. Read and follow `procedures/summarize.md` with `--auto` to ensure the summary reflects the
       final committed state.
@@ -201,8 +203,8 @@ Run in order. Do not improvise or skip steps. Announce each step number before e
   command shapes, the Step 2 no-work message ("Nothing to iterate.") and index entry
   `P. [ ] [Phase Name](./NN-phase-P.md) *`, the implement/verify dispatch prompts, the
   `No changes to verify.` contract string, the `ac_status` section→marker mapping, and the
-  `PHASE_INCOMPLETE` / `PHASE_COMPLETE` blocks from `references/contracts.md` § Phase Iterate Result
-  Blocks.
+  `PHASE_INCOMPLETE` / `PHASE_COMPLETE` blocks from `references/phase-iterate-results.md` § Phase
+  Iterate Result Blocks.
 - Loop ownership: phase-iterate owns the implement-verify loop (dispatch, AC status capture,
   termination) and lifecycle (commit, phase marking). AC derivation and annotation are now handled
   by `phase-verify`. Scoping is dispatched as an isolated subagent via `briefs/phase-scope.md`;
@@ -216,9 +218,10 @@ Run in order. Do not improvise or skip steps. Announce each step number before e
 - Never edit repo files directly — phase-iterate is orchestration only. All repo edits go through
   the dispatched implement/verify/reconciliation subagents, except: commits, the `00-main.md` index
   entry update in Step 2, and Step 8 approval/commit phase-index updates.
-- Single-revision invariant (`references/contracts.md` § Invariants): all phase changes must live in
-  `@` when verify runs — no intermediate `jj commit`, `jj new`, or `jj split` during the loop, so
-  `jj diff` always captures the complete phase diff. Phase-iterate owns revision lifecycle.
+- Single-revision invariant (`references/workflow-invariants.md` § Invariants): all phase changes
+  must live in `@` when verify runs — no intermediate `jj commit`, `jj new`, or `jj split` during
+  the loop, so `jj diff` always captures the complete phase diff. Phase-iterate owns revision
+  lifecycle.
 - No iteration cap. Convergence is via dedup and monotonic progress (tasks go `[ ]` → `[x]` or
   `[!]`, never back).
 - Handling user decisions when a step surfaces concerns and the user provides direction:

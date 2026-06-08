@@ -4,8 +4,7 @@ List all objectives in the current repository.
 
 ## References
 
-- `references/contracts.md` — file conventions, shared operations, invariants.
-- `references/structure.md` — objective registry and symlink layout.
+- `references/objective-registry.md` — registry entries and valid-entry detection.
 
 ## Steps
 

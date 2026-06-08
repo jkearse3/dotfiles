@@ -8,14 +8,14 @@ committing a phase, general cleanup passes, or pre-PR review.
 
 ## References
 
-- `references/contracts.md` — § Load Current Objective for the load/nudge gate.
+- `references/current-objective.md` — § Load Current Objective for the load/nudge gate.
 - `references/branch-review.md` — § Autonomous Branch Review Conventions for the report fields
   returned by the subagent and presented by this orchestrator.
 
 ## Steps
 
-1. Load state. Read `.objectives/_current/00-main.md` per `references/contracts.md` § Load Current
-   Objective, including its no-objective nudge.
+1. Load state. Read `.objectives/_current/00-main.md` per `references/current-objective.md` § Load
+   Current Objective, including its no-objective nudge.
 
 2. Dispatch the pipeline. Dispatch a subagent with prompt:
 

@@ -5,14 +5,16 @@ create cleanup phases for actionable findings.
 
 ## References
 
-- `references/contracts.md` — § Invariants for the subagent write boundary and caller-token
-  preservation.
+- `references/workflow-invariants.md` — § Invariants for the subagent write boundary and
+  caller-token preservation.
 - `references/branch-review.md` — § Autonomous Branch Review Conventions for the report fields,
   review phase numbering, review filename, phase-file shape, and index-entry shape.
-- `references/phases.md` — Phase Index format and "never renumber" rule for the index entry written
-  in Step 7.
-- `references/templates.md` — New Phase template, § Phase Task Boundary, and § Compute phase-file
-  inputs for `P`/`NN` and the index-entry registration.
+- `references/phase-index.md` — Phase Index format and "never renumber" rule for the index entry
+  written in Step 7.
+- `references/phase-file-template.md` — New Phase template and task annotations.
+- `references/phase-task-boundary.md` — Phase Task Boundary.
+- `references/phase-file-inputs.md` — Compute Phase-File Inputs for `P`/`NN` and the index-entry
+  registration.
 
 ## Write Permissions
 
@@ -45,11 +47,12 @@ create cleanup phases for actionable findings.
    naming fixes, all error handling), or logical dependency (fix X before Y). If only one coherent
    group, create a single phase.
 
-7. Write phases. For each group, create a phase file whose tasks satisfy `references/templates.md` §
-   Phase Task Boundary, and register it in `00-main.md` per `references/templates.md` New Phase
-   template and § Compute phase-file inputs, with the review-specific conventions in
-   `references/branch-review.md` § Autonomous Branch Review Conventions. Focus the first created
-   phase (`*` in index) if no phase is currently focused.
+7. Write phases. For each group, create a phase file whose tasks satisfy
+   `references/phase-task-boundary.md` § Phase Task Boundary, and register it in `00-main.md` per
+   `references/phase-file-template.md` § New Phase and `references/phase-file-inputs.md` § Compute
+   Phase-File Inputs, with the review-specific conventions in `references/branch-review.md` §
+   Autonomous Branch Review Conventions. Focus the first created phase (`*` in index) if no phase is
+   currently focused.
 
 ## Contracts
 

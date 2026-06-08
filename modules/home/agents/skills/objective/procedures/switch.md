@@ -8,8 +8,8 @@ Optional objective name or slug. Without an argument, list objectives and ask th
 
 ## References
 
-- `references/contracts.md` — file conventions, Slugify, Extract Objective Slug, invariants.
-- `references/structure.md` — objective registry and symlink layout.
+- `references/objective-names.md` — Slugify and Extract Objective Slug.
+- `references/objective-registry.md` — registry entries, valid entries, and `_current` updates.
 - `procedures/load.md` — canonical objective context loading and presentation.
 
 ## Steps
@@ -18,11 +18,11 @@ Optional objective name or slug. Without an argument, list objectives and ask th
    - List entries in `.objectives/` excluding `_current` and `_config.yaml`.
    - Check each entry is valid: directory exists or symlink target exists.
    - For each entry, keep both the full entry name and the extracted slug per
-     `references/contracts.md` § Extract Objective Slug.
+     `references/objective-names.md` § Extract Objective Slug.
    - If no objectives exist, stop: `No objectives found. Run /objective create to create one.`
 
 2. Select objective.
-   - If an argument was provided, slugify it per `references/contracts.md` § Slugify.
+   - If an argument was provided, slugify it per `references/objective-names.md` § Slugify.
    - Match an argument against either the exact objective entry name or the exact extracted
      objective slug.
    - If exactly one valid objective matches, select it.
@@ -65,7 +65,7 @@ Optional objective name or slug. Without an argument, list objectives and ask th
 4. Switch objective.
    - Move the working copy to the existing matching jj bookmark.
    - Update `.objectives/_current` only when it points somewhere else. Point `_current` at the
-     selected objective entry name, preserving `references/structure.md` real-directory and
+     selected objective entry name, preserving `references/objective-registry.md` real-directory and
      configured symlink registry modes.
 
 5. Load and present objective context.

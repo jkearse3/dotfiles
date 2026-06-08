@@ -5,9 +5,13 @@ then AC validation if review is clean.
 
 ## References
 
-- `references/contracts.md` — file conventions and § Invariants (caller-token preservation and the
-  single-revision rule).
-- `references/acceptance-criteria.md` — AC states, evidence, and § AC Validation And Derivation.
+- `references/phase-subagent-state.md` — § Load Phase Subagent State.
+- `references/workflow-invariants.md` — § Invariants (caller-token preservation, write boundaries,
+  and the single-revision rule).
+- `references/ac-markers.md` — AC states and evidence.
+- `references/ac-validation.md` — § AC Validation And Derivation.
+- `references/phase-issue-format.md` — issue format.
+- `references/phase-verify-results.md` — caller-parsed verify result blocks.
 
 ## Write Permissions
 
@@ -17,8 +21,8 @@ then AC validation if review is clean.
 
 ## Steps
 
-1. Load state. Apply `references/contracts.md` § Load Phase Subagent State. Use AC text for AC
-   validation in Step 6.
+1. Load state. Apply `references/phase-subagent-state.md` § Load Phase Subagent State. Use AC text
+   for AC validation in Step 6.
 
 2. Check for changes. Run `jj diff --stat` (or `git diff --stat` if jj is unavailable). If no
    changes, stop and return the no-changes `## Result: Verify Summary` block (see Contracts). The
@@ -49,18 +53,17 @@ then AC validation if review is clean.
       `[ ]`.
    2. **Append new issues** to `### Issues`: `N. [ ] path:line (type, severity): description`.
 
-   Number sequentially from existing issues (don't renumber); flat list only; types `bug`, `design`,
-   `clarity`, `question`, `nit`; severity `high`, `medium`, `low`.
+   Apply `references/phase-issue-format.md` § Issue Format.
 
 5. Check review gate. If new issues were created in Step 4, stop and return the review-only
    `## Result: Verify Summary` block (see Contracts). Do not proceed to AC validation — the
    orchestrator loop will dispatch implement to address the issues. If no new issues, proceed.
 
-6. AC validation. Apply `references/acceptance-criteria.md` § AC Validation And Derivation to
-   inspect changed code, cite supporting tests, select AC statuses, and prepare evidence for each AC
-   from `.objectives/_current/00-main.md` `## Acceptance Criteria`.
+6. AC validation. Apply `references/ac-validation.md` § AC Validation And Derivation to inspect
+   changed code, cite supporting tests, select AC statuses, and prepare evidence for each AC from
+   `.objectives/_current/00-main.md` `## Acceptance Criteria`.
 
-7. AC derivation. Apply `references/acceptance-criteria.md` § AC Validation And Derivation for ACs
+7. AC derivation. Apply `references/ac-validation.md` § AC Validation And Derivation for ACs
    targeted by `(ACN, satisfy/enhance)` phase task annotations. Preserve enhancement-only ACs,
    preserve human-marked ACs, flag missing satisfy targets as readiness issues in `### Issues`, and
    update `## Acceptance Criteria` in `00-main.md` in a single edit.
@@ -78,51 +81,7 @@ then AC validation if review is clean.
 
 ### Result Blocks
 
-Headings and fields are caller-parsed — do not rename or reorder.
-
-No changes (Step 2):
-
-```
-## Result: Verify Summary
-
-No changes to verify.
-```
-
-Review gate (Step 5, new issues created):
-
-```
-## Result: Verify Summary
-
-### New Issues
-- [count by severity, or "None"]
-
-### Total Open Issues
-- [count remaining [ ], or "None"]
-
-### Recommendation
-- [address high-severity issues before next cycle]
-```
-
-Full summary (Step 9):
-
-```
-## Result: Verify Summary
-
-### Review
-- Issues: [count new issues, or "Clean -- no issues found"]
-
-### Validated
-- [list of ACs now [x], or "None"]
-
-### Needs Verification
-- [list of [~] ACs with explanation, or "None"]
-
-### Regressions
-- [list of [!] ACs with explanation, or "None"]
-
-### Not Implemented
-- [list of remaining [ ] ACs, or "None"]
-```
+Apply `references/phase-verify-results.md` § Verify Summary Result Blocks.
 
 ### Code Review Invocation
 
@@ -155,12 +114,7 @@ jj diff --git
 
 ### Issue Format
 
-```markdown
-### Issues
-1. [ ] src/auth.ts:42 (bug, high): Race condition in token refresh
-2. [ ] (human, medium): Login flow feels sluggish
-3. [x] src/utils.ts:15 (clarity, low): Renamed ambiguous variable (resolved)
-```
+Apply `references/phase-issue-format.md` § Issue Format.
 
 ### Rules
 

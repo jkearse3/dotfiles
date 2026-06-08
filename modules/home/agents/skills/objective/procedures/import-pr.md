@@ -4,11 +4,12 @@ Import unresolved GitHub PR review comments as one or more new review phase file
 
 ## References
 
-- `references/contracts.md` — § Load Current Objective for the load/nudge gate and § Invariants.
+- `references/current-objective.md` — § Load Current Objective for the load/nudge gate.
+- `references/workflow-invariants.md` — § Invariants for caller-token preservation.
 - `references/pr-review-import.md` — § PR Review Import Conventions for caller-visible import
   conventions.
-- `references/templates.md` — § Compute phase-file inputs for the sequence number (`NN`).
-- `references/phases.md` — Phase Index format and "never renumber" rule for the index entries.
+- `references/phase-file-inputs.md` — § Compute Phase-File Inputs for the sequence number (`NN`).
+- `references/phase-index.md` — Phase Index format and "never renumber" rule for the index entries.
 
 ## Steps
 
@@ -29,12 +30,12 @@ Import unresolved GitHub PR review comments as one or more new review phase file
 
    If no unresolved comments, stop with: `No unresolved comments found`.
 
-3. Load the current objective per `references/contracts.md` § Load Current Objective, including its
-   no-objective nudge.
+3. Load the current objective per `references/current-objective.md` § Load Current Objective,
+   including its no-objective nudge.
 
-4. Compute phase-file inputs. Derive `NN` (the sequence number) per `references/templates.md` §
-   Compute phase-file inputs, plus the PR-review-specific values per
-   `references/pr-review-import.md` § PR Review Import Conventions: the phase number `P` and the
+4. Compute phase-file inputs. Derive `NN` (the sequence number) per
+   `references/phase-file-inputs.md` § Compute Phase-File Inputs, plus the PR-review-specific values
+   per `references/pr-review-import.md` § PR Review Import Conventions: the phase number `P` and the
    review number `M`.
 
 5. Group comments by independence.

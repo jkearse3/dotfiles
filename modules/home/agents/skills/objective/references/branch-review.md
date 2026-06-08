@@ -13,8 +13,8 @@ Report fields:
 - Findings filtered out as non-actionable, duplicate, or outside branch scope (count, if any).
 - Suggest: `/objective phase-iterate` to execute.
 
-Phase numbering and file naming are computed via `references/templates.md` § Compute phase-file
-inputs, with two review-specific values:
+Phase numbering and file naming are computed via `references/phase-file-inputs.md` § Compute
+Phase-File Inputs, with two review-specific values:
 
 - Review number `M`: search existing phases for the `Review N` pattern; next `M` = highest + 1.
 - Filename is `NN-phase-P-review-M.md` (not the base `NN-phase-P.md`).
@@ -36,13 +36,13 @@ Address review feedback from autonomous review of branch changes.
 - **L<line>**: Concern description
 
 ### Tasks
-1. [ ] Task description satisfying `references/templates.md` § Phase Task Boundary (ACN, satisfy/enhance) or (IN)
+1. [ ] Task description satisfying `references/phase-task-boundary.md` § Phase Task Boundary (ACN, satisfy/enhance) or (IN)
 
 ### Issues
 ```
 
-Add a linked entry to `## Phases` in `00-main.md` per `references/phases.md` Phase Index — never
-renumber existing phases:
+Add a linked entry to `## Phases` in `00-main.md` per `references/phase-index.md` Phase Index —
+never renumber existing phases:
 
 ```markdown
 P. [ ] [Review M: <description>](./NN-phase-P-review-M.md)

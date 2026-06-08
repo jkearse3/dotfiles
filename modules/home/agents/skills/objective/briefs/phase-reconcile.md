@@ -4,10 +4,11 @@ Classify non-auto Step 8 review feedback and persist the next route in the focus
 
 ## References
 
-- `references/contracts.md` — file conventions, Reconciliation Result Contract, and invariants
-  (caller-token preservation, continuation persistence, and write boundaries).
-- `references/phases.md` — `### Continuation` labels.
-- `references/templates.md` — § Phase Task Boundary for direct task append validity.
+- `references/reconciliation-routing.md` — Reconciliation Result Contract and status routes.
+- `references/workflow-invariants.md` — invariants (caller-token preservation, continuation
+  persistence, and write boundaries).
+- `references/phase-continuation.md` — `### Continuation` labels.
+- `references/phase-task-boundary.md` — § Phase Task Boundary for direct task append validity.
 
 ## Arguments
 
@@ -51,8 +52,8 @@ The orchestrator provides these inputs in the prompt:
    - Append to `### Issues` by default using the next sequential issue number:
      `N. [ ] (human, medium): <feedback summary>`.
    - Append directly to `### Tasks` only when the feedback is already an unambiguous mechanical work
-     item with a clear completion condition and satisfies `references/templates.md` § Phase Task
-     Boundary.
+     item with a clear completion condition and satisfies `references/phase-task-boundary.md` §
+     Phase Task Boundary.
    - If feedback requests a lifecycle action that violates the boundary, classify it as
      `NEEDS_USER_INPUT` unless it is approval-like feedback already handled by `NO_ACTION`.
    - Deduplicate against existing open issues and pending tasks before appending.
@@ -68,11 +69,12 @@ The orchestrator provides these inputs in the prompt:
 
 5. Persist continuation when routing away. If the top-level status cannot immediately return to Step
    8 approval (`NO_ACTION`) or Step 4 implementation (`NEEDS_IMPLEMENTATION`), write or update
-   `### Continuation` in the phase file using `references/phases.md` continuation labels:
+   `### Continuation` in the phase file using `references/phase-continuation.md` continuation
+   labels:
    - `Status`: the top-level status.
    - `Source`: `phase-iterate Step 8 reconciliation`.
-   - `Route`: the deterministic next route from the status (see `references/contracts.md` §
-     Reconciliation Result Contract).
+   - `Route`: the deterministic next route from the status (see
+     `references/reconciliation-routing.md` § Reconciliation Result Contract).
    - `Summary`: concise summary of the unresolved feedback.
    - `Clear when`: the routed procedure has persisted its result and the next resume point is
      unambiguous.
@@ -86,7 +88,7 @@ The orchestrator provides these inputs in the prompt:
    return directly to Step 8 approval or Step 4 implementation.
 
 6. Return summary. Return the `## Result: Reconciliation Summary` block from
-   `references/contracts.md` § Reconciliation Result Contract.
+   `references/reconciliation-routing.md` § Reconciliation Result Contract.
 
 ## Contracts
 

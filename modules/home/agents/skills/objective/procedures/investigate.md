@@ -10,17 +10,19 @@ status `NEEDS_RESEARCH`; otherwise derive from objective context.
 
 ## References
 
-- `references/contracts.md` — file conventions, invariants, and Continuation Lifecycle.
-- `references/index-format.md` — `00-main.md` section layout and marker semantics.
-- `references/phases.md` — Phase Resolution for locating focused phase continuation.
-- `references/structure.md` — objective registry and symlink layout.
+- `references/current-objective.md` — § Load Current Objective for the active objective gate.
+- `references/workflow-invariants.md` — § Continuation Lifecycle and § Invariants.
+- `references/objective-index-format.md` — `00-main.md` section layout.
+- `references/phase-index.md` — Phase Resolution for locating focused phase continuation.
 
 ## Steps
 
 1. Load objective. Read `.objectives/_current/00-main.md`. If a focused phase exists, resolve its
-   content per `references/phases.md` § Phase Resolution and read `### Continuation` when present.
+   content per `references/phase-index.md` § Phase Resolution and read `### Continuation` when
+   present.
    - If an objective exists: go to Step 2.
-   - If no objective: stop with the nudge from `references/contracts.md` § Load Current Objective.
+   - If no objective: stop with the nudge from `references/current-objective.md` § Load Current
+     Objective.
 
 2. Derive topic. If no topic argument was provided:
    - If a focused phase exists and contains `### Continuation` with `Status: NEEDS_RESEARCH`, use
@@ -47,7 +49,7 @@ status `NEEDS_RESEARCH`; otherwise derive from objective context.
    - If a finding validates a prior assumption, remove the assumption and add it to Findings.
 
 5. Clear or update continuation. After Step 4 has persisted objective-wide research results to
-   `00-main.md`, apply `references/contracts.md` § Continuation Lifecycle for
+   `00-main.md`, apply `references/workflow-invariants.md` § Continuation Lifecycle for
    `Status: NEEDS_RESEARCH`.
 
 6. Present summary.
@@ -61,7 +63,8 @@ status `NEEDS_RESEARCH`; otherwise derive from objective context.
 
 - Writes to `00-main.md`: `### Findings`, `### Decisions`, `### Questions`, and `### Assumptions`
   (the last includes leads merged from `/investigate`), all under `## Research`. Writes to the
-  focused phase file: `### Continuation`, per `references/contracts.md` § Continuation Lifecycle.
+  focused phase file: `### Continuation`, per `references/workflow-invariants.md` § Continuation
+  Lifecycle.
 - Preserve the no-objective nudge, the no-gaps fallback, and the
   findings/leads/questions/assumptions merge rules verbatim.
 - The investigate skill runs a single pass and is objective-unaware — all persistence happens in

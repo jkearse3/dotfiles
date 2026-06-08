@@ -8,9 +8,9 @@ No arguments. Explicit non-current selection is handled by `/objective switch [n
 
 ## References
 
-- `references/contracts.md` — file conventions, Slugify, Extract Objective Slug, invariants.
-- `references/structure.md` — objective registry and symlink layout.
-- `references/phases.md` — phase resolution.
+- `references/objective-names.md` — Slugify and Extract Objective Slug.
+- `references/objective-registry.md` — registry entries, valid entries, and `_current` updates.
+- `references/phase-index.md` — Phase Resolution for locating the focused phase.
 
 ## Steps
 
@@ -24,12 +24,12 @@ No arguments. Explicit non-current selection is handled by `/objective switch [n
      Create one with `/objective create`, or select an existing objective with `/objective switch`.
      ```
 
-   - Derive the current bookmark slug via `references/contracts.md` § Slugify.
+   - Derive the current bookmark slug via `references/objective-names.md` § Slugify.
 
 2. Match objective by bookmark slug.
    - Scan `.objectives/` entries only as needed to compare objective slugs. Exclude `_current` and
      `_config.yaml`.
-   - Extract each objective slug per `references/contracts.md` § Extract Objective Slug.
+   - Extract each objective slug per `references/objective-names.md` § Extract Objective Slug.
    - Find entries whose extracted slug exactly matches the current bookmark slug.
    - If no entries match, stop:
 
@@ -55,7 +55,7 @@ No arguments. Explicit non-current selection is handled by `/objective switch [n
    - If the matched entry is a broken symlink, stop:
      `Objective entry <entry-name> points to a missing destination.`
    - Update `.objectives/_current` only when it points somewhere else. Point `_current` at the
-     matched objective entry name, preserving `references/structure.md` real-directory and
+     matched objective entry name, preserving `references/objective-registry.md` real-directory and
      configured symlink registry modes.
 
 4. Load objective context.
@@ -63,7 +63,7 @@ No arguments. Explicit non-current selection is handled by `/objective switch [n
    - Read `00-main.md` first.
    - Find focused phases marked with `*` in `## Phases`.
    - If exactly one focused phase exists, resolve and read only that phase file via
-     `references/phases.md` § Phase Resolution.
+     `references/phase-index.md` § Phase Resolution.
    - If the focused phase contains `### Continuation`, read it as the primary resume state. Do not
      modify or clear it while loading.
    - If zero or multiple focused phases exist, do not read phase files while loading. Report the

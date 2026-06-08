@@ -12,8 +12,8 @@ Report fields:
 - Comment count imported.
 - Phase count and numbers created, noting when comments were split across multiple phases.
 
-Phase numbering and file naming use `references/templates.md` § Compute phase-file inputs for `NN`,
-with three PR-review-specific values:
+Phase numbering and file naming use `references/phase-file-inputs.md` § Compute Phase-File Inputs
+for `NN`, with three PR-review-specific values:
 
 - Phase number `P`: highest phase number in the `## Phases` index in `00-main.md`; next `P` =
   highest + 1.
@@ -61,8 +61,8 @@ Formatting rules:
 - Include `threadId` for reply operations.
 - Diff context in collapsible details.
 
-Add a linked entry to `## Phases` in `00-main.md` per `references/phases.md` Phase Index — never
-renumber existing phases. One entry is added per phase created:
+Add a linked entry to `## Phases` in `00-main.md` per `references/phase-index.md` Phase Index —
+never renumber existing phases. One entry is added per phase created:
 
 ```markdown
 P. [ ] [PR Review M](./NN-phase-P-pr-review-M.md)

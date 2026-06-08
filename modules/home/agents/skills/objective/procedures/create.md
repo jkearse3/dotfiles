@@ -8,9 +8,9 @@ Optional bookmark name. If provided, creates or moves to that bookmark.
 
 ## References
 
-- `references/contracts.md` — file conventions, Slugify, Extract Objective Slug, invariants.
-- `references/structure.md` — objective registry and symlink layout.
-- `references/templates.md` — New Objective template.
+- `references/objective-names.md` — Slugify and Extract Objective Slug.
+- `references/objective-registry.md` — registry modes and `_current` updates.
+- `references/objective-template.md` — New Objective template.
 
 ## Steps
 
@@ -33,7 +33,7 @@ Optional bookmark name. If provided, creates or moves to that bookmark.
      create one?"
    - Branch name = result.
 
-2. Derive slug from the branch name via `references/contracts.md` § Slugify.
+2. Derive slug from the branch name via `references/objective-names.md` § Slugify.
 
 3. Generate prefix `YYYY-MM-DD-HHMM` from the current date and time (24-hour).
 
@@ -46,9 +46,9 @@ Optional bookmark name. If provided, creates or moves to that bookmark.
 5. Check for duplicates.
    - If `.objectives/<prefix>-<slug>` already exists, stop with error: "Objective `<prefix>-<slug>`
      already exists. Use `/objective load` to load it."
-   - Also check whether any existing objective entry's slug (per `references/contracts.md` § Extract
-     Objective Slug) matches the new slug. If a match is found, stop with error: "Objective already
-     exists for this branch: `<existing-entry-name>`. Use `/objective load` to load it."
+   - Also check whether any existing objective entry's slug (per `references/objective-names.md` §
+     Extract Objective Slug) matches the new slug. If a match is found, stop with error: "Objective
+     already exists for this branch: `<existing-entry-name>`. Use `/objective load` to load it."
 
 6. Create objective.
 
