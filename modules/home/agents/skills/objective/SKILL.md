@@ -48,10 +48,6 @@ Procedure paths below are relative to `procedures/`.
 In objective mode, never edit repo files without an active objective with approved ACs; all repo
 edits go through `/objective phase-iterate` or `/objective iterate`.
 
-Research spikes are exempt: `/objective investigate` without an active objective is allowed and
-auto-creates one when the spike reveals concrete work. Decision spikes via `/objective interrogate`
-share the same exemption.
-
 ## Cross-procedure references
 
 When a procedure needs behavior from another, read that procedure file at `procedures/<name>.md` and

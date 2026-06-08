@@ -21,17 +21,7 @@ history.
 1. Load objective. Read `.objectives/_current/00-main.md`. If a focused phase exists, resolve its
    content per `references/phases.md` § Phase Resolution and read `### Continuation` when present.
    - If an objective exists: go to Step 2.
-   - If no objective: run the auto-creation flow below, then go to Step 2.
-
-   Auto-creation flow (no active objective): apply `references/contracts.md` § Spike Auto-Creation
-   with these caller parameters:
-   - Spike kind: `decision spike`.
-   - Require-topic nudge: "No active objective. Provide a topic to start a decision spike, or want
-     me to load/create an objective?"
-   - Slug example: "what database should we use for the new service" → `database-decision`.
-   - Confirmation example: "Starting decision spike. Branch and objective will be named
-     `database-decision`. Proceed, or provide an alternative name?"
-   - Create argument: confirmed slug.
+   - If no objective: stop with the nudge from `references/contracts.md` § Load Current Objective.
 
 2. Derive topic. If no topic argument was provided:
    - If a focused phase exists and contains `### Continuation` with `Status: NEEDS_DECISION` and
@@ -73,7 +63,7 @@ history.
 
 - Writes `## Research > ### Decisions` in `00-main.md`. Writes to the focused phase file:
   `### Continuation`, per `references/contracts.md` § Continuation Lifecycle.
-- Preserve the auto-creation nudge, the topic-derivation fallback, and the decisions-merge semantics
+- Preserve the no-objective nudge, the topic-derivation fallback, and the decisions-merge semantics
   verbatim.
 - The interrogate skill is interactive and objective-unaware — all persistence happens in Step 4.
 - Run `/objective interrogate` again per topic for separate sessions; the objective accumulates

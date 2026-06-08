@@ -20,17 +20,7 @@ status `NEEDS_RESEARCH`; otherwise derive from objective context.
 1. Load objective. Read `.objectives/_current/00-main.md`. If a focused phase exists, resolve its
    content per `references/phases.md` § Phase Resolution and read `### Continuation` when present.
    - If an objective exists: go to Step 2.
-   - If no objective: run the auto-creation flow below, then go to Step 2.
-
-   Auto-creation flow (no active objective): apply `references/contracts.md` § Spike Auto-Creation
-   with these caller parameters:
-   - Spike kind: `research spike`.
-   - Require-topic nudge: "No active objective. Provide a topic to start a research spike, or want
-     me to load/create an objective?"
-   - Slug example: "how does the auth middleware handle token refresh" → `auth-token-refresh`.
-   - Confirmation example: "Starting research spike. Branch and objective will be named
-     `auth-token-refresh`. Proceed, or provide an alternative name?"
-   - Create argument: confirmed slug.
+   - If no objective: stop with the nudge from `references/contracts.md` § Load Current Objective.
 
 2. Derive topic. If no topic argument was provided:
    - If a focused phase exists and contains `### Continuation` with `Status: NEEDS_RESEARCH`, use
@@ -72,7 +62,7 @@ status `NEEDS_RESEARCH`; otherwise derive from objective context.
 - Writes to `00-main.md`: `### Findings`, `### Decisions`, `### Questions`, and `### Assumptions`
   (the last includes leads merged from `/investigate`), all under `## Research`. Writes to the
   focused phase file: `### Continuation`, per `references/contracts.md` § Continuation Lifecycle.
-- Preserve the research-spike nudge, the no-gaps fallback, and the
+- Preserve the no-objective nudge, the no-gaps fallback, and the
   findings/leads/questions/assumptions merge rules verbatim.
 - The investigate skill runs a single pass and is objective-unaware — all persistence happens in
   Step 4.

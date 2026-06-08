@@ -125,28 +125,6 @@ Status routes:
   `procedures/phase-interrogate.md` for `Scope: phase`.
 - `SPEC_CHANGE_REQUIRED` — run `procedures/spec.md`, then resume phase iteration at Step 3.
 
-### Spike Auto-Creation
-
-When no active objective exists, callers may create a spike objective by providing:
-
-- Spike kind: e.g. `research spike` or `decision spike`.
-- Require-topic nudge: exact stop text when no topic argument was provided.
-- Slug example: exact topic-to-slug example to show the derivation style.
-- Confirmation example: exact prompt text to present with the derived slug.
-- Create argument: the confirmed slug passed to `procedures/create.md`.
-
-Apply the flow:
-
-1. Require topic. If no topic argument was provided, emit the require-topic nudge and stop.
-2. Extract slug. From the topic, take 2-3 key terms forming a compact, descriptive slug (lowercase,
-   hyphen-separated). Drop filler words. Follow the caller's slug example.
-3. Confirm with user. Present the derived slug using the caller's confirmation example and accept an
-   override.
-4. Create branch + objective. Read and follow `procedures/create.md` with the confirmed slug as the
-   argument. This creates the bookmark and objective and loads it.
-5. Continue. The topic argument carries through to the caller's topic-derivation step with no
-   re-derivation needed.
-
 ### Continuation Lifecycle
 
 Apply this operation after a routed action has persisted its declared result:
