@@ -1,6 +1,6 @@
 ---
 name: objective
-description: Objective workflow — create, load, investigate, spec, scope, iterate, review, summarize
+description: Objective workflow — create, load, switch, investigate, spec, scope, iterate, review, summarize
 argument-hint: "<intent or subcommand> [args]"
 ---
 
@@ -24,7 +24,8 @@ arguments were provided, treat the request as `load`.
 Procedure paths below are relative to `procedures/`.
 
 - `create [name]` — `create.md`: Create a new objective and branch
-- `load [name]` (or empty args) — `load.md`: Load an existing objective (branch-aware)
+- `load` (or empty args) — `load.md`: Load the objective matching the current jj bookmark
+- `switch [name]` — `switch.md`: Select an objective explicitly and move to its existing bookmark
 - `list` — `list.md`: List all objectives
 - `reset` — `reset.md`: Reset current objective to blank template
 - `rename [name]` — `rename.md`: Rename objective, bookmark, and destination

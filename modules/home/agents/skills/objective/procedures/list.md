@@ -26,7 +26,7 @@ List all objectives in the current repository.
      2024-01-10-fix-bug
      2024-01-08-old-thing [broken]
 
-   Use /objective load to switch, /objective create to create.
+   Use /objective switch to switch, /objective create to create.
    ```
 
    - Show entry name.

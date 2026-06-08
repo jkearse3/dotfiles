@@ -1,10 +1,10 @@
 # Load
 
-Load an objective.
+Load the objective that matches the current jj bookmark.
 
 ## Arguments
 
-Optional objective name or slug to load directly.
+No arguments. Explicit non-current selection is handled by `/objective switch [name]`.
 
 ## References
 
@@ -14,82 +14,62 @@ Optional objective name or slug to load directly.
 
 ## Steps
 
-1. Detect branch.
+1. Resolve current bookmark.
    - Run `jj-bookmark-current`.
-   - Derive a slug from the result via `references/contracts.md` § Slugify.
-   - An empty result means trunk/no bookmark.
+   - Run `jj-bookmark-default`.
+   - If the current bookmark is empty or equals the default bookmark, stop:
 
-2. Check mismatch (skip if argument provided).
-   - If `_current` exists and points to a valid objective, the branch is not empty, and no argument
-     was given:
-     - Extract the slug from the `_current` target per `references/contracts.md` § Extract Objective
-       Slug.
-     - If the extracted slug differs from the detected branch slug:
-       - Inform: "Current objective `<current-name>` doesn't match branch `<branch-name>`."
-       - Ask: "Switch to matching objective, create one, or keep current?"
-       - Wait for the user response, then route:
-         - Switch: go to step 3 "no argument and branch detected" path (finds the matching objective
-           by branch slug).
-         - Create: read and follow `procedures/create.md`.
-         - Keep: go to step 6 (load the current objective as-is).
-       - Stop here until the user responds.
-
-3. Route by argument.
-
-   If argument provided:
-   - Extract the slug from each `.objectives/` entry (exclude `_current`, `_config.yaml`) per
-     `references/contracts.md` § Extract Objective Slug.
-   - Find entries whose extracted slug exactly matches the argument.
-   - If exactly one match: go to step 5 (handle selection) with that objective.
-   - If multiple matches: go to step 4 (list), filtered to matching entries only.
-   - If no match: go to step 4 (list) with the note `No objective matching "<argument>".`
-
-   If no argument and branch detected (not trunk):
-   - Extract the slug from each `.objectives/` entry (same method as above).
-   - Find entries whose extracted slug exactly matches the branch slug.
-   - If exactly one match: go to step 5 (handle selection) — direct load, no list.
-   - If no match: offer to create — "No objective for branch `<branch-name>`. Want me to create
-     one?" Wait for the user response. Stop here.
-   - If multiple matches: go to step 4 (list), filtered to matches.
-
-   If no argument and on trunk: go to step 4 (list).
-
-4. List objectives. Find all entries in `.objectives/` (exclude `_current`, `_config.yaml`).
-   - Check each entry is valid (directory exists or symlink target exists); mark broken ones.
-   - Read the `_current` symlink to identify the current objective.
-   - If no objectives exist, show the hint and stop: "No objectives found. Want me to create one?"
-   - Present as text (not interactive selection — the user responds naturally):
-
-     ```
-     Objectives:
-     1. 2024-01-15-1430-auth-refactor *
-     2. 2024-01-10-fix-bug (branch match)
-     3. 2024-01-08-old-thing [broken]
-
-     Which one?
+     ```text
+     No objective loaded: `/objective load` requires a non-default jj bookmark.
+     Create one with `/objective create`, or select an existing objective with `/objective switch`.
      ```
 
-   - Annotate `*` on the current objective.
-   - Annotate `(branch match)` on entries whose extracted slug matches the detected branch slug.
-   - Annotate `[broken]` on broken symlinks.
-   - Wait for the user response — the user picks by number or name. Stop here until the user
-     responds.
+   - Derive the current bookmark slug via `references/contracts.md` § Slugify.
 
-5. Handle selection.
-   - If a broken symlink was selected: error "Symlink target missing. Run `/objective load` to
-     select another."
-   - If an existing objective was selected: update the `_current` symlink if different from the
-     selection.
+2. Match objective by bookmark slug.
+   - Scan `.objectives/` entries only as needed to compare objective slugs. Exclude `_current` and
+     `_config.yaml`.
+   - Extract each objective slug per `references/contracts.md` § Extract Objective Slug.
+   - Find entries whose extracted slug exactly matches the current bookmark slug.
+   - If no entries match, stop:
 
-6. Load objective.
-   - Resolve `.objectives/_current` through to the actual directory.
-   - Read `00-main.md` (index file: context, research, ACs, approach, phases index).
-   - Find the focused phase (marked with `*` in `## Phases`).
-   - Resolve and read the focused phase file via `references/phases.md` § Phase Resolution.
+     ```text
+     No objective matches bookmark `<bookmark-name>`.
+     Run `/objective create` to create an objective for this bookmark.
+     ```
+
+   - If multiple entries match, stop and list the conflicting entry names:
+
+     ```text
+     Multiple objectives match bookmark `<bookmark-name>`:
+     - <entry-name>
+     - <entry-name>
+
+     Resolve the duplicate objectives before loading.
+     ```
+
+   - Do not list unrelated objectives and do not ask the user to choose an unrelated objective.
+
+3. Select matching objective.
+   - Check the matched entry is valid: directory exists or symlink target exists.
+   - If the matched entry is a broken symlink, stop:
+     `Objective entry <entry-name> points to a missing destination.`
+   - Update `.objectives/_current` only when it points somewhere else. Point `_current` at the
+     matched objective entry name, preserving `references/structure.md` real-directory and
+     configured symlink registry modes.
+
+4. Load objective context.
+   - Resolve `.objectives/_current` through the objective entry to the actual directory.
+   - Read `00-main.md` first.
+   - Find focused phases marked with `*` in `## Phases`.
+   - If exactly one focused phase exists, resolve and read only that phase file via
+     `references/phases.md` § Phase Resolution.
    - If the focused phase contains `### Continuation`, read it as the primary resume state. Do not
      modify or clear it while loading.
+   - If zero or multiple focused phases exist, do not read phase files while loading. Report the
+     phase focus issue in the presented context.
 
-7. Present context.
+5. Present context.
    - Show Context, Research summary, and the Phases list.
    - If a focused phase exists and contains `### Continuation`: show Status, Source, Route, Summary,
      Clear when, and any Payload before pending tasks. Present this continuation as the next resume
@@ -108,11 +88,17 @@ Invoke this procedure proactively when:
 - Stale detection: the user references prior work ("as we discussed", "the plan we made") but the
   objective is not loaded.
 
-When auto-loading, skip selection (steps 1-5) — use the current symlink directly.
+When auto-loading, follow steps 1-4 without interactive selection. The current bookmark is the
+authority: if `.objectives/_current` points at a different objective than the current bookmark,
+update `_current` after exactly one objective entry matches the bookmark slug. Do not use stale
+`_current` state as a fallback for trunk/default/no bookmark or no-match cases.
 
 ## Contracts
 
-- Preserve the mismatch prompt, the listing block, branch-match annotations, the no-match create
-  offers, and auto-load triggers verbatim.
-- Update `_current` only when the selection differs from the current objective.
+- `/objective load <name>` is not supported. Use `/objective switch [name]` for explicit non-current
+  selection.
+- Normal load and auto-load share bookmark-first matching where their behavior overlaps.
+- Update `_current` only when the bookmark-matched objective differs from the current objective.
+- Preserve objective registry compatibility for real directories, configured symlink entries, and
+  `_current` updates.
 - Do not modify objective files.
