@@ -72,7 +72,8 @@ Optional bookmark name. If provided, creates or moves to that bookmark.
 8. Present context.
    - Confirm creation: "Created objective `<prefix>-<slug>` for branch `<branch-name>`".
    - Show the Context section.
-   - Suggest next steps: start with `/objective investigate` or `/objective spec`.
+   - Suggest next steps: start with `/objective spec`; use `/objective research` first for deeper
+     discovery.
 
 ## Contracts
 

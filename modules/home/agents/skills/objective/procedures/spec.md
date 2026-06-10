@@ -36,7 +36,7 @@ are appended to the existing list. When omitted, use focused phase continuation 
    - What do we know?
    - What constraints exist?
    - Are there unresolved questions blocking AC definition?
-   - If critical gaps: suggest `/objective investigate` first.
+   - If critical gaps: suggest `/objective research` first.
 
 3. Interrogate requirements. Apply `references/spec-definition.md` § Spec Definition. If no topic
    argument was provided and the focused phase contains `### Continuation` with
@@ -89,7 +89,7 @@ are appended to the existing list. When omitted, use focused phase continuation 
     - Approach summary.
     - Validation concerns (if any).
     - Continuation cleared or updated, including the next resume route when applicable.
-    - Suggest next: refine ACs/approach, more research, or ready for `/objective phase-iterate`.
+    - Suggest next: refine ACs/approach, more research, or ready for `/objective iterate`.
 
 ## Contracts
 
@@ -112,5 +112,6 @@ are appended to the existing list. When omitted, use focused phase continuation 
   obvious answers as pre-filled assumptions for validation; only ask open-ended questions for
   genuinely ambiguous dimensions).
 - User drives the outer loop: research ↔ spec until confident.
-- Don't define tasks here — tasks are scoped by `/objective phase-scope`.
+- Don't define tasks here — tasks are scoped during `/objective iterate`; `/objective phase-scope`
+  remains available as a focused helper.
 - Mark `(human)` for subjective criteria (UX, feel, etc.).

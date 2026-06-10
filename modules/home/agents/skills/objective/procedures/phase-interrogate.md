@@ -90,8 +90,7 @@ it has status `NEEDS_DECISION` with `Scope: phase`; otherwise derive from the fu
    - Continuation cleared or updated, including the next resume route.
    - If no ACs were referenced, nudge: "No ACs were targeted — consider running `/objective spec` to
      define criteria if this design needs validation."
-   - Suggest next: more interrogation, or ready for `/objective phase-scope` or
-     `/objective phase-iterate`.
+   - Suggest next: more interrogation, or ready for `/objective iterate`.
 
 ## Contracts
 

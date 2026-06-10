@@ -1,10 +1,7 @@
 # Summarize
 
-Synthesize the Summary section for PR descriptions.
-
-## Arguments
-
-- `--auto` — Write the summary without presenting for review (used by automated workflows).
+Synthesize the Summary section for PR descriptions. This is the summary-writing operation used by
+`/objective finalize`.
 
 ## References
 
@@ -49,20 +46,16 @@ Synthesize the Summary section for PR descriptions.
      tradeoffs, or areas needing attention.
    - Omit the Implementation Notes section if changes are self-explanatory.
 
-4. Present for review (skip if `--auto`). Show the summary and ask if it looks good.
-   - If changes requested: revise and re-present.
-   - If rejected: stop without writing.
-
-5. Write the Summary section to the objective.
+4. Write the Summary section to the objective.
    - If a Summary section exists: replace its content.
    - If no Summary section exists: append it as the last section of the file.
 
-6. Report: `Summary written to objective.`
+5. Report: `Summary written to objective.`
 
 ## Contracts
 
 - The Summary is external-facing — assume the reader has no other context.
 - Used for PR/MR descriptions.
 - Run after implementation is complete, not during planning.
-- Preserve verbatim: the `--auto` skip behavior, the Summary/Implementation Notes output template,
-  and the `Summary written to objective.` report string.
+- Preserve verbatim: the Summary/Implementation Notes output template and the
+  `Summary written to objective.` report string.

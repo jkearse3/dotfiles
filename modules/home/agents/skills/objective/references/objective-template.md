@@ -33,5 +33,5 @@ Generate `00-main.md` with this content:
 
 ## Phases
 
-[No phases yet - scope with /objective phase-scope when ready to implement]
+[No phases yet - run /objective iterate when ready to implement]
 ```

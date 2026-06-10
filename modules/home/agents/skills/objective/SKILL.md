@@ -1,13 +1,13 @@
 ---
 name: objective
-description: Objective workflow — create, load, switch, investigate, spec, scope, iterate, review, summarize
+description: Objective workflow — spec, iterate, finalize reliable work with optional research/review helpers
 argument-hint: "<intent or subcommand> [args]"
 ---
 
 # Objective
 
-Unified skill for the objective workflow. Routes the user-provided arguments to the matching
-procedure file.
+Unified skill for the objective workflow. The primary lifecycle is `spec -> iterate -> finalize`:
+define the contract, execute verified phases, then close out with PR-ready summary artifacts.
 
 ## Arguments
 
@@ -23,31 +23,40 @@ arguments were provided, treat the request as `load`.
 
 Procedure paths below are relative to `procedures/`.
 
+Primary lifecycle:
+
+- `spec [topic]` — `spec.md`: Define acceptance criteria and approach
+- `iterate` (or `run all`) — `iterate.md`: Autonomous: pre-flight, loop all phases, auto-commit
+- `finalize` — `finalize.md`: Close out the objective with PR-ready summary artifacts
+
+Setup and navigation:
+
 - `create [name]` — `create.md`: Create a new objective and branch
 - `load` (or empty args) — `load.md`: Load the objective matching the current jj bookmark
 - `switch [name]` — `switch.md`: Select an objective explicitly and move to its existing bookmark
 - `list` — `list.md`: List all objectives
 - `reset` — `reset.md`: Reset current objective to blank template
 - `rename [name]` — `rename.md`: Rename objective, bookmark, and destination
+
+Optional focused helpers:
+
+- `research [topic]` or `investigate [topic]` — `investigate.md`: Invoke `/investigate` and merge
+  findings into objective
 - `interrogate [topic]` — `interrogate.md`: Invoke `/interrogate` and merge decisions into objective
 - `phase-interrogate [topic]` — `phase-interrogate.md`: Apply interrogate workflow at the phase
   level
-- `investigate [topic]` — `investigate.md`: Invoke `/investigate` and merge findings into objective
-- `spec [topic]` — `spec.md`: Define acceptance criteria and approach
 - `phase-scope` (or `scope phase`) — `phase-scope.md`: Scope next phase (dispatches scoping
   subagent)
 - `phase-iterate [--auto-commit]` (or `iterate phase`) — `phase-iterate.md`: Run implement-verify
   loop inline for one phase
-- `iterate` (or `run all`) — `iterate.md`: Autonomous: pre-flight, loop all phases, auto-commit
 - `review` — `review.md`: Autonomous review of branch changes, create cleanup phases
 - `import-pr` (or `import pr comments`) — `import-pr.md`: Fetch unresolved PR comments as review
   phase
-- `summarize [--auto]` — `summarize.md`: Generate PR description from objective
 
 ## Guardrail
 
 In objective mode, never edit repo files without an active objective with approved ACs; all repo
-edits go through `/objective phase-iterate` or `/objective iterate`.
+edits go through `/objective iterate` or the focused helper `/objective phase-iterate`.
 
 ## Cross-procedure references
 

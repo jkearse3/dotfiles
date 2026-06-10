@@ -20,7 +20,7 @@ round.
      run `/objective spec`?"
 
 2. Find focused phase (`*` in `## Phases`).
-   - If a focused phase exists: stop — "Phase already in focus. Run `/objective phase-iterate` to
+   - If a focused phase exists: stop — "Phase already in focus. Run `/objective iterate` to
      execute."
    - If none: go to Step 3.
 

@@ -69,8 +69,8 @@ status `NEEDS_RESEARCH`; otherwise derive from objective context.
   findings/leads/questions/assumptions merge rules verbatim.
 - The investigate skill runs a single pass and is objective-unaware — all persistence happens in
   Step 4.
-- Run `/objective investigate` again per topic for separate sessions; the objective accumulates
-  state, so nothing is lost between runs.
+- Run `/objective research` or `/objective investigate` again per topic for separate sessions; the
+  objective accumulates state, so nothing is lost between runs.
 - Findings inform Spec. Do not define ACs here.
 - Focused phase `### Continuation` with `Status: NEEDS_RESEARCH` is the default topic and context
   when no explicit topic argument is provided.

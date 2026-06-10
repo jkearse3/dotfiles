@@ -51,16 +51,16 @@ Run in order. Do not improvise or skip steps.
       of `### Continuation`.
 
 3. Completion. When no `[ ]` ACs remain (all are `[x]`, `[~]`, or `[-]`):
-   1. Read and follow `procedures/summarize.md` with `--auto`.
+   1. Read and follow `procedures/finalize.md`.
    2. List any deferred `[~] (human)` ACs that need user sign-off.
-   3. Announce: "All phases complete. Run `/objective review` if you want a final review before
-      merging."
+   3. Announce: "All phases complete. Summary written. Run `/objective review` if you want a final
+      review before merging."
 
 ## Contracts
 
-- Preserve verbatim: the pre-flight gate checks, the `--auto` summarize/phase-iterate invocations,
-  the `PHASE_COMPLETE` / `PHASE_INCOMPLETE` handling per `references/phase-iterate-results.md` §
-  Phase Iterate Result Blocks, and the completion announcement.
+- Preserve verbatim: the pre-flight gate checks, the `--auto-commit` Phase Iterate invocation, the
+  `PHASE_COMPLETE` / `PHASE_INCOMPLETE` handling per `references/phase-iterate-results.md` § Phase
+  Iterate Result Blocks, and the completion announcement.
 - Top-level orchestrator: replaces the user's manual `/objective phase-iterate` loop. All edits
   happen through Phase Iterate; this procedure only reads `00-main.md`, focused phase state, and
   orchestrates.

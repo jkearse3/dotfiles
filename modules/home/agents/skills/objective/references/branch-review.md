@@ -11,7 +11,7 @@ Report fields:
 - Phases created (count and names).
 - Actionable findings grouped (count).
 - Findings filtered out as non-actionable, duplicate, or outside branch scope (count, if any).
-- Suggest: `/objective phase-iterate` to execute.
+- Suggest: `/objective iterate` to execute.
 
 Phase numbering and file naming are computed via `references/phase-file-inputs.md` § Compute
 Phase-File Inputs, with two review-specific values:
