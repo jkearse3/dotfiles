@@ -161,11 +161,9 @@ Run in order. Do not improvise or skip steps. Announce each step number before e
    2. Wait for the user, who either approves or requests tweaks.
    - If the user approves:
      1. Mark phase complete in index (`[x]`) and remove the focus marker (`*`).
-     2. Read and follow `procedures/summarize.md` with `--auto` to ensure the summary reflects the
-        final committed state.
-     3. Compose the full revision description using the repo's version-control rules.
-     4. Commit the phase with `jj commit -m "$desc"`.
-     5. Note "Phase complete. Run `/objective phase-iterate` to scope and execute next phase."
+     2. Compose the full revision description using the repo's version-control rules.
+     3. Commit the phase with `jj commit -m "$desc"`.
+     4. Note "Phase complete. Run `/objective phase-iterate` to scope and execute next phase."
    - If the user requests tweaks:
      1. Dispatch a reconciliation subagent with prompt:
 
@@ -191,11 +189,9 @@ Run in order. Do not improvise or skip steps. Announce each step number before e
    With `--auto-commit`: auto-commit and return `PHASE_COMPLETE` per
    `references/phase-iterate-results.md` § Phase Iterate Result Blocks.
    1. Mark phase complete in index (`[x]`) and remove the focus marker (`*`).
-   2. Read and follow `procedures/summarize.md` with `--auto` to ensure the summary reflects the
-      final committed state.
-   3. Compose the full revision description using the repo's version-control rules.
-   4. Commit the phase with `jj commit -m "$desc"`.
-   5. Return the structured result.
+   2. Compose the full revision description using the repo's version-control rules.
+   3. Commit the phase with `jj commit -m "$desc"`.
+   4. Return the structured result.
 
 ## Contracts
 
