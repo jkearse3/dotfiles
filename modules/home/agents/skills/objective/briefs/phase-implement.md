@@ -11,7 +11,9 @@ file in real-time.
 
 ## Write Permissions
 
-- Write the phase file at the provided path (update task markers and append tasks)
+- Write the phase file at the provided path (update task markers and append tasks).
+- Write repo files required to complete pending phase tasks, limited to the current phase scope and
+  the `references/templates.md` § Phase Task Boundary.
 
 ## Steps
 
