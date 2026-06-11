@@ -61,6 +61,6 @@ round.
   `P. [ ] [Phase Name](./NN-phase-P.md) *`, and the refinement-loop dispatch prompt from
   `references/auto-scope-dispatch.md` § Dispatch.
 - This procedure presents the proposal and waits for approval — it does not auto-accept (unlike
-  `phase-iterate` Step 2).
+  `phase-iterate`'s auto-scope branch).
 - Each refinement round dispatches a new subagent. There is no session continuity; the prior draft
   is recovered by the brief's Step 1 read of the existing phase file.

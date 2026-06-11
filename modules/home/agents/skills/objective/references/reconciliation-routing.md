@@ -25,9 +25,10 @@ status token matching, field order, and field meanings exactly.
 
 Status routes:
 
-- `NO_ACTION` — return to Step 8 approval.
-- `NEEDS_IMPLEMENTATION` — return to Step 4 implementation.
+- `NO_ACTION` — return to review approval.
+- `NEEDS_IMPLEMENTATION` — return to implementation.
 - `NEEDS_USER_INPUT` — stop and surface concerns to the user.
 - `NEEDS_RESEARCH` — run `procedures/investigate.md`.
 - `NEEDS_DECISION` — run `procedures/interrogate.md` for `Scope: objective`.
-- `SPEC_CHANGE_REQUIRED` — run `procedures/spec.md`, then resume phase iteration at Step 3.
+- `SPEC_CHANGE_REQUIRED` — run `procedures/spec.md`, then resume phase iteration at Step 3 (scope
+  announcement).

@@ -10,10 +10,9 @@ writes below.
 
 ## Arguments
 
-- `--auto-commit`: Steps 6 and 8 return a structured `PHASE_INCOMPLETE` diagnostic on failure
+- `--auto-commit`: termination and review failures return a structured `PHASE_INCOMPLETE` diagnostic
   (blocked tasks, unresolved issues, or implement concerns) instead of stopping for user input, and
-  Step 9 auto-commits and returns a structured `PHASE_COMPLETE` result instead of waiting for user
-  review.
+  commit completion returns a structured `PHASE_COMPLETE` result instead of waiting for user review.
 
 ## References
 
@@ -23,8 +22,9 @@ writes below.
 
 ## Steps
 
-Run in order. Do not improvise or skip steps. Announce each step number before executing it (e.g.,
-"Step 4: Run Implement") to maintain orientation.
+Run in order. Do not improvise or skip steps. Treat step numbers as internal control flow: announce
+only meaningful user-facing progress such as focused phase scope, implementation/verification
+status, blockers, review readiness, and completion results.
 
 1. Load state. Read `.objectives/_current/00-main.md` fresh (never rely on prior context) per
    `references/current-objective.md` § Load Current Objective, including its no-objective nudge.
@@ -137,7 +137,7 @@ Run in order. Do not improvise or skip steps. Announce each step number before e
    - All phase issues resolved.
 
    - If complete:
-     - Keep the phase focused and incomplete in the index until explicit Step 8 approval/commit.
+     - Keep the phase focused and incomplete in the index until explicit review approval/commit.
      - Collect targeted ACs from task references (`(ACN, satisfy)` / `(ACN, codify)` /
        `(ACN, enhance)`) for the summary.
      - Go to Step 8 (review and commit).
@@ -180,7 +180,7 @@ Run in order. Do not improvise or skip steps. Announce each step number before e
         phase scope or does not identify objective scope, stop and surface the reconciliation
         concern; phase-scoped uncertainty must be reclassified as user input, implementation
         follow-up, research, or spec/objective interrogation before routing.
-     3. Keep the phase focused and incomplete until explicit Step 8 approval/commit, regardless of
+     3. Keep the phase focused and incomplete until explicit review approval/commit, regardless of
         the reconciliation route.
 
    With `--auto-commit`: read `references/phase-iterate-results.md` § Phase Iterate Result Blocks,
@@ -192,12 +192,12 @@ Run in order. Do not improvise or skip steps. Announce each step number before e
 
 ## Contracts
 
-- Preserve verbatim: the two Step 1 nudges, the Step 1 objective-commit `jj commit` / `jj split`
-  command shapes, the Step 2 no-work message ("Nothing to iterate.") and index entry
-  `P. [ ] [Phase Name](./NN-phase-P.md) *`, the implement/verify dispatch prompts, the
-  `No changes to verify.` contract string, the `ac_status` section→marker mapping from
-  `references/phase-verify-results.md` § AC Status Mapping, and the `PHASE_INCOMPLETE` /
-  `PHASE_COMPLETE` blocks from `references/phase-iterate-results.md` § Phase Iterate Result Blocks.
+- Preserve verbatim: the no-AC nudge, objective-commit `jj commit` / `jj split` command shapes, the
+  no-work message ("Nothing to iterate.") and index entry `P. [ ] [Phase Name](./NN-phase-P.md) *`,
+  the implement/verify dispatch prompts, the `No changes to verify.` contract string, the
+  `ac_status` section→marker mapping from `references/phase-verify-results.md` § AC Status Mapping,
+  and the `PHASE_INCOMPLETE` / `PHASE_COMPLETE` blocks from `references/phase-iterate-results.md` §
+  Phase Iterate Result Blocks.
 - Loop ownership: phase-iterate owns the implement-verify loop (dispatch, AC status capture,
   termination) and lifecycle (commit, phase marking). AC derivation and annotation are now handled
   by `phase-verify`. Scoping is dispatched as an isolated subagent via `briefs/phase-scope.md`;
@@ -208,11 +208,11 @@ Run in order. Do not improvise or skip steps. Announce each step number before e
 - State passes between steps via `00-main.md` (ACs, phases index) and phase files (tasks, issues,
   approach, context, continuation).
 - Never pause between steps. After each step completes, immediately proceed to the next unless the
-  step requires user input (Steps 7 and 8 without `--auto-commit`, and blockers in Step 6). If any
-  step fails or needs user input, stop and report.
+  step requires user input (summary/review without `--auto-commit`, or blocked tasks). If any step
+  fails or needs user input, stop and report.
 - Never edit repo files directly — phase-iterate is orchestration only. All repo edits go through
   the dispatched implement/verify/reconciliation subagents, except: commits, the `00-main.md` index
-  entry update in Step 2, and Step 8 approval/commit phase-index updates.
+  entry update when auto-scoping, and review approval/commit phase-index updates.
 - Single-revision invariant (`references/workflow-invariants.md` § Invariants): all phase changes
   must live in `@` when verify runs — no intermediate `jj commit`, `jj new`, or `jj split` during
   the loop, so `jj diff` always captures the complete phase diff. Phase-iterate owns revision

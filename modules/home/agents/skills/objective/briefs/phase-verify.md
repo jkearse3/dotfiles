@@ -26,9 +26,8 @@ then AC validation if review is clean.
 
 2. Check for changes. Run `jj diff --stat` (or `git diff --stat` if jj is unavailable). If no
    changes, stop and return the no-changes `## Result: Verify Summary` block (see Contracts). The
-   exact string `No changes to verify.` is a contract consumed by
-   `skills/objective/procedures/phase-iterate.md` Step 5 branch detection — do not change the
-   wording without updating the caller.
+   exact string `No changes to verify.` is a contract consumed by the caller's no-changes branch
+   detection — do not change the wording without updating the caller.
 
 3. Run code review. Build a context-enriched `/code-review` invocation from state file context and
    diff data (see Contracts § Code Review Invocation). Gather context (skip any section with no
