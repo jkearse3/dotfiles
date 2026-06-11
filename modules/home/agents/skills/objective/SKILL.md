@@ -43,8 +43,6 @@ Optional focused helpers:
 - `research [topic]` or `investigate [topic]` — `investigate.md`: Invoke `/investigate` and merge
   findings into objective
 - `interrogate [topic]` — `interrogate.md`: Invoke `/interrogate` and merge decisions into objective
-- `phase-interrogate [topic]` — `phase-interrogate.md`: Apply interrogate workflow at the phase
-  level
 - `phase-scope` (or `scope phase`) — `phase-scope.md`: Scope next phase (dispatches scoping
   subagent)
 - `phase-iterate [--auto-commit]` (or `iterate phase`) — `phase-iterate.md`: Run implement-verify

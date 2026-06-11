@@ -175,11 +175,11 @@ Run in order. Do not improvise or skip steps. Announce each step number before e
 
      2. Read `references/reconciliation-routing.md` § Reconciliation Result Contract, then route the
         reconciliation `### Top-Level Status` deterministically. For `NEEDS_DECISION`, read the
-        focused phase `### Continuation` Payload. If it has `Scope: phase` or routes to
-        `procedures/phase-interrogate.md`, read and follow `procedures/phase-interrogate.md`. If it
-        has `Scope: objective` or routes to `procedures/interrogate.md`, read and follow
-        `procedures/interrogate.md`. If the payload does not identify a decision scope, stop and
-        surface the reconciliation concern.
+        focused phase `### Continuation` Payload. If it has `Scope: objective` or routes to
+        `procedures/interrogate.md`, read and follow `procedures/interrogate.md`. If the payload has
+        phase scope or does not identify objective scope, stop and surface the reconciliation
+        concern; phase-scoped uncertainty must be reclassified as user input, implementation
+        follow-up, research, or spec/objective interrogation before routing.
      3. Keep the phase focused and incomplete until explicit Step 8 approval/commit, regardless of
         the reconciliation route.
 

@@ -43,8 +43,10 @@ The orchestrator provides these inputs in the prompt:
    - `NEEDS_IMPLEMENTATION` — feedback is in scope and can be addressed by another Step 4
      implement-verify cycle.
    - `NEEDS_RESEARCH` — objective-wide research is needed before implementation can proceed.
-   - `NEEDS_DECISION` — objective-wide or phase-local decisions are needed before implementation can
-     proceed. The disposition must include an explicit `Scope: objective` or `Scope: phase`.
+   - `NEEDS_DECISION` — an objective-wide decision is needed before implementation can proceed. The
+     disposition must include `Scope: objective`. Do not use this status for phase-local
+     uncertainty; classify that uncertainty as user input, implementation follow-up, research, or a
+     spec/objective interrogation need.
    - `SPEC_CHANGE_REQUIRED` — ACs, objective approach, phase scope, or task-to-AC mappings may need
      to change before implementation continues.
 
@@ -80,9 +82,9 @@ The orchestrator provides these inputs in the prompt:
      unambiguous.
    - `Payload`: include itemized dispositions or verbatim feedback when needed for recovery. For
      `NEEDS_RESEARCH`, include enough topic/context for `procedures/investigate.md` to derive the
-     default objective-level research topic. For `NEEDS_DECISION`, include `Scope: objective` or
-     `Scope: phase`, the routed procedure name, and enough topic/context for that procedure to
-     derive the default decision topic.
+     default objective-level research topic. For `NEEDS_DECISION`, include `Scope: objective`, the
+     routed procedure name, and enough topic/context for `procedures/interrogate.md` to derive the
+     default decision topic.
 
    Do not write `### Continuation` for `NO_ACTION` or `NEEDS_IMPLEMENTATION`, because those statuses
    return directly to Step 8 approval or Step 4 implementation.
@@ -99,3 +101,6 @@ The orchestrator provides these inputs in the prompt:
 - The phase file is the single source of truth for reconciliation state.
 - Never modify repo implementation files, `00-main.md`, or any phase file other than `State file`.
 - Preserve exact top-level status tokens; callers route on these strings.
+- Phase-local uncertainty must not emit a `Scope: phase` `NEEDS_DECISION` continuation. Use
+  `NEEDS_USER_INPUT` for human-only ambiguity, `NEEDS_IMPLEMENTATION` for concrete follow-up,
+  `NEEDS_RESEARCH` for investigation, or `SPEC_CHANGE_REQUIRED` for objective/spec changes.

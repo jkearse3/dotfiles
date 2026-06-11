@@ -49,9 +49,26 @@ The orchestrator provides these inputs in the prompt:
    If blockers found, return the `## Result: Readiness Issues` block (see Contracts) and stop.
    Otherwise proceed.
 
-3. Propose phase. If after reviewing all ACs, Approach, Research, and prior phases there is no
-   coherent work to scope — no tasks that serve ACs, no cleanup justified by prior phases, no
-   direction from Approach or Research — return the `## Result: No Work Remaining` block and stop.
+3. Audit implementation gaps. Before proposing tasks, classify any uncertainty that would affect
+   implementation:
+   - **Spec gaps**: missing or conflicting ACs, objective approach changes, or work that would add a
+     new desired end state. Return `## Result: Readiness Issues` and point the caller to `spec` or
+     objective-level `interrogate`; do not propose tasks.
+   - **Research gaps**: unknown external behavior, APIs, or repo facts that require investigation
+     before scoping. Return `## Result: Readiness Issues` and point the caller to `investigate`; do
+     not propose tasks.
+   - **User-input gaps**: human-only ambiguities, preference choices, or conflicting instructions.
+     Return `## Result: Readiness Issues` with the exact decision needed; do not propose tasks.
+   - **Implementation gaps**: known in-scope work needed to complete or repair the objective.
+     Convert these into concrete phase tasks or, when the work cannot be completed in this phase,
+     call them out as phase issues in the proposal.
+
+   Continue only when no spec, research, or user-input gaps block scoping.
+
+4. Propose phase. If after reviewing all ACs, Approach, Research, prior phases, and implementation
+   gaps there is no coherent work to scope — no tasks that serve ACs, no cleanup justified by prior
+   phases, no direction from Approach or Research — return the `## Result: No Work Remaining` block
+   and stop.
 
    Otherwise, scope the next slice of work:
    - Review all ACs (any marker), Approach, Research, and prior phases to identify what to work on.
@@ -65,14 +82,15 @@ The orchestrator provides these inputs in the prompt:
      describes an implementation step that reaches it. If the candidate reads as a step, it is a
      task, not an AC.
 
-4. Write phase file. Write at the absolute path provided by the orchestrator using
+5. Write phase file. Write at the absolute path provided by the orchestrator using
    `references/phase-file-template.md` § New Phase. Use the `P` value in the
    `## Phase P: Phase Name` header. Include only required sections unless optional phase-local
    sections already have content to preserve from a refinement round. If a file already exists at
    the provided path (prior refinement round), overwrite it.
 
-5. Return result. Return one `## Result:` block (see Contracts): `Phase Proposal` on success,
-   `No Work Remaining` if nothing to scope, or `Readiness Issues` if Step 2 found blockers.
+6. Return result. Return one `## Result:` block (see Contracts): `Phase Proposal` on success,
+   `No Work Remaining` if nothing to scope, or `Readiness Issues` if Step 2 or Step 3 found
+   blockers.
 
 ## Contracts
 
@@ -84,7 +102,7 @@ Apply `references/phase-scope-results.md` § Phase Scope Result Blocks.
 
 - Write only the phase file at the provided path. Never modify `00-main.md` or any earlier phase's
   file (phases numbered other than the provided `P`). The provided path itself may be overwritten on
-  refinement rounds — see Step 4.
+  refinement rounds — see Step 5.
 - AC changes require human approval — flag in readiness issues, do not modify.
 
 ### Scoping Rules

@@ -29,6 +29,5 @@ Status routes:
 - `NEEDS_IMPLEMENTATION` — return to Step 4 implementation.
 - `NEEDS_USER_INPUT` — stop and surface concerns to the user.
 - `NEEDS_RESEARCH` — run `procedures/investigate.md`.
-- `NEEDS_DECISION` — run `procedures/interrogate.md` for `Scope: objective`, or
-  `procedures/phase-interrogate.md` for `Scope: phase`.
+- `NEEDS_DECISION` — run `procedures/interrogate.md` for `Scope: objective`.
 - `SPEC_CHANGE_REQUIRED` — run `procedures/spec.md`, then resume phase iteration at Step 3.

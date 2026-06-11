@@ -23,5 +23,5 @@ No phase to scope.
 
 **Name**: [phase name]
 **Targeted ACs**: [list of AC numbers]
-**Written**: [absolute path to the phase file written in Step 4]
+**Written**: [absolute path to the phase file written in Step 5]
 ```
