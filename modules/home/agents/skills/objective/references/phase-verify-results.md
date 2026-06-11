@@ -49,3 +49,14 @@ Full summary:
 ### Not Implemented
 - [list of remaining [ ] ACs, or "None"]
 ```
+
+## AC Status Mapping
+
+Consumers that parse AC validation results derive `ac_status` from these sections:
+
+| Verify section           | Status |
+| ------------------------ | ------ |
+| `### Validated`          | `[x]`  |
+| `### Needs Verification` | `[~]`  |
+| `### Regressions`        | `[!]`  |
+| `### Not Implemented`    | `[ ]`  |

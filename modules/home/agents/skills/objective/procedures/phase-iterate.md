@@ -14,6 +14,7 @@ then enrich AC status and commit.
 
 - `references/current-objective.md` — Load Current Objective.
 - `references/phase-iterate-results.md` — Phase Iterate Result Blocks.
+- `references/phase-verify-results.md` — AC Status Mapping.
 - `references/reconciliation-routing.md` — Reconciliation Result Contract.
 - `references/workflow-invariants.md` — approval-gate, continuation, and single-revision invariants.
 - `references/auto-scope-dispatch.md` — Auto-scope Dispatch.
@@ -88,14 +89,8 @@ Run in order. Do not improvise or skip steps. Announce each step number before e
    ```
 
    Capture AC assessments. When verify returns AC validation results, parse them into a structured
-   `ac_status` list of `{ac, status, evidence}` entries:
-
-   | Verify section           | Status |
-   | ------------------------ | ------ |
-   | `### Validated`          | `[x]`  |
-   | `### Needs Verification` | `[~]`  |
-   | `### Regressions`        | `[!]`  |
-   | `### Not Implemented`    | `[ ]`  |
+   `ac_status` list of `{ac, status, evidence}` entries using `references/phase-verify-results.md` §
+   AC Status Mapping.
 
    Store as the latest `ac_status` snapshot. Each subsequent AC-validation verify run replaces the
    previous snapshot (latest-verify-wins).
@@ -198,9 +193,9 @@ Run in order. Do not improvise or skip steps. Announce each step number before e
 - Preserve verbatim: the two Step 1 nudges, the Step 1 objective-commit `jj commit` / `jj split`
   command shapes, the Step 2 no-work message ("Nothing to iterate.") and index entry
   `P. [ ] [Phase Name](./NN-phase-P.md) *`, the implement/verify dispatch prompts, the
-  `No changes to verify.` contract string, the `ac_status` section→marker mapping, and the
-  `PHASE_INCOMPLETE` / `PHASE_COMPLETE` blocks from `references/phase-iterate-results.md` § Phase
-  Iterate Result Blocks.
+  `No changes to verify.` contract string, the `ac_status` section→marker mapping from
+  `references/phase-verify-results.md` § AC Status Mapping, and the `PHASE_INCOMPLETE` /
+  `PHASE_COMPLETE` blocks from `references/phase-iterate-results.md` § Phase Iterate Result Blocks.
 - Loop ownership: phase-iterate owns the implement-verify loop (dispatch, AC status capture,
   termination) and lifecycle (commit, phase marking). AC derivation and annotation are now handled
   by `phase-verify`. Scoping is dispatched as an isolated subagent via `briefs/phase-scope.md`;
