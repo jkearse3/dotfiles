@@ -38,21 +38,16 @@ Setup and navigation:
 - `reset` — `reset.md`: Reset current objective to blank template
 - `rename [name]` — `rename.md`: Rename objective, bookmark, and destination
 
-Optional focused helpers:
+Optional focused helpers are escape hatches, not lifecycle steps:
 
-- `research [topic]` or `investigate [topic]` — `investigate.md`: Invoke `/investigate` and merge
-  findings into objective
-- `interrogate [topic]` — `interrogate.md`: Invoke `/interrogate` and merge decisions into objective
-- `phase-scope` (or `scope phase`) — `phase-scope.md`: Scope next phase (dispatches scoping
-  subagent)
-- `phase-iterate [--auto-commit]` (or `iterate phase`) — `phase-iterate.md`: Run implement-verify
-  loop inline for one phase
-- Focused phase work requests — `phase-iterate.md`: If the user asks to implement, continue, fix,
-  tweak, complete, or otherwise work on a focused or phase-scoped slice, route through
-  `phase-iterate.md`; do not edit repo files inline in the main agent
-- `review` — `review.md`: Autonomous review of branch changes, create cleanup phases
-- `import-pr` (or `import pr comments`) — `import-pr.md`: Fetch unresolved PR comments as review
-  phase
+- Discovery/persistence: `research [topic]` or `investigate [topic]` — `investigate.md`;
+  `interrogate [topic]` — `interrogate.md`
+- Phase control/recovery: `phase-scope` (or `scope phase`) — `phase-scope.md`;
+  `phase-iterate [--auto-commit]` (or `iterate phase`) — `phase-iterate.md`; Focused phase work
+  requests to implement, continue, fix, tweak, complete, or otherwise work on a focused or
+  phase-scoped slice — route through `phase-iterate.md`; do not edit repo files inline in the main
+  agent
+- Review intake: `review` — `review.md`; `import-pr` (or `import pr comments`) — `import-pr.md`
 
 ## Guardrail
 
