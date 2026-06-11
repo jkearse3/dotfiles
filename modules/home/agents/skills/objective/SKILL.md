@@ -49,6 +49,9 @@ Optional focused helpers:
   subagent)
 - `phase-iterate [--auto-commit]` (or `iterate phase`) — `phase-iterate.md`: Run implement-verify
   loop inline for one phase
+- Focused phase work requests — `phase-iterate.md`: If the user asks to implement, continue, fix,
+  tweak, complete, or otherwise work on a focused or phase-scoped slice, route through
+  `phase-iterate.md`; do not edit repo files inline in the main agent
 - `review` — `review.md`: Autonomous review of branch changes, create cleanup phases
 - `import-pr` (or `import pr comments`) — `import-pr.md`: Fetch unresolved PR comments as review
   phase
@@ -57,6 +60,10 @@ Optional focused helpers:
 
 In objective mode, never edit repo files without an active objective with approved ACs; all repo
 edits go through `/objective iterate` or the focused helper `/objective phase-iterate`.
+
+Focused or phase-scoped implementation/continue/fix/tweak/complete/work requests must route through
+`procedures/phase-iterate.md`. The main agent must not satisfy those requests by editing repo files
+inline.
 
 ## Cross-procedure references
 

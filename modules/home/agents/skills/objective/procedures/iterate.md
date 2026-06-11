@@ -3,6 +3,10 @@
 Autonomous outer loop: run a pre-flight confidence gate, then invoke Phase Iterate with
 `--auto-commit` repeatedly until all ACs are satisfied.
 
+If the user request is focused on implementing, continuing, fixing, tweaking, completing, or working
+on a current phase or other phase-scoped slice, satisfy it by reading and following
+`procedures/phase-iterate.md`; do not perform inline main-agent repo edits from this procedure.
+
 ## References
 
 - `references/phase-iterate-results.md` — Phase Iterate Result Blocks.
@@ -64,6 +68,9 @@ Run in order. Do not improvise or skip steps.
 - Top-level orchestrator: replaces the user's manual `/objective phase-iterate` loop. All edits
   happen through Phase Iterate; this procedure only reads `00-main.md`, focused phase state, and
   orchestrates.
+- Phase-scoped work routing: focused implementation/continue/fix/tweak/complete/work requests are
+  delegated to `procedures/phase-iterate.md`; this procedure must not create a second implementation
+  path.
 - `[~] (human)` ACs do not block the loop — they are deferred and listed at completion.
 - On `PHASE_INCOMPLETE`, stop immediately. Do not retry — the user must resolve the blocker.
 - Resumable: re-invoking `/objective iterate` after a stop reads `00-main.md`, finds completed

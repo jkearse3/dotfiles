@@ -3,6 +3,11 @@
 Orchestrate the inner loop: scope a phase if none is active, run the implement-verify loop inline,
 then enrich AC status and commit.
 
+This is the required route for focused or phase-scoped implementation, continue, fix, tweak,
+complete, or work requests. Keep those requests inside this procedure's implement/verify loop; do
+not satisfy them with main-agent repo edits outside the declared subagent dispatches and lifecycle
+writes below.
+
 ## Arguments
 
 - `--auto-commit`: Steps 6 and 8 return a structured `PHASE_INCOMPLETE` diagnostic on failure
@@ -198,6 +203,8 @@ Run in order. Do not improvise or skip steps. Announce each step number before e
   by `phase-verify`. Scoping is dispatched as an isolated subagent via `briefs/phase-scope.md`;
   phase-iterate uses the shared Auto-scope Dispatch auto-accept handler from
   `references/auto-scope-dispatch.md` § Dispatch.
+- Required phase-work route: focused or phase-scoped implementation/continue/fix/tweak/complete/work
+  requests must run through this procedure. Do not add an alternate inline main-agent editing path.
 - State passes between steps via `00-main.md` (ACs, phases index) and phase files (tasks, issues,
   approach, context, continuation).
 - Never pause between steps. After each step completes, immediately proceed to the next unless the
