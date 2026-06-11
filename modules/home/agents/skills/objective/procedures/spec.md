@@ -15,7 +15,6 @@ are appended to the existing list. When omitted, use focused phase continuation 
 - `references/current-objective.md` — § Load Current Objective for the load/nudge gate.
 - `references/workflow-invariants.md` — § Continuation Lifecycle and § Invariants for approval gates
   and AC semantics.
-- `references/phase-index.md` — Phase Resolution for locating focused phase continuation.
 - `references/spec-definition.md` — § Spec Definition for interrogation, scenario cross-check, and
   AC drafting.
 - `references/ac-precision.md` — AC precision rules.
@@ -28,9 +27,9 @@ are appended to the existing list. When omitted, use focused phase continuation 
 ## Steps
 
 1. Load objective. Read `.objectives/_current/00-main.md` per `references/current-objective.md` §
-   Load Current Objective, including its no-objective nudge. If a focused phase exists, resolve its
-   content per `references/phase-index.md` § Phase Resolution and read `### Continuation` when
-   present.
+   Load Current Objective, including its no-objective nudge. If a focused phase exists, read
+   `references/phase-index.md` and resolve its content per § Phase Resolution, then read
+   `### Continuation` when present.
 
 2. Review research. Read the Research section in `00-main.md`:
    - What do we know?

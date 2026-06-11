@@ -10,7 +10,6 @@ No arguments. Explicit non-current selection is handled by `/objective switch [n
 
 - `references/objective-names.md` — Slugify and Extract Objective Slug.
 - `references/objective-registry.md` — registry entries, valid entries, and `_current` updates.
-- `references/phase-index.md` — Phase Resolution for locating the focused phase.
 
 ## Steps
 
@@ -62,8 +61,8 @@ No arguments. Explicit non-current selection is handled by `/objective switch [n
    - Resolve `.objectives/_current` through the objective entry to the actual directory.
    - Read `00-main.md` first.
    - Find focused phases marked with `*` in `## Phases`.
-   - If exactly one focused phase exists, resolve and read only that phase file via
-     `references/phase-index.md` § Phase Resolution.
+   - If exactly one focused phase exists, read `references/phase-index.md`, then resolve and read
+     only that phase file via § Phase Resolution.
    - If the focused phase contains `### Continuation`, read it as the primary resume state. Do not
      modify or clear it while loading.
    - If zero or multiple focused phases exist, do not read phase files while loading. Report the

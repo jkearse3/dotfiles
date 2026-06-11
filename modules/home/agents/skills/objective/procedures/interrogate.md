@@ -14,13 +14,12 @@ history.
 - `references/current-objective.md` — § Load Current Objective for the active objective gate.
 - `references/workflow-invariants.md` — § Continuation Lifecycle and § Invariants.
 - `references/objective-index-format.md` — `00-main.md` section layout.
-- `references/phase-index.md` — Phase Resolution for locating focused phase continuation.
 
 ## Steps
 
-1. Load objective. Read `.objectives/_current/00-main.md`. If a focused phase exists, resolve its
-   content per `references/phase-index.md` § Phase Resolution and read `### Continuation` when
-   present.
+1. Load objective. Read `.objectives/_current/00-main.md`. If a focused phase exists, read
+   `references/phase-index.md` and resolve its content per § Phase Resolution, then read
+   `### Continuation` when present.
    - If an objective exists: go to Step 2.
    - If no objective: stop with the nudge from `references/current-objective.md` § Load Current
      Objective.

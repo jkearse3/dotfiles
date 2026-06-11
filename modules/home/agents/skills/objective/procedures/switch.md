@@ -10,7 +10,6 @@ Optional objective name or slug. Without an argument, list objectives and ask th
 
 - `references/objective-names.md` — Slugify and Extract Objective Slug.
 - `references/objective-registry.md` — registry entries, valid entries, and `_current` updates.
-- `procedures/load.md` — canonical objective context loading and presentation.
 
 ## Steps
 
@@ -69,7 +68,7 @@ Optional objective name or slug. Without an argument, list objectives and ask th
      configured symlink registry modes.
 
 5. Load and present objective context.
-   - Run `procedures/load.md` to load and present context for the now-current bookmark.
+   - Read and run `procedures/load.md` to load and present context for the now-current bookmark.
    - Do not duplicate focused-phase, continuation, or context-presentation handling in this
      procedure.
 

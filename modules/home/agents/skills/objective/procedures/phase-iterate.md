@@ -41,9 +41,8 @@ status, blockers, review readiness, and completion results.
 2. Ensure focused phase. Find the focused phase (`*` in `## Phases`).
    - If a focused phase exists: go to Step 3.
    - If none: run `references/auto-scope-dispatch.md` § Dispatch with these procedure-specific
-     results, using the default auto-accept Phase proposal handler. Read
-     `references/auto-scope-dispatch.md` and its `references/phase-file-inputs.md` dependency only
-     for this branch:
+     results, using the default auto-accept Phase proposal handler. Read the dispatch reference only
+     for this branch; it owns any nested reference reads needed to compute phase-file inputs:
      - No work remaining: report "Nothing to iterate." and stop.
      - Readiness issues: surface them and stop.
      - Phase proposal: auto-accept (no user approval), re-read `00-main.md` to pick up the new

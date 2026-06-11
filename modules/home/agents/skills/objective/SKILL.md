@@ -68,3 +68,8 @@ follow it inline — do not invoke the objective skill via the Skill tool to cal
 Procedure, brief, and reference files may include `## References`. Before executing such a file,
 read every listed reference. Treat references as imported instructions: formats, shared contracts,
 and reusable operations in referenced sections govern the procedure steps.
+
+Reference ownership is local: each procedure, brief, or reference lists only the references needed
+to execute itself. Callers do not preload references owned by dispatched briefs, subagents, or
+nested procedures/references. Branch-specific references belong with the branch, file, or reference
+that consumes them.

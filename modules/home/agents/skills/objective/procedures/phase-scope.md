@@ -8,7 +8,6 @@ round.
 
 - `references/current-objective.md` — Load Current Objective.
 - `references/auto-scope-dispatch.md` — Auto-scope Dispatch.
-- `references/phase-index.md` — Phase Index.
 - `references/phase-file-inputs.md` — Compute Phase-File Inputs and phase-index entry shape.
 - `references/workflow-invariants.md` — approval-gate and phase-focus invariants.
 

@@ -4,9 +4,8 @@ New phase file structure and task annotations shared by phase-file creation call
 
 ## New Phase
 
-Create a numbered phase file and add a linked index entry in `00-main.md`. New phase files include
-only required sections by default. Add optional phase-local sections from
-`references/phase-sections.md` only when they have content.
+Create a numbered phase file. New phase files include only required sections by default. Add
+optional phase-local sections from `references/phase-sections.md` only when they have content.
 
 Use this template for new phase files:
 
@@ -37,7 +36,8 @@ Task annotations:
 
 ## Contracts
 
-- Phase files contain only the phase content; registration happens in `00-main.md`.
+- Phase files contain only the phase content; objective index registration is owned by the caller or
+  procedure with `00-main.md` write permission.
 - Phase tasks satisfy `references/phase-task-boundary.md` § Phase Task Boundary.
 - New phase templates do not include empty optional sections. Add `### Decisions` or
   `### Continuation` only when phase-local content exists.
