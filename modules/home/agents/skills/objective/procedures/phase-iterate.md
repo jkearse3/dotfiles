@@ -13,14 +13,8 @@ then enrich AC status and commit.
 ## References
 
 - `references/current-objective.md` — Load Current Objective.
-- `references/phase-iterate-results.md` — Phase Iterate Result Blocks.
-- `references/phase-verify-results.md` — AC Status Mapping.
-- `references/reconciliation-routing.md` — Reconciliation Result Contract.
 - `references/workflow-invariants.md` — approval-gate, continuation, and single-revision invariants.
-- `references/auto-scope-dispatch.md` — Auto-scope Dispatch.
 - `references/phase-index.md` — Phase Resolution (locate focused phase content).
-- `references/phase-file-inputs.md` — Compute Phase-File Inputs and phase-index entry shape.
-- `references/ac-markers.md` — AC marker and evidence semantics.
 
 ## Steps
 
@@ -42,7 +36,9 @@ Run in order. Do not improvise or skip steps. Announce each step number before e
 2. Ensure focused phase. Find the focused phase (`*` in `## Phases`).
    - If a focused phase exists: go to Step 3.
    - If none: run `references/auto-scope-dispatch.md` § Dispatch with these procedure-specific
-     results, using the default auto-accept Phase proposal handler:
+     results, using the default auto-accept Phase proposal handler. Read
+     `references/auto-scope-dispatch.md` and its `references/phase-file-inputs.md` dependency only
+     for this branch:
      - No work remaining: report "Nothing to iterate." and stop.
      - Readiness issues: surface them and stop.
      - Phase proposal: auto-accept (no user approval), re-read `00-main.md` to pick up the new
@@ -88,9 +84,9 @@ Run in order. Do not improvise or skip steps. Announce each step number before e
    AC source: .objectives/_current/00-main.md
    ```
 
-   Capture AC assessments. When verify returns AC validation results, parse them into a structured
-   `ac_status` list of `{ac, status, evidence}` entries using `references/phase-verify-results.md` §
-   AC Status Mapping.
+   Capture AC assessments. When verify returns AC validation results, read
+   `references/phase-verify-results.md` § AC Status Mapping and parse results into a structured
+   `ac_status` list of `{ac, status, evidence}` entries.
 
    Store as the latest `ac_status` snapshot. Each subsequent AC-validation verify run replaces the
    previous snapshot (latest-verify-wins).
@@ -116,15 +112,16 @@ Run in order. Do not improvise or skip steps. Announce each step number before e
    - No tasks are blocked `[!]`.
 
    - If blocked tasks exist: stop and surface them — report which tasks are blocked and why; wait
-     for user direction. With `--auto-commit`, return `PHASE_INCOMPLETE` per
-     `references/phase-iterate-results.md` § Phase Iterate Result Blocks with reason `blocked_tasks`
-     and blocker details.
+     for user direction. With `--auto-commit`, read `references/phase-iterate-results.md` § Phase
+     Iterate Result Blocks, then return `PHASE_INCOMPLETE` with reason `blocked_tasks` and blocker
+     details.
 
    - If not complete (pending tasks or open issues remain but no blockers): return to Step 4 for
      another cycle.
    - If complete: go to Step 7.
 
-7. Present summary and check phase termination. Summarize:
+7. Present summary and check phase termination. Read `references/ac-markers.md` § AC States for AC
+   marker and human-verification semantics, then summarize:
    - Tasks: total / completed / blocked (from phase file).
    - Issues: total open (by severity).
    - ACs: status changes, regressions (`[!]`), remaining `[~]` (with human/test distinction).
@@ -144,8 +141,8 @@ Run in order. Do not improvise or skip steps. Announce each step number before e
      objective-level concern.
    - If not complete for other reasons:
      - Without `--auto-commit`: stop. User decides whether to run another cycle.
-     - With `--auto-commit`: return `PHASE_INCOMPLETE` per `references/phase-iterate-results.md` §
-       Phase Iterate Result Blocks using the matching reason and details.
+     - With `--auto-commit`: read `references/phase-iterate-results.md` § Phase Iterate Result
+       Blocks, then return `PHASE_INCOMPLETE` using the matching reason and details.
 
 8. Review and commit.
 
@@ -171,18 +168,18 @@ Run in order. Do not improvise or skip steps. Announce each step number before e
         <verbatim user feedback>
         ```
 
-     2. Route the reconciliation `### Top-Level Status` deterministically per
-        `references/reconciliation-routing.md` § Reconciliation Result Contract. For
-        `NEEDS_DECISION`, read the focused phase `### Continuation` Payload. If it has
-        `Scope: phase` or routes to `procedures/phase-interrogate.md`, read and follow
-        `procedures/phase-interrogate.md`. If it has `Scope: objective` or routes to
-        `procedures/interrogate.md`, read and follow `procedures/interrogate.md`. If the payload
-        does not identify a decision scope, stop and surface the reconciliation concern.
+     2. Read `references/reconciliation-routing.md` § Reconciliation Result Contract, then route the
+        reconciliation `### Top-Level Status` deterministically. For `NEEDS_DECISION`, read the
+        focused phase `### Continuation` Payload. If it has `Scope: phase` or routes to
+        `procedures/phase-interrogate.md`, read and follow `procedures/phase-interrogate.md`. If it
+        has `Scope: objective` or routes to `procedures/interrogate.md`, read and follow
+        `procedures/interrogate.md`. If the payload does not identify a decision scope, stop and
+        surface the reconciliation concern.
      3. Keep the phase focused and incomplete until explicit Step 8 approval/commit, regardless of
         the reconciliation route.
 
-   With `--auto-commit`: auto-commit and return `PHASE_COMPLETE` per
-   `references/phase-iterate-results.md` § Phase Iterate Result Blocks.
+   With `--auto-commit`: read `references/phase-iterate-results.md` § Phase Iterate Result Blocks,
+   then auto-commit and return `PHASE_COMPLETE`.
    1. Mark phase complete in index (`[x]`) and remove the focus marker (`*`).
    2. Compose the full revision description using the repo's version-control rules.
    3. Commit the phase with `jj commit -m "$desc"`.
