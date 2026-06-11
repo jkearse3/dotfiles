@@ -10,6 +10,7 @@ Import unresolved GitHub PR review comments as one or more new review phase file
   conventions.
 - `references/phase-file-inputs.md` — § Compute Phase-File Inputs for the sequence number (`NN`).
 - `references/phase-index.md` — Phase Index format and "never renumber" rule for the index entries.
+- `references/phase-task-boundary.md` — § Phase Size for comment grouping.
 
 ## Steps
 
@@ -44,6 +45,8 @@ Import unresolved GitHub PR review comments as one or more new review phase file
      function, same abstraction, related API surface).
    - Comments are independent when they address unrelated concerns that could land in separate
      commits (e.g., naming fix in module A vs. error handling in module B).
+   - Apply `references/phase-task-boundary.md` § Phase Size when deciding whether comments are
+     separate enough to split or coupled enough to keep together.
    - Each independent group becomes its own phase — do not bundle unrelated feedback into one phase.
    - If all comments are interdependent, one phase is correct.
    - When multiple groups exist, give each a short slug summarizing its concern (e.g.,

@@ -17,7 +17,7 @@ The orchestrator provides these inputs in the prompt:
 - `references/workflow-invariants.md` — invariants (single-revision rule, caller-token preservation,
   and write boundaries).
 - `references/phase-file-template.md` — New Phase template and task annotations.
-- `references/phase-task-boundary.md` — Phase Task Boundary.
+- `references/phase-task-boundary.md` — Phase Task Boundary and Phase Size.
 - `references/phase-scope-results.md` — caller-parsed phase scope result blocks.
 - `references/phase-index.md` — phase resolution for linked phase files.
 
@@ -75,8 +75,8 @@ The orchestrator provides these inputs in the prompt:
    - Name the phase to reflect its scope.
    - Write a brief approach summary (strategy, constraints, patterns).
    - Compose tasks using `references/phase-file-template.md` § New Phase task annotations and
-     `references/phase-task-boundary.md` § Phase Task Boundary. Map each task to existing ACs
-     regardless of marker.
+     `references/phase-task-boundary.md` § Phase Task Boundary and § Phase Size. Map each task to
+     existing ACs regardless of marker.
    - Only propose a new AC when a task represents a genuinely new spec-level condition that existing
      ACs don't cover. An AC describes a desired end state or behavior of the finished system; a task
      describes an implementation step that reaches it. If the candidate reads as a step, it is a
@@ -112,12 +112,5 @@ Apply `references/phase-scope-results.md` § Phase Scope Result Blocks.
 - Phase scoping is just-in-time: one phase at a time, informed by remaining ACs and prior learnings.
 - Do not add empty optional sections to new phases. Add `### Decisions` or `### Continuation` only
   when the phase has phase-local content for that section.
-- Generated phase tasks must satisfy `references/phase-task-boundary.md` § Phase Task Boundary.
-- **Phase atomicity**: a phase must contain only interdependent tasks — tasks that must land
-  together for the change to make sense. If a task could be committed independently without breaking
-  the others, it belongs in a separate phase. Example: "add helper function" and "update caller to
-  use helper" are interdependent (one phase). "Add helper function" and "rename unrelated config
-  key" are independent (two phases).
-- **"And" self-check**: if the phase description needs "and" to connect independent actions, split
-  into separate phases. "Add atomicity rules to scope brief" is one action. "Add atomicity rules to
-  scope brief and fix review dispatch bug" is two independent actions — two phases.
+- Generated phase tasks must satisfy `references/phase-task-boundary.md` § Phase Task Boundary and §
+  Phase Size.
