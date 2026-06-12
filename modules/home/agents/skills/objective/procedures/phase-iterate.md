@@ -139,6 +139,9 @@ status, blockers, review readiness, and completion results.
      - Keep the phase focused and incomplete in the index until explicit review approval/commit.
      - Collect targeted ACs from task references (`(ACN, satisfy)` / `(ACN, codify)` /
        `(ACN, enhance)`) for the summary.
+     - Prepare a compact caller context packet for `jj-atomize` when information is available: phase
+       name, objective context, relevant research decisions, targeted ACs, AC evidence, and
+       verification summary.
      - Go to Step 8 (review and commit).
    - If `[~] (human)` ACs remain: stop the loop and present the ACs needing human verification. The
      phase can still be complete if tasks and issues are resolved — AC validation is an
@@ -156,10 +159,17 @@ status, blockers, review readiness, and completion results.
       the diff — the user reviews it independently.
    2. Wait for the user, who either approves or requests tweaks.
    - If the user approves:
-     1. Mark phase complete in index (`[x]`) and remove the focus marker (`*`).
-     2. Compose the full revision description using the repo's version-control rules.
-     3. Commit the phase with `jj commit -m "$desc"`.
-     4. Note "Phase complete. Run `/objective iterate` to scope and execute next phase."
+     1. Ask `jj-atomize` to finalize `@` with externally supplied single-revision intent for this
+        phase close. It must produce one high-quality revision description if the phase diff is
+        coherent, or stop with an incoherence finding instead of splitting. Pass the compact caller
+        context packet as generic explanatory input for the revision description; the target diff
+        remains authoritative for changed content.
+     2. If `jj-atomize` reports incoherence, treat it as phase scope drift. Stop, surface the
+        independent concerns, and ask the user whether to narrow the phase, allow a split outside
+        phase close, or move unrelated work out of scope.
+     3. Mark phase complete in index (`[x]`) and remove the focus marker (`*`).
+     4. Commit the phase with the `jj-atomize` description using `jj commit -m "$desc"`.
+     5. Note "Phase complete. Run `/objective iterate` to scope and execute next phase."
    - If the user requests tweaks:
      1. Dispatch a reconciliation subagent with prompt:
 
@@ -184,10 +194,17 @@ status, blockers, review readiness, and completion results.
 
    With `--auto-commit`: read `references/phase-iterate-results.md` § Phase Iterate Result Blocks,
    then auto-commit and return `PHASE_COMPLETE`.
-   1. Mark phase complete in index (`[x]`) and remove the focus marker (`*`).
-   2. Compose the full revision description using the repo's version-control rules.
-   3. Commit the phase with `jj commit -m "$desc"`.
-   4. Return the structured result.
+   1. Ask `jj-atomize` to finalize `@` with externally supplied single-revision intent for this
+      phase close. The approved iterate workflow covers applying this phase-close description, so a
+      second approval is not required while the single-revision invariant is preserved. Pass the
+      compact caller context packet as generic explanatory input for the revision description; the
+      target diff remains authoritative for changed content.
+   2. If `jj-atomize` reports incoherence, treat it as phase scope drift. Return `PHASE_INCOMPLETE`
+      with reason `implement_concerns` and details naming the independent concerns; do not approve a
+      split or commit.
+   3. Mark phase complete in index (`[x]`) and remove the focus marker (`*`).
+   4. Commit the phase with the `jj-atomize` description using `jj commit -m "$desc"`.
+   5. Return the structured result.
 
 ## Contracts
 
@@ -206,9 +223,16 @@ status, blockers, review readiness, and completion results.
   requests must run through this procedure. Do not add an alternate inline main-agent editing path.
 - State passes between steps via `00-main.md` (ACs, phases index) and phase files (tasks, issues,
   approach, context, continuation).
+- One-way `jj-atomize` orchestration: Objective owns when to call `jj-atomize`, what context and
+  constraints to pass, and what to do with incoherence findings. `jj-atomize` owns target-diff
+  analysis, coherence assessment, and revision-description output.
 - Never pause between steps. After each step completes, immediately proceed to the next unless the
   step requires user input (summary/review without `--auto-commit`, or blocked tasks). If any step
   fails or needs user input, stop and report.
+- Approval gate: without `--auto-commit`, user review approval is still required before phase-close
+  finalization or commit. With `--auto-commit`, the approved iterate workflow includes applying the
+  `jj-atomize` single-revision phase-close description, but not splitting, moving work out of `@`,
+  or committing after an incoherence finding.
 - Never edit repo files directly — phase-iterate is orchestration only. All repo edits go through
   the dispatched implement/verify/reconciliation subagents, except: commits, the `00-main.md` index
   entry update when auto-scoping, and review approval/commit phase-index updates.
