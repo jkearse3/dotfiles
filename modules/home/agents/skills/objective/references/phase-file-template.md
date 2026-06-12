@@ -28,6 +28,18 @@ Use this template for new phase files:
 ### Issues
 ```
 
+When interrogation, ACs, or prior phase evidence identify negative checks, add this optional section
+before `### Tasks`:
+
+```markdown
+### Verification Hints
+- Negative checks: [forbidden behavior or output]
+- Remove: [phrases/patterns that should not remain]
+- Preserve: [phrases/patterns that must remain]
+- Revisit: [old ACs, evidence, or files that may be stale]
+- Search terms: `[grep term]`, `[another term]`
+```
+
 Task annotations:
 
 - `(ACN, satisfy)` — task directly implements an AC that is not yet satisfied.
@@ -39,5 +51,5 @@ Task annotations:
 - Phase files contain only the phase content; objective index registration is owned by the caller or
   procedure with `00-main.md` write permission.
 - Phase tasks satisfy `references/phase-task-boundary.md` § Phase Task Boundary.
-- New phase templates do not include empty optional sections. Add `### Decisions` or
-  `### Continuation` only when phase-local content exists.
+- New phase templates do not include empty optional sections. Add `### Decisions`,
+  `### Verification Hints`, or `### Continuation` only when phase-local content exists.

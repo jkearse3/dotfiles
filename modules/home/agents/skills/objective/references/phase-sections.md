@@ -15,6 +15,8 @@ Optional phase-local sections may be added when needed:
 
 - `### Decisions` — phase-local decisions from phase interrogation. Objective-wide decisions remain
   in `00-main.md` under `## Research > ### Decisions`.
+- `### Verification Hints` — phase-local negative checks, forbidden output, phrases to remove or
+  preserve, old ACs or evidence to revisit, and grep/search terms that should inform verification.
 - `### Continuation` — phase-local resume state for unresolved follow-up, route changes, or
   compaction recovery. Objective-wide state remains in `00-main.md`.
 

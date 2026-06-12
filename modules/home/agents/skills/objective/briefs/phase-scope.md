@@ -74,6 +74,9 @@ The orchestrator provides these inputs in the prompt:
    - Review all ACs (any marker), Approach, Research, and prior phases to identify what to work on.
    - Name the phase to reflect its scope.
    - Write a brief approach summary (strategy, constraints, patterns).
+   - Carry verification hints from interrogation, AC text, evidence, and prior phases into the phase
+     file when they affect review or verification. Include negative checks, forbidden output,
+     phrases to remove, phrases to preserve, old ACs or evidence to revisit, and grep/search terms.
    - Compose tasks using `references/phase-file-template.md` § New Phase task annotations and
      `references/phase-task-boundary.md` § Phase Task Boundary and § Phase Size. Map each task to
      existing ACs regardless of marker.
@@ -110,7 +113,7 @@ Apply `references/phase-scope-results.md` § Phase Scope Result Blocks.
 - Tasks should be atomic: one clear outcome each.
 - Prefer codify-before-satisfy when practical (TDD).
 - Phase scoping is just-in-time: one phase at a time, informed by remaining ACs and prior learnings.
-- Do not add empty optional sections to new phases. Add `### Decisions` or `### Continuation` only
-  when the phase has phase-local content for that section.
+- Do not add empty optional sections to new phases. Add `### Decisions`, `### Verification Hints`,
+  or `### Continuation` only when the phase has phase-local content for that section.
 - Generated phase tasks must satisfy `references/phase-task-boundary.md` § Phase Task Boundary and §
   Phase Size.

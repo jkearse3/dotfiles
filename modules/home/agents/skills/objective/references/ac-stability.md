@@ -27,6 +27,9 @@ Rules:
 
 - `[-]` marker + strikethrough text + `(superseded by ACN)` or `(invalidated: reason)`.
 - Evidence bullets on invalidated ACs preserved — documents what was done.
+- Evidence bullets on retained ACs must still match the retained wording. If new wording weakens,
+  supersedes, or changes what old evidence proves, update the evidence or invalidate the AC before
+  marking the AC set stable.
 - New AC adds `(supersedes ACN)` annotation.
 - `[-]` ACs excluded from completion check.
 - Task references to invalidated ACs remain valid — text is preserved via strikethrough.

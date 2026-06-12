@@ -7,6 +7,22 @@ Reusable spec-definition behavior for drafting objective-level acceptance criter
 Use this operation when drafting objective-level ACs from research, user answers, and scenario
 cross-checks.
 
+When a generic interrogation artifact is available, map it before drafting ACs:
+
+- Treat `Decisions`, `Assumptions`, `Non-goals`, `Risks`, `Validation Strategy`, and
+  `Candidate Criteria` as planning inputs, not as AC text to copy mechanically.
+- Extract durable invariants first: the problem being solved, allowed inputs/context, required
+  output/content boundaries, ownership boundaries, lifecycle/state expectations, dependencies, and
+  failure modes. Draft ACs from those invariants before considering implementation choices.
+- Treat implementation choices as approach material unless the artifact shows they are required to
+  preserve a durable invariant.
+- Use `Examples` and `Counterexamples` as validation and phase verification hints. Do not make them
+  domain-specific AC wording unless the example itself is the required behavior.
+- Carry artifact contradictions, stale assumptions, or weakening risks into the conflict check
+  before ACs are presented as stable.
+- Preserve concrete verification hints for phase scoping: negative checks, forbidden output, phrases
+  to remove or preserve, old ACs or evidence to revisit, and grep/search terms from the artifact.
+
 Apply proportional interrogation:
 
 - Use the agent's structured question mechanism for all clarifying questions when available;
@@ -63,6 +79,19 @@ Scenario categories:
 - **Dependencies**: cross-references, external contracts, upstream/downstream consumers.
 - **State & ordering**: transitions, sequencing, concurrency, partial completion.
 - **Degradation**: failure modes, fallbacks, error messages, partial success.
+
+Instruction/rule objectives also require these checks when applicable:
+
+- **Internal-language leakage**: ACs and expected outputs must not expose agent, workflow, or tool
+  internals unless those internals are the user-visible contract.
+- **Generic versus workflow-specific wording**: keep rules generic when the invariant is domain
+  neutral; use workflow-specific terms only when the workflow boundary is itself the invariant.
+- **Context source versus content boundary**: distinguish where context may come from from what the
+  final output is allowed to contain.
+- **Stale AC or evidence contradiction**: compare candidates with existing AC text and evidence
+  notes so old validation does not prove a weakened or superseded rule.
+- **Ownership-boundary drift**: check that ACs assign behavior to the component or workflow that
+  owns the outcome, not to a caller, subagent, or lifecycle step that only supplies context.
 
 For each applicable category, derive concrete scenarios from interrogation answers, apply the
 precision rules from `references/ac-precision.md`, discard vague candidates, present surviving
