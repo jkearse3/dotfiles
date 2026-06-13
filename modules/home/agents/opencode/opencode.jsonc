@@ -44,6 +44,8 @@
       "bash *": "allow",
       "cat *": "allow",
       "chmod *": "allow",
+      "commit-message-check": "allow",
+      "commit-message-check *": "allow",
       "cut *": "allow",
       "date *": "allow",
       "df *": "allow",

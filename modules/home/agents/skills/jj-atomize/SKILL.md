@@ -143,6 +143,9 @@ that do not belong in project history.
 6. **Execute** using the single-revision or multi-commit pattern from the repo's version-control
    rules:
    - Compose each full revision description (subject + body + footer) per the rules above
+   - Validate the exact description variable with `commit-message-check` before every `jj describe`
+     or `jj split` write. If validation fails, revise the description and rerun the checker before
+     writing.
    - Assign multi-line revision descriptions to a shell variable and pass the quoted variable to
      `-m`:
 
@@ -150,6 +153,7 @@ that do not belong in project history.
      desc='type(scope): description
 
      Status quo or problem, then change in response.'
+     printf '%s\n' "$desc" | commit-message-check
      jj describe -r <target> -m "$desc"
      ```
 
@@ -158,6 +162,7 @@ that do not belong in project history.
    - For multiple coherent revisions: use the multi-commit splitting pattern:
 
      ```bash
+     printf '%s\n' "$desc" | commit-message-check
      jj split -r <target> -m "$desc" file1 file2
      ```
 

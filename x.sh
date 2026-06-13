@@ -152,7 +152,9 @@ cmd:nix-flake-update() {
 		return
 	fi
 	cmd:nix-eval-home
-	jj commit -m "build(nix): update flake.lock"
+	desc='build(nix): update flake.lock'
+	printf '%s\n' "$desc" | commit-message-check
+	jj commit -m "$desc"
 }
 
 cmd:fmt() {

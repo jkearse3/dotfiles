@@ -21,6 +21,8 @@
       "Bash(bash:*)",
       "Bash(cat:*)",
       "Bash(chmod:*)",
+      "Bash(commit-message-check)",
+      "Bash(commit-message-check:*)",
       "Bash(cut:*)",
       "Bash(date:*)",
       "Bash(df:*)",

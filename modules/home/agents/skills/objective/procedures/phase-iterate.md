@@ -34,7 +34,9 @@ status, blockers, review readiness, and completion results.
    Objective commit (one-time, before first phase): if no phases exist yet and objective files are
    tracked in version control (check with `jj st`), commit the objective to preserve the spec as a
    checkpoint independent of implementation. Compose the full revision description using the repo's
-   version-control rules. If the working copy contains only objective files, commit them with
+   version-control rules. Validate the exact `desc` variable with
+   `printf '%s\n' "$desc" | commit-message-check`, revising and rerunning the checker until it
+   passes. If the working copy contains only objective files, commit them with
    `jj commit -m "$desc"`. If other files are also present, use
    `jj split -m "$desc" <objective-files>` to commit only the objective files.
 
@@ -168,7 +170,9 @@ status, blockers, review readiness, and completion results.
         independent concerns, and ask the user whether to narrow the phase, allow a split outside
         phase close, or move unrelated work out of scope.
      3. Mark phase complete in index (`[x]`) and remove the focus marker (`*`).
-     4. Commit the phase with the `jj-atomize` description using `jj commit -m "$desc"`.
+     4. Validate the exact `desc` variable with `printf '%s\n' "$desc" | commit-message-check`,
+        revising and rerunning the checker until it passes, then commit the phase with the
+        `jj-atomize` description using `jj commit -m "$desc"`.
      5. Note "Phase complete. Run `/objective iterate` to scope and execute next phase."
    - If the user requests tweaks:
      1. Dispatch a reconciliation subagent with prompt:
@@ -203,7 +207,9 @@ status, blockers, review readiness, and completion results.
       with reason `implement_concerns` and details naming the independent concerns; do not approve a
       split or commit.
    3. Mark phase complete in index (`[x]`) and remove the focus marker (`*`).
-   4. Commit the phase with the `jj-atomize` description using `jj commit -m "$desc"`.
+   4. Validate the exact `desc` variable with `printf '%s\n' "$desc" | commit-message-check`,
+      revising and rerunning the checker until it passes, then commit the phase with the
+      `jj-atomize` description using `jj commit -m "$desc"`.
    5. Return the structured result.
 
 ## Contracts

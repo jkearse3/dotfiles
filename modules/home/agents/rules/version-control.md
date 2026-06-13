@@ -67,6 +67,22 @@ Exempt from Conventional Commits, use git defaults: initial commit `chore: init`
 Prefer one logical change per commit. If the message needs "and", consider splitting — but use
 judgment. Don't split when separation makes the individual commits harder to understand.
 
+### Message Validation
+
+Before an agent runs any git or jj command that writes a commit message or revision description with
+`-m`, assign the message to a shell variable and validate the exact variable that will be passed to
+the command. This applies whether the message is agent-authored or supplied exactly by the user:
+
+```bash
+printf '%s\n' "$desc" | commit-message-check
+```
+
+Use the same variable unchanged after the checker passes. This applies to every agent-run jj `-m`
+write, including `jj commit -m`, `jj describe -m`, `jj split -m`, `jj new -m`, and `jj squash -m`,
+plus agent-run `git commit -m` and `git commit --amend -m` writes. If validation fails, revise the
+message and rerun the checker until it passes. Do not bypass validation for agent-run writes; if the
+user supplies an exact invalid message, stop and report the validation failure instead of writing it.
+
 ### Example
 
 Exhaustive — scope, breaking `!`, why-first body with contextual mood, and both footers:
@@ -127,8 +143,13 @@ desc='feat(auth): require signed tokens
 Unsigned tokens were accepted on internal routes, leaving a forgery gap.
 All endpoints now verify the signature and reject unsigned tokens.'
 
+printf '%s\n' "$desc" | commit-message-check
 jj commit -m "$desc"
+
+printf '%s\n' "$desc" | commit-message-check
 jj split -r <rev> -m "$desc" path/to/file
+
+printf '%s\n' "$desc" | commit-message-check
 jj describe -r <rev> -m "$desc"
 ```
 
@@ -138,7 +159,8 @@ jj describe -r <rev> -m "$desc"
   working copy. **Not** `jj new -m` (puts a description on a new empty revision, not the one with
   changes).
 - `jj new` - create empty working copy on current
-- `jj new -m "<message>"` - create new revision with message (use to start new work)
+- `jj new -m "$desc"` - create new revision with a message; assign `desc` and validate it with
+  `printf '%s\n' "$desc" | commit-message-check` first (use to start new work)
 - `jj describe <revision> -m "<revision-description>"` - set revision description
 - `jj diff -r <revision> --git` - diff revision (use `--stat` for file list)
 - `jj log -r <rev> --no-graph -T 'change_id' --limit 1` - verify revision exists / get change ID
@@ -163,9 +185,11 @@ For `gh` commands, use `$(jj-bookmark-current)` to get branch name since always 
 `jj split` with filesets - select which files go into first commit:
 
 ```bash
+printf '%s\n' "$first_desc" | commit-message-check
 jj split -r <rev> -m "$first_desc" path/to/file1 path/to/file2
 # Selected files → new parent, remaining stays in <rev>
 
+printf '%s\n' "$remaining_desc" | commit-message-check
 jj describe -r <rev> -m "$remaining_desc"
 # Describe whatever remains
 ```
@@ -175,11 +199,14 @@ jj describe -r <rev> -m "$remaining_desc"
 When splitting into N commits, track the target revision through each split:
 
 ```bash
+printf '%s\n' "$first_desc" | commit-message-check
 jj split -r <target> -m "$first_desc" file1 file2
 # "Remaining changes: <new_target> ..." — use <new_target> for next split
 
+printf '%s\n' "$second_desc" | commit-message-check
 jj split -r <new_target> -m "$second_desc" file3
 
+printf '%s\n' "$final_desc" | commit-message-check
 jj describe -r <final_target> -m "$final_desc"
 jj log -r '<first>::<last>' --no-pager
 ```
@@ -205,6 +232,7 @@ Prefer `-m` to avoid interactive editor, but **capture the destination's full de
 
 ```bash
 desc=$(jj log -r <dest> --no-graph -T 'description')
+printf '%s\n' "$desc" | commit-message-check
 jj squash -r <rev> -m "$desc"
 ```
 
@@ -228,3 +256,17 @@ jj squash -r <rev> -m "$desc"
 ### GitHub
 
 Branch name is available directly via `git branch --show-current` or `$(git-branch-current)`.
+
+### Message Writes
+
+For agent-run Git `-m` writes, assign the full message to a variable, validate that exact value,
+then pass the same variable unchanged:
+
+```bash
+desc='fix(cache): reject stale entries'
+printf '%s\n' "$desc" | commit-message-check
+git commit -m "$desc"
+
+printf '%s\n' "$desc" | commit-message-check
+git commit --amend -m "$desc"
+```
