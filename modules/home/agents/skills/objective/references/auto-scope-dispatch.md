@@ -41,5 +41,5 @@ Handle results:
 Default Phase proposal acceptance is automatic: add the linked entry for the provided or computed
 `P`, `NN`, and phase file to `## Phases` in `00-main.md`, move focus to it, then re-read
 `00-main.md` before continuing. Callers may override this, consistent with the "Preserve approval
-gates" invariant. `phase-iterate` uses default auto-accept; `phase-scope` instead presents the
-proposal and waits for approval before accepting.
+gates" invariant. `iterate` and `auto-iterate` use default auto-accept; `phase-scope` instead
+presents the proposal and waits for approval before accepting.

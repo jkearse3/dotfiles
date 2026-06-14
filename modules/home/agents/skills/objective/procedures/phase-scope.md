@@ -59,7 +59,7 @@ round.
   Auto-scope Dispatch no-work message ("No phase to scope."), the index entry
   `P. [ ] [Phase Name](./NN-phase-P.md) *`, and the refinement-loop dispatch prompt from
   `references/auto-scope-dispatch.md` § Dispatch.
-- This procedure presents the proposal and waits for approval — it does not auto-accept (unlike
-  `phase-iterate`'s auto-scope branch).
+- This procedure presents the proposal and waits for approval — it does not auto-accept (unlike the
+  default acceptance used by `/objective iterate` and `/objective auto-iterate`).
 - Each refinement round dispatches a new subagent. There is no session continuity; the prior draft
   is recovered by the brief's Step 1 read of the existing phase file.

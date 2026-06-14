@@ -1,7 +1,7 @@
 # Phase Iterate
 
-Orchestrate the inner loop: scope a phase if none is active, run the implement-verify loop inline,
-then enrich AC status and commit.
+Orchestrate the focused phase loop: require exactly one focused phase, run the implement-verify loop
+inline, then enrich AC status and commit.
 
 This is the required route for focused or phase-scoped implementation, continue, fix, tweak,
 complete, or work requests. Keep those requests inside this procedure's implement/verify loop; do
@@ -29,26 +29,34 @@ status, blockers, review readiness, and completion results.
 1. Load state. Read `.objectives/_current/00-main.md` fresh (never rely on prior context) per
    `references/current-objective.md` § Load Current Objective, including its no-objective nudge.
    - If no ACs in `## Acceptance Criteria`: nudge — "No acceptance criteria defined yet. Want me to
-     run `/objective spec`?"
+     run `/objective spec`?" Then stop.
 
-   Objective commit (one-time, before first phase): if no phases exist yet and objective files are
-   tracked in version control (check with `jj st`), commit the objective to preserve the spec as a
-   checkpoint independent of implementation. Compose the full revision description using the repo's
+2. Ensure exactly one focused phase. Find focused phases (`*` in `## Phases`).
+   - If exactly one focused phase exists: evaluate the objective checkpoint guard below, then go to
+     Step 3.
+   - If none: stop with this diagnostic — "No focused phase. Run `/objective iterate` to scope and
+     execute the next phase, or `/objective phase-scope` to scope one manually."
+   - If multiple focused phases exist: stop with a diagnostic listing them — "Multiple focused
+     phases. Keep exactly one `*`, then run `/objective phase-iterate`; use `/objective iterate` or
+     `/objective phase-scope` after resolving focus."
+
+   Objective checkpoint (one-time, before first phase execution): run only when all guards pass:
+   - No phase has been completed in the index.
+   - The focused phase file shows no execution evidence: no `[x]` or `[!]` task markers and no
+     `### Continuation` showing implementation, verification, reconciliation, or phase-iteration
+     resume state. Scope-time issue entries by themselves are not execution evidence.
+   - Objective files are tracked in version control, and `jj st` shows the working copy contains
+     only objective files.
+
+   If all guards pass, commit the objective to preserve the spec and phase plan as a checkpoint
+   independent of implementation. Compose the full revision description using the repo's
    version-control rules. Validate the exact `desc` variable with
    `printf '%s\n' "$desc" | commit-message-check`, revising and rerunning the checker until it
-   passes. If the working copy contains only objective files, commit them with
-   `jj commit -m "$desc"`. If other files are also present, use
-   `jj split -m "$desc" <objective-files>` to commit only the objective files.
+   passes, then commit with `jj commit -m "$desc"`.
 
-2. Ensure focused phase. Find the focused phase (`*` in `## Phases`).
-   - If a focused phase exists: go to Step 3.
-   - If none: run `references/auto-scope-dispatch.md` § Dispatch with these procedure-specific
-     results, using the default auto-accept Phase proposal handler. Read the dispatch reference only
-     for this branch; it owns any nested reference reads needed to compute phase-file inputs:
-     - No work remaining: report "Nothing to iterate." and stop.
-     - Readiness issues: surface them and stop.
-     - Phase proposal: auto-accept (no user approval), re-read `00-main.md` to pick up the new
-       phase, and go to Step 3.
+   If any guard fails, skip the checkpoint and keep all changes in `@`. Never use `jj split` for
+   this checkpoint; splitting objective files after phase work has started would break the
+   single-revision invariant.
 
 3. Announce scope. Locate the focused phase file per `references/phase-index.md` § Phase Resolution.
    Announce before executing:
@@ -173,7 +181,11 @@ status, blockers, review readiness, and completion results.
      4. Validate the exact `desc` variable with `printf '%s\n' "$desc" | commit-message-check`,
         revising and rerunning the checker until it passes, then commit the phase with the
         `jj-atomize` description using `jj commit -m "$desc"`.
-     5. Note "Phase complete. Run `/objective iterate` to scope and execute next phase."
+     5. Re-read `.objectives/_current/00-main.md`.
+     6. If any phase index entries remain `[ ]`: note "Phase complete. Run `/objective iterate` to
+        continue."
+     7. If no phase index entries remain `[ ]`: note "Phase complete. Run `/objective iterate` to
+        continue, or `/objective finalize` if all active ACs are complete."
    - If the user requests tweaks:
      1. Dispatch a reconciliation subagent with prompt:
 
@@ -199,10 +211,10 @@ status, blockers, review readiness, and completion results.
    With `--auto-commit`: read `references/phase-iterate-results.md` § Phase Iterate Result Blocks,
    then auto-commit and return `PHASE_COMPLETE`.
    1. Ask `jj-atomize` to finalize `@` with externally supplied single-revision intent for this
-      phase close. The approved iterate workflow covers applying this phase-close description, so a
-      second approval is not required while the single-revision invariant is preserved. Pass the
-      compact caller context packet as generic explanatory input for the revision description; the
-      target diff remains authoritative for changed content.
+      phase close. The approved auto-iterate workflow covers applying this phase-close description,
+      so a second approval is not required while the single-revision invariant is preserved. Pass
+      the compact caller context packet as generic explanatory input for the revision description;
+      the target diff remains authoritative for changed content.
    2. If `jj-atomize` reports incoherence, treat it as phase scope drift. Return `PHASE_INCOMPLETE`
       with reason `implement_concerns` and details naming the independent concerns; do not approve a
       split or commit.
@@ -214,17 +226,16 @@ status, blockers, review readiness, and completion results.
 
 ## Contracts
 
-- Preserve verbatim: the no-AC nudge, objective-commit `jj commit` / `jj split` command shapes, the
-  no-work message ("Nothing to iterate.") and index entry `P. [ ] [Phase Name](./NN-phase-P.md) *`,
-  the implement/verify dispatch prompts, the `No changes to verify.` contract string, the
-  `ac_status` section→marker mapping from `references/phase-verify-results.md` § AC Status Mapping,
-  and the `PHASE_INCOMPLETE` / `PHASE_COMPLETE` blocks from `references/phase-iterate-results.md` §
-  Phase Iterate Result Blocks.
+- Preserve verbatim: the no-AC nudge and stop, objective-checkpoint guard, objective-checkpoint
+  `jj commit -m "$desc"` command shape, no-`jj split` checkpoint rule, the no-focused-phase
+  diagnostic, the multiple-focused-phases diagnostic, the implement/verify dispatch prompts, the
+  `No changes to verify.` contract string, the `ac_status` section→marker mapping from
+  `references/phase-verify-results.md` § AC Status Mapping, and the `PHASE_INCOMPLETE` /
+  `PHASE_COMPLETE` blocks from `references/phase-iterate-results.md` § Phase Iterate Result Blocks.
 - Loop ownership: phase-iterate owns the implement-verify loop (dispatch, AC status capture,
   termination) and lifecycle (commit, phase marking). AC derivation and annotation are now handled
-  by `phase-verify`. Scoping is dispatched as an isolated subagent via `briefs/phase-scope.md`;
-  phase-iterate uses the shared Auto-scope Dispatch auto-accept handler from
-  `references/auto-scope-dispatch.md` § Dispatch.
+  by `phase-verify`. Scoping is owned by `/objective iterate`, `/objective auto-iterate`, and
+  `/objective phase-scope`, not by this procedure.
 - Required phase-work route: focused or phase-scoped implementation/continue/fix/tweak/complete/work
   requests must run through this procedure. Do not add an alternate inline main-agent editing path.
 - State passes between steps via `00-main.md` (ACs, phases index) and phase files (tasks, issues,
@@ -236,12 +247,12 @@ status, blockers, review readiness, and completion results.
   step requires user input (summary/review without `--auto-commit`, or blocked tasks). If any step
   fails or needs user input, stop and report.
 - Approval gate: without `--auto-commit`, user review approval is still required before phase-close
-  finalization or commit. With `--auto-commit`, the approved iterate workflow includes applying the
-  `jj-atomize` single-revision phase-close description, but not splitting, moving work out of `@`,
-  or committing after an incoherence finding.
+  finalization or commit. With `--auto-commit`, the approved auto-iterate workflow includes applying
+  the `jj-atomize` single-revision phase-close description, but not splitting, moving work out of
+  `@`, or committing after an incoherence finding.
 - Never edit repo files directly — phase-iterate is orchestration only. All repo edits go through
-  the dispatched implement/verify/reconciliation subagents, except: commits, the `00-main.md` index
-  entry update when auto-scoping, and review approval/commit phase-index updates.
+  the dispatched implement/verify/reconciliation subagents, except: commits and review
+  approval/commit phase-index updates.
 - Single-revision invariant (`references/workflow-invariants.md` § Invariants): all phase changes
   must live in `@` when verify runs — no intermediate `jj commit`, `jj new`, or `jj split` during
   the loop, so `jj diff` always captures the complete phase diff. Phase-iterate owns revision

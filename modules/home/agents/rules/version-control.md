@@ -81,7 +81,8 @@ Use the same variable unchanged after the checker passes. This applies to every 
 write, including `jj commit -m`, `jj describe -m`, `jj split -m`, `jj new -m`, and `jj squash -m`,
 plus agent-run `git commit -m` and `git commit --amend -m` writes. If validation fails, revise the
 message and rerun the checker until it passes. Do not bypass validation for agent-run writes; if the
-user supplies an exact invalid message, stop and report the validation failure instead of writing it.
+user supplies an exact invalid message, stop and report the validation failure instead of writing
+it.
 
 ### Example
 

@@ -26,8 +26,15 @@ Procedure paths below are relative to `procedures/`.
 Primary lifecycle:
 
 - `spec [topic]` — `spec.md`: Define acceptance criteria and approach
-- `iterate` (or `run all`) — `iterate.md`: Autonomous: pre-flight, loop all phases, auto-commit
+- `iterate` — `iterate.md`: Advance at most one phase, using the manual phase review path
 - `finalize` — `finalize.md`: Close out the objective with PR-ready summary artifacts
+
+Explicit autonomous route:
+
+- `auto-iterate` — `auto-iterate.md`: High-confidence autonomous phase loop; closeout still uses
+  `/objective finalize`
+- Natural-language requests to keep iterating, finish automatically, or continue until the objective
+  is complete route to `auto-iterate`, not to one-phase `iterate`
 
 Setup and navigation:
 
@@ -43,16 +50,17 @@ Optional focused helpers are escape hatches, not lifecycle steps:
 - Discovery/persistence: `research [topic]` or `investigate [topic]` — `investigate.md`;
   `interrogate [topic]` — `interrogate.md`
 - Phase control/recovery: `phase-scope` (or `scope phase`) — `phase-scope.md`;
-  `phase-iterate [--auto-commit]` (or `iterate phase`) — `phase-iterate.md`; Focused phase work
-  requests to implement, continue, fix, tweak, complete, or otherwise work on a focused or
-  phase-scoped slice — route through `phase-iterate.md`; do not edit repo files inline in the main
-  agent
+  `phase-iterate [--auto-commit]` (or `iterate phase`) — `phase-iterate.md`: run the focused phase
+  engine after exactly one phase is focused; Focused phase work requests to implement, continue,
+  fix, tweak, complete, or otherwise work on a focused or phase-scoped slice — route through
+  `phase-iterate.md`; do not edit repo files inline in the main agent
 - Review intake: `review` — `review.md`; `import-pr` (or `import pr comments`) — `import-pr.md`
 
 ## Guardrail
 
 In objective mode, never edit repo files without an active objective with approved ACs; all repo
-edits go through `/objective iterate` or the focused helper `/objective phase-iterate`.
+edits go through `/objective iterate`, `/objective auto-iterate`, or the focused helper
+`/objective phase-iterate`.
 
 Focused or phase-scoped implementation/continue/fix/tweak/complete/work requests must route through
 `procedures/phase-iterate.md`. The main agent must not satisfy those requests by editing repo files

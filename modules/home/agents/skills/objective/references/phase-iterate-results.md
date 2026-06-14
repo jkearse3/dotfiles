@@ -1,11 +1,13 @@
 # Phase Iterate Results
 
-Caller-parsed result blocks returned by `procedures/phase-iterate.md --auto-commit`.
+Caller-parsed result blocks returned by `procedures/phase-iterate.md --auto-commit` for explicit
+autonomous callers.
 
 ## Phase Iterate Result Blocks
 
-`procedures/phase-iterate.md --auto-commit` returns one of these caller-consumed blocks. Callers
-must preserve token matching, field order, and field meanings exactly.
+When explicit autonomous callers such as `procedures/auto-iterate.md` run
+`procedures/phase-iterate.md --auto-commit`, phase iteration returns one of these caller-consumed
+blocks. Callers must preserve token matching, field order, and field meanings exactly.
 
 Incomplete result:
 
