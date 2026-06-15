@@ -9,6 +9,23 @@ Rules for planning, writing, and reviewing code.
 - Short cycles: step → verify → repeat.
 - Root cause over symptom; generic fix over bespoke patch.
 
+## Minimality Ladder
+
+Before writing code, stop at the first rung that holds:
+
+1. Does this need to exist? If not, skip it.
+2. Does the standard library already do it? Use that.
+3. Does the platform already do it? Use that.
+4. Does an installed dependency already do it? Use that.
+5. Can it be one line? Prefer that.
+6. Only then write the minimum code that solves the task.
+
+Do not add abstractions, dependencies, wrappers, configuration, caching, retries, state machines, or
+extensibility unless the current task proves they are needed.
+
+Never cut corners on security, trust-boundary validation, data-loss handling, accessibility, or
+correctness.
+
 ## Destructive Operations
 
 - Ask before deleting code you don't understand.
