@@ -5,7 +5,7 @@
 }:
 let
   args = {
-    hostname = "mbp-personal";
+    hostname = "jk3-lap-001";
     username = "johnnie";
     system = "aarch64-darwin";
   };

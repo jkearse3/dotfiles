@@ -6,7 +6,7 @@
 {
   imports = [
     ./device-003
-    ./mbp-personal
+    ./jk3-lap-001
   ];
 
   options.flake.homeConfigurations = lib.mkOption {
