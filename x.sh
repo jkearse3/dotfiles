@@ -169,6 +169,12 @@ cmd:fmt-check() {
 	nix fmt --accept-flake-config -- --no-cache --fail-on-change
 }
 
+cmd:python-check() {
+	snapshot
+	echo "Checking Python types..."
+	basedpyright --project pyrightconfig.json
+}
+
 usage() {
 	echo "usage: $0 <command>" >&2
 	echo "" >&2
