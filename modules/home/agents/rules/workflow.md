@@ -13,6 +13,13 @@ Use increasing ceremony only when the task needs it:
 - **Objective**: broad, high-ceremony, acceptance-criteria-driven work. Create or load an objective,
   then follow the `/objective` workflow.
 
+When a request appears tied to repo-local workflow artifacts or specialized skill state, load the
+owning skill before selecting Direct mode. Do not satisfy specialized workflow state by inspecting
+it and editing repository files inline.
+
+Direct remains available for small bounded edits and for non-implementation workflow actions where
+no specialized workflow state owns the request and `iterate` adds no safety value.
+
 Direct uses only the steps needed:
 
 - Investigate when the right change is not already clear.

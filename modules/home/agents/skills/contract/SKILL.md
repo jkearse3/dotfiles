@@ -281,8 +281,9 @@ Rules for AC changes:
 
 ## Next Guidance
 
-Keep `## Next` useful as a manual implementation handoff without coupling this skill to a specific
-workflow.
+Keep `## Next` useful as a manual implementation handoff into the `iterate` skill. `## Next`
+describes the next implementation slice; it is not permission for this skill to make inline
+repository implementation edits.
 
 When work remains, `## Next` names the smallest coherent implementation-ready slice that advances
 one or more unsatisfied or partial ACs without crossing a boundary that needs a user decision,
@@ -318,8 +319,8 @@ When no implementation work remains, say that no implementation slice is pending
 next useful reconciliation or user-decision step.
 
 Describe handoffs as user intents, not literal command examples. A typical manual loop is: reconcile
-the branch contract, use the next slice from the current branch contract, then reconcile the branch
-contract again.
+the branch contract, use `iterate` to take the next slice from the current branch contract, then
+reconcile the branch contract again.
 
 The contract skill does not write workflow state files, coordinate implementation work, commit,
 describe, split, squash, switch bookmarks or branches, push, or move work between revisions.
