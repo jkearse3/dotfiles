@@ -1,5 +1,16 @@
 # Version Control
 
+## Placement
+
+Before creating new work, confirm its placement.
+
+- If on trunk, ask for a bookmark name.
+- If on an existing bookmark, ask whether to stack on the current bookmark or start from another
+  base.
+
+This does not apply to maintenance of existing work, such as reordering, describing, splitting,
+squashing, or rebasing named revisions, but those mutations still require explicit approval.
+
 ## Commit Messages
 
 Conventional Commits format by default. Defer to a repo's own conventions when documented

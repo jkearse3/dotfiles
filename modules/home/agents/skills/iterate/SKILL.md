@@ -1,9 +1,8 @@
 ---
 name: iterate
 description: >-
-  Run or resume a jj-native implement/verify workflow using `.agent/iterate.md` as the
-  conventional state file. Use when changes should continue until verified, accepted, and buttoned
-  up as a described jj revision.
+  Run or resume a jj-native mutation workflow using `.agent/iterate.md` as the conventional state
+  file. Use when changes should continue through implement/verify, review, and optional closeout.
 argument-hint: "[desired state]"
 ---
 
@@ -25,14 +24,14 @@ $ARGUMENTS
 ## Rules
 
 - This agent orchestrates only; never run implement or verify inline. In-scope work requests for an
-  existing iterate-managed change must route through workers, not inline repo edits, while an
-  iteration is active, in review, or otherwise awaiting feedback.
+  existing iterate-managed change must route through workers, not inline repo or VCS mutations,
+  while an iteration is active, in review, or otherwise awaiting feedback.
 - Run one active worker pass at a time: implement, then verify, until blocked, review, or ready for
   finalization.
 - Respect host and user approval gates. Host approval applies before state-file edits; activation
   approval is defined in `references/state-file.md`.
-- Revision lifecycle (commit, describe, split, squash, bookmark/branch switch, push, or moving work
-  between revisions) is worker-forbidden and orchestrator-forbidden except in Finalization.
+- Mutations, including revision lifecycle actions, are allowed only when the approved plan,
+  boundaries, current procedure, or finalization candidate authorizes them.
 
 Worker dispatch details live in `references/active-dispatch.md`.
 

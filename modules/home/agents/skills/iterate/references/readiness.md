@@ -4,7 +4,7 @@ Before creating a planning state or activating one, reduce material uncertainty.
 
 Material uncertainty is any unknown that could change ACs, boundaries, scope, behavior,
 architecture, data handling, security, UX, `Check:` methods needed to prove ACs, or a costly
-implementation direction.
+mutation direction.
 
 Before implementation, audit whether ACs cover requested outcomes, current behavior,
 approach-implied behavior, risks, negative constraints, boundaries, assumptions, and `Check:`
@@ -24,7 +24,7 @@ incomplete, contradictory, or too ambiguous to implement safely, return to plann
 of inventing scope.
 
 Boundaries are iteration-specific and do not need a fixed subsection schema or exact file allowlist.
-They are ready when implement can decide edit-or-block and verify can check compliance from the
+They are ready when implement can decide mutate-or-block and verify can confirm compliance from the
 state file plus permitted repo inspection.
 
 If scope is discoverable, boundaries must name the repo relationship that makes discovered files,
@@ -35,5 +35,5 @@ If material uncertainty remains before activation, do not set `Status: active`, 
 Keep or create `Status: planning`, `Next: none`, record concrete questions, and stop. If no safe
 planning draft can be written, ask before state-file creation instead.
 
-Normal implementation unknowns may remain when they can be answered safely by reading, editing, and
-verifying within boundaries.
+Normal implementation unknowns may remain when they can be answered safely by reading, mutating, and
+checking within boundaries.

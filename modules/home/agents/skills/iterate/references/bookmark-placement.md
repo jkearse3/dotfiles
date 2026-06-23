@@ -2,8 +2,8 @@
 
 Bookmark placement is orchestrator-owned. Run before creating a new iteration, replacing an
 iteration with unrelated work, activating a planning state for new/replacement work, or dispatching
-implementation for an unrelated desired outcome. Do not run inside implement or verify. Do not run
-when simply continuing an active iteration on its current bookmark.
+implement for an unrelated desired outcome. Do not run inside implement or verify. Do not run when
+simply continuing an active iteration on its current bookmark.
 
 Resolve placement with `jj-bookmark-current` and `jj-bookmark-default`.
 

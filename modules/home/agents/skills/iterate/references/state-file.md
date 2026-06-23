@@ -6,14 +6,14 @@
 - `## Acceptance Criteria` and `## Boundaries` are authoritative.
 - `## Context` explains why the iteration exists and why ACs matter.
 - `## Research` stores findings, decisions, questions, and assumptions that shape work.
-- `## Tasks` is implementation scratch, scoped just-in-time and tied to ACs or verifier issues when
+- `## Tasks` is mutation scratch, scoped just-in-time and tied to ACs or verify issues when
   applicable.
 - Each AC has a fixed body: statement, required `Check:`, optional `Details:`, then required
   `Evidence:` last. `Check:` is the planned proof method, `Details:` holds AC-local supporting list
-  items, and `Evidence:` is verifier-owned observed proof.
-- AC markers and evidence are verification-owned. Implement may record candidate verification notes
-  in tasks or research, but must not mark ACs verified or write AC `Evidence:` lines.
-- `## Issues` is verification-owned for normal issue lifecycle: blockers, findings, regressions, and
+  items, and `Evidence:` is verify-owned observed proof.
+- AC markers and evidence are verify-owned. Implement may record candidate verification notes in
+  tasks or research, but must not mark ACs checked or write AC `Evidence:` lines.
+- `## Issues` is verify-owned for normal issue lifecycle: blockers, findings, regressions, and
   unsafe assumptions. Implement addresses issues with `(IN)` tasks and records only direct blockers
   needed for user input, safety, or boundaries.
 
@@ -89,12 +89,12 @@ Next: none
 
 ## Approach
 
-[Small implementation strategy.]
+[Small mutation strategy.]
 
 ## Boundaries
 
-- Iteration-specific limits for edits, inspection, workflow actions, and stop-before conditions. If scope
-  is discoverable, state the repo relationship that makes discovered files or behavior in scope.
+- Iteration-specific limits for edits, inspection, workflow actions, and stop-before conditions. If
+  scope is discoverable, state the repo relationship that makes discovered files or behavior in scope.
 
 ## Tasks
 
@@ -110,10 +110,10 @@ Every AC uses fixed body ordering:
 - Statement line with the stable AC number, marker, and observable criterion.
 - Required `Check:` line describing the planned proof method for the AC.
 - Optional `Details:` block for AC-local supporting list items.
-- Required `Evidence:` line recording verifier-owned observed proof for the current checkout.
+- Required `Evidence:` line recording verify-owned observed proof for the current checkout.
 
 `Evidence:` is always the last body item under the AC. If the AC needs bullets, examples, caveats,
-or other supporting content, put them under `Details:` so they do not interleave with verifier-owned
+or other supporting content, put them under `Details:` so they do not interleave with verify-owned
 evidence. `Check:` is planning-owned proof intent; it is not observed evidence.
 
 ## State Machine
@@ -129,12 +129,32 @@ Block: set `Status: blocked`, set `Next: none`, record a concrete `[!]` blocker,
 
 ## Finalization Candidate
 
-Verification may add `## Finalization Candidate` only after every non-invalidated AC has evidence
-and no open issues remain. The section is optional, and if present it must contain only these two
-fields:
+Verify may add `## Finalization Candidate` only after every non-invalidated AC has evidence and no
+open issues remain. When repository changes exist, verify must propose `closeout: finalize-revision`
+unless the user explicitly requested no VCS closeout. When no repository changes exist, or when the
+user explicitly requested no VCS closeout, use `closeout: none`.
+
+Adding or replacing `## Finalization Candidate` is a non-mutating state-file proposal. It does not
+authorize `jj describe`, `jj new`, `jj commit`, push, split, squash, or any other VCS lifecycle
+action. Plans and boundaries may prohibit VCS lifecycle execution without prohibiting a proposed
+revision description or finalization candidate.
+
+If present, the section must contain `closeout` and only the fields required by that closeout mode.
+
+For no VCS lifecycle closeout:
+
+```markdown
+## Finalization Candidate
+
+closeout: none
+```
+
+For describing the current `@` and then creating a fresh working-copy revision:
 
 ````markdown
 ## Finalization Candidate
+
+closeout: finalize-revision
 
 target_commit: <current @ commit id>
 
@@ -151,8 +171,8 @@ candidate, and remove it when verification does not pass.
 
 Markers for ACs, tasks, and issues:
 
-- `[ ]` pending, open, or not yet verified.
-- `[x]` complete or verified.
+- `[ ]` pending, open, or not yet checked.
+- `[x]` complete or checked.
 - `[~]` satisfied as far as the agent can tell, but external/manual confirmation is required.
 - `[!]` blocked, failed, regressed, or unsafe to continue without input.
 - `[-]` invalidated or superseded; excluded from completion checks.
@@ -185,8 +205,7 @@ Invalidation format:
 ```
 
 Preserve evidence on invalidated ACs and keep it last. Evidence on retained ACs must still match
-their wording. Verification checks every non-invalidated AC, not just ACs touched by the latest
-task.
+their wording. Verify examines every non-invalidated AC, not just ACs touched by the latest task.
 
 ## Task Traceability
 
@@ -196,9 +215,9 @@ state file and inspecting the repo.
 Task annotations:
 
 - `(ACN, satisfy)` implements behavior for ACN.
-- `(ACN, codify)` adds or updates verification for ACN.
+- `(ACN, codify)` adds or updates checks for ACN.
 - `(ACN, enhance)` improves or refines already-satisfied ACN behavior.
 - `(IN)` addresses issue N.
 
-Task completion does not complete the iteration. Verification-owned AC evidence completes agent
+Task completion does not complete the iteration. Verify-owned AC evidence completes agent
 verification; human acceptance or explicit closure completes the iteration.
