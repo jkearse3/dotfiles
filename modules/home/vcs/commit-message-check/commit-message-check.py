@@ -5,6 +5,8 @@ from __future__ import annotations
 import argparse
 import re
 import sys
+from dataclasses import dataclass
+from typing import cast
 
 DEFAULT_BODY_WIDTH = 72
 DEFAULT_SUBJECT_WIDTH = 72
@@ -22,7 +24,7 @@ DEFAULT_TYPES = (
 )
 SUBJECT_RE = re.compile(
     r"^(?P<type>[a-z]+)(?:\((?P<scope>[^()\n]+)\))?(?P<breaking>!)?: "
-    r"(?P<description>.+)$"
+    + r"(?P<description>.+)$"
 )
 URL_RE = re.compile(r"https?://\S+")
 INLINE_CODE_RE = re.compile(r"`[^`\n]+`")
@@ -48,7 +50,7 @@ def validate_subject(
     if match is None:
         errors.append(
             "line 1: subject must match "
-            "'<type>(<scope>)?: <description>' with optional '!' before ':'"
+            + "'<type>(<scope>)?: <description>' with optional '!' before ':'"
         )
         return errors
 
@@ -81,7 +83,7 @@ def validate_body_lines(lines: list[str], *, body_width: int) -> list[str]:
 
         errors.append(
             f"line {line_number}: body/footer line is {len(line)} characters "
-            f"(max {body_width})"
+            + f"(max {body_width})"
         )
 
     return errors
@@ -153,32 +155,44 @@ def parse_types(value: str) -> tuple[str, ...]:
     return types
 
 
-def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
+@dataclass(frozen=True)
+class Args:
+    subject_width: int
+    body_width: int
+    types: tuple[str, ...]
+
+
+def parse_args(argv: list[str] | None = None) -> Args:
     parser = argparse.ArgumentParser(
         description="Validate a Conventional Commit description read from stdin."
     )
-    parser.add_argument(
+    _ = parser.add_argument(
         "--subject-width",
         type=positive_int,
         default=DEFAULT_SUBJECT_WIDTH,
         help=f"maximum subject width in characters (default: {DEFAULT_SUBJECT_WIDTH})",
     )
-    parser.add_argument(
+    _ = parser.add_argument(
         "--body-width",
         type=positive_int,
         default=DEFAULT_BODY_WIDTH,
         help=(
             "maximum body/footer line width in characters "
-            f"(default: {DEFAULT_BODY_WIDTH})"
+            + f"(default: {DEFAULT_BODY_WIDTH})"
         ),
     )
-    parser.add_argument(
+    _ = parser.add_argument(
         "--types",
         type=parse_types,
         default=DEFAULT_TYPES,
         help="comma-separated allowed Conventional Commit types",
     )
-    return parser.parse_args(argv)
+    namespace = parser.parse_args(argv)
+    return Args(
+        subject_width=cast(int, namespace.subject_width),
+        body_width=cast(int, namespace.body_width),
+        types=cast(tuple[str, ...], namespace.types),
+    )
 
 
 def main(argv: list[str] | None = None) -> int:

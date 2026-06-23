@@ -172,7 +172,7 @@ cmd:fmt-check() {
 cmd:python-check() {
 	snapshot
 	echo "Checking Python types..."
-	basedpyright --project pyrightconfig.json
+	basedpyright --project pyrightconfig.json --warnings
 }
 
 usage() {
