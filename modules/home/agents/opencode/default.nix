@@ -58,6 +58,14 @@ let
     exec "${opencode-wrapped}/bin/opencode" "$@"
   '';
 
+  opencode-unsafe = pkgs.writeShellApplication {
+    name = "opencode-unsafe";
+    text = ''
+      export OPENCODE_PERMISSION='{"*":"allow","bash":{"*":"allow"}}'
+      exec "${opencode-wrapped}/bin/opencode" "$@"
+    '';
+  };
+
   nono-opencode = mkNonoWrapper {
     name = "opencode";
     profile = "coding-agents";
@@ -67,6 +75,7 @@ in
 {
   home.packages = [
     opencode-wrapped
+    opencode-unsafe
     nono-opencode
   ];
   home.file = {
@@ -79,6 +88,9 @@ in
     # sandbox. Autoloaded by command name, so it lives in its own file.
     ".config/fish/completions/nono-opencode.fish".text = ''
       complete -c nono-opencode --wraps opencode
+    '';
+    ".config/fish/completions/opencode-unsafe.fish".text = ''
+      complete -c opencode-unsafe --wraps opencode
     '';
   }
   // renderRuleRegistries ".config/opencode/rules" [

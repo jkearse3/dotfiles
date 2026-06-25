@@ -78,8 +78,11 @@ Steps:
     inspection, such as `jj log -r @ --no-graph -T 'commit_id ++ "\n"'`.
 15. Draft `revision_description` as a complete proposed jj revision description based on the checked
     diff and state context, following the repository's revision-description rules.
-16. Replace any existing `## Finalization Candidate` with a fresh section containing only
+16. Assign the exact proposed `revision_description` to a shell variable and validate it with
+    `printf '%s\n' "$desc" | commit-message-check`. If validation fails, revise the proposed
+    description and rerun validation until it passes before writing the candidate.
+17. Replace any existing `## Finalization Candidate` with a fresh section containing only
     `closeout: finalize-revision`, `target_commit`, and `revision_description`.
-17. Set `Status: review`, set `Next: none`, and stop.
+18. Set `Status: review`, set `Next: none`, and stop.
 
 Return a concise summary. The state file is authoritative.
