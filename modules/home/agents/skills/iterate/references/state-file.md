@@ -54,6 +54,16 @@ Activation requires explicit user approval of the exact full `.agent/iterate.md`
 recently shown in chat. To request activation approval, reread `.agent/iterate.md` from disk,
 present the entire file contents in chat, ask for approval of that exact persisted file, and stop.
 
+Approval to activate the exact persisted plan authorizes routine execution within that plan until it
+completes, blocks, fails, or changes scope. This includes in-bound implement and verify work,
+routine `.agent/iterate.md` progress updates, in-scope repo edits allowed by `## Boundaries`, and
+verification commands listed or implied by AC `Check:` lines.
+
+Activation approval does not authorize scope changes, out-of-bound work, continuing after a failed
+or blocked plan, destructive or hard-to-reverse changes not named by the plan, external service
+mutations, user-visible system configuration changes, or VCS lifecycle actions not included in the
+approved plan or finalization candidate.
+
 ## State File Schema
 
 Create new state files with exactly these sections. Leave `## Tasks` empty until implement scopes
