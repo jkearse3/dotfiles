@@ -198,70 +198,21 @@ For `gh` commands, use `$(jj-bookmark-current)` to get branch name since always 
 
 ### Patterns
 
-#### Splitting Revisions
+#### Splitting
 
-##### By File
+Use `jj split` with filesets only when whole files belong in an earlier revision. Selected changes
+become a new parent; remaining changes stay in the target revision.
 
-`jj split` with filesets - select which files go into first commit:
+For multiple splits, use the `Remaining changes: <change_id>` output as the next target. Describe the
+final remaining revision only after all splits are complete.
 
-```bash
-printf '%s\n' "$first_desc" | commit-message-check
-jj split -r <rev> -m "$first_desc" path/to/file1 path/to/file2
-# Selected files → new parent, remaining stays in <rev>
+Agents must not run interactive `jj split -i`. When changes in one file need hunk-level splitting,
+keep the affected hunks together and tell the user they can split them manually.
 
-printf '%s\n' "$remaining_desc" | commit-message-check
-jj describe -r <rev> -m "$remaining_desc"
-# Describe whatever remains
-```
+#### Squashing
 
-##### Multi-commit Splitting
-
-When splitting into N commits, track the target revision through each split:
-
-```bash
-printf '%s\n' "$first_desc" | commit-message-check
-jj split -r <target> -m "$first_desc" file1 file2
-# "Remaining changes: <new_target> ..." — use <new_target> for next split
-
-printf '%s\n' "$second_desc" | commit-message-check
-jj split -r <new_target> -m "$second_desc" file3
-
-printf '%s\n' "$final_desc" | commit-message-check
-jj describe -r <final_target> -m "$final_desc"
-jj log -r '<first>::<last>' --no-pager
-```
-
-Parse `jj split` output:
-
-- `Selected changes : <change_id>` — the new commit created
-- `Remaining changes: <change_id>` — update target for next split
-
-##### Limitations
-
-Hunk-level splits (splitting changes within a single file) require interactive mode (`jj split -i`),
-which is not available. When a file needs hunk-level splitting:
-
-- Merge the affected groups into one commit
-- Note the limitation to user
-- User can run `jj split -i` manually if needed
-
-#### Squashing Revisions
-
-Prefer `-m` to avoid interactive editor, but **capture the destination's full description first** —
-`-m` replaces the entire description, not just the subject:
-
-```bash
-desc=$(jj log -r <dest> --no-graph -T 'description')
-printf '%s\n' "$desc" | commit-message-check
-jj squash -r <rev> -m "$desc"
-```
-
-#### Anti-patterns
-
-- `jj new -r @-` + `jj restore --from <source>` - convoluted, loses context
-- Creating empty revisions then populating - unnecessary steps
-- Using `jj describe` before all splits complete - describe only the final remaining revision
-- `jj squash` without `-m` when revisions have descriptions — triggers interactive editor
+Prefer `jj squash -m "$desc"` to avoid an interactive editor. Capture and validate the destination
+revision's full description first because `-m` replaces the entire description, not just the subject.
 
 ## Git
 
