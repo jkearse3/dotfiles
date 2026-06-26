@@ -16,108 +16,60 @@ squashing, or rebasing named revisions, but those mutations still require explic
 
 ## Commit Messages
 
-Conventional Commits format by default. Defer to a repo's own conventions when documented
-(CLAUDE.md, AGENTS.md, CONTRIBUTING.md, commitlint config). When undocumented, match existing style
-from recent history.
+Default to Conventional Commits unless repo conventions say otherwise. Check documented conventions
+first, then recent history.
 
 ### Subject
 
-`type(scope): description`
+Use `type(scope): description`.
 
-- **type**: one of
-  - `feat`: new feature
-  - `fix`: bug fix
-  - `refactor`: code change that neither adds a feature nor fixes a bug
-  - `perf`: a `refactor` specifically targeting performance
-  - `style`: formatting, whitespace, non-semantic changes
-  - `chore`: repo housekeeping that does not ship (gitignore, editor configs, internal tooling
-    configs)
-  - `docs`: documentation only
-  - `test`: adding or correcting tests
-  - `ci`: CI/CD pipelines, deploy scripts, IaC, monitoring, recovery procedures
-  - `build`: build system or external dependencies, including lockfile and manifest updates
-- **scope**: optional: module, component, or area affected. Do not use issue identifiers as scopes.
-- **description**: imperative mood, lowercase, no period. Think "This commit will `<description>`".
-- Keep the full subject under 72 characters
-- Breaking changes: `type(scope)!: description`
+- Allowed types: `feat`, `fix`, `refactor`, `perf`, `style`, `chore`, `docs`, `test`, `ci`,
+  `build`.
+- Scope is optional and should name the affected module, component, or area.
+- Description is imperative, lowercase, has no period, and keeps the full subject under 72 chars.
+- Breaking changes use `type(scope)!: description`.
 
-Type follows behavioral effect, not file format. A markdown file the system reads as config (agent
-rules, skills, prompts) takes `feat` when it changes behavior, `refactor` when it restructures, and
-`docs` only when the change doesn't affect what the system does.
+Type follows behavioral effect, not file format. Agent rules, skills, prompts, and other markdown
+configs are `feat` when they change behavior, `refactor` when they restructure behavior, and `docs`
+only when they do not affect behavior.
 
 ### Body
 
-Agent-authored messages are expected to include a body by default; separate it from the subject with
-a blank line. Use a subject-only message only when the subject fully explains the change and a body
-would add no useful context. Wrap body text at 72 columns. Treat unbreakable tokens as exceptions:
-URLs, paths, inline code spans, and quoted output such as errors, logs, and command lines may exceed
-72 columns rather than being split. Prefer rephrasing before overrun: long URL → footer trailer
-(`Link: <url>`), or reference a short ticket ID.
+Agent-authored messages include a body by default. Use a subject-only message only when the subject
+fully explains the change.
 
-The subject and diff show _what_; the body adds the _why_, plus a higher-level _what_ when the diff
-isn't self-explanatory. Open with the status quo or bug, then the change in response.
+The body explains why the change exists: prior state, intent, durable behavior, risk, or non-obvious
+design choices. Do not describe review history, tool output, scratch work, or session workflow.
 
-Explain the change on its own terms, in domain language. Describe intent, prior state, durable
-behavior, risk, or non-obvious design choices. Do not describe the workflow that produced it: review
-feedback, iteration steps, tool output, scratch files, transcripts, or implementation details are
-not commit-message material unless they explain a lasting constraint or user-visible impact. Before
-finalizing a body, remove any sentence that answers "what happened during the session" rather than
-"why this change should exist in the codebase." Exception: commits whose primary change is the
-artifact itself.
-
-Contextual mood: imperative for the change ("Replace the polling loop"), past for the prior state
-("The cache leaked under concurrent writes"), present for invariants ("The buffer is a fixed-size
-ring").
+Wrap body text at 72 columns. Keep unbreakable tokens intact.
 
 ### Footer
 
 Optional, except when introducing breaking changes. Separate from body with a blank line.
 
 - Issue references: `Closes #123`, `Fixes JIRA-456`.
-- Breaking changes start with `BREAKING CHANGE:` followed by a description.
-
-### Special Cases
-
-Exempt from Conventional Commits, use git defaults: initial commit `chore: init`; merge
-`Merge branch '<branch>'`; revert `Revert "<subject>"`.
+- Breaking changes start with `BREAKING CHANGE:`.
 
 ### Atomicity
 
-Prefer one logical change per commit. If the message needs "and", consider splitting — but use
-judgment. Don't split when separation makes the individual commits harder to understand.
+Prefer one logical change per commit. If the message needs "and", consider splitting, but do not
+split when that makes the individual commits harder to understand.
 
 ### Message Validation
 
 Before an agent runs any git or jj command that writes a commit message or revision description with
 `-m`, assign the message to a shell variable and validate the exact variable that will be passed to
-the command. This applies whether the message is agent-authored or supplied exactly by the user:
+the command:
 
 ```bash
 printf '%s\n' "$desc" | commit-message-check
 ```
 
-Use the same variable unchanged after the checker passes. This applies to every agent-run jj `-m`
-write, including `jj commit -m`, `jj describe -m`, `jj split -m`, `jj new -m`, and `jj squash -m`,
-plus agent-run `git commit -m` and `git commit --amend -m` writes. If validation fails, revise the
-message and rerun the checker until it passes. Do not bypass validation for agent-run writes; if the
-user supplies an exact invalid message, stop and report the validation failure instead of writing
-it.
+Use the same variable unchanged after validation. This applies to every agent-run git or jj message
+write, including commit, amend, describe, split, squash, and `jj new -m`.
 
-### Example
-
-Exhaustive — scope, breaking `!`, why-first body with contextual mood, and both footers:
-
-```
-feat(auth)!: require signed tokens on all endpoints
-
-Unsigned tokens were accepted on internal routes, leaving a forgery gap.
-All endpoints now verify the signature and reject unsigned tokens.
-
-BREAKING CHANGE: Unsigned tokens are rejected. Clients must upgrade to
-the v2 SDK before deploying.
-
-Closes #482
-```
+If validation fails, revise and rerun the checker. If the user supplied an exact invalid message,
+stop and report the validation failure instead of writing it.
 
 ## Jujutsu (jj)
 
