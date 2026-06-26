@@ -2,71 +2,36 @@
 
 Rules for planning, writing, and reviewing code.
 
-## Philosophy
+## Minimality
 
-- Minimal solutions; no speculative abstraction.
-- Evidence-based flexibility; add when needed.
-- Short cycles: step → verify → repeat.
-- Root cause over symptom; generic fix over bespoke patch.
+Prefer the smallest clear change that solves the current task.
 
-## Minimality Ladder
+Before writing code, check whether the behavior can be handled by existing code, the standard
+library, the platform, or an installed dependency. Do not add abstractions, dependencies,
+configuration, caching, retries, state machines, or extensibility unless the current task proves
+they are needed.
 
-Before writing code, stop at the first rung that holds:
-
-1. Does this need to exist? If not, skip it.
-2. Does the standard library already do it? Use that.
-3. Does the platform already do it? Use that.
-4. Does an installed dependency already do it? Use that.
-5. Can it be one line? Prefer that.
-6. Only then write the minimum code that solves the task.
-
-Do not add abstractions, dependencies, wrappers, configuration, caching, retries, state machines, or
-extensibility unless the current task proves they are needed.
-
-Never cut corners on security, trust-boundary validation, data-loss handling, accessibility, or
-correctness.
-
-## Destructive Operations
-
-- Ask before deleting code you don't understand.
-- Ensure restorability before deleting files or content.
-
-## Language Rules
-
-Invoke the `language-<lang>` skill if available (e.g. `language-go` for Go) when editing or
-reviewing.
-
-## Code Quality Checklist
-
-Apply when planning, writing, or reviewing:
-
-- **Design**: separation of concerns; right-sized abstractions (not over/under-engineered); minimal
-  dependencies, correct direction; patterns consistent with the codebase; trust boundaries
-  respected; narrowest visibility (nothing public without an external caller).
-- **Correctness**: all error paths handled; inputs validated/sanitized; edge cases (empty, null,
-  boundary); concurrency (races, deadlocks).
-- **Clarity**: naming clear and consistent; nesting flattened.
-- **Testing**: key paths covered; tests focused, not overlapping.
+Fix root causes rather than symptoms. Do not trade away security, trust-boundary validation,
+data-loss handling, accessibility, or correctness for brevity.
 
 ## Implementation
 
-- Incremental; each iteration compiles/works.
-- Follow existing patterns and libraries when sensible.
-- Self-review against the checklist; iterate until it passes.
+Work incrementally: inspect the relevant code, make a focused change, then verify it. Follow the
+repo's existing patterns and libraries unless there is evidence they are wrong for this task.
+
+When editing or reviewing language-specific code, invoke the matching `language-<lang>` skill if
+available.
+
+## Quality Checks
+
+Before finishing, check the changed code for:
+
+- Correct error handling, input validation, and important edge cases.
+- Concurrency issues where shared state, async work, or parallel execution is involved.
+- Clear names, simple control flow, and narrow visibility.
+- Focused tests or verification for the behavior changed.
 
 ## Style
 
-- Comments explain "why", not "what" — except a "what" comment for a complex logic block. Only when
-  needed for understanding; no dividers, banners, or section markers.
-- Full sentences with punctuation. Document all struct/object fields; no naked fields.
-- Early returns; happy path at the left margin.
-
-## File Organization
-
-1. Main/exported components first; public APIs before implementation.
-2. Private types/functions: after their single caller, or at the bottom if multiple callers.
-
-## Blockers
-
-- Architectural mismatch or API incompatibility requiring redesign.
-- Multiple failed approaches with no clear path forward.
+Use early returns to keep the happy path clear. Comments should explain why something is necessary,
+not restate what the code does.
