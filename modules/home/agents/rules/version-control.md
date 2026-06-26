@@ -101,29 +101,8 @@ initialized with jj unless the user explicitly asks to initialize a new reposito
 
 ### Revision Descriptions
 
-Compose the full revision description before passing it to a jj command: subject, expected body, and
-optional footer. Follow the Commit Messages guidance above for subject format, when a subject-only
-message is acceptable, footer syntax, and wrapping. Do not reduce a change to a subject-only
-description just because the command uses `-m`.
-
-For multi-line revision descriptions, assign the description to a shell variable and pass the quoted
-variable to `-m`:
-
-```bash
-desc='feat(auth): require signed tokens
-
-Unsigned tokens were accepted on internal routes, leaving a forgery gap.
-All endpoints now verify the signature and reject unsigned tokens.'
-
-printf '%s\n' "$desc" | commit-message-check
-jj commit -m "$desc"
-
-printf '%s\n' "$desc" | commit-message-check
-jj split -r <rev> -m "$desc" path/to/file
-
-printf '%s\n' "$desc" | commit-message-check
-jj describe -r <rev> -m "$desc"
-```
+Compose the full revision description before passing it to jj: subject, expected body, and optional
+footer. Do not reduce a change to a subject-only description just because the command uses `-m`.
 
 ### Commands
 
