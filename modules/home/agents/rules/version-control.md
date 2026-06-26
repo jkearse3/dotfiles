@@ -7,9 +7,8 @@ Before creating new work, confirm its placement.
 - If on trunk, ask for a bookmark name.
 - If on an existing bookmark, ask whether to stack on the current bookmark or start from another
   base.
-- When starting from an empty `@`, create the bookmark on the existing empty `@` revision; do not
-  run `jj new` first. `jj new` creates an additional empty child revision, so edits would sit on top
-  of an unnecessary empty parent.
+- When starting from an empty `@`, create the bookmark on the existing empty `@` revision. Do not
+  run `jj new` first, because it creates an unnecessary empty parent.
 
 This does not apply to maintenance of existing work, such as reordering, describing, splitting,
 squashing, or rebasing named revisions, but those mutations still require explicit approval.
@@ -23,8 +22,7 @@ first, then recent history.
 
 Use `type(scope): description`.
 
-- Allowed types: `feat`, `fix`, `refactor`, `perf`, `style`, `chore`, `docs`, `test`, `ci`,
-  `build`.
+- Allowed types: `feat`, `fix`, `refactor`, `perf`, `style`, `chore`, `docs`, `test`, `ci`, `build`.
 - Scope is optional and should name the affected module, component, or area.
 - Description is imperative, lowercase, has no period, and keeps the full subject under 72 chars.
 - Breaking changes use `type(scope)!: description`.
@@ -33,7 +31,7 @@ Type follows behavioral effect, not file format. Agent rules, skills, prompts, a
 configs are `feat` when they change behavior, `refactor` when they restructure behavior, and `docs`
 only when they do not affect behavior.
 
-### Body
+### Body And Footer
 
 Agent-authored messages include a body by default. Use a subject-only message only when the subject
 fully explains the change.
@@ -43,12 +41,9 @@ design choices. Do not describe review history, tool output, scratch work, or se
 
 Wrap body text at 72 columns. Keep unbreakable tokens intact.
 
-### Footer
-
-Optional, except when introducing breaking changes. Separate from body with a blank line.
-
-- Issue references: `Closes #123`, `Fixes JIRA-456`.
-- Breaking changes start with `BREAKING CHANGE:`.
+Footers are optional, except when introducing breaking changes. Separate them from the body with a
+blank line. Use `Closes #123` or `Fixes JIRA-456` for issue references, and start breaking-change
+footers with `BREAKING CHANGE:`.
 
 ### Atomicity
 
@@ -73,30 +68,29 @@ stop and report the validation failure instead of writing it.
 
 ## Jujutsu (jj)
 
-Using jj collocated with git. Always in detached HEAD state; use git for read-only ops only.
+Use jj colocated with git for file-changing and VCS-affecting work. These repositories are usually
+in detached HEAD, so use git for read-only inspection only unless jj is unavailable.
 
 ### Setup Pre-Flight
 
 Before file-changing or VCS-affecting work, detect repository state with read-only commands: check
-for initialized jj first, then check whether the directory is a git repository without jj. Prefer jj
-for file-changing or VCS-affecting work in git repositories.
+for initialized jj first, then check whether the directory is a git repository without jj.
 
 When a git work repository lacks jj initialization, the approved plan must explicitly include
 `jj git init --colocate` before edits or VCS-mutating commands proceed. Treat the plan approval as
-approval to run that initialization command. After initialization, verify bookmark and
-default-branch state before edits or VCS-mutating commands proceed; apply the VCS placement rules
-below using jj bookmarks.
+approval to run that initialization command.
+
+After initialization, verify bookmark and default-branch state before edits or VCS-mutating commands
+proceed. Apply the placement rules above using jj bookmarks.
 
 Reference-only clones, research, questions, and explanations do not trigger jj initialization unless
 the user asks to modify the repository or run VCS-mutating commands. Directories without git are not
 initialized with jj unless the user explicitly asks to initialize a new repository.
 
-### Revision Descriptions
+### Commands
 
 Compose the full revision description before passing it to jj: subject, expected body, and optional
 footer. Do not reduce a change to a subject-only description just because the command uses `-m`.
-
-### Commands
 
 - `jj commit -m "$desc"` - finalize `@` and create a fresh working copy. Do not use `jj new -m` for
   existing changes; it describes a new empty revision.
@@ -109,29 +103,24 @@ footer. Do not reduce a change to a subject-only description just because the co
 - `jj-bookmark-current` - current bookmark.
 - `jj-bookmark-previous` - previous bookmark in the stack, or trunk.
 - `jj-bookmark-stacked` - bookmarks from current to trunk.
-- `jj log -r "$(jj-bookmark-previous)..@" --stat` - files changed in current branch
+- `jj log -r "$(jj-bookmark-previous)..@" --stat` - files changed in current branch.
 
-### GitHub
+For `gh` commands, use `$(jj-bookmark-current)` as the branch name because git is detached.
 
-For `gh` commands, use `$(jj-bookmark-current)` to get branch name since always detached.
-
-### Patterns
-
-#### Splitting
+### Splitting And Squashing
 
 Use `jj split` with filesets only when whole files belong in an earlier revision. Selected changes
 become a new parent; remaining changes stay in the target revision.
 
-For multiple splits, use the `Remaining changes: <change_id>` output as the next target. Describe the
-final remaining revision only after all splits are complete.
+For multiple splits, use the `Remaining changes: <change_id>` output as the next target. Describe
+the final remaining revision only after all splits are complete.
 
 Agents must not run interactive `jj split -i`. When changes in one file need hunk-level splitting,
 keep the affected hunks together and tell the user they can split them manually.
 
-#### Squashing
-
 Prefer `jj squash -m "$desc"` to avoid an interactive editor. Capture and validate the destination
-revision's full description first because `-m` replaces the entire description, not just the subject.
+revision's full description first because `-m` replaces the entire description, not just the
+subject.
 
 ## Git
 
