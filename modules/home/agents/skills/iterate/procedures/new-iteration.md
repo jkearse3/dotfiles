@@ -1,7 +1,8 @@
 # New Iteration Creation
 
 Use only when the runbook routes a missing state file, a finalized state with a clear new desired
-outcome, or an approved non-terminal replacement to new planning.
+outcome, or an approved non-terminal replacement to new planning. A finalized state file is closed
+state; starting a new iteration may overwrite it without separate replacement approval.
 
 Before acting, read:
 
