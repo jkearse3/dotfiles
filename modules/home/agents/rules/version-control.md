@@ -98,22 +98,18 @@ footer. Do not reduce a change to a subject-only description just because the co
 
 ### Commands
 
-- `jj commit -m "<revision-description>"` - finalize @ with a revision description and create fresh
-  working copy. **Not** `jj new -m` (puts a description on a new empty revision, not the one with
-  changes).
-- `jj new` - create empty working copy on current
-- `jj new -m "$desc"` - create new revision with a message; assign `desc` and validate it with
-  `printf '%s\n' "$desc" | commit-message-check` first (use to start new work)
-- `jj describe <revision> -m "<revision-description>"` - set revision description
-- `jj diff -r <revision> --git` - diff revision (use `--stat` for file list)
-- `jj log -r <rev> --no-graph -T 'change_id' --limit 1` - verify revision exists / get change ID
-- `jj log -r '<first>::<last>' --no-pager` - show commit range
-- `jj-bookmark-default` - trunk/default branch name
-- `jj-bookmark-current` - current branch name
-- `jj-bookmark-previous` - previous branch name (stacked PRs, else trunk)
-- `jj-bookmark-stacked` - list bookmarks from current to trunk
+- `jj commit -m "$desc"` - finalize `@` and create a fresh working copy. Do not use `jj new -m` for
+  existing changes; it describes a new empty revision.
+- `jj new` - create an empty working copy on the current revision.
+- `jj new -m "$desc"` - start new work with a described empty revision.
+- `jj describe -r <rev> -m "$desc"` - replace a revision description.
+- `jj diff -r <rev> --git` - show a revision diff; add `--stat` for file lists.
+- `jj log -r '<first>::<last>' --no-pager` - show a revision range.
+- `jj-bookmark-default` - default bookmark.
+- `jj-bookmark-current` - current bookmark.
+- `jj-bookmark-previous` - previous bookmark in the stack, or trunk.
+- `jj-bookmark-stacked` - bookmarks from current to trunk.
 - `jj log -r "$(jj-bookmark-previous)..@" --stat` - files changed in current branch
-- `jj log -r '<from>..<to>' --stat` - files changed in custom range
 
 ### GitHub
 
