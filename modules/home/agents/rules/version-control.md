@@ -91,14 +91,6 @@ Reference-only clones, research, questions, and explanations do not trigger jj i
 the user asks to modify the repository or run VCS-mutating commands. Directories without git are not
 initialized with jj unless the user explicitly asks to initialize a new repository.
 
-### Terminology
-
-- Revision description: the message content stored on a jj revision, composed from the subject,
-  expected body, and optional footer.
-- Commit: the lifecycle action that finalizes `@` with `jj commit` and creates a fresh working-copy
-  revision.
-- Describe: the lifecycle action that updates an existing revision description with `jj describe`.
-
 ### Revision Descriptions
 
 Compose the full revision description before passing it to jj: subject, expected body, and optional
