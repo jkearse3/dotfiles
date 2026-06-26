@@ -44,18 +44,23 @@ rules, skills, prompts) takes `feat` when it changes behavior, `refactor` when i
 
 ### Body
 
-Optional — add for anything non-obvious; separate from subject with a blank line. Wrap at 72
-columns; unbreakable-token handling follows `markdown.md` § Width (cap 72; quoted output — errors,
-logs, command lines — counts as unbreakable). Prefer rephrasing over overrun: long URL → footer
-trailer (`Link: <url>`), or reference a short ticket ID.
+Agent-authored messages are expected to include a body by default; separate it from the subject with
+a blank line. Use a subject-only message only when the subject fully explains the change and a body
+would add no useful context. Wrap body text at 72 columns. Treat unbreakable tokens as exceptions:
+URLs, paths, inline code spans, and quoted output such as errors, logs, and command lines may exceed
+72 columns rather than being split. Prefer rephrasing before overrun: long URL → footer trailer
+(`Link: <url>`), or reference a short ticket ID.
 
 The subject and diff show _what_; the body adds the _why_, plus a higher-level _what_ when the diff
 isn't self-explanatory. Open with the status quo or bug, then the change in response.
 
-Explain the change on its own terms, in domain language — describe intent and domain context, not
-the workflow that produced it (its stages, task IDs, or tooling). Don't lean on session-internal
-artifacts — planning notes, scratch files, transcripts, workflow-tool docs — even when tracked;
-readers shouldn't chase pointers. Exception: commits whose primary change is the artifact itself.
+Explain the change on its own terms, in domain language. Describe intent, prior state, durable
+behavior, risk, or non-obvious design choices. Do not describe the workflow that produced it: review
+feedback, iteration steps, tool output, scratch files, transcripts, or implementation details are
+not commit-message material unless they explain a lasting constraint or user-visible impact. Before
+finalizing a body, remove any sentence that answers "what happened during the session" rather than
+"why this change should exist in the codebase." Exception: commits whose primary change is the
+artifact itself.
 
 Contextual mood: imperative for the change ("Replace the polling loop"), past for the prior state
 ("The cache leaked under concurrent writes"), present for invariants ("The buffer is a fixed-size
@@ -134,17 +139,17 @@ initialized with jj unless the user explicitly asks to initialize a new reposito
 ### Terminology
 
 - Revision description: the message content stored on a jj revision, composed from the subject,
-  optional body, and optional footer.
+  expected body, and optional footer.
 - Commit: the lifecycle action that finalizes `@` with `jj commit` and creates a fresh working-copy
   revision.
 - Describe: the lifecycle action that updates an existing revision description with `jj describe`.
 
 ### Revision Descriptions
 
-Compose the full revision description before passing it to a jj command: subject, optional body, and
-optional footer. Follow the Commit Messages guidance above for subject format, when to include a
-body, footer syntax, and wrapping. Do not reduce a non-obvious change to a subject-only description
-just because the command uses `-m`.
+Compose the full revision description before passing it to a jj command: subject, expected body, and
+optional footer. Follow the Commit Messages guidance above for subject format, when a subject-only
+message is acceptable, footer syntax, and wrapping. Do not reduce a change to a subject-only
+description just because the command uses `-m`.
 
 For multi-line revision descriptions, assign the description to a shell variable and pass the quoted
 variable to `-m`:
