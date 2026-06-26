@@ -82,7 +82,27 @@ Steps:
     `printf '%s\n' "$desc" | commit-message-check`. If validation fails, revise the proposed
     description and rerun validation until it passes before writing the candidate.
 17. Replace any existing `## Finalization Candidate` with a fresh section containing only
-    `closeout: finalize-revision`, `target_commit`, and `revision_description`.
-18. Set `Status: review`, set `Next: none`, and stop.
+    `closeout: finalize-revision`, `target_commit`, and `revision_description` in this exact shape:
+
+    ````markdown
+    ## Finalization Candidate
+
+    closeout: finalize-revision
+
+    target_commit: <current @ commit id>
+
+    revision_description:
+    ```text
+    <complete proposed jj revision description>
+    ```
+    ````
+
+    Do not use YAML block scalars such as `revision_description: |`; the revision description must
+    be in the fenced `text` block.
+
+18. Reread the written finalization candidate before entering review. If it does not match the
+    documented schema, remove the candidate, keep `Status: active`, set `Next: implement`, add or
+    update an issue describing the schema mismatch, and stop.
+19. Set `Status: review`, set `Next: none`, and stop.
 
 Return a concise summary. The state file is authoritative.
