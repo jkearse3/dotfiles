@@ -1,5 +1,6 @@
 -- Copilot
 require("lib.config").run({
+	enabled = false,
 	plugins = { "https://github.com/zbirenbaum/copilot.lua" },
 	setup = function()
 		---@class copilot_config

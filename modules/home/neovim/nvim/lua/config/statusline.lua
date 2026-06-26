@@ -8,6 +8,9 @@ require("lib.config").run({
 				return ""
 			end
 			local ok, client = pcall(require, "copilot.client")
+			if not ok then
+				return ""
+			end
 			local is_enabled = ok and client.buf_is_attached(0)
 			local auto_trigger = vim.b.copilot_suggestion_auto_trigger
 			if auto_trigger == nil then
