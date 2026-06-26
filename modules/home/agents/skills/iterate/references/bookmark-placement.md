@@ -13,5 +13,6 @@ Resolve placement with `jj-bookmark-current` and `jj-bookmark-default`.
   iteration: continue.
 - Current bookmark non-default and requested work is separable or relationship is unclear: ask
   whether to continue here or create a stacked bookmark.
-- User chooses stacked bookmark: run `jj new`, then `jj bookmark create <name>`, before creating or
-  activating iteration state and before normal iteration execution.
+- User chooses stacked bookmark: create the bookmark on the existing empty `@` revision. If `@` is
+  not empty, run `jj new` first, then create the bookmark. Do this before creating or activating
+  iteration state and before normal iteration execution.

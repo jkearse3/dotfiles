@@ -21,8 +21,9 @@ Optional bookmark name. If provided, creates or moves to that bookmark.
      - If it exists: move to it with `jj new <arg>`.
      - If not:
        - Run `jj-bookmark-current` and `jj-bookmark-default`.
-       - If on a non-trunk bookmark (not empty, doesn't match default): `jj new` first (stack on top
-         of current bookmark), then `jj bookmark create <arg>`.
+       - If on a non-trunk bookmark (not empty, doesn't match default): create the bookmark on the
+         existing empty `@` revision. If `@` is not empty, run `jj new` first (stack on top of
+         current bookmark), then create the bookmark.
        - If on trunk: `jj bookmark create <arg>`.
      - Verify with `jj-bookmark-current`.
    - Branch name = argument.

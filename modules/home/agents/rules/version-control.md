@@ -7,6 +7,9 @@ Before creating new work, confirm its placement.
 - If on trunk, ask for a bookmark name.
 - If on an existing bookmark, ask whether to stack on the current bookmark or start from another
   base.
+- When starting from an empty `@`, create the bookmark on the existing empty `@` revision; do not
+  run `jj new` first. `jj new` creates an additional empty child revision, so edits would sit on top
+  of an unnecessary empty parent.
 
 This does not apply to maintenance of existing work, such as reordering, describing, splitting,
 squashing, or rebasing named revisions, but those mutations still require explicit approval.
