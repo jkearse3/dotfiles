@@ -265,28 +265,14 @@ jj squash -r <rev> -m "$desc"
 
 ## Git
 
-### Commands
+Use git primarily for read-only inspection unless jj is unavailable.
+
+Useful commands:
 
 - `git-branch-current` - current branch name
 - `git-branch-default` - default remote branch name
-- `git-branch-stacked` - list branches in stack from current to default
+- `git-branch-stacked` - branches in stack from current to default
 - `git-branch-previous` - previous branch in stack
 - `git-branch-next` - next branch in stack (child)
 
-### GitHub
-
-Branch name is available directly via `git branch --show-current` or `$(git-branch-current)`.
-
-### Message Writes
-
-For agent-run Git `-m` writes, assign the full message to a variable, validate that exact value,
-then pass the same variable unchanged:
-
-```bash
-desc='fix(cache): reject stale entries'
-printf '%s\n' "$desc" | commit-message-check
-git commit -m "$desc"
-
-printf '%s\n' "$desc" | commit-message-check
-git commit --amend -m "$desc"
-```
+For `gh`, use `git branch --show-current` or `$(git-branch-current)`.
