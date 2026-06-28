@@ -73,7 +73,7 @@ work just-in-time from ACs, issues, context, research, and repo inspection.
 # Iterate
 
 Status: planning
-Next: none
+Next: planning
 
 ## Context
 
@@ -132,8 +132,18 @@ Required control fields:
 
 ```text
 Status: planning | active | blocked | review | complete | finalized
-Next: implement | verify | none
+Next: planning | implement | verify | review | finalize | none
 ```
+
+Allowed control-field pairs:
+
+- `Status: planning`, `Next: planning`
+- `Status: active`, `Next: implement`
+- `Status: active`, `Next: verify`
+- `Status: review`, `Next: review`
+- `Status: complete`, `Next: finalize`
+- `Status: blocked`, `Next: none`
+- `Status: finalized`, `Next: none`
 
 Block: set `Status: blocked`, set `Next: none`, record a concrete `[!]` blocker, and stop.
 

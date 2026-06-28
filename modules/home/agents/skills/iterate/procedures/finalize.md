@@ -1,6 +1,6 @@
 # Finalization
 
-Use only for `Status: complete` with `Next: none`.
+Use only for `Status: complete` with `Next: finalize`.
 
 Finalization is orchestrator-owned and runs only after user acceptance, explicit closure, or
 otherwise reaching `Status: complete`.

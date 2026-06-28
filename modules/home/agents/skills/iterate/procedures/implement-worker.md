@@ -1,9 +1,6 @@
-You are the implement worker for an iterate workflow iteration.
+# Implement Worker
 
-Inputs:
-
-- State file: <absolute path>
-- Workspace root: <absolute path>
+Use only when dispatched by `procedures/implement.md` for `Status: active` with `Next: implement`.
 
 Read the state file fresh. Treat `## Acceptance Criteria` and `## Boundaries` as authoritative. Use
 `## Context` to understand why the iteration exists. Use `## Research` for findings, decisions,
@@ -23,6 +20,13 @@ Rules:
 - Stop before changes that violate boundaries or require user decisions.
 - Treat AC `Check:` and `Details:` as part of the acceptance contract. `Check:` is the planned proof
   method, not action evidence or a task annotation.
+- Implementation is an AC-scoped action/check/resolve loop. For each meaningful implementation
+  slice, perform the smallest in-scope action needed for the referenced ACs, run or perform the
+  relevant AC `Check:` when feasible within boundaries, and resolve the observed result before
+  handoff.
+- Fix or adjust in-scope check failures immediately when safe. If a failure cannot be resolved
+  within the approved plan and boundaries, leave the task incomplete or blocked and record the
+  direct blocker; do not route known implementation-time failures to verify as ready work.
 - Do not mark ACs checked, change AC markers to `[x]`, `[~]`, or `[!]`, or write AC `Evidence:`
   lines. Verify owns AC markers and evidence.
 - Do not create, update, or close normal `## Issues`; verify owns issue lifecycle. Only record
@@ -50,20 +54,29 @@ Steps:
    revision lifecycle actions, or user decisions.
 8. Create or refine a flat numbered task list just-in-time from AC statements, `Check:`, `Details:`,
    issues, context, research, and repo inspection. Annotate tasks with `(ACN, satisfy)`,
-   `(ACN, codify)`, `(ACN, enhance)`, or `(IN)` where applicable. `(ACN, codify)` means adding or
-   updating repo checks or check assets for that AC; it does not replace, duplicate, or edit the
-   AC's `Check:` line.
-9. Execute pending tasks in a sensible order.
-10. Mark tasks `[x]` when complete, `[!]` with a blocker when blocked, or `[ ]` when intentionally
-    deferred. For verify-owned issues, use `(IN)` tasks to record fixes, but leave issue closure to
-    verify.
-11. Record durable repo findings under `### Findings`, decisions under `### Decisions`, unresolved
-    blockers under `### Questions`, safe working assumptions under `### Assumptions`, and any
-    candidate verification notes without editing AC evidence.
-12. Leave AC markers, AC evidence, and normal issue creation or closure for verify.
-13. If user input is required, set `Status: blocked`, set `Next: none`, record the blocker, and
+   `(ACN, codify)`, `(ACN, enhance)`, or `(IN)` where applicable. For each AC-scoped task, identify
+   the relevant AC `Check:` methods that should be run or performed during implementation when
+   feasible. `(ACN, codify)` means adding or updating repo checks or check assets for that AC; it
+   does not replace, duplicate, or edit the AC's `Check:` line.
+9. Execute pending tasks in a sensible order. After each meaningful AC-scoped action slice, run or
+   perform the relevant planned checks when feasible within boundaries, then resolve the result
+   before moving on.
+10. Resolve implementation-time check failures by fixing or adjusting in-scope work. If resolution
+    would violate boundaries, expand scope, require user input, or require unsafe action, mark the
+    task `[!]`, record the direct blocker, and stop as blocked when user input is required.
+11. Record candidate verification notes for checks run or performed during implementation, including
+    the check path and observed result, but do not edit AC evidence.
+12. Mark tasks `[x]` when complete with no known unresolved implementation-time check failure, `[!]`
+    with a blocker when blocked, or `[ ]` when intentionally deferred. For verify-owned issues, use
+    `(IN)` tasks to record fixes, but leave issue closure to verify.
+13. Record durable repo findings under `### Findings`, decisions under `### Decisions`, unresolved
+    blockers under `### Questions`, safe working assumptions under `### Assumptions`, and candidate
+    verification notes without editing AC evidence.
+14. Leave AC markers, AC evidence, and normal issue creation or closure for verify.
+15. If user input is required, set `Status: blocked`, set `Next: none`, record the blocker, and
     stop.
-14. If implementation is ready for verification, keep `Status: active`, set `Next: verify`, and
-    stop.
+16. If implementation has no known unresolved implementation-time check failures and is ready for
+    verification, keep `Status: active`, set `Next: verify`, and return to the dispatcher.
 
-Return a concise summary. The state file is authoritative.
+Reread the state file before returning control to the dispatcher or stopping. The state file is
+authoritative.

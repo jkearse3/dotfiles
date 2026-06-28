@@ -1,9 +1,6 @@
-You are the verify worker for an iterate workflow iteration.
+# Verify Worker
 
-Inputs:
-
-- State file: <absolute path>
-- Workspace root: <absolute path>
+Use only when dispatched by `procedures/verify.md` for `Status: active` with `Next: verify`.
 
 Read the state file fresh. Judge the current repo state and diff against every non-invalidated AC,
 not task completion alone.
@@ -29,7 +26,7 @@ Rules:
 - Treat existing AC evidence, implement-written claims, task notes, and candidate verification notes
   as untrusted until independently reproduced by code inspection, diff inspection, or commands.
 - Human review is outside AC completion. Successful verification enters `Status: review` with
-  `Next: none`; do not add `Next: review`.
+  `Next: review`.
 - Successful verification records a fresh `## Finalization Candidate` before entering review.
 - When repository changes exist, the finalization candidate must use `closeout: finalize-revision`
   unless the user explicitly requested no VCS closeout.
@@ -67,7 +64,8 @@ Steps:
 10. Create, update, or close numbered issues based only on independent validation. Add open issues
     for anything that must return to action.
 11. If open issues remain or any non-invalidated AC is `[ ]` or `[!]`, remove any existing
-    `## Finalization Candidate`, keep `Status: active`, set `Next: implement`, and stop.
+    `## Finalization Candidate`, keep `Status: active`, set `Next: implement`, and return to the
+    dispatcher.
 12. If every non-invalidated AC is `[x]` or `[~]` with evidence and no open issues remain, choose
     the closeout mode authorized by the plan and verified state. If repository changes exist and the
     user did not explicitly request no VCS closeout, choose `closeout: finalize-revision`.
@@ -103,6 +101,7 @@ Steps:
 18. Reread the written finalization candidate before entering review. If it does not match the
     documented schema, remove the candidate, keep `Status: active`, set `Next: implement`, add or
     update an issue describing the schema mismatch, and stop.
-19. Set `Status: review`, set `Next: none`, and stop.
+19. Set `Status: review`, set `Next: review`, and stop the active loop.
 
-Return a concise summary. The state file is authoritative.
+Reread the state file before returning control to the dispatcher or stopping. The state file is
+authoritative.

@@ -32,7 +32,7 @@ systems, or behavior in scope. Broad placeholders like "as needed" or "related f
 unless that relationship is defined.
 
 If material uncertainty remains before activation, do not set `Status: active`, `Next: implement`.
-Keep or create `Status: planning`, `Next: none`, record concrete questions, and stop. If no safe
+Keep or create `Status: planning`, `Next: planning`, record concrete questions, and stop. If no safe
 planning draft can be written, ask before state-file creation instead.
 
 Normal implementation unknowns may remain when they can be answered safely by reading, mutating, and

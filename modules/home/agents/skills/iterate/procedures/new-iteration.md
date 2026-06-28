@@ -10,8 +10,8 @@ Before acting, read:
 - `references/state-file.md`
 - `references/readiness.md`
 
-New iterations are plans only. New state files must use `Status: planning`, `Next: none`, even when
-no material uncertainty remains.
+New iterations are plans only. New state files must use `Status: planning`, `Next: planning`, even
+when no material uncertainty remains.
 
 1. If no desired outcome was supplied, ask for it and stop.
 2. Run Bookmark Placement.
@@ -20,7 +20,7 @@ no material uncertainty remains.
    inspection.
 5. Run Readiness against ACs, boundaries, context, research, and needed evidence.
 6. If material uncertainty prevents a safe planning draft, ask and stop before file creation.
-7. Create `Status: planning`, `Next: none`, including any concrete questions that must be resolved
-   before activation.
-8. Follow Persisted Plan Approval from `references/state-file.md`, then stop. Do not dispatch
-   implement until later explicit plan approval.
+7. Create `Status: planning`, `Next: planning`, including any concrete questions that must be
+   resolved before activation.
+8. Follow Persisted Plan Approval from `references/state-file.md`, then stop. Do not run implement
+   until later explicit plan approval.

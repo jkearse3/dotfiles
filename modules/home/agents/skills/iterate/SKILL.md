@@ -8,8 +8,8 @@ argument-hint: "[desired state]"
 
 # Iterate
 
-Run one implement/verify iteration from `<jj-root>/.agent/iterate.md`. The state file is the only
-iteration interface; never use chat, worker summaries, commits, or other files as control state.
+Advance the iteration from `<jj-root>/.agent/iterate.md`. The state file is the only iteration
+interface; never use chat, summaries, commits, or other files as control state.
 
 ## Arguments
 
@@ -23,17 +23,19 @@ $ARGUMENTS
 
 ## Rules
 
-- This agent orchestrates only; never run implement or verify inline. In-scope work requests for an
-  existing iterate-managed change must route through workers, not inline repo or VCS mutations,
-  while an iteration is active, in review, or otherwise awaiting feedback.
-- Run one active worker pass at a time: implement, then verify, until blocked, review, or ready for
-  finalization.
+- Run planning before activation, review, and finalization as human-boundary procedures that stop
+  after updating and rereading the state file.
+- After explicit activation approval, run the active loop in the same invocation:
+  `implement -> verify -> implement -> verify` until a stop condition is reached.
+- Stop the active loop at review, blocked state, scope or boundary changes, required user decisions,
+  unsafe or out-of-bound failures, context pressure that makes a fresh invocation safer, or any
+  finalization/VCS lifecycle boundary.
+- Keep implementation, verification, review, and finalization as distinct procedures. Compaction or
+  fresh sessions are execution details and must not change the state model or stop conditions.
 - Respect host and user approval gates. Host approval applies before state-file edits; activation
   approval is defined in `references/state-file.md`.
 - Mutations, including revision lifecycle actions, are allowed only when the approved plan,
   boundaries, current procedure, or finalization candidate authorizes them.
-
-Worker dispatch details live in `references/active-dispatch.md`.
 
 ## State Basics
 
@@ -51,8 +53,18 @@ Required control fields:
 
 ```text
 Status: planning | active | blocked | review | complete | finalized
-Next: implement | verify | none
+Next: planning | implement | verify | review | finalize | none
 ```
+
+Allowed control-field pairs:
+
+- `Status: planning`, `Next: planning`
+- `Status: active`, `Next: implement`
+- `Status: active`, `Next: verify`
+- `Status: review`, `Next: review`
+- `Status: complete`, `Next: finalize`
+- `Status: blocked`, `Next: none`
+- `Status: finalized`, `Next: none`
 
 ## Runbook
 
@@ -63,25 +75,29 @@ Next: implement | verify | none
    Basics. Read `references/state-file.md` only when creating or repairing state-file structure,
    applying AC Stability, or checking task traceability.
 5. Before following a procedure, read only the files it names for the current step; treat them as
-   imported instructions, and do not preload files needed only by dispatched workers.
+   imported instructions, and do not preload files needed only by later procedures.
 6. Before routing a non-terminal existing state, disambiguate intent: if the user clearly asks to
    abandon, replace, or do unrelated work, require explicit approval, then follow
    `procedures/new-iteration.md`; if intent is unclear, ask whether to resume, revise, or replace;
    otherwise route normally by status.
-7. Combine the current user intent with the state machine's `Status` / `Next`, then route to the
-   matching procedure.
-8. `Status: planning`: follow `procedures/planning.md`.
-9. `Status: active`: follow `procedures/active.md` from `Next`.
-10. `Status: blocked`: report blockers from `## Issues` or `## Research` questions, then stop. If
-    resolved, update the same file and resume when clear and in bounds.
-11. `Status: review`: follow `procedures/review.md`.
-12. `Status: complete`: follow `procedures/finalize.md`.
-13. `Status: finalized` with a clear new desired outcome: follow `procedures/new-iteration.md`.
-14. `Status: finalized` without a clear new desired outcome: ask what new iteration to draft and
-    stop.
-15. After any procedure that may update the state file, reread the state file and route only from
-    the updated `Status:` / `Next:`.
-16. When stopped, respond with:
+7. Combine the current user intent with the state machine's `Status` / `Next`, then validate the
+   control fields form one allowed pair.
+8. `Status: finalized` with a clear new desired outcome: follow `procedures/new-iteration.md`.
+9. `Status: finalized` without a clear new desired outcome: ask what new iteration to draft and
+   stop.
+10. `Next: none`: report the current state and stop.
+11. `Next: planning`: follow `procedures/planning.md`.
+12. `Next: implement`: follow `procedures/implement.md`.
+13. `Next: verify`: follow `procedures/verify.md`.
+14. `Next: review`: follow `procedures/review.md`.
+15. `Next: finalize`: follow `procedures/finalize.md`.
+16. After planning activates the state or after an active procedure updates the state file, reread
+    the state file. If the updated pair is `Status: active` with `Next: implement` or
+    `Next: verify`, continue the active loop unless a stop condition was reached.
+17. After review, finalization, blocked state, `Next: none`, or any stop condition, reread the state
+    file and stop.
+18. When stopped, respond with:
     - State file path.
     - Final `Status` and `Next`.
+    - Stop reason.
     - AC completion summary and open issues.
