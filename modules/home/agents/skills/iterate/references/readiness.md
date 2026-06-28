@@ -1,5 +1,19 @@
 # Readiness
 
+## Interactive Planning
+
+Planning is consensus-seeking. Do not request activation approval until the agent and user are
+aligned on outcome, scope, boundaries, acceptance criteria, and validation.
+
+Resolve uncertainty using the narrowest sufficient method:
+
+- Inspect repo facts, patterns, tests, and current behavior directly.
+- Ask one direct user question when one missing decision blocks planning.
+- Run an alignment pass when the desired outcome is conceptual, branching, high-stakes, or consensus
+  is not yet clear.
+- Persist a draft plan only when it is useful as a shared artifact, not as a premature activation
+  approval request.
+
 Before creating a planning state or activating one, reduce material uncertainty.
 
 Material uncertainty is any unknown that could change ACs, boundaries, scope, behavior,
@@ -14,10 +28,9 @@ Every non-invalidated AC must have a feasible `Check:` before activation. `Check
 proof path, not observed evidence. Missing, unsafe, ambiguous, or infeasible `Check:` lines are
 material uncertainty.
 
-Reduce uncertainty by matching the helper to the unknown. Inspect repo facts, patterns, tests, and
-current behavior first. Ask the user when the answer is a decision, not a repo fact. Use
-`investigate` for broad or multi-step technical discovery and `interrogate` for broad, branching, or
-high-stakes decisions when those helpers are available and the task shape warrants them.
+Reduce uncertainty by matching the method to the unknown. Inspect repo facts, patterns, tests, and
+current behavior first. Ask the user when the answer is a decision, not a repo fact. Use an
+alignment pass for broad, branching, high-stakes, or not-yet-aligned decisions.
 
 Do not re-spec or expand requested work. ACs and boundaries are the execution contract. If they are
 incomplete, contradictory, or too ambiguous to implement safely, return to planning or ask instead
@@ -37,3 +50,21 @@ planning draft can be written, ask before state-file creation instead.
 
 Normal implementation unknowns may remain when they can be answered safely by reading, mutating, and
 checking within boundaries.
+
+## Activation Readiness Gate
+
+Before requesting activation approval, confirm all approval-relevant uncertainty is resolved.
+
+Approval-relevant uncertainty includes any unknown that could change ACs, boundaries, scope,
+mutation targets, verification commands, user-visible behavior, persisted data or configuration,
+external services, VCS lifecycle actions, or implementation direction with meaningful tradeoffs.
+
+For each open item, classify it as one of:
+
+- Repo fact: resolve by read-only inspection before approval.
+- User decision: ask the user before approval.
+- Normal implementation unknown: safe to resolve during implementation within boundaries.
+
+Do not request activation approval if any repo fact or user decision remains unresolved. Open
+assumptions are allowed only when they are non-material, explicitly recorded, and safe to invalidate
+during implementation without changing ACs, boundaries, or approval scope.

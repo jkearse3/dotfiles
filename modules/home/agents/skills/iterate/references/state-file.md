@@ -45,10 +45,20 @@ If exclude update or ignore check fails, stop before creation and ask for direct
 Before a new state file, run `jj st`. If it lists changes, stop and ask whether they belong in this
 iteration or should be handled first. Existing changes are fine when resuming an active state file.
 
-## Persisted Plan Approval
+## Planning Draft Review
 
 State-file creation and edits follow host approval rules. Approval to create or edit the state file
 does not approve activation.
+
+Use Planning Draft Review when the persisted state is useful as a shared planning artifact but is
+not ready for activation approval. Reread `.agent/iterate.md` from disk, present the relevant draft
+state or full file contents needed for review, identify unresolved planning gaps, and stop without
+asking for activation approval.
+
+## Persisted Plan Approval
+
+Use Persisted Plan Approval only after readiness passes and no approval-relevant uncertainty
+remains.
 
 Activation requires explicit user approval of the exact full `.agent/iterate.md` contents most
 recently shown in chat. To request activation approval, reread `.agent/iterate.md` from disk,
