@@ -19,9 +19,6 @@ data-loss handling, accessibility, or correctness for brevity.
 Work incrementally: inspect the relevant code, make a focused change, then verify it. Follow the
 repo's existing patterns and libraries unless there is evidence they are wrong for this task.
 
-When editing or reviewing language-specific code, invoke the matching `language-<lang>` skill if
-available.
-
 ## Quality Checks
 
 Before finishing, check the changed code for:

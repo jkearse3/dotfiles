@@ -35,10 +35,7 @@ then AC validation if review is clean.
    1. **Intent summary** — from `### Context`, a one-line summary of what is being built.
    2. **Known issues** — from `### Issues`, all open issues (`[ ]`). Keep the native format:
       `- path:line (type, severity): description`.
-   3. **Language hints** — from the Step 2 diff stat, detect unique file extensions. For each, note
-      the matching `language-<lang>` skill if one exists (e.g., `.go` -> `language-go`, `.ts` ->
-      `language-ts`).
-   4. **Branch files** — run `jj diff --from "$(jj-bookmark-previous)" --stat` to identify files
+   3. **Branch files** — run `jj diff --from "$(jj-bookmark-previous)" --stat` to identify files
       changed in prior phases (cross-phase interaction awareness). Include under a `## Branch Files`
       section in the invocation.
 
@@ -105,10 +102,6 @@ jj diff --git
 ## Branch Files
 
 <output of jj diff --from "$(jj-bookmark-previous)" --stat>
-
-## Rules
-
-- Invoke `language-<lang>` skill for <lang> files
 ````
 
 ### Issue Format
