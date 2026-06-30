@@ -23,19 +23,22 @@ $ARGUMENTS
 
 ## Rules
 
-- Run planning before activation, review, and finalization as human-boundary procedures that stop
-  after updating and rereading the state file.
+- Run planning before activation, review, and direct finalization as human-boundary procedures that
+  stop after updating and rereading the state file. Review may continue to finalization in the same
+  invocation only after explicit combined approval of work acceptance and the displayed current
+  finalization candidate.
 - After explicit activation approval, run the active loop in the same invocation:
   `implement -> verify -> implement -> verify` until a stop condition is reached.
 - Stop the active loop at review, blocked state, scope or boundary changes, required user decisions,
   unsafe or out-of-bound failures, context pressure that makes a fresh invocation safer, or any
-  finalization/VCS lifecycle boundary.
+  unapproved finalization/VCS lifecycle boundary.
 - Keep implementation, verification, review, and finalization as distinct procedures. Compaction or
   fresh sessions are execution details and must not change the state model or stop conditions.
 - Respect host and user approval gates. Host approval applies before state-file edits; activation
   approval is defined in `references/state-file.md`.
 - Mutations, including revision lifecycle actions, are allowed only when the approved plan,
-  boundaries, current procedure, or finalization candidate authorizes them.
+  boundaries, current procedure, or explicit approval of a displayed finalization candidate
+  authorizes them.
 
 ## State Basics
 
@@ -94,9 +97,13 @@ Allowed control-field pairs:
 16. After planning activates the state or after an active procedure updates the state file, reread
     the state file. If the updated pair is `Status: active` with `Next: implement` or
     `Next: verify`, continue the active loop unless a stop condition was reached.
-17. After review, finalization, blocked state, `Next: none`, or any stop condition, reread the state
-    file and stop.
-18. When stopped, respond with:
+17. After review updates the state file, reread it. If review received explicit combined approval
+    for work acceptance and closeout of the displayed current finalization candidate and the updated
+    pair is `Status: complete` with `Next: finalize`, immediately follow `procedures/finalize.md`.
+    Otherwise stop.
+18. After finalization, blocked state, `Next: none`, or any stop condition, reread the state file
+    and stop.
+19. When stopped, respond with:
     - State file path.
     - Final `Status` and `Next`.
     - Stop reason.

@@ -166,8 +166,10 @@ user explicitly requested no VCS closeout, use `closeout: none`.
 
 Adding or replacing `## Finalization Candidate` is a non-mutating state-file proposal. It does not
 authorize `jj describe`, `jj new`, `jj commit`, push, split, squash, or any other VCS lifecycle
-action. Plans and boundaries may prohibit VCS lifecycle execution without prohibiting a proposed
-revision description or finalization candidate.
+action. The current candidate must be displayed and explicitly approved for closeout before
+finalization runs; review may combine that approval with work acceptance. Plans and boundaries may
+prohibit VCS lifecycle execution without prohibiting a proposed revision description or finalization
+candidate.
 
 If present, the section must contain `closeout` and only the fields required by that closeout mode.
 
