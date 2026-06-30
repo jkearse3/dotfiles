@@ -1,3 +1,8 @@
+---
+name: nono
+description: Use when working with nono sandbox detection, repo-local `.nono/profile.json` overlays, or nono profile validation.
+---
+
 # Nono
 
 Rules for `nono` sandbox detection and repo-local profile overlays.
