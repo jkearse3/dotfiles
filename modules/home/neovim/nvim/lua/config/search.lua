@@ -9,6 +9,15 @@ require("lib.config").run({
 
 		fzf.setup({
 			grep = { hidden = true },
+			git = {
+				status = {
+					_fmt = {
+						from = function(entry)
+							return entry:match("%s%-%>%s(.+)$") or entry
+						end,
+					},
+				},
+			},
 			winopts = {
 				fullscreen = true,
 				preview = {
