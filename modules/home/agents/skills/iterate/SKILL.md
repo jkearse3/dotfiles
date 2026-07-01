@@ -24,9 +24,9 @@ $ARGUMENTS
 ## Rules
 
 - Run planning before activation, review, and direct finalization as human-boundary procedures that
-  stop after updating and rereading the state file. Review may continue to finalization in the same
-  invocation only after explicit combined approval of work acceptance and the displayed current
-  finalization candidate.
+  stop after updating and rereading the state file. When review has displayed the current
+  finalization candidate, normal review approval covers accepting the work and applying that
+  displayed candidate; review may then continue to finalization in the same invocation.
 - After explicit activation approval, run the active loop in the same invocation:
   `implement -> verify -> implement -> verify` until a stop condition is reached.
 - Stop the active loop at review, blocked state, scope or boundary changes, required user decisions,
@@ -97,10 +97,9 @@ Allowed control-field pairs:
 16. After planning activates the state or after an active procedure updates the state file, reread
     the state file. If the updated pair is `Status: active` with `Next: implement` or
     `Next: verify`, continue the active loop unless a stop condition was reached.
-17. After review updates the state file, reread it. If review received explicit combined approval
-    for work acceptance and closeout of the displayed current finalization candidate and the updated
-    pair is `Status: complete` with `Next: finalize`, immediately follow `procedures/finalize.md`.
-    Otherwise stop.
+17. After review updates the state file, reread it. If review received approval after displaying the
+    current finalization candidate and the updated pair is `Status: complete` with `Next: finalize`,
+    immediately follow `procedures/finalize.md`. Otherwise stop.
 18. After finalization, blocked state, `Next: none`, or any stop condition, reread the state file
     and stop.
 19. When stopped, respond with:
