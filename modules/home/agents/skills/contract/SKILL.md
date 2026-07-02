@@ -132,9 +132,9 @@ No assumptions recorded.
 
 <What the current checkout already satisfies, partially satisfies, or lacks.>
 
-## Next
+## Next Slice
 
-<Next implementation slice using the pattern in Next Guidance, or no pending implementation slice.>
+<Next implementation slice using the pattern in Next Slice Guidance, or no pending slice.>
 ```
 
 Valid statuses are:
@@ -175,7 +175,7 @@ Before approval, pressure-test the agreement from multiple angles:
 - User-visible behavior, developer-facing behavior, docs, tests, and operational effects.
 - Boundaries, stop-before conditions, assumptions, decisions, and open questions.
 - AC coverage, AC wording, and whether every `Check:` proves the AC without interpretation.
-- The first `## Next` slice and whether it can advance ACs without guessing agreement details.
+- The first `## Next Slice` and whether it can advance ACs without guessing agreement details.
 
 Resolve uncertainty using the narrowest sufficient method. Inspect repo facts, patterns, tests,
 docs, and current behavior directly when the answer is discoverable. Ask the user when the answer is
@@ -184,7 +184,7 @@ be raised next; batch only independent questions.
 
 Treat these as approval blockers: vague ACs, vague or infeasible `Check:` lines, unclear boundaries,
 missing edge cases, unsafe assumptions, unresolved user decisions, ambiguous current-state claims,
-or a `## Next` slice that requires future agents to infer contract intent.
+or a `## Next Slice` that requires future agents to infer contract intent.
 
 Normal implementation unknowns may remain only when they can be resolved safely inside the approved
 boundaries without changing ACs, checks, stop-before conditions, or user-visible behavior. Record
@@ -204,7 +204,7 @@ Use this path when arguments are non-empty and no contract exists for the curren
    branch agreement has no approval-relevant holes.
 5. Draft a contract from the user intent, resolved decisions, and current repo facts.
 6. Include detailed context, concrete boundaries, research decisions/questions/assumptions,
-   verifiable ACs, current-state notes, and an implementation-ready `## Next`.
+   verifiable ACs, current-state notes, and an implementation-ready `## Next Slice`.
 7. Present the full draft and ask for explicit user approval before writing the contract file.
 8. After approval, write only the contract file.
 
@@ -218,7 +218,8 @@ Use this path when the user asks to inspect the current contract without reconci
 1. Resolve Local State.
 2. Read the current bookmark contract.
 3. Stop if the contract `Bookmark:` value does not match the current bookmark.
-4. Summarize the agreement, current measured status, unsatisfied or blocked ACs, and `## Next`.
+4. Summarize the agreement, current measured status, unsatisfied or blocked ACs, and
+   `## Next Slice`.
 
 Loading must not edit any files.
 
@@ -240,7 +241,8 @@ current checkout to the existing Markdown contract and updates only measured Mar
    require unavailable secrets, or need user setup. Record the limitation in `Evidence:` instead of
    guessing.
 7. Update measured Markdown state only: AC markers, `Evidence:` lines, `Status:`,
-   `## Current State`, `## Next`, and directly verified research question or assumption status.
+   `## Current State`, `## Next Slice`, and directly verified research question or assumption
+   status.
 8. Do not change agreement fields: `## Context`, `## Spec`, `## Boundaries`, AC wording, `Check:`
    lines, or research decisions. If the agreement is wrong or incomplete, report that amendment is
    needed.
@@ -286,21 +288,23 @@ Rules for AC changes:
 - Do not silently rewrite `## Context`, `## Spec`, `## Boundaries`, AC wording, or existing
   decisions during reconciliation. Propose an amendment instead.
 
-## Next Guidance
+## Next Slice Guidance
 
-Keep `## Next` useful as a manual implementation handoff into the `iterate` skill. `## Next`
-describes the next implementation slice; it is not permission for this skill to make inline
-repository implementation edits.
+Keep `## Next Slice` useful as a manual implementation handoff into the `iterate` skill.
+`## Next Slice` describes the next implementation slice; it is not permission for this skill to make
+inline repository implementation edits.
 
-When work remains, `## Next` names the smallest coherent implementation-ready slice that advances
-one or more unsatisfied or partial ACs without crossing a boundary that needs a user decision,
-agreement change, or unrelated behavior change. Slice by the next verifiable AC movement, not by
-estimated size, file count, or task count.
+When work remains, `## Next Slice` names the largest sensible implementation-ready slice that
+advances one or more unsatisfied or partial ACs while remaining atomic. Prefer completing a coherent
+AC or related set of ACs in one slice when that can be verified together without crossing a boundary
+that needs a user decision, agreement change, or unrelated behavior change. Slice by the largest
+verifiable AC movement that still has one clear purpose, not by estimated size, file count, task
+count, or the smallest possible change.
 
 Use this pattern:
 
 ```markdown
-Make the smallest coherent change that advances the next unsatisfied acceptance criteria.
+Make the largest coherent atomic change that advances the next unsatisfied acceptance criteria.
 
 Target AC: <number or numbers>
 
@@ -319,8 +323,8 @@ The slice should include:
 - A cheap verification path.
 
 Do not add size labels, time estimates, task queues, or mechanical file-by-file checklists. If the
-next AC movement is too broad to hand off coherently, narrow `## Next` to the first coherent part
-and make the stop-before condition explicit.
+largest AC movement is too broad to hand off coherently or cannot remain atomic, narrow
+`## Next Slice` to the largest coherent part and make the stop-before condition explicit.
 
 When no implementation work remains, say that no implementation slice is pending and identify the
 next useful reconciliation or user-decision step.
