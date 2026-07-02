@@ -1,6 +1,6 @@
 # Branch Review Brief
 
-Autonomous review pipeline over current branch changes: run an objective-context code review and
+Autonomous review pipeline over current branch changes: run an objective-context diff review and
 create cleanup phases for actionable findings.
 
 ## References
@@ -31,7 +31,7 @@ create cleanup phases for actionable findings.
 2. Load branch context. Run `jj diff --from "$(jj-bookmark-previous)" --stat` for the list of
    changed files with line counts. This defines the review scope.
 
-3. Run objective-context code review. Invoke the `code-review` skill via the Skill tool with
+3. Run objective-context diff review. Invoke the `diff-review` skill via the Skill tool with
    `branch` as the argument. Include the loaded objective context and branch scope in the review
    prompt so findings can account for objective intent, ACs, completed phases, and pre-PR drift.
    Collect structured findings.

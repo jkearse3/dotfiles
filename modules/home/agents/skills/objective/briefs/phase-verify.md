@@ -1,6 +1,6 @@
 # Phase Verify Brief
 
-Verify working changes for a phase of the objective workflow: first code review for quality issues,
+Verify working changes for a phase of the objective workflow: first diff review for quality issues,
 then AC validation if review is clean.
 
 ## References
@@ -29,8 +29,8 @@ then AC validation if review is clean.
    exact string `No changes to verify.` is a contract consumed by the caller's no-changes branch
    detection — do not change the wording without updating the caller.
 
-3. Run code review. Build a context-enriched `/code-review` invocation from state file context and
-   diff data (see Contracts § Code Review Invocation). Gather context (skip any section with no
+3. Run diff review. Build a context-enriched `/diff-review` invocation from state file context and
+   diff data (see Contracts § Diff Review Invocation). Gather context (skip any section with no
    content):
    1. **Intent summary** — from `### Context`, a one-line summary of what is being built.
    2. **Known issues** — from `### Issues`, all open issues (`[ ]`). Keep the native format:
@@ -40,7 +40,7 @@ then AC validation if review is clean.
       section in the invocation.
 
    Compose the invocation (only sections with content; if none gathered, fall back to
-   `/code-review jj diff --git`). Invoke the `code-review` skill via the Skill tool with the
+   `/diff-review jj diff --git`). Invoke the `diff-review` skill via the Skill tool with the
    composed arguments, wait for completion, and collect findings.
 
 4. Convert findings to issues. For each finding:
@@ -79,13 +79,13 @@ then AC validation if review is clean.
 
 Apply `references/phase-verify-results.md` § Verify Summary Result Blocks.
 
-### Code Review Invocation
+### Diff Review Invocation
 
-Assemble a markdown document as the `/code-review` argument. Only include sections that have
-content. If no context was gathered, fall back to `/code-review jj diff --git`.
+Assemble a markdown document as the `/diff-review` argument. Only include sections that have
+content. If no context was gathered, fall back to `/diff-review jj diff --git`.
 
 ````
-/code-review
+/diff-review
 ```
 jj diff --git
 ```
@@ -110,9 +110,9 @@ Apply `references/phase-issue-format.md` § Issue Format.
 
 ### Rules
 
-- Code review automatically dedupes against existing issues (won't re-flag same concerns).
+- Diff review automatically dedupes against existing issues (won't re-flag same concerns).
 - Issues accumulate across cycles (audit trail).
-- Review focuses on code quality; AC validation focuses on correctness and completeness.
+- Review focuses on diff quality; AC validation focuses on correctness and completeness.
 - Validate ACs by reading code, not just running tests. Tests are supporting evidence, not the sole
   source of truth.
 - State file is the single source of truth — all issues are written there.
