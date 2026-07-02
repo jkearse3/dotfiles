@@ -5,8 +5,10 @@
 Before creating new work, confirm its placement.
 
 - If on trunk, ask for a bookmark name.
-- If on an existing bookmark, ask whether to stack on the current bookmark or start from another
-  base.
+- If on an existing non-default bookmark, ask where to place the new work with first-class choices:
+  create a new bookmark stacked on the current bookmark, continue on the current bookmark, or start
+  from another base. Prefer the new stacked bookmark option unless the user's request clearly
+  continues the current work.
 - When starting from an empty `@`, create the bookmark on the existing empty `@` revision. Do not
   run `jj new` first, because it creates an unnecessary empty parent.
 
