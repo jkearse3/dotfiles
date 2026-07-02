@@ -98,11 +98,17 @@ let
         # Bypass only lifts nono deny-policy blocks; each path still needs a matching grant below.
         "${config.home.homeDirectory}/.agents"
 
+        # Home Manager generates this npm config with cache/prefix metadata only; pnpm reads it.
+        "${config.home.homeDirectory}/.npmrc"
+
         # SSH metadata lives under deny_credentials, so file-level grants need matching bypasses.
         "${config.home.homeDirectory}/.ssh/config"
         "${config.home.homeDirectory}/.ssh/known_hosts"
       ];
       read_file = [
+        # npm/pnpm need this metadata-only config for cache and prefix discovery.
+        "${config.home.homeDirectory}/.npmrc"
+
         # SSH config is non-secret metadata. Private keys remain denied.
         "${config.home.homeDirectory}/.ssh/config"
       ];
