@@ -2,19 +2,20 @@
 name: handoff
 description: >-
   Create, find, or load self-contained prompts for fresh sessions with zero prior context; use when
-  the user wants to turn an idea, plan, discussion, or current-session context into an aligned task
-  handoff with clear goal, scope, constraints, gaps, verification, and completion criteria.
+  the user wants to turn an idea, plan, discussion, or current-session context into an aligned
+  handoff with clear purpose, scope, constraints, gaps, validation, and intended outcome.
 argument-hint: "[handoff intent, description, path, filename, or slug]"
 ---
 
 # Handoff
 
 Create, find, or load self-contained fresh-session prompts. A handoff preserves enough context,
-scope, constraints, open questions, and completion criteria that another session can act without
-seeing the original conversation.
+scope, constraints, open questions, intended use, and intended outcome that another session can act
+without seeing the original conversation.
 
-This is not generic prompt engineering. Optimize for session handoff quality: alignment, explicit
-uncertainty, safe scope, and executable instructions for a fresh agent or session.
+This is not generic prompt engineering or passive note-taking. Optimize for session handoff quality:
+alignment, explicit uncertainty, safe scope, and actionable instructions for a fresh agent or
+session.
 
 ## Arguments
 
@@ -41,7 +42,8 @@ If intent is ambiguous, ask one brief clarification question.
 1. Infer intent from arguments and conversation.
 2. For list or find requests, inspect `.agent/handoffs/` and respond with recent matching artifacts.
 3. For load requests, resolve one artifact, read it, and print its complete prompt inline.
-4. For new handoffs, gather the goal, context, scope, constraints, unknowns, and intended outcome.
+4. For new handoffs, gather the purpose, context, scope, constraints, unknowns, and intended
+   outcome.
 5. Run the Gap Check.
 6. Resolve material gaps with the user.
 7. Run the Alignment Check.
@@ -58,12 +60,13 @@ session with zero prior context.
 Look for:
 
 - Missing context.
-- Ambiguous goals.
+- Ambiguous purpose.
 - Unclear scope.
+- Missing use instructions.
 - Hidden assumptions.
 - Conflicting constraints.
-- Undefined success criteria.
-- Weak verification.
+- Undefined outcome.
+- Weak validation.
 - Risky operations.
 - Work that is too broad for one coherent prompt.
 
@@ -79,15 +82,15 @@ the user to correct.
 
 Before writing a new final prompt, briefly summarize:
 
-- Goal.
+- Purpose.
 - Scope.
 - Constraints.
-- Success criteria.
+- Intended outcome.
 - Open assumptions.
 
 Ask the user to confirm or correct the summary. Do not produce the final handoff prompt until the
-user confirms the goal, scope, constraints, and expected outcome, or explicitly asks to proceed with
-the stated assumptions.
+user confirms the purpose, scope, constraints, and expected outcome, or explicitly asks to proceed
+with the stated assumptions.
 
 ## Artifact
 
@@ -175,7 +178,7 @@ so and show recent handoffs if available.
 Produce new final handoff prompts with these sections when relevant:
 
 ```markdown
-# Task
+# Purpose
 
 # Context
 
@@ -185,28 +188,36 @@ Produce new final handoff prompts with these sections when relevant:
 
 # Unknowns
 
-# Approach
+# Information
 
-# Verification
+# Use
 
-# Completion Criteria
+# Validation
 
-# Final Response
+# Outcome
+
+# Response Guidance
 ```
 
-Keep the prompt concise, but complete. Include only facts, decisions, and assumptions the fresh
-session needs.
+Every handoff must include `# Purpose`, `# Use`, and `# Outcome`. Keep the prompt concise, but
+complete. Include only facts, decisions, and assumptions the fresh session needs. Omit optional
+sections that are not relevant, but do not omit the required sections or produce archival notes.
+
+Informational handoffs are allowed, but they must still be prompts. Direct the fresh session to do
+something concrete with the information: produce, decide, validate, explain, compare, plan, review,
+or ask targeted follow-up questions.
 
 ## Rules
 
 - Assume the fresh session has zero prior context.
+- Every handoff is an actionable fresh-session prompt, not an archive or passive note.
 - Do not invent facts, files, requirements, or decisions.
 - Preserve important uncertainty explicitly.
 - Prefer concrete instructions over generic advice.
 - Prefer alignment over premature prompt generation.
 - Use natural-language intent inference instead of requiring rigid subcommands.
 - Support research, coding, review, documentation, debugging, planning, external tool work, and
-  other task handoffs.
+  other context handoffs, including read-only or informational handoffs.
 - Ask targeted questions only when the answer would materially affect the final prompt.
 - Offer options when there are multiple valid directions.
 - State assumptions only when they are safe, explicit, and easy for the user to correct.
