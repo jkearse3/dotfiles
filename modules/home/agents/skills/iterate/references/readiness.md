@@ -2,13 +2,20 @@
 
 ## Interactive Planning
 
-Planning is consensus-seeking. Do not request activation approval until the agent and user are
-aligned on outcome, scope, boundaries, acceptance criteria, and validation.
+Planning is discovery-first and consensus-seeking. Do not request activation approval until the
+agent and user are aligned on outcome, scope, boundaries, acceptance criteria, and validation.
+
+Before activation approval, pressure-test the plan from multiple angles until both the agent and the
+user agree there are no approval-relevant holes. Probe for missing outcomes, hidden assumptions,
+scope ambiguity, behavioral edge cases, validation gaps, risky tradeoffs, and stop-before
+conditions. Do not ask for activation approval in the same response as unresolved planning questions
+or concerns.
 
 Resolve uncertainty using the narrowest sufficient method:
 
 - Inspect repo facts, patterns, tests, and current behavior directly.
-- Ask one direct user question when one missing decision blocks planning.
+- Ask one direct user question when the answer may change which question or concern should be raised
+  next.
 - Run an alignment pass when the desired outcome is conceptual, branching, high-stakes, or consensus
   is not yet clear.
 - Persist a draft plan only when it is useful as a shared artifact, not as a premature activation
@@ -48,6 +55,11 @@ If material uncertainty remains before activation, do not set `Status: active`, 
 Keep or create `Status: planning`, `Next: planning`, record concrete questions, and stop. If no safe
 planning draft can be written, ask before state-file creation instead.
 
+When stopping for planning input, prefer sequential questioning when the next useful question
+depends on the user's answer. Batch independent questions only when they do not obscure the
+reasoning path. Continue follow-ups while answers reveal approval-relevant uncertainty, concerns, or
+plan holes.
+
 Normal implementation unknowns may remain when they can be answered safely by reading, mutating, and
 checking within boundaries.
 
@@ -68,3 +80,7 @@ For each open item, classify it as one of:
 Do not request activation approval if any repo fact or user decision remains unresolved. Open
 assumptions are allowed only when they are non-material, explicitly recorded, and safe to invalidate
 during implementation without changing ACs, boundaries, or approval scope.
+
+Activation readiness also requires a final alignment check: the persisted plan must incorporate the
+resolved answers, name any remaining non-material assumptions, and contain no unresolved concerns
+that the user would reasonably expect to answer before implementation starts.
