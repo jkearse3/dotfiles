@@ -93,6 +93,11 @@ New contracts use this shape. The top-level fields before sections are `Status:`
 Status: active
 Bookmark: <current-bookmark>
 
+## Context
+
+<Why this bookmark exists, what prompted the work, who or what behavior it affects, and what
+future agents must understand before interpreting the agreement.>
+
 ## Spec
 
 <Short statement of the agreement this bookmark is trying to satisfy.>
@@ -155,6 +160,36 @@ Write ACs as independently verifiable outcomes, not implementation tasks. An AC 
 independently implementable: one coherent implementation slice may advance multiple ACs, and one AC
 may require multiple coherent slices.
 
+## Contract Readiness
+
+Contract creation and amendment are discovery-first and consensus-seeking. Do not request approval
+to write a contract until the agent and user agree there are no approval-relevant holes in the
+branch agreement.
+
+Before approval, pressure-test the agreement from multiple angles:
+
+- Intended behavior, affected users or agents, and explicit non-goals.
+- Existing behavior, compatibility expectations, and current-state facts.
+- Edge cases, negative cases, failure modes, and recovery behavior.
+- Data, configuration, persistence, security, privacy, and trust-boundary implications.
+- User-visible behavior, developer-facing behavior, docs, tests, and operational effects.
+- Boundaries, stop-before conditions, assumptions, decisions, and open questions.
+- AC coverage, AC wording, and whether every `Check:` proves the AC without interpretation.
+- The first `## Next` slice and whether it can advance ACs without guessing agreement details.
+
+Resolve uncertainty using the narrowest sufficient method. Inspect repo facts, patterns, tests,
+docs, and current behavior directly when the answer is discoverable. Ask the user when the answer is
+a decision. Prefer sequential questions when each answer may change which question or concern should
+be raised next; batch only independent questions.
+
+Treat these as approval blockers: vague ACs, vague or infeasible `Check:` lines, unclear boundaries,
+missing edge cases, unsafe assumptions, unresolved user decisions, ambiguous current-state claims,
+or a `## Next` slice that requires future agents to infer contract intent.
+
+Normal implementation unknowns may remain only when they can be resolved safely inside the approved
+boundaries without changing ACs, checks, stop-before conditions, or user-visible behavior. Record
+them as assumptions if future agents need to know they exist.
+
 ## Create
 
 Use this path when arguments are non-empty and no contract exists for the current bookmark.
@@ -162,13 +197,16 @@ Use this path when arguments are non-empty and no contract exists for the curren
 1. Resolve Local State.
 2. Ensure `.agent/contracts/` exists and local ignore or exclude state covers `/.agent/contracts/`.
    Verify the target contract path is ignored locally before writing it.
-3. Inspect the repository lightly to draft concrete boundaries and AC checks. Do not edit
-   implementation files.
-4. Draft a contract from the user intent and current repo facts.
-5. Include concrete boundaries, research placeholders, verifiable ACs, current-state notes, and an
-   implementation-ready `## Next`.
-6. Present the draft and ask for explicit user approval before writing the contract file.
-7. After approval, write only the contract file.
+3. Run Contract Readiness. Inspect enough repository facts to draft detailed context, boundaries,
+   ACs, current-state notes, and checks. Do not edit implementation files.
+4. If approval-relevant holes remain, ask the next question or present the unresolved concern and
+   stop before writing the contract file. Continue this loop until the agent and user agree the
+   branch agreement has no approval-relevant holes.
+5. Draft a contract from the user intent, resolved decisions, and current repo facts.
+6. Include detailed context, concrete boundaries, research decisions/questions/assumptions,
+   verifiable ACs, current-state notes, and an implementation-ready `## Next`.
+7. Present the full draft and ask for explicit user approval before writing the contract file.
+8. After approval, write only the contract file.
 
 Creation must not edit repository implementation files, workflow state files, skill source, commits,
 revision descriptions, bookmarks, or branches.
@@ -203,8 +241,9 @@ current checkout to the existing Markdown contract and updates only measured Mar
    guessing.
 7. Update measured Markdown state only: AC markers, `Evidence:` lines, `Status:`,
    `## Current State`, `## Next`, and directly verified research question or assumption status.
-8. Do not change agreement fields: `## Spec`, `## Boundaries`, AC wording, `Check:` lines, or
-   research decisions. If the agreement is wrong or incomplete, report that amendment is needed.
+8. Do not change agreement fields: `## Context`, `## Spec`, `## Boundaries`, AC wording, `Check:`
+   lines, or research decisions. If the agreement is wrong or incomplete, report that amendment is
+   needed.
 9. If no measured Markdown changes are needed, leave the contract unchanged and report that
    reconciliation found no measured updates.
 
@@ -227,8 +266,13 @@ that distinction explicit.
 During reconciliation, update only measured state: AC markers, evidence, status, current-state
 notes, next-step guidance, and directly verified research question or assumption status.
 
-Amendment may update `## Spec`, `## Boundaries`, AC wording, research decisions, or add and
-supersede ACs. It requires explicit user approval before writing.
+Amendment may update `## Context`, `## Spec`, `## Boundaries`, AC wording, research decisions, or
+add and supersede ACs. It requires explicit user approval before writing.
+
+Before approval, run Contract Readiness against the amended agreement. If approval-relevant holes
+remain, ask the next question or present the unresolved concern and stop before writing. Do not ask
+for amendment approval until the agent and user agree the amended contract has no approval-relevant
+holes.
 
 After approval, write only the contract file. Do not edit repository implementation files, workflow
 state files, skill source, commits, revision descriptions, bookmarks, or branches while amending.
@@ -239,8 +283,8 @@ Rules for AC changes:
 - If an AC already has evidence or likely related work, supersede it with `[-]` and add a
   replacement AC with a new number.
 - Tiny wording clarifications may edit an AC in place only when the meaning does not change.
-- Do not silently rewrite `## Spec`, `## Boundaries`, AC wording, or existing decisions during
-  reconciliation. Propose an amendment instead.
+- Do not silently rewrite `## Context`, `## Spec`, `## Boundaries`, AC wording, or existing
+  decisions during reconciliation. Propose an amendment instead.
 
 ## Next Guidance
 
