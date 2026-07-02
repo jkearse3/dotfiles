@@ -1,6 +1,6 @@
 ---
 name: investigate
-description: Investigate a topic and return structured findings <topic>
+description: Investigates open-ended questions, unfamiliar code, bugs, behavior, architecture, tools, docs, or external topics and returns evidence-based findings. Use when the user asks to research, investigate, understand, trace, explain why something works, compare options, or find root causes without making changes.
 argument-hint: "<topic>"
 ---
 
