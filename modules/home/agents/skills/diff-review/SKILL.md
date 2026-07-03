@@ -1,6 +1,11 @@
 ---
 name: diff-review
-description: Reviews changes for bugs, risks, regressions, missing tests, and other issues across code, docs, config, infra, prompts, and other artifacts; use when the user asks to review a PR, branch, diff command, or working tree.
+description: >-
+  Reviews current changes, diffs, PRs, branches, or working trees as an independent quality gate;
+  finds actionable bugs, regressions, safety risks, compatibility breaks, missing validation, stale
+  artifacts, and maintainability issues across code, docs, config, infra, prompts, skills, and other
+  changed artifacts. Use when asked to review changes or when a workflow needs independent diff
+  quality review before acceptance or validation.
 argument-hint: "review my branch changes | review jj diff --from main | review PR #42"
 ---
 
