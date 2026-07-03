@@ -35,25 +35,21 @@ let
 
   mkRuleRegistryOption =
     registryName:
-    mkUniquePathRegistryOption {
-      optionName = "agents.${registryName}Rules";
-      duplicateName = "rule name";
+    lib.mkOption {
+      type = lib.types.attrsOf lib.types.path;
+      default = { };
       description = ''
         Markdown rule files for the ${registryName} registry. Stitched agent
         instruction files select rules by registry-qualified IDs such as
         `${registryName}/<name>`; source paths should point at Markdown files.
 
-        Each producer assigns a singleton list of paths
-        (`agents.${registryName}Rules.foo = [ ./bar.md ];`). The list type is what
-        drives module-merge-based duplicate detection: two definitions for the
-        same rule name concatenate into a multi-element list, which `apply` then
-        rejects.
+        Each producer assigns a path directly
+        (`agents.${registryName}Rules.foo = ./bar.md;`).
 
         Rule names must be unique within this registry; defining the same name in
-        two modules with different sources fails evaluation with an
-        `agents.${registryName}Rules: duplicate rule name` error. The same bare
-        rule name may appear in another registry because stitched consumers use
-        registry-qualified IDs.
+        two modules with different sources fails evaluation during normal Nix
+        option merging. The same bare rule name may appear in another registry
+        because stitched consumers use registry-qualified IDs.
 
         Rule load order is controlled by each stitched instruction consumer, not
         by the registry itself.
@@ -65,7 +61,7 @@ let
     lib.mapAttrs'
       (name: _: {
         name = lib.removeSuffix ".md" name;
-        value = [ (dir + "/${name}") ];
+        value = dir + "/${name}";
       })
       (
         lib.filterAttrs (name: type: type == "regular" && lib.hasSuffix ".md" name) (builtins.readDir dir)
@@ -94,6 +90,20 @@ in
   options.agents.sharedRules = mkRuleRegistryOption "shared";
   options.agents.claudeRules = mkRuleRegistryOption "claude";
   options.agents.opencodeRules = mkRuleRegistryOption "opencode";
+  options.agents.sharedRuleOrder = lib.mkOption {
+    type = lib.types.listOf lib.types.str;
+    default = [
+      "shared/communication"
+      "shared/reasoning"
+      "shared/markdown"
+      "shared/version-control"
+      "shared/software-development"
+    ];
+    description = ''
+      Fully qualified shared rule IDs in the order used by stitched agent
+      instruction files.
+    '';
+  };
 
   config = {
     agents.sharedSkills = lib.mapAttrs (name: _: [ ./skills/${name} ]) (

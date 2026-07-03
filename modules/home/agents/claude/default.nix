@@ -69,12 +69,7 @@ in
           sources = config.agents.claudeRules;
         }
       ];
-      order = [
-        "shared/communication"
-        "shared/reasoning"
-        "shared/markdown"
-        "shared/version-control"
-        "shared/software-development"
+      order = config.agents.sharedRuleOrder ++ [
         "claude/claude-code-behavior"
       ];
     };

@@ -93,12 +93,7 @@ in
           sources = config.agents.opencodeRules;
         }
       ];
-      order = [
-        "shared/communication"
-        "shared/reasoning"
-        "shared/markdown"
-        "shared/version-control"
-        "shared/software-development"
+      order = config.agents.sharedRuleOrder ++ [
         "opencode/opencode-behavior"
       ];
     };

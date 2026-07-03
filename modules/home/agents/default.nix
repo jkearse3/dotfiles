@@ -36,13 +36,7 @@ in
             sources = config.agents.sharedRules;
           }
         ];
-        order = [
-          "shared/communication"
-          "shared/reasoning"
-          "shared/markdown"
-          "shared/version-control"
-          "shared/software-development"
-        ];
+        order = config.agents.sharedRuleOrder;
       };
     };
   };
