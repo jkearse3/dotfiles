@@ -34,6 +34,9 @@ $ARGUMENTS
   unapproved finalization/VCS lifecycle boundary.
 - Keep implementation, verification, review, and finalization as distinct procedures. Compaction or
   fresh sessions are execution details and must not change the state model or stop conditions.
+- Before any non-state repo mutation, reread `.agent/iterate.md`, identify the procedure selected by
+  `Status` / `Next`, read that procedure in the current route, and perform only actions authorized
+  by it. If the procedure has not been read, stop before mutation.
 - Respect host and user approval gates. Host approval applies before state-file edits; activation
   approval is defined in `references/state-file.md`.
 - Mutations, including revision lifecycle actions, are allowed only when the approved plan,
