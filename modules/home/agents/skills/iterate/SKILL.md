@@ -1,8 +1,10 @@
 ---
 name: iterate
 description: >-
-  Run or resume a jj-native mutation workflow using `.agent/iterate.md` as the conventional state
-  file. Use when changes should continue through implement/verify, review, and optional closeout.
+  Run or resume the repo-changing iteration workflow backed by `.agent/iterate.md`. Use when the
+  user says to iterate, plan an iteration, start/resume/continue an iteration, or drive code changes
+  through plan, implement, verify, review, and finalize; not for non-mutating brainstorming,
+  research, or general planning.
 argument-hint: "[desired state]"
 ---
 
