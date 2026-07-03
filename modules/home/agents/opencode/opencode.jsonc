@@ -13,7 +13,6 @@
     }
   },
   "autoupdate": false,
-  "instructions": ["~/.config/opencode/rules/*.md"],
   "permission": {
     "*": "ask",
     "read": "allow",

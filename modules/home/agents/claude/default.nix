@@ -20,7 +20,7 @@ let
       ;
   };
   renderSharedSkills = import ../renderSharedSkills.nix { inherit lib mkSource; };
-  renderRuleRegistries = import ../renderRuleRegistries.nix { inherit lib mkSource; };
+  renderAgentsMarkdown = import ../renderAgentsMarkdown.nix { inherit lib; };
   claude-wrapped = pkgs.symlinkJoin {
     name = "claude-code-wrapped";
     paths = [
@@ -57,6 +57,27 @@ in
     # Symlink to suppress the warning.
     ".local/bin/claude".source = "${claude-wrapped}/bin/claude";
     ".claude/settings.json".source = mkSource ./settings.json;
+    ".claude/CLAUDE.md".text = renderAgentsMarkdown {
+      title = "Claude Code Instructions";
+      registries = [
+        {
+          name = "shared";
+          sources = config.agents.sharedRules;
+        }
+        {
+          name = "claude";
+          sources = config.agents.claudeRules;
+        }
+      ];
+      order = [
+        "shared/communication"
+        "shared/reasoning"
+        "shared/markdown"
+        "shared/version-control"
+        "shared/software-development"
+        "claude/claude-code-behavior"
+      ];
+    };
     ".claude/statusline.sh".source = mkSource ./statusline.sh;
     ".claude/detect-vcs.sh".source = mkSource ./detect-vcs.sh;
 
@@ -67,15 +88,5 @@ in
       complete -c nono-claude --wraps claude
     '';
   }
-  // renderRuleRegistries ".claude/rules" [
-    {
-      name = "shared";
-      sources = config.agents.sharedRules;
-    }
-    {
-      name = "claude";
-      sources = config.agents.claudeRules;
-    }
-  ]
   // renderSharedSkills ".claude/skills" config.agents.sharedSkills;
 }

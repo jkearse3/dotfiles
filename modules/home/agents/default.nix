@@ -17,7 +17,7 @@ let
       ;
   };
   renderSharedSkills = import ./renderSharedSkills.nix { inherit lib mkSource; };
-  renderRuleRegistries = import ./renderRuleRegistries.nix { inherit lib mkSource; };
+  renderAgentsMarkdown = import ./renderAgentsMarkdown.nix { inherit lib; };
 in
 {
   imports = [
@@ -27,13 +27,23 @@ in
   ];
 
   config = {
-    home.file =
-      renderRuleRegistries ".agents/rules" [
-        {
-          name = "shared";
-          sources = config.agents.sharedRules;
-        }
-      ]
-      // renderSharedSkills ".agents/skills" config.agents.sharedSkills;
+    home.file = renderSharedSkills ".agents/skills" config.agents.sharedSkills // {
+      ".codex/AGENTS.md".text = renderAgentsMarkdown {
+        title = "Codex Instructions";
+        registries = [
+          {
+            name = "shared";
+            sources = config.agents.sharedRules;
+          }
+        ];
+        order = [
+          "shared/communication"
+          "shared/reasoning"
+          "shared/markdown"
+          "shared/version-control"
+          "shared/software-development"
+        ];
+      };
+    };
   };
 }

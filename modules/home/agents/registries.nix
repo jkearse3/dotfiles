@@ -39,8 +39,9 @@ let
       optionName = "agents.${registryName}Rules";
       duplicateName = "rule name";
       description = ''
-        Markdown rule files for the ${registryName} registry. Rendered rule names
-        are installed as `<target>/<name>.md`; source paths must end in `.md`.
+        Markdown rule files for the ${registryName} registry. Stitched agent
+        instruction files select rules by registry-qualified IDs such as
+        `${registryName}/<name>`; source paths should point at Markdown files.
 
         Each producer assigns a singleton list of paths
         (`agents.${registryName}Rules.foo = [ ./bar.md ];`). The list type is what
@@ -50,11 +51,12 @@ let
 
         Rule names must be unique within this registry; defining the same name in
         two modules with different sources fails evaluation with an
-        `agents.${registryName}Rules: duplicate rule name` error. Rendered target
-        directories also reject rule-name collisions across registries.
+        `agents.${registryName}Rules: duplicate rule name` error. The same bare
+        rule name may appear in another registry because stitched consumers use
+        registry-qualified IDs.
 
-        Intra-directory rule load order is implementation-defined by each agent
-        loader and is not guaranteed by the registry.
+        Rule load order is controlled by each stitched instruction consumer, not
+        by the registry itself.
       '';
     };
 

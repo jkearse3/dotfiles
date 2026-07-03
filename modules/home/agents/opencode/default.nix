@@ -19,7 +19,7 @@ let
       editable
       ;
   };
-  renderRuleRegistries = import ../renderRuleRegistries.nix { inherit lib mkSource; };
+  renderAgentsMarkdown = import ../renderAgentsMarkdown.nix { inherit lib; };
 
   opencodeFishCompletion = # fish
     ''
@@ -81,6 +81,27 @@ in
   home.file = {
     ".config/opencode/opencode.jsonc".source = mkSource ./opencode.jsonc;
     ".config/opencode/tui.json".source = mkSource ./tui.json;
+    ".config/opencode/AGENTS.md".text = renderAgentsMarkdown {
+      title = "OpenCode Instructions";
+      registries = [
+        {
+          name = "shared";
+          sources = config.agents.sharedRules;
+        }
+        {
+          name = "opencode";
+          sources = config.agents.opencodeRules;
+        }
+      ];
+      order = [
+        "shared/communication"
+        "shared/reasoning"
+        "shared/markdown"
+        "shared/version-control"
+        "shared/software-development"
+        "opencode/opencode-behavior"
+      ];
+    };
     ".config/fish/completions/opencode.fish".text = opencodeFishCompletion;
 
     # The sandboxed `nono-opencode` wrapper inherits opencode's dynamic yargs completion via fish's
@@ -92,15 +113,5 @@ in
     ".config/fish/completions/opencode-unsafe.fish".text = ''
       complete -c opencode-unsafe --wraps opencode
     '';
-  }
-  // renderRuleRegistries ".config/opencode/rules" [
-    {
-      name = "shared";
-      sources = config.agents.sharedRules;
-    }
-    {
-      name = "opencode";
-      sources = config.agents.opencodeRules;
-    }
-  ];
+  };
 }
