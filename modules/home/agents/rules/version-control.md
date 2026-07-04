@@ -38,8 +38,10 @@ only when they do not affect behavior.
 Agent-authored messages include a body by default. Use a subject-only message only when the subject
 fully explains the change.
 
-The body explains why the change exists: prior state, intent, durable behavior, risk, or non-obvious
-design choices. Do not describe review history, tool output, scratch work, or session workflow.
+When context matters, prefer body prose that first states the prior state, constraint, or reason,
+then describes the change in response. Use natural prose rather than a rigid template; include
+durable behavior, risk, or non-obvious design choices when they explain why the change exists. Do
+not describe review history, tool output, scratch work, or session workflow.
 
 Wrap body text at 72 columns. Keep unbreakable tokens intact.
 
