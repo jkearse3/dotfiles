@@ -19,7 +19,7 @@ let
       editable
       ;
   };
-  renderSharedSkills = import ../renderSharedSkills.nix { inherit lib mkSource; };
+  renderSharedSkills = import ../renderSharedSkills.nix { inherit lib; };
   renderAgentsMarkdown = import ../renderAgentsMarkdown.nix { inherit lib; };
   claude-wrapped = pkgs.symlinkJoin {
     name = "claude-code-wrapped";

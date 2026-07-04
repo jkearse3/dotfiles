@@ -1,22 +1,10 @@
 {
   config,
   lib,
-  self,
-  repoRoot,
-  editable,
   ...
 }:
 let
-  mkSource = import ../mkSource.nix {
-    inherit
-      config
-      self
-      lib
-      repoRoot
-      editable
-      ;
-  };
-  renderSharedSkills = import ./renderSharedSkills.nix { inherit lib mkSource; };
+  renderSharedSkills = import ./renderSharedSkills.nix { inherit lib; };
   renderAgentsMarkdown = import ./renderAgentsMarkdown.nix { inherit lib; };
 in
 {
