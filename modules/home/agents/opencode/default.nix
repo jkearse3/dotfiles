@@ -20,6 +20,10 @@ let
       ;
   };
   renderAgentsMarkdown = import ../renderAgentsMarkdown.nix { inherit lib; };
+  renderSkillsDir = import ../renderSkillsDir.nix {
+    inherit lib pkgs;
+    skills = config.agents.skills;
+  };
 
   opencodeFishCompletion = # fish
     ''
@@ -47,6 +51,7 @@ let
       wrapProgram $out/bin/opencode \
         --set OPENCODE_DISABLE_AUTOUPDATE 1 \
         --set OPENCODE_ENABLE_EXA 1 \
+        --set OPENCODE_DISABLE_EXTERNAL_SKILLS true \
         --set OPENCODE_DISABLE_LSP_DOWNLOAD 1
     '';
   };
@@ -81,6 +86,7 @@ in
   home.file = {
     ".config/opencode/opencode.jsonc".source = mkSource ./opencode.jsonc;
     ".config/opencode/tui.json".source = mkSource ./tui.json;
+    ".config/opencode/skills" = renderSkillsDir { };
     ".config/opencode/AGENTS.md".text = renderAgentsMarkdown {
       title = "OpenCode Instructions";
       registries = [

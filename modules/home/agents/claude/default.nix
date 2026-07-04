@@ -19,7 +19,10 @@ let
       editable
       ;
   };
-  renderSharedSkills = import ../renderSharedSkills.nix { inherit lib; };
+  renderSkillsDir = import ../renderSkillsDir.nix {
+    inherit lib pkgs;
+    skills = config.agents.skills;
+  };
   renderAgentsMarkdown = import ../renderAgentsMarkdown.nix { inherit lib; };
   claude-wrapped = pkgs.symlinkJoin {
     name = "claude-code-wrapped";
@@ -57,6 +60,7 @@ in
     # Symlink to suppress the warning.
     ".local/bin/claude".source = "${claude-wrapped}/bin/claude";
     ".claude/settings.json".source = mkSource ./settings.json;
+    ".claude/skills" = renderSkillsDir { };
     ".claude/CLAUDE.md".text = renderAgentsMarkdown {
       title = "Claude Code Instructions";
       registries = [
@@ -82,6 +86,5 @@ in
     ".config/fish/completions/nono-claude.fish".text = ''
       complete -c nono-claude --wraps claude
     '';
-  }
-  // renderSharedSkills ".claude/skills" config.agents.sharedSkills;
+  };
 }

@@ -136,8 +136,8 @@
       "zsh *": "allow"
     },
     "external_directory": {
-      "~/.agents/**": "allow",
       "~/.claude/skills/**": "allow",
+      "~/.config/opencode/skills/**": "allow",
       "~/.claude/rules/**": "allow"
     }
   }

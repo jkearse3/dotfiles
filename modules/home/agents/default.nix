@@ -4,7 +4,6 @@
   ...
 }:
 let
-  renderSharedSkills = import ./renderSharedSkills.nix { inherit lib; };
   renderAgentsMarkdown = import ./renderAgentsMarkdown.nix { inherit lib; };
 in
 {
@@ -15,7 +14,7 @@ in
   ];
 
   config = {
-    home.file = renderSharedSkills ".agents/skills" config.agents.sharedSkills // {
+    home.file = {
       ".codex/AGENTS.md".text = renderAgentsMarkdown {
         title = "Codex Instructions";
         registries = [
