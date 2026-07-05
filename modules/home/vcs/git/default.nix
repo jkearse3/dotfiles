@@ -62,6 +62,7 @@
       ".DS_Store"
       "/.objectives/"
       ".nono/"
+      ".playwright-cli/"
       ".jj"
       "**/.claude/settings.local.json"
     ];

@@ -78,6 +78,7 @@
       "Bash(mkdir:*)",
       "Bash(more:*)",
       "Bash(mv:*)",
+      "Bash(playwright-cli:*)",
       "Bash(printf:*)",
       "Bash(pwd)",
       "Bash(python3:*)",

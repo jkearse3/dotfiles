@@ -19,6 +19,7 @@
     ./neovim
     ./nix
     ./nono
+    ./playwright-cli
     ./protobuf
     ./python
     ./rust

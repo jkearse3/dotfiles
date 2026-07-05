@@ -25,9 +25,9 @@
     "todowrite": "allow",
     "websearch": "allow",
     "webfetch": "allow",
-    "bash": {
-      "*": "ask",
-      "./x.sh fmt": "allow",
+      "bash": {
+        "*": "ask",
+        "./x.sh fmt": "allow",
       "./x.sh fmt-check": "allow",
       "./x.sh nix-build-home": "allow",
       "./x.sh nix-build-home-locked": "allow",
@@ -108,6 +108,7 @@
       "mkdir *": "allow",
       "more *": "allow",
       "mv *": "allow",
+      "playwright-cli *": "allow",
       "printf *": "allow",
       "pwd": "allow",
       "python3 *": "allow",
