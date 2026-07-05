@@ -387,17 +387,17 @@ Keep `## Next Slice` useful as a manual implementation handoff into the `iterate
 inline repository implementation edits. It must be consistent with `## Implementation Approach`,
 `## Boundaries`, and `## Validation Plan`.
 
-When work remains, `## Next Slice` names the largest sensible implementation-ready slice that
-advances one or more unsatisfied or partial ACs while remaining atomic. Prefer completing a coherent
-AC or related set of ACs in one slice when that can be verified together without crossing a boundary
-that needs a user decision, agreement change, or unrelated behavior change. Slice by the largest
-verifiable AC movement that still has one clear purpose, not by estimated size, file count, task
-count, or the smallest possible change.
+When work remains, `## Next Slice` names the next reviewable implementation-ready slice that
+advances unsatisfied or partial ACs while staying independently verifiable. Prefer a slice with one
+primary review question. Do not choose a slice that mixes unrelated risk areas unless separating
+them would create artificial scaffolding or make the result harder to verify. Slice by reviewable
+risk area and user-visible behavior, not by maximum size, estimated size, file count, task count, or
+the smallest possible change.
 
 Use this pattern:
 
 ```markdown
-Make the largest coherent atomic change that advances the next unsatisfied acceptance criteria.
+Make the next reviewable change that advances the next unsatisfied acceptance criteria.
 
 Target AC: <number or numbers>
 
@@ -415,9 +415,9 @@ The slice should include:
 - The nearest stop-before condition.
 - A cheap verification path.
 
-Do not add size labels, time estimates, task queues, or mechanical file-by-file checklists. If the
-largest AC movement is too broad to hand off coherently or cannot remain atomic, narrow
-`## Next Slice` to the largest coherent part and make the stop-before condition explicit.
+Do not add size labels, time estimates, task queues, or mechanical file-by-file checklists. A slice
+is probably too broad if review would need to answer several unrelated questions at once. Narrow it
+until the slice has one primary reason to exist and one clear verification path.
 
 When no implementation work remains, say that no implementation slice is pending and identify the
 next useful reconciliation or user-decision step.
