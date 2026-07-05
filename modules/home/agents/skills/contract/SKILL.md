@@ -14,7 +14,10 @@ what this bookmark is trying to satisfy, what is in and out of scope, and how th
 measures against that agreement.
 
 The contract is a current agreement, not an implementation log. Current code is authoritative for AC
-status. Revision IDs and earlier notes are advisory only.
+status. Revision IDs and earlier notes are advisory only. The contract should still preserve durable
+implementation-relevant context: agreed approach, relevant files, constraints, non-obvious repo
+facts, and validation strategy. Do not record chronological progress except where it changes current
+measured state.
 
 The Markdown contract is the only durable contract state. Do not create additional durable state,
 queues, or workflow-control files for this skill.
@@ -95,8 +98,25 @@ Bookmark: <current-bookmark>
 
 ## Context
 
-<Why this bookmark exists, what prompted the work, who or what behavior it affects, and what
-future agents must understand before interpreting the agreement.>
+### User Intent
+
+<What the user asked for, in durable terms. Preserve important wording.>
+
+### Background
+
+<Why this bookmark exists, what prompted the work, and who or what behavior it affects.>
+
+### Repo Facts
+
+- `<path>`, `<symbol or section>`: <observed fact and why it matters.>
+
+### Existing Behavior
+
+<What the current checkout does before the agreed work is complete.>
+
+### Desired Behavior
+
+<What should be true when the agreement is satisfied.>
 
 ## Spec
 
@@ -104,11 +124,31 @@ future agents must understand before interpreting the agreement.>
 
 ## Boundaries
 
-- In scope: <repo areas and behavior this contract may change.>
-- Out of scope: <explicit non-goals.>
-- Stop before: <decisions, risk, or ambiguity that require user direction.>
+### In Scope
+
+- <Repo areas and behavior this contract may change.>
+
+### Out Of Scope
+
+- <Explicit non-goals.>
+
+### Allowed Implementation Changes
+
+- <Types of code, config, test, or documentation changes allowed.>
+
+### Forbidden Changes
+
+- <Changes future agents must not make while satisfying this contract.>
+
+### Stop Before
+
+- <Decisions, risk, or ambiguity that require user direction.>
 
 ## Research
+
+### Findings
+
+- `<path>`, `<symbol or section>`: <fact discovered and why it matters.>
 
 ### Decisions
 
@@ -122,15 +162,45 @@ No open questions.
 
 No assumptions recorded.
 
+## Implementation Approach
+
+### Strategy
+
+<Expected approach and sequencing constraints. This is guidance, not an implementation log; amend it
+if the agreed approach changes.>
+
+### Likely Touch Points
+
+- `<path>`: <why this file or area matters.>
+
+### Design Constraints
+
+- <Constraint future agents must preserve.>
+
+### Non-Obvious Details
+
+- <Detail future agents should not have to rediscover.>
+
 ## Acceptance Criteria
 
 1. [ ] <Verifiable statement about the current checkout.>
    Check: <Cheap command or inspection that can verify this AC.>
    Evidence: Pending.
 
+## Validation Plan
+
+- <Checks expected before marking the contract complete.>
+- <Manual inspections when commands are insufficient.>
+
 ## Current State
 
+### Baseline
+
 <What the current checkout already satisfies, partially satisfies, or lacks.>
+
+### AC Status Notes
+
+- AC 1: <Current evidence, gap, or blocker.>
 
 ## Next Slice
 
@@ -160,6 +230,16 @@ Write ACs as independently verifiable outcomes, not implementation tasks. An AC 
 independently implementable: one coherent implementation slice may advance multiple ACs, and one AC
 may require multiple coherent slices.
 
+AC coverage must consider happy paths, negative or error paths, edge cases, existing behavior that
+must keep working, repo conventions, tests, formatting, docs, and operational effects when those are
+relevant to the agreement. Do not add boilerplate ACs for irrelevant categories, but do record why a
+category matters when omission would make future interpretation ambiguous.
+
+When recording repo facts, prefer stable anchors such as file paths, section names, function names,
+config keys, command names, and quoted behavior. Line numbers may be included as draft-time
+breadcrumbs, but they are not authoritative and must be refreshed or ignored when code drifts. Do
+not bind contract validity to a specific commit or revision; reconcile against the current checkout.
+
 ## Contract Readiness
 
 Contract creation and amendment are discovery-first and consensus-seeking. Do not request approval
@@ -174,8 +254,15 @@ Before approval, pressure-test the agreement from multiple angles:
 - Data, configuration, persistence, security, privacy, and trust-boundary implications.
 - User-visible behavior, developer-facing behavior, docs, tests, and operational effects.
 - Boundaries, stop-before conditions, assumptions, decisions, and open questions.
+- Relevant repo facts, likely touch points, implementation approach, and non-obvious constraints.
 - AC coverage, AC wording, and whether every `Check:` proves the AC without interpretation.
+- Validation plan coverage and whether completion can be measured without session memory.
 - The first `## Next Slice` and whether it can advance ACs without guessing agreement details.
+
+A contract must be self-contained for a fresh agent with no session memory. Before approval, check
+whether a future agent could understand the user intent, relevant repo facts, agreed behavior,
+implementation direction, boundaries, validation path, current state, and next slice using only the
+contract and the current checkout. If not, keep drafting or ask targeted questions before writing.
 
 Resolve uncertainty using the narrowest sufficient method. Inspect repo facts, patterns, tests,
 docs, and current behavior directly when the answer is discoverable. Ask the user when the answer is
@@ -184,7 +271,8 @@ be raised next; batch only independent questions.
 
 Treat these as approval blockers: vague ACs, vague or infeasible `Check:` lines, unclear boundaries,
 missing edge cases, unsafe assumptions, unresolved user decisions, ambiguous current-state claims,
-or a `## Next Slice` that requires future agents to infer contract intent.
+missing implementation-relevant context, stale or unsupported repo facts, incomplete validation
+strategy, or a `## Next Slice` that requires future agents to infer contract intent.
 
 Normal implementation unknowns may remain only when they can be resolved safely inside the approved
 boundaries without changing ACs, checks, stop-before conditions, or user-visible behavior. Record
@@ -198,13 +286,15 @@ Use this path when arguments are non-empty and no contract exists for the curren
 2. Ensure `.agent/contracts/` exists and local ignore or exclude state covers `/.agent/contracts/`.
    Verify the target contract path is ignored locally before writing it.
 3. Run Contract Readiness. Inspect enough repository facts to draft detailed context, boundaries,
-   ACs, current-state notes, and checks. Do not edit implementation files.
+   research findings, implementation approach, validation plan, ACs, current-state notes, and
+   checks. Do not edit implementation files.
 4. If approval-relevant holes remain, ask the next question or present the unresolved concern and
    stop before writing the contract file. Continue this loop until the agent and user agree the
    branch agreement has no approval-relevant holes.
 5. Draft a contract from the user intent, resolved decisions, and current repo facts.
-6. Include detailed context, concrete boundaries, research decisions/questions/assumptions,
-   verifiable ACs, current-state notes, and an implementation-ready `## Next Slice`.
+6. Include detailed context, concrete boundaries, research findings/decisions/questions/assumptions,
+   implementation approach, validation plan, verifiable ACs, current-state notes, and an
+   implementation-ready `## Next Slice`.
 7. Present the full draft and ask for explicit user approval before writing the contract file.
 8. After approval, write only the contract file.
 
@@ -218,8 +308,8 @@ Use this path when the user asks to inspect the current contract without reconci
 1. Resolve Local State.
 2. Read the current bookmark contract.
 3. Stop if the contract `Bookmark:` value does not match the current bookmark.
-4. Summarize the agreement, current measured status, unsatisfied or blocked ACs, and
-   `## Next Slice`.
+4. Summarize the agreement, implementation approach, validation plan, current measured status,
+   unsatisfied or blocked ACs, and `## Next Slice`.
 
 Loading must not edit any files.
 
@@ -243,9 +333,9 @@ current checkout to the existing Markdown contract and updates only measured Mar
 7. Update measured Markdown state only: AC markers, `Evidence:` lines, `Status:`,
    `## Current State`, `## Next Slice`, and directly verified research question or assumption
    status.
-8. Do not change agreement fields: `## Context`, `## Spec`, `## Boundaries`, AC wording, `Check:`
-   lines, or research decisions. If the agreement is wrong or incomplete, report that amendment is
-   needed.
+8. Do not change agreement fields: `## Context`, `## Spec`, `## Boundaries`,
+   `## Implementation Approach`, `## Validation Plan`, AC wording, `Check:` lines, or research
+   decisions. If the agreement is wrong or incomplete, report that amendment is needed.
 9. If no measured Markdown changes are needed, leave the contract unchanged and report that
    reconciliation found no measured updates.
 
@@ -268,8 +358,9 @@ that distinction explicit.
 During reconciliation, update only measured state: AC markers, evidence, status, current-state
 notes, next-step guidance, and directly verified research question or assumption status.
 
-Amendment may update `## Context`, `## Spec`, `## Boundaries`, AC wording, research decisions, or
-add and supersede ACs. It requires explicit user approval before writing.
+Amendment may update `## Context`, `## Spec`, `## Boundaries`, `## Implementation Approach`,
+`## Validation Plan`, AC wording, research decisions, or add and supersede ACs. It requires explicit
+user approval before writing.
 
 Before approval, run Contract Readiness against the amended agreement. If approval-relevant holes
 remain, ask the next question or present the unresolved concern and stop before writing. Do not ask
@@ -285,14 +376,16 @@ Rules for AC changes:
 - If an AC already has evidence or likely related work, supersede it with `[-]` and add a
   replacement AC with a new number.
 - Tiny wording clarifications may edit an AC in place only when the meaning does not change.
-- Do not silently rewrite `## Context`, `## Spec`, `## Boundaries`, AC wording, or existing
-  decisions during reconciliation. Propose an amendment instead.
+- Do not silently rewrite `## Context`, `## Spec`, `## Boundaries`, `## Implementation Approach`,
+  `## Validation Plan`, AC wording, or existing decisions during reconciliation. Propose an
+  amendment instead.
 
 ## Next Slice Guidance
 
 Keep `## Next Slice` useful as a manual implementation handoff into the `iterate` skill.
 `## Next Slice` describes the next implementation slice; it is not permission for this skill to make
-inline repository implementation edits.
+inline repository implementation edits. It must be consistent with `## Implementation Approach`,
+`## Boundaries`, and `## Validation Plan`.
 
 When work remains, `## Next Slice` names the largest sensible implementation-ready slice that
 advances one or more unsatisfied or partial ACs while remaining atomic. Prefer completing a coherent
