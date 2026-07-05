@@ -39,6 +39,11 @@
       inputs.nixpkgs.follows = "nixpkgs-unstable";
     };
 
+    sqlit = {
+      url = "github:Maxteabag/sqlit";
+      inputs.nixpkgs.follows = "nixpkgs-unstable";
+    };
+
     dotfiles-private.url = "git+ssh://git@github.com/jkearse3/dotfiles-private";
   };
 

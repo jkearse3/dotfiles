@@ -18,6 +18,7 @@ let
   lib = inputs.nixpkgs.lib;
   home-manager = inputs.home-manager-unstable;
   llmAgents = inputs.llm-agents.packages;
+  sqlit = inputs.sqlit.packages;
   homeStateVersion = "26.05";
   isDarwin = lib.hasSuffix "-darwin" system;
   homeDirectory = if isDarwin then "/Users/${username}" else "/home/${username}";
@@ -54,6 +55,7 @@ in
         repoRoot = "dotfiles";
         llmAgents = llmAgents.${system};
         hunk = llmAgents.${system}.hunk;
+        sqlit = sqlit.${system}.sqlit;
       };
     }
   );
