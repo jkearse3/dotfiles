@@ -1,10 +1,11 @@
 {
+  git-branch-stacked,
   pkgs,
 }:
 pkgs.writeShellApplication {
   name = "git-branch-previous";
   runtimeInputs = [
-    (pkgs.callPackage ../git-branch-stacked/package.nix { })
+    git-branch-stacked
   ];
   text = builtins.readFile ./git-branch-previous.sh;
 }

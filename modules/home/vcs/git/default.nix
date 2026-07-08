@@ -1,16 +1,18 @@
 {
+  internalPkgs,
   ...
 }:
 {
-  imports = [
-    ./git-branch-checkout
-    ./git-branch-current
-    ./git-branch-default
-    ./git-branch-delete
-    ./git-branch-next
-    ./git-branch-previous
-    ./git-branch-stacked
+  home.packages = [
+    internalPkgs.git-branch-checkout
+    internalPkgs.git-branch-current
+    internalPkgs.git-branch-default
+    internalPkgs.git-branch-delete
+    internalPkgs.git-branch-next
+    internalPkgs.git-branch-previous
+    internalPkgs.git-branch-stacked
   ];
+
   programs.git = {
     enable = true;
     settings = {

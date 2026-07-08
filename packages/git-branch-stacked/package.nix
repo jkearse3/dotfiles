@@ -1,11 +1,12 @@
 {
+  git-branch-default,
   pkgs,
 }:
 pkgs.writeShellApplication {
   name = "git-branch-stacked";
   runtimeInputs = [
     pkgs.git
-    (pkgs.callPackage ../git-branch-default/package.nix { })
+    git-branch-default
   ];
   text = builtins.readFile ./git-branch-stacked.sh;
 }

@@ -12,6 +12,19 @@
     {
       packages = rec {
         commit-message-check = pkgs.callPackage ../packages/commit-message-check/package.nix { };
+        git-branch-checkout = pkgs.callPackage ../packages/git-branch-checkout/package.nix { };
+        git-branch-current = pkgs.callPackage ../packages/git-branch-current/package.nix { };
+        git-branch-default = pkgs.callPackage ../packages/git-branch-default/package.nix { };
+        git-branch-delete = pkgs.callPackage ../packages/git-branch-delete/package.nix { };
+        git-branch-next = pkgs.callPackage ../packages/git-branch-next/package.nix {
+          inherit git-branch-current;
+        };
+        git-branch-previous = pkgs.callPackage ../packages/git-branch-previous/package.nix {
+          inherit git-branch-stacked;
+        };
+        git-branch-stacked = pkgs.callPackage ../packages/git-branch-stacked/package.nix {
+          inherit git-branch-default;
+        };
         jj-change-select = pkgs.callPackage ../packages/jj-change-select/package.nix { };
         jj-bookmark-nearest = pkgs.callPackage ../packages/jj-bookmark-nearest/package.nix { };
         jj-bookmark-current = pkgs.callPackage ../packages/jj-bookmark-current/package.nix {
