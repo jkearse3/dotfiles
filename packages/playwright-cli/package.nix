@@ -25,6 +25,7 @@ let
 in
 pkgs.symlinkJoin {
   name = "playwright-cli-${package.version}";
+  inherit (package) version;
   paths = [ package ];
   buildInputs = [ pkgs.makeWrapper ];
   postBuild = ''
@@ -34,4 +35,5 @@ pkgs.symlinkJoin {
       --run 'export PLAYWRIGHT_DAEMON_SOCKETS_DIR="/tmp/playwright-cli-''${USER:-user}"'
   '';
   meta = package.meta;
+  passthru.updateScript = ./update.sh;
 }

@@ -1,6 +1,10 @@
-{ pkgs, ... }:
+{
+  pkgs,
+  self,
+  ...
+}:
 
 {
-  home.packages = [ (pkgs.callPackage ./package.nix { }) ];
+  home.packages = [ self.packages.${pkgs.system}.playwright-cli ];
   agents.extraSkills."playwright-cli" = ./skill;
 }
