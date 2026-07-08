@@ -1,9 +1,10 @@
 {
   pkgs,
+  self,
   ...
 }:
 {
   home.packages = [
-    (pkgs.callPackage ./package.nix { })
+    self.packages.${pkgs.system}.commit-message-check
   ];
 }

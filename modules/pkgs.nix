@@ -11,6 +11,7 @@
     }:
     {
       packages = {
+        commit-message-check = pkgs.callPackage ../packages/commit-message-check/package.nix { };
         playwright-cli = pkgs.callPackage ../packages/playwright-cli/package.nix { };
       };
 
