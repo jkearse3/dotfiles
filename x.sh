@@ -142,17 +142,35 @@ cmd:nix-switch-system() {
 	cmd:nix-activate-system
 }
 
+cmd:nix-package-update() {
+	snapshot
+	shopt -s nullglob
+	local updaters=(packages/*/update.sh)
+	shopt -u nullglob
+	if [[ ${#updaters[@]} -eq 0 ]]; then
+		echo "No package updaters found"
+		return
+	fi
+	for updater in "${updaters[@]}"; do
+		echo "Updating $updater..."
+		"$updater" --latest "$@"
+	done
+}
+
 cmd:nix-flake-update() {
 	if [[ $(jj log -r '@' --no-graph -T 'if(empty, "true", "false")') != true ]]; then
 		jj new
 	fi
 	nix flake update --accept-flake-config
-	if ! jj diff -r @ --name-only | grep -qx 'flake.lock'; then
-		echo "flake.lock unchanged, skipping eval and commit"
+	cmd:nix-package-update "$@"
+	local changed_files
+	changed_files="$(jj diff -r @ --name-only)"
+	if [[ -z $changed_files ]]; then
+		echo "dependencies unchanged, skipping eval and commit"
 		return
 	fi
 	cmd:nix-eval-home
-	desc='build(nix): update flake.lock'
+	desc='build(nix): update dependencies'
 	printf '%s\n' "$desc" | commit-message-check
 	jj commit -m "$desc"
 }

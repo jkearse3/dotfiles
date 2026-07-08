@@ -4,11 +4,12 @@ set -euo pipefail
 
 usage() {
 	cat <<'EOF'
-usage: ./update.sh [--version VERSION] [--rev REV] [--dry-run]
+usage: ./update.sh [--latest | --version VERSION] [--rev REV] [--dry-run]
 
 Refresh package.nix pins for the package-local playwright-cli package.
 
 Options:
+  --latest          Use the latest upstream GitHub release.
   --version VERSION  Package version to write. Defaults to the current pin.
   --rev REV          Git revision to fetch. Defaults to the current pin.
   --dry-run          Print the computed pins without editing package.nix.
@@ -27,12 +28,22 @@ current_value() {
 	sed -nE "s/^[[:space:]]*$name = \"([^\"]+)\";$/\\1/p" "$package_nix" | head -n1
 }
 
+github_api() {
+	local url=$1
+	nix eval --raw --impure --expr "builtins.readFile (builtins.fetchurl \"$url\")"
+}
+
 version="$(current_value version)"
 rev="$(current_value rev)"
 dry_run=0
+latest=0
 
 while [[ $# -gt 0 ]]; do
 	case "$1" in
+	--latest)
+		latest=1
+		shift
+		;;
 	--version)
 		version="${2:?missing value for --version}"
 		shift 2
@@ -56,6 +67,35 @@ while [[ $# -gt 0 ]]; do
 		;;
 	esac
 done
+
+if [[ $latest -eq 1 ]]; then
+	release_json="$(github_api https://api.github.com/repos/microsoft/playwright-cli/releases/latest)"
+	tag="$(jq -r .tag_name <<<"$release_json")"
+	if [[ -z $tag || $tag == null ]]; then
+		echo "error: failed to discover latest GitHub release tag" >&2
+		exit 1
+	fi
+	tag_ref_json="$(github_api "https://api.github.com/repos/microsoft/playwright-cli/git/ref/tags/$tag")"
+	tag_type="$(jq -r .object.type <<<"$tag_ref_json")"
+	tag_sha="$(jq -r .object.sha <<<"$tag_ref_json")"
+	case "$tag_type" in
+	commit)
+		rev="$tag_sha"
+		;;
+	tag)
+		tag_json="$(github_api "https://api.github.com/repos/microsoft/playwright-cli/git/tags/$tag_sha")"
+		rev="$(jq -r .object.sha <<<"$tag_json")"
+		;;
+	*)
+		rev=""
+		;;
+	esac
+	if [[ -z $rev ]]; then
+		echo "error: failed to resolve release tag $tag" >&2
+		exit 1
+	fi
+	version="${tag#v}"
+fi
 
 if [[ -z $version || -z $rev ]]; then
 	echo "error: failed to read current version or rev from $package_nix" >&2
