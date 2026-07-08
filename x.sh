@@ -187,6 +187,18 @@ cmd:fmt-check() {
 	nix fmt --accept-flake-config -- --no-cache --fail-on-change
 }
 
+cmd:lint() {
+	snapshot
+	local files=()
+	mapfile -d '' -t files < <(git ls-files -z --cached --others --exclude-standard '*.sh')
+	if [[ ${#files[@]} -eq 0 ]]; then
+		echo "No shell scripts found"
+		return 0
+	fi
+	echo "Linting shell scripts..."
+	shellcheck "${files[@]}"
+}
+
 cmd:python-check() {
 	snapshot
 	echo "Checking Python types..."
