@@ -188,6 +188,11 @@ cmd:fmt-check() {
 }
 
 cmd:lint() {
+	cmd:lint-shell
+	cmd:lint-python
+}
+
+cmd:lint-shell() {
 	snapshot
 	local files=()
 	mapfile -d '' -t files < <(git ls-files -z --cached --others --exclude-standard '*.sh')
@@ -199,10 +204,14 @@ cmd:lint() {
 	shellcheck "${files[@]}"
 }
 
-cmd:python-check() {
+cmd:lint-python() {
 	snapshot
 	echo "Checking Python types..."
 	basedpyright --project pyrightconfig.json --warnings
+}
+
+cmd:python-check() {
+	cmd:lint-python
 }
 
 usage() {
