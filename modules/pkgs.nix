@@ -25,6 +25,9 @@
         git-branch-stacked = pkgs.callPackage ../packages/git-branch-stacked/package.nix {
           inherit git-branch-default;
         };
+        gh-pr-comments = pkgs.callPackage ../packages/gh-pr-comments/package.nix {
+          inherit jj-bookmark-current;
+        };
         jj-change-select = pkgs.callPackage ../packages/jj-change-select/package.nix { };
         jj-bookmark-nearest = pkgs.callPackage ../packages/jj-bookmark-nearest/package.nix { };
         jj-bookmark-current = pkgs.callPackage ../packages/jj-bookmark-current/package.nix {
