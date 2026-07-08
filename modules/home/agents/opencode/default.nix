@@ -58,7 +58,7 @@ let
 
   opencode-nono-entrypoint = pkgs.writeShellScript "opencode-nono-entrypoint" ''
     if [[ -z "''${NONO_OPENCODE_USE_PERMISSIONS:-}" ]]; then
-      export OPENCODE_PERMISSION='{"*":"allow","bash":{"*":"allow"}}'
+      export OPENCODE_PERMISSION='{"*":"allow","question":"deny","bash":{"*":"allow"}}'
     fi
     exec "${opencode-wrapped}/bin/opencode" "$@"
   '';
@@ -66,7 +66,7 @@ let
   opencode-unsafe = pkgs.writeShellApplication {
     name = "opencode-unsafe";
     text = ''
-      export OPENCODE_PERMISSION='{"*":"allow","bash":{"*":"allow"}}'
+      export OPENCODE_PERMISSION='{"*":"allow","question":"deny","bash":{"*":"allow"}}'
       exec "${opencode-wrapped}/bin/opencode" "$@"
     '';
   };

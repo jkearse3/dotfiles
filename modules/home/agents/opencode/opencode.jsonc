@@ -19,7 +19,7 @@
     "edit": "allow",
     "glob": "allow",
     "grep": "allow",
-    "question": "allow",
+    "question": "deny",
     "skill": "allow",
     "task": "allow",
     "todowrite": "allow",
