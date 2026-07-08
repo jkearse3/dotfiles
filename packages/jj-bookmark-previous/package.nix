@@ -1,10 +1,11 @@
 {
+  jj-bookmark-stacked,
   pkgs,
 }:
 pkgs.writeShellApplication {
   name = "jj-bookmark-previous";
   runtimeInputs = [
-    (pkgs.callPackage ../jj-bookmark-stacked/package.nix { })
+    jj-bookmark-stacked
   ];
   text = builtins.readFile ./jj-bookmark-previous.sh;
 }

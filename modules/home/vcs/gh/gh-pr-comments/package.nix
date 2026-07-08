@@ -1,10 +1,11 @@
 {
+  jj-bookmark-current,
   pkgs,
 }:
 pkgs.writeShellApplication {
   name = "gh-pr-comments";
   runtimeInputs = [
-    (pkgs.callPackage ../../jj/jj-bookmark-current/package.nix { })
+    jj-bookmark-current
     pkgs.gh
   ];
   text = builtins.readFile ./gh-pr-comments.sh;

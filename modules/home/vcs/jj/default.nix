@@ -1,16 +1,18 @@
 {
+  internalPkgs,
   ...
 }:
 {
-  imports = [
-    ./jj-bookmark-current
-    ./jj-bookmark-default
-    ./jj-bookmark-nearest
-    ./jj-bookmark-previous
-    ./jj-bookmark-select
-    ./jj-bookmark-stacked
-    ./jj-change-select
+  home.packages = [
+    internalPkgs.jj-bookmark-nearest
+    internalPkgs.jj-bookmark-current
+    internalPkgs.jj-bookmark-default
+    internalPkgs.jj-bookmark-stacked
+    internalPkgs.jj-bookmark-previous
+    internalPkgs.jj-bookmark-select
+    internalPkgs.jj-change-select
   ];
+
   programs.jujutsu = {
     enable = true;
     settings = {

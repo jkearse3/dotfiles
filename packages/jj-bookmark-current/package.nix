@@ -1,10 +1,11 @@
 {
+  jj-bookmark-nearest,
   pkgs,
 }:
 pkgs.writeShellApplication {
   name = "jj-bookmark-current";
   runtimeInputs = [
-    (pkgs.callPackage ../jj-bookmark-nearest/package.nix { })
+    jj-bookmark-nearest
   ];
   text = builtins.readFile ./jj-bookmark-current.sh;
 }

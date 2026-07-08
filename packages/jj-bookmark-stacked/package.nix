@@ -1,11 +1,12 @@
 {
+  jj-bookmark-default,
   pkgs,
 }:
 pkgs.writeShellApplication {
   name = "jj-bookmark-stacked";
   runtimeInputs = [
     pkgs.jujutsu
-    (pkgs.callPackage ../jj-bookmark-default/package.nix { })
+    jj-bookmark-default
   ];
   text = builtins.readFile ./jj-bookmark-stacked.sh;
 }

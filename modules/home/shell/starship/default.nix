@@ -1,15 +1,15 @@
 {
+  internalPkgs,
   lib,
   pkgs,
   ...
 }:
 let
-  jj-bookmark-nearest = pkgs.callPackage ../../vcs/jj/jj-bookmark-nearest/package.nix { };
   jj-starship-prompt = pkgs.writeShellApplication {
     name = "jj-starship-prompt";
     runtimeInputs = [
       pkgs.jujutsu
-      jj-bookmark-nearest
+      internalPkgs.jj-bookmark-nearest
     ];
     text = builtins.readFile ./jj-starship-prompt.sh;
   };
