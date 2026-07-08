@@ -44,6 +44,7 @@ in
           }
           // lib.optionalAttrs isDarwin {
             targets.darwin.copyApps.enable = false;
+            programs.man.generateCaches = false;
           }
         )
         ../home
