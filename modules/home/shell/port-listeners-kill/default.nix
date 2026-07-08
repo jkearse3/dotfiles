@@ -1,9 +1,9 @@
 {
-  pkgs,
+  internalPkgs,
   ...
 }:
 {
   home.packages = [
-    (pkgs.callPackage ./package.nix { })
+    internalPkgs.port-listeners-kill
   ];
 }

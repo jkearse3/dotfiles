@@ -44,6 +44,10 @@
         };
         jj-bookmark-select = pkgs.callPackage ../packages/jj-bookmark-select/package.nix { };
         playwright-cli = pkgs.callPackage ../packages/playwright-cli/package.nix { };
+        port-listeners-kill = pkgs.callPackage ../packages/port-listeners-kill/package.nix {
+          inherit port-listeners-list;
+        };
+        port-listeners-list = pkgs.callPackage ../packages/port-listeners-list/package.nix { };
       };
 
       _module.args = {
