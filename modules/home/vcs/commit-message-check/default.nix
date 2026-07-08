@@ -1,10 +1,9 @@
 {
-  pkgs,
-  self,
+  internalPkgs,
   ...
 }:
 {
   home.packages = [
-    self.packages.${pkgs.system}.commit-message-check
+    internalPkgs.commit-message-check
   ];
 }

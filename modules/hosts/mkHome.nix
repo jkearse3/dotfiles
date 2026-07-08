@@ -52,6 +52,7 @@ in
       extraSpecialArgs = {
         inherit editable;
         inherit (inputs) self;
+        internalPkgs = inputs.self.packages.${system};
         repoRoot = "dotfiles";
         llmAgents = llmAgents.${system};
         hunk = llmAgents.${system}.hunk;
