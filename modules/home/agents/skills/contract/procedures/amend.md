@@ -8,13 +8,12 @@ Read these references before acting:
 - `references/local-state.md`
 - `references/schema.md`
 - `references/readiness.md`
-- `references/next-slice.md`
 
 Amendment changes the agreement. Reconciliation measures code against the existing agreement. Keep
 that distinction explicit.
 
-During reconciliation, update only measured state: AC markers, evidence, status, next-step guidance,
-and directly verified research question or assumption status.
+During reconciliation, update only measured state: AC markers, evidence, status, and directly
+verified research question or assumption status.
 
 Amendment may update `## Context`, `## Spec`, `## Boundaries`, `## Implementation Approach`,
 `## Validation`, AC wording, research decisions, or add and supersede ACs. It requires explicit user

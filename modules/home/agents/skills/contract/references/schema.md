@@ -104,10 +104,6 @@ if the agreed approach changes.>
 - <Repo-level checks expected before marking the contract complete, when not already covered by AC
   `Check:` lines.>
 - <Manual inspections when commands are insufficient.>
-
-## Next Slice
-
-<Next implementation slice using the pattern in Next Slice Guidance, or no pending slice.>
 ```
 
 Valid statuses are:
@@ -135,6 +131,11 @@ per-AC status note and must be the last AC body field. Write ACs as independentl
 outcomes, not implementation tasks. An AC does not have to be independently implementable: one
 coherent implementation slice may advance multiple ACs, and one AC may require multiple coherent
 slices.
+
+The contract does not store a `## Next Slice` section, task queue, or implementation-log state.
+Instead, keep `## Context`, `## Research`, `## Implementation Approach`, ACs, and validation
+exhaustive enough that a fresh implementation agent can lazily propose a reviewable next slice from
+the current measured state without needing session memory.
 
 AC coverage must consider happy paths, negative or error paths, edge cases, existing behavior that
 must keep working, repo conventions, tests, formatting, docs, and operational effects when those are

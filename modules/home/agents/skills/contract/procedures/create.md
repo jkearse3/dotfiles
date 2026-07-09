@@ -7,7 +7,6 @@ Read these references before acting:
 - `references/local-state.md`
 - `references/schema.md`
 - `references/readiness.md`
-- `references/next-slice.md`
 
 Steps:
 
@@ -22,7 +21,9 @@ Steps:
    branch agreement has no approval-relevant holes.
 5. Draft a contract from the user intent, resolved decisions, and current repo facts.
 6. Include detailed context, concrete boundaries, research findings/decisions/questions/assumptions,
-   implementation approach, validation, verifiable ACs, and an implementation-ready `## Next Slice`.
+   implementation approach, validation, and verifiable ACs. Make the contract exhaustive enough that
+   a fresh implementation agent can propose a next slice lazily from the contract and current
+   checkout.
 7. Present the full draft and ask for explicit user approval before writing the contract file.
 8. After approval, write only the contract file.
 

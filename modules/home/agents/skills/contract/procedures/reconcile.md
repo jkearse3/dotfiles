@@ -6,7 +6,6 @@ Read these references before acting:
 
 - `references/local-state.md`
 - `references/schema.md`
-- `references/next-slice.md`
 
 Reconciliation is an inline, idempotent measurement pass over the current checkout. It compares the
 current checkout to the existing Markdown contract and updates only measured Markdown state.
@@ -23,8 +22,8 @@ Steps:
 6. Run cheap relevant `Check:` commands when feasible. Skip checks that are expensive, unsafe,
    require unavailable secrets, or need user setup. Record the limitation in `Evidence:` instead of
    guessing.
-7. Update measured Markdown state only: AC markers, `Evidence:` lines, `Status:`, `## Next Slice`,
-   and directly verified research question or assumption status.
+7. Update measured Markdown state only: AC markers, `Evidence:` lines, `Status:`, and directly
+   verified research question or assumption status.
 8. Do not change agreement fields: `## Context`, `## Spec`, `## Boundaries`,
    `## Implementation Approach`, `## Validation`, AC wording, `Check:` lines, or research decisions.
    If the agreement is wrong or incomplete, report that amendment is needed.

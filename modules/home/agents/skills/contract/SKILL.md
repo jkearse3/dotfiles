@@ -2,8 +2,9 @@
 name: contract
 description: >-
   Branch/bookmark contracts for the current jj bookmark. Use only for creating, loading, amending,
-  reconciling, or deriving the next slice for verifiable acceptance criteria for the current jj
-  bookmark; not for general product specs, test specs, design docs, or implementation work.
+  reconciling, or proposing a next implementation slice from verifiable acceptance criteria for the
+  current jj bookmark; not for general product specs, test specs, design docs, or implementation
+  work.
 argument-hint: "[intent or amendment]"
 ---
 
@@ -31,8 +32,8 @@ $ARGUMENTS
 - Empty: load and reconcile the contract for the current bookmark when one exists.
 - Non-empty with no current bookmark contract: draft a new contract from the user's intent.
 - Non-empty with an existing current bookmark contract: treat the request as an amendment or
-  clarification unless the intent clearly asks to load/show/status/inspect or derive/refresh the
-  next slice.
+  clarification unless the intent clearly asks to load/show/status/inspect or propose, derive,
+  refresh, or update the next slice.
 - Never treat arguments as permission to edit repository implementation files.
 
 ## Runbook
@@ -41,8 +42,8 @@ $ARGUMENTS
 2. If local state cannot be resolved, stop with the exact blocker.
 3. If the current bookmark contract exists, read it before routing and stop if its `Bookmark:` value
    does not match the current bookmark.
-4. If the user clearly asks to derive, refresh, or update the next slice, follow
-   `procedures/derive-next-slice.md`.
+4. If the user clearly asks to propose, derive, refresh, or update the next slice, follow
+   `procedures/propose-slice.md`.
 5. If the user clearly asks to load, show, inspect, or report contract status, follow
    `procedures/load.md`.
 6. If arguments are empty and the current bookmark contract exists, follow
@@ -63,7 +64,7 @@ Shared references:
   no-extra-state rules.
 - `references/schema.md`: contract schema, statuses, AC marker meanings, and measured-state rules.
 - `references/readiness.md`: creation and amendment readiness checks and approval blockers.
-- `references/next-slice.md`: `## Next Slice` derivation guidance.
+- `references/slice-selection.md`: lazy next-slice proposal guidance.
 
 Procedures:
 
@@ -71,4 +72,4 @@ Procedures:
 - `procedures/load.md`: read and summarize the current contract without edits.
 - `procedures/reconcile.md`: measure the current source of truth against the contract.
 - `procedures/amend.md`: change the agreement after approval.
-- `procedures/derive-next-slice.md`: derive or refresh `## Next Slice` without implementation work.
+- `procedures/propose-slice.md`: propose a next implementation slice without editing the contract.
