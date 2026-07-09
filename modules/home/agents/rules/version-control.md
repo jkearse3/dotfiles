@@ -39,9 +39,13 @@ Agent-authored messages include a body by default. Use a subject-only message on
 fully explains the change.
 
 When context matters, prefer body prose that first states the prior state, constraint, or reason,
-then describes the change in response. Use natural prose rather than a rigid template; include
-durable behavior, risk, or non-obvious design choices when they explain why the change exists. Do
-not describe review history, tool output, scratch work, or session workflow.
+then describes the change in response. Use natural prose rather than a rigid template.
+
+Include review-relevant intent when it helps a later review pass verify the change against its
+purpose: durable behavior, compatibility boundaries, rationale, excluded scope, risk, or non-obvious
+design choices. Do not include irrelevant context just to fill space. Do not describe review
+history, tool output, scratch work, agent actions, task-list state, or session workflow. Do not make
+claims that are unsupported by the diff or durable project context.
 
 Wrap body text at 72 columns. Keep unbreakable tokens intact.
 
