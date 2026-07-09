@@ -63,6 +63,33 @@ Examples:
 
 ### Step 1: Gather Context
 
+**Get review intent context before deep review**. If the reviewed target maps to one or more
+revisions or commits, read their full descriptions before judging the diff. Treat descriptions as
+author intent and review context, not as proof that the diff does what they claim.
+
+- For jj revisions or revsets, use a template that prints the complete multi-line description, not a
+  compact log line. Prefer:
+
+  ```bash
+  jj log -r '<revset>' --no-graph --no-pager --template 'change_id.short() ++ " " ++ commit_id.short() ++ "\n" ++ description ++ "\n\n"'
+  ```
+
+- For git commit ranges, use a format that prints full commit bodies, not `--oneline`. Prefer:
+
+  ```bash
+  git log --format=fuller --no-patch <range>
+  ```
+
+- If reviewing a working-tree diff with no described revision or commit, record that no revision
+  description is available and infer intent from the user request and diff.
+- If descriptions are empty, vague, or inconsistent with the changed files, keep reviewing. Report
+  an actionable `clarity`, `accuracy`, or `question` finding only when the missing or mismatched
+  intent materially affects reviewability, risk, or the change contract.
+
+Use the gathered intent to make review stricter: check whether the diff satisfies the stated
+problem, constraints, compatibility expectations, excluded scope, rationale, and risk called out by
+the descriptions.
+
 **Get changed files**: Run the diff. If the input described what to review rather than providing a
 literal command, determine the appropriate diff command now. Get the changed file list from the
 output. If the command fails, report the error and stop. If no files changed, report "no changes
