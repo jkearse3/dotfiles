@@ -24,17 +24,17 @@ Steps:
 6. Run cheap relevant `Check:` commands when feasible. Skip checks that are expensive, unsafe,
    require unavailable secrets, or need user setup. Record the limitation in `Evidence:` instead of
    guessing.
-7. Inspect `## Current State`, `## Implementation Approach`, `## Boundaries`, and
-   `## Validation Plan` only after measuring AC status.
+7. Inspect `## Implementation Approach`, `## Boundaries`, and `## Validation` only after measuring
+   AC status.
 8. If `## Next Slice` is already accurate for the current measured state, leave the contract
    unchanged and summarize it.
 9. If `## Next Slice` is stale, update only measured Markdown state needed to keep it accurate: AC
-   markers, `Evidence:` lines, `Status:`, `## Current State`, `## Next Slice`, and directly verified
-   research question or assumption status.
+   markers, `Evidence:` lines, `Status:`, `## Next Slice`, and directly verified research question
+   or assumption status.
 10. If no implementation work remains, set `## Next Slice` to say no implementation slice is pending
     and identify the next useful reconciliation or user-decision step.
 
 Do not edit repository implementation files, workflow state files, skill source, commits, revision
 descriptions, bookmarks, or branches. Do not change agreement fields such as `## Context`,
-`## Spec`, `## Boundaries`, `## Implementation Approach`, `## Validation Plan`, AC wording, `Check:`
+`## Spec`, `## Boundaries`, `## Implementation Approach`, `## Validation`, AC wording, `Check:`
 lines, or research decisions.

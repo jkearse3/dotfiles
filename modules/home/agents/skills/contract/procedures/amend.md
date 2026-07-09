@@ -13,12 +13,12 @@ Read these references before acting:
 Amendment changes the agreement. Reconciliation measures code against the existing agreement. Keep
 that distinction explicit.
 
-During reconciliation, update only measured state: AC markers, evidence, status, current-state
-notes, next-step guidance, and directly verified research question or assumption status.
+During reconciliation, update only measured state: AC markers, evidence, status, next-step guidance,
+and directly verified research question or assumption status.
 
 Amendment may update `## Context`, `## Spec`, `## Boundaries`, `## Implementation Approach`,
-`## Validation Plan`, AC wording, research decisions, or add and supersede ACs. It requires explicit
-user approval before writing.
+`## Validation`, AC wording, research decisions, or add and supersede ACs. It requires explicit user
+approval before writing.
 
 Before approval, run Contract Readiness against the amended agreement. If approval-relevant holes
 remain, ask the next question or present the unresolved concern and stop before writing. Do not ask
@@ -35,5 +35,5 @@ Rules for AC changes:
   replacement AC with a new number.
 - Tiny wording clarifications may edit an AC in place only when the meaning does not change.
 - Do not silently rewrite `## Context`, `## Spec`, `## Boundaries`, `## Implementation Approach`,
-  `## Validation Plan`, AC wording, or existing decisions during reconciliation. Propose an
-  amendment instead.
+  `## Validation`, AC wording, or existing decisions during reconciliation. Propose an amendment
+  instead.

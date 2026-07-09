@@ -3,7 +3,7 @@
 Keep `## Next Slice` useful as a manual implementation handoff. `## Next Slice` describes the next
 implementation slice; it is not permission for this skill to make inline repository implementation
 edits. It must be consistent with `## Implementation Approach`, `## Boundaries`, and
-`## Validation Plan`.
+`## Validation`.
 
 When work remains, `## Next Slice` names the next reviewable implementation-ready slice that
 advances unsatisfied or partial ACs while staying independently verifiable. Prefer a slice with one

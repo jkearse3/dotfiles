@@ -21,9 +21,8 @@ Contract files are untracked local state. Do not add them to Git or jj, and do n
 exported snapshots.
 
 Keep the human agreement and measured state in the Markdown contract. Do not move `Status:`, AC
-markers, `Check:`, `Evidence:`, current-state notes, next-step guidance, research decisions,
-questions, assumptions, or boundaries into another file. Do not create additional workflow-control
-files or queues.
+markers, `Check:`, `Evidence:`, next-step guidance, research decisions, questions, assumptions, or
+boundaries into another file. Do not create additional workflow-control files or queues.
 
 Before creating a contract file:
 

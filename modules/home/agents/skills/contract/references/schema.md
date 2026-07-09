@@ -99,20 +99,11 @@ if the agreed approach changes.>
    Check: <Cheap command or inspection that can verify this AC.>
    Evidence: Pending.
 
-## Validation Plan
+## Validation
 
-- <Checks expected before marking the contract complete.>
+- <Repo-level checks expected before marking the contract complete, when not already covered by AC
+  `Check:` lines.>
 - <Manual inspections when commands are insufficient.>
-
-## Current State
-
-### Baseline
-
-<What the current checkout already satisfies, partially satisfies, or lacks.>
-
-### AC Status Notes
-
-- AC 1: <Current evidence, gap, or blocker.>
 
 ## Next Slice
 
@@ -139,11 +130,11 @@ AC markers mean:
 - `[-]`: superseded; keep the old number and explain the replacement or reason in `Evidence:`.
 
 Each AC must include a marker, a verifiable statement, a required `Check:` line, and a required
-`Evidence:` line. `Check:` is planned proof, not observed evidence. `Evidence:` is observed proof
-from the current source of truth and must be the last AC body field. Write ACs as independently
-verifiable outcomes, not implementation tasks. An AC does not have to be independently
-implementable: one coherent implementation slice may advance multiple ACs, and one AC may require
-multiple coherent slices.
+`Evidence:` line. `Check:` is planned proof, not observed evidence. `Evidence:` is the only durable
+per-AC status note and must be the last AC body field. Write ACs as independently verifiable
+outcomes, not implementation tasks. An AC does not have to be independently implementable: one
+coherent implementation slice may advance multiple ACs, and one AC may require multiple coherent
+slices.
 
 AC coverage must consider happy paths, negative or error paths, edge cases, existing behavior that
 must keep working, repo conventions, tests, formatting, docs, and operational effects when those are

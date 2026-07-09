@@ -23,12 +23,11 @@ Steps:
 6. Run cheap relevant `Check:` commands when feasible. Skip checks that are expensive, unsafe,
    require unavailable secrets, or need user setup. Record the limitation in `Evidence:` instead of
    guessing.
-7. Update measured Markdown state only: AC markers, `Evidence:` lines, `Status:`,
-   `## Current State`, `## Next Slice`, and directly verified research question or assumption
-   status.
+7. Update measured Markdown state only: AC markers, `Evidence:` lines, `Status:`, `## Next Slice`,
+   and directly verified research question or assumption status.
 8. Do not change agreement fields: `## Context`, `## Spec`, `## Boundaries`,
-   `## Implementation Approach`, `## Validation Plan`, AC wording, `Check:` lines, or research
-   decisions. If the agreement is wrong or incomplete, report that amendment is needed.
+   `## Implementation Approach`, `## Validation`, AC wording, `Check:` lines, or research decisions.
+   If the agreement is wrong or incomplete, report that amendment is needed.
 9. If no measured Markdown changes are needed, leave the contract unchanged and report that
    reconciliation found no measured updates.
 
