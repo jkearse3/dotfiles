@@ -24,6 +24,21 @@ let
     inherit lib pkgs;
     skills = config.agents.skills;
   };
+  opencodeSecretsFile = "${config.xdg.configHome}/sops/secrets/opencode.sops.yaml";
+
+  mkOpencodeWithSecrets =
+    {
+      name,
+      command,
+    }:
+    pkgs.writeShellApplication {
+      inherit name;
+      text = ''
+        printf -v command_string '%q ' ${lib.escapeShellArg command} "$@"
+        exec ${lib.getExe pkgs.sops} exec-env --same-process \
+          ${lib.escapeShellArg opencodeSecretsFile} "$command_string"
+      '';
+    };
 
   opencodeFishCompletion = # fish
     ''
@@ -63,23 +78,36 @@ let
     exec "${opencode-wrapped}/bin/opencode" "$@"
   '';
 
-  opencode-unsafe = pkgs.writeShellApplication {
-    name = "opencode-unsafe";
+  opencode-unsafe-entrypoint = pkgs.writeShellApplication {
+    name = "opencode-unsafe-entrypoint";
     text = ''
       export OPENCODE_PERMISSION='{"*":"allow","question":"deny","bash":{"*":"allow"}}'
       exec "${opencode-wrapped}/bin/opencode" "$@"
     '';
   };
 
-  nono-opencode = mkNonoWrapper {
-    name = "opencode";
+  nono-opencode-entrypoint = mkNonoWrapper {
+    name = "opencode-entrypoint";
     profile = "coding-agents";
     command = "${opencode-nono-entrypoint}";
+  };
+
+  opencode = mkOpencodeWithSecrets {
+    name = "opencode";
+    command = "${opencode-wrapped}/bin/opencode";
+  };
+  opencode-unsafe = mkOpencodeWithSecrets {
+    name = "opencode-unsafe";
+    command = "${opencode-unsafe-entrypoint}/bin/opencode-unsafe-entrypoint";
+  };
+  nono-opencode = mkOpencodeWithSecrets {
+    name = "nono-opencode";
+    command = "${nono-opencode-entrypoint}/bin/nono-opencode-entrypoint";
   };
 in
 {
   home.packages = [
-    opencode-wrapped
+    opencode
     opencode-unsafe
     nono-opencode
   ];
@@ -115,4 +143,5 @@ in
       complete -c opencode-unsafe --wraps opencode
     '';
   };
+  xdg.configFile."sops/secrets/opencode.sops.yaml".source = ./secrets.sops.yaml;
 }
