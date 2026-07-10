@@ -5,21 +5,23 @@
   ...
 }:
 {
-  home.packages = [
-    pkgs.delve
-    pkgs.go
-    pkgs.gofumpt
-    pkgs.golangci-lint
-    pkgs.gopls
-    (
-      # Avoid bin/modernize conflict with gopls; lowPrio lets gopls take precedence.
-      lib.meta.lowPrio pkgs.gotools
-    )
-  ];
-  home.sessionVariables = {
-    GOPRIVATE = "github.com/jkearse3";
+  home = {
+    packages = [
+      pkgs.delve
+      pkgs.go
+      pkgs.gofumpt
+      pkgs.golangci-lint
+      pkgs.gopls
+      (
+        # Avoid bin/modernize conflict with gopls; lowPrio lets gopls take precedence.
+        lib.meta.lowPrio pkgs.gotools
+      )
+    ];
+    sessionVariables = {
+      GOPRIVATE = "github.com/jkearse3";
+    };
+    sessionPath = [
+      "${config.home.homeDirectory}/go/bin"
+    ];
   };
-  home.sessionPath = [
-    "${config.home.homeDirectory}/go/bin"
-  ];
 }

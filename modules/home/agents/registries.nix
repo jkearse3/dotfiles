@@ -42,49 +42,51 @@ let
       );
 in
 {
-  options.agents.extraSkills = lib.mkOption {
-    type = lib.types.attrsOf lib.types.path;
-    default = { };
-    description = ''
-      Extra skill directories made available to agent frontends, in addition to
-      local skills discovered from `modules/home/agents/skills`.
+  options.agents = {
+    extraSkills = lib.mkOption {
+      type = lib.types.attrsOf lib.types.path;
+      default = { };
+      description = ''
+        Extra skill directories made available to agent frontends, in addition to
+        local skills discovered from `modules/home/agents/skills`.
 
-      Each producer assigns a path directly
-      (`agents.extraSkills.foo = ./bar;`).
+        Each producer assigns a path directly
+        (`agents.extraSkills.foo = ./bar;`).
 
-      Skill names must be unique across extra-skill producers; defining the same
-      name in two modules with different sources fails evaluation during normal
-      Nix option merging. Extra skill names must also not duplicate local skill
-      directory names.
-    '';
-  };
+        Skill names must be unique across extra-skill producers; defining the same
+        name in two modules with different sources fails evaluation during normal
+        Nix option merging. Extra skill names must also not duplicate local skill
+        directory names.
+      '';
+    };
 
-  options.agents.skills = lib.mkOption {
-    type = lib.types.attrsOf lib.types.path;
-    readOnly = true;
-    description = ''
-      Composed skill directories for agent frontends. Local skills are discovered
-      from `modules/home/agents/skills`; external modules contribute through
-      `agents.extraSkills`.
-    '';
-  };
+    skills = lib.mkOption {
+      type = lib.types.attrsOf lib.types.path;
+      readOnly = true;
+      description = ''
+        Composed skill directories for agent frontends. Local skills are discovered
+        from `modules/home/agents/skills`; external modules contribute through
+        `agents.extraSkills`.
+      '';
+    };
 
-  options.agents.sharedRules = mkRuleRegistryOption "shared";
-  options.agents.claudeRules = mkRuleRegistryOption "claude";
-  options.agents.opencodeRules = mkRuleRegistryOption "opencode";
-  options.agents.sharedRuleOrder = lib.mkOption {
-    type = lib.types.listOf lib.types.str;
-    default = [
-      "shared/communication"
-      "shared/reasoning"
-      "shared/markdown"
-      "shared/version-control"
-      "shared/software-development"
-    ];
-    description = ''
-      Fully qualified shared rule IDs in the order used by stitched agent
-      instruction files.
-    '';
+    sharedRules = mkRuleRegistryOption "shared";
+    claudeRules = mkRuleRegistryOption "claude";
+    opencodeRules = mkRuleRegistryOption "opencode";
+    sharedRuleOrder = lib.mkOption {
+      type = lib.types.listOf lib.types.str;
+      default = [
+        "shared/communication"
+        "shared/reasoning"
+        "shared/markdown"
+        "shared/version-control"
+        "shared/software-development"
+      ];
+      description = ''
+        Fully qualified shared rule IDs in the order used by stitched agent
+        instruction files.
+      '';
+    };
   };
 
   config = {
@@ -95,9 +97,11 @@ in
       }
     ];
 
-    agents.skills = localSkillSources // config.agents.extraSkills;
-    agents.sharedRules = autoRegisterRules ./rules;
-    agents.claudeRules = autoRegisterRules ./claude/rules;
-    agents.opencodeRules = autoRegisterRules ./opencode/rules;
+    agents = {
+      skills = localSkillSources // config.agents.extraSkills;
+      sharedRules = autoRegisterRules ./rules;
+      claudeRules = autoRegisterRules ./claude/rules;
+      opencodeRules = autoRegisterRules ./opencode/rules;
+    };
   };
 }

@@ -5,27 +5,29 @@
   ...
 }:
 {
-  home.packages = [ sqlit ];
+  home = {
+    packages = [ sqlit ];
 
-  home.file.".config/sqlit/themes/tokyonight-night.json".source = ./themes/tokyonight-night.json;
+    file.".config/sqlit/themes/tokyonight-night.json".source = ./themes/tokyonight-night.json;
 
-  home.activation.sqlitSettings =
-    lib.hm.dag.entryAfter [ "writeBoundary" ] # bash
-      ''
-        settings="$HOME/.config/sqlit/settings.json"
-        mkdir -p "$(dirname "$settings")"
+    activation.sqlitSettings =
+      lib.hm.dag.entryAfter [ "writeBoundary" ] # bash
+        ''
+          settings="$HOME/.config/sqlit/settings.json"
+          mkdir -p "$(dirname "$settings")"
 
-        if [[ ! -f "$settings" ]]; then
-          printf '{}\n' > "$settings"
-        fi
+          if [[ ! -f "$settings" ]]; then
+            printf '{}\n' > "$settings"
+          fi
 
-        tmp="$(${pkgs.coreutils}/bin/mktemp)"
-        ${pkgs.jq}/bin/jq -s '
-          .[0] as $current |
-          .[1] as $overlay |
-          ($current * $overlay) |
-          .custom_themes = ((($current.custom_themes // []) + ($overlay.custom_themes // [])) | unique)
-        ' "$settings" ${./settings.json} > "$tmp"
-        ${pkgs.coreutils}/bin/mv "$tmp" "$settings"
-      '';
+          tmp="$(${pkgs.coreutils}/bin/mktemp)"
+          ${pkgs.jq}/bin/jq -s '
+            .[0] as $current |
+            .[1] as $overlay |
+            ($current * $overlay) |
+            .custom_themes = ((($current.custom_themes // []) + ($overlay.custom_themes // [])) | unique)
+          ' "$settings" ${./settings.json} > "$tmp"
+          ${pkgs.coreutils}/bin/mv "$tmp" "$settings"
+        '';
+  };
 }

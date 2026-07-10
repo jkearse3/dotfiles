@@ -188,8 +188,29 @@ cmd:fmt-check() {
 }
 
 cmd:lint() {
+	cmd:lint-nix
 	cmd:lint-shell
 	cmd:lint-python
+}
+
+cmd:lint-nix() {
+	snapshot
+	local files=()
+	local file_list
+	file_list="$(mktemp)"
+	if ! git ls-files -z --cached --others --exclude-standard '*.nix' >"$file_list"; then
+		rm -f "$file_list"
+		return 1
+	fi
+	mapfile -d '' -t files <"$file_list"
+	rm -f "$file_list"
+	if [[ ${#files[@]} -eq 0 ]]; then
+		echo "No Nix files found"
+		return 0
+	fi
+	echo "Linting Nix files..."
+	statix check .
+	deadnix --fail "${files[@]}"
 }
 
 cmd:lint-shell() {

@@ -1,7 +1,4 @@
-{
-  ...
-}:
-{
+_: {
   programs.fish.enable = true;
 
   # The `00-` prefix sorts ahead of `hm-session-vars.fish` in conf.d

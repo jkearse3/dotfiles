@@ -34,6 +34,6 @@ pkgs.symlinkJoin {
       --set PLAYWRIGHT_SKIP_VALIDATE_HOST_REQUIREMENTS true \
       --run 'export PLAYWRIGHT_DAEMON_SOCKETS_DIR="/tmp/playwright-cli-''${USER:-user}"'
   '';
-  meta = package.meta;
+  inherit (package) meta;
   passthru.updateScript = ./update.sh;
 }

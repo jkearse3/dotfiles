@@ -19,13 +19,15 @@ let
   };
 in
 {
-  home.packages = [
-    pkgs.copilot-language-server
-    pkgs.neovim
-    pkgs.tree-sitter
-  ];
-  home.sessionVariables = {
-    EDITOR = "nvim";
+  home = {
+    packages = [
+      pkgs.copilot-language-server
+      pkgs.neovim
+      pkgs.tree-sitter
+    ];
+    sessionVariables = {
+      EDITOR = "nvim";
+    };
+    file.".config/nvim".source = mkSource ./nvim;
   };
-  home.file.".config/nvim".source = mkSource ./nvim;
 }
