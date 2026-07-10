@@ -78,6 +78,7 @@ in
       default = [
         "shared/communication"
         "shared/reasoning"
+        "shared/delegation"
         "shared/markdown"
         "shared/version-control"
         "shared/software-development"
