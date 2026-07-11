@@ -38,19 +38,22 @@ $ARGUMENTS
 
 ## Runbook
 
-1. Resolve the repository, current bookmark, and contract path using `references/local-state.md`.
-2. If local state cannot be resolved, stop with the exact blocker.
-3. If the current bookmark contract exists, read it before routing and stop if its `Bookmark:` value
+1. When the request clearly intends to create a new contract, ask whether it should use the current
+   bookmark or a new bookmark before resolving the contract path. Apply the user's choice using the
+   version-control work-placement rules, then continue with the selected current bookmark.
+2. Resolve the repository, current bookmark, and contract path using `references/local-state.md`.
+3. If local state cannot be resolved, stop with the exact blocker.
+4. If the current bookmark contract exists, read it before routing and stop if its `Bookmark:` value
    does not match the current bookmark.
-4. If the user clearly asks to propose, derive, refresh, or update the next slice, follow
+5. If the user clearly asks to propose, derive, refresh, or update the next slice, follow
    `procedures/propose-slice.md`.
-5. If the user clearly asks to load, show, inspect, or report contract status, follow
+6. If the user clearly asks to load, show, inspect, or report contract status, follow
    `procedures/load.md`.
-6. If arguments are empty and the current bookmark contract exists, follow
+7. If arguments are empty and the current bookmark contract exists, follow
    `procedures/reconcile.md`.
-7. If arguments are empty and no contract exists, ask what contract to draft and stop.
-8. If arguments are non-empty and no contract exists, follow `procedures/create.md`.
-9. If arguments are non-empty and the contract exists, follow `procedures/amend.md`.
+8. If arguments are empty and no contract exists, ask what contract to draft and stop.
+9. If arguments are non-empty and no contract exists, follow `procedures/create.md`.
+10. If arguments are non-empty and the contract exists, follow `procedures/amend.md`.
 
 ## Procedure Imports
 
