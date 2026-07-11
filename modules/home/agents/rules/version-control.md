@@ -24,7 +24,8 @@ Apply this gate only when starting a new logical change:
 - When stacking from a non-empty `@`, run `jj new` before creating the bookmark.
 
 This gate does not apply to maintenance of existing work, such as describing, reordering, splitting,
-squashing, or rebasing named revisions. Those mutations still require explicit approval.
+squashing, or rebasing named revisions. Those mutations still require explicit approval except for
+describing `@` at the handoff points authorized below.
 
 ## Revision Descriptions
 
@@ -52,6 +53,13 @@ compatibility boundary, risk, excluded scope, or non-obvious design choice. Desc
 or constraint first, then the change in response. Do not include review history, tool output,
 scratch work, agent actions, task state, workflow narration, or claims unsupported by the diff or
 durable project context.
+
+After implementation and focused verification, describe each non-empty current revision before
+handing it off for review. Refresh the description after material review-driven changes. Applying or
+refreshing the description of `@` at these handoff points does not require separate approval.
+
+Describing other revisions, or reordering, splitting, squashing, rebasing, committing, or creating
+revisions still requires explicit approval.
 
 Wrap body and footer lines at 72 characters, except for unbreakable URLs and inline code. Separate
 footers from the body with a blank line. Use `Closes #123` or `Fixes JIRA-456` for issue references.
