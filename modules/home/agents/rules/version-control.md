@@ -15,13 +15,15 @@ After initialization, determine the current and default bookmarks before placing
 
 Apply this gate only when starting a new logical change:
 
+- Inspect whether `@` is empty before placing work. If `@` is non-empty, run `jj new` so the new
+  change starts in a direct child revision unless the request obviously continues `@` or the user
+  explicitly asks to modify it.
 - If the current bookmark is missing or default, ask for a bookmark name.
 - If the requested work continues the current non-default bookmark, continue there.
 - If the work is separate or its relationship is unclear, ask whether to create a bookmark stacked
   on the current bookmark, continue on the current bookmark, or use another base. Prefer a stacked
   bookmark.
 - When placing work on an empty `@`, create the bookmark on `@`; do not run `jj new` first.
-- When stacking from a non-empty `@`, run `jj new` before creating the bookmark.
 
 This gate does not apply to maintenance of existing work, such as describing, reordering, splitting,
 squashing, or rebasing named revisions. Those mutations still require explicit approval except for
@@ -59,7 +61,7 @@ handing it off for review. Refresh the description after material review-driven 
 refreshing the description of `@` at these handoff points does not require separate approval.
 
 Describing other revisions, or reordering, splitting, squashing, rebasing, committing, or creating
-revisions still requires explicit approval.
+revisions still requires explicit approval except for the work-placement `jj new` authorized above.
 
 Wrap body and footer lines at 72 characters, except for unbreakable URLs and inline code. Separate
 footers from the body with a blank line. Use `Closes #123` or `Fixes JIRA-456` for issue references.
