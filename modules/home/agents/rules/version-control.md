@@ -50,12 +50,12 @@ Prefer one logical change per revision. Split only when separate revisions would
 review, rollback, or understanding, and each resulting revision remains coherent on its own. Do not
 split changes that are clearer or only valid together.
 
-Every revision description must explain both what changed and why. A body is required unless the
-subject fully communicates both. Describe the prior state or constraint first, then the change in
-response. Include relevant constraints, durable behavior, compatibility boundaries, risks, excluded
-scope, and non-obvious design choices. Do not include review history, tool output, scratch work,
-agent actions, task state, workflow narration, or claims unsupported by the diff or durable project
-context.
+Every revision description must include a non-empty body that explains why the change is needed; a
+subject alone is never sufficient. The body must add information rather than restate the subject.
+Describe the prior state or constraint first, then the change in response. Include relevant
+constraints, durable behavior, compatibility boundaries, risks, excluded scope, and non-obvious
+design choices. Do not include review history, tool output, scratch work, agent actions, task state,
+workflow narration, or claims unsupported by the diff or durable project context.
 
 After implementation and focused verification, describe and commit each non-empty current revision
 before handing it off for review. Review the completed parent revision while the fresh `@` remains
