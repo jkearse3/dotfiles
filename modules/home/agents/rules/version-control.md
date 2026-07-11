@@ -68,9 +68,6 @@ reviewed revision without separate approval, then review the resulting revision 
 explicit approval if the destination is ambiguous, the reviewed revision has been pushed to a
 remote, the squash would rewrite other descendants, or the fixes include unrelated changes.
 
-The `iterate` skill retains its own finalization lifecycle and is exempt from this automatic commit
-and review-fix squash rule until that workflow is explicitly redesigned.
-
 Wrap body and footer lines at 72 characters, except for unbreakable URLs and inline code. Separate
 footers from the body with a blank line. Use `Closes #123` or `Fixes JIRA-456` for issue references.
 Breaking-change footers start with `BREAKING CHANGE:`.
