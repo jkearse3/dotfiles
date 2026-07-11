@@ -43,8 +43,9 @@ Choose the type by behavioral effect rather than file format. Agent rules, skill
 similar configuration are `feat` when they change behavior, `refactor` when they reorganize
 behavior, and `docs` only when behavior is unchanged.
 
-Prefer one logical change per revision. Consider splitting when a description needs "and," but do
-not split changes that are clearer together.
+Prefer one logical change per revision. Split only when separate revisions would materially improve
+review, rollback, or understanding, and each resulting revision remains coherent on its own. Do not
+split changes that are clearer or only valid together.
 
 Include a body when the subject alone does not explain the reason, constraints, durable behavior,
 compatibility boundary, risk, excluded scope, or non-obvious design choice. Describe the prior state
