@@ -26,8 +26,8 @@ Apply this gate only when starting a new logical change:
 - When placing work on an empty `@`, create the bookmark on `@`; do not run `jj new` first.
 
 This gate does not apply to maintenance of existing work, such as describing, reordering, splitting,
-squashing, or rebasing named revisions. Those mutations still require explicit approval except at
-the verified handoff point authorized below.
+squashing, or rebasing named revisions. Those mutations still require explicit approval except where
+authorized below.
 
 ## Revision Descriptions
 
@@ -62,12 +62,14 @@ before handing it off for review. Review the completed parent revision while the
 available for review fixes. Applying the description and running `jj commit -m "$desc"` at this
 handoff point does not require separate approval.
 
-Keep review fixes in the fresh `@` so their diff remains isolated. Squash them into the reviewed
-revision only after focused verification and explicit approval, then review the resulting revision
-again.
+Keep review fixes in the fresh `@` so their diff remains isolated. After focused verification,
+squash fixes that exclusively address findings from the immediately preceding review into that
+reviewed revision without separate approval, then review the resulting revision again. Require
+explicit approval if the destination is ambiguous, the reviewed revision has been pushed to a
+remote, the squash would rewrite other descendants, or the fixes include unrelated changes.
 
 The `iterate` skill retains its own finalization lifecycle and is exempt from this automatic commit
-rule until that workflow is explicitly redesigned.
+and review-fix squash rule until that workflow is explicitly redesigned.
 
 Wrap body and footer lines at 72 characters, except for unbreakable URLs and inline code. Separate
 footers from the body with a blank line. Use `Closes #123` or `Fixes JIRA-456` for issue references.
