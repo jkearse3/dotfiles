@@ -26,8 +26,8 @@ Apply this gate only when starting a new logical change:
 - When placing work on an empty `@`, create the bookmark on `@`; do not run `jj new` first.
 
 This gate does not apply to maintenance of existing work, such as describing, reordering, splitting,
-squashing, or rebasing named revisions. Those mutations still require explicit approval except for
-describing `@` at the handoff points authorized below.
+squashing, or rebasing named revisions. Those mutations still require explicit approval except at
+the verified handoff point authorized below.
 
 ## Revision Descriptions
 
@@ -56,12 +56,17 @@ or constraint first, then the change in response. Do not include review history,
 scratch work, agent actions, task state, workflow narration, or claims unsupported by the diff or
 durable project context.
 
-After implementation and focused verification, describe each non-empty current revision before
-handing it off for review. Refresh the description after material review-driven changes. Applying or
-refreshing the description of `@` at these handoff points does not require separate approval.
+After implementation and focused verification, describe and commit each non-empty current revision
+before handing it off for review. Review the completed parent revision while the fresh `@` remains
+available for review fixes. Applying the description and running `jj commit -m "$desc"` at this
+handoff point does not require separate approval.
 
-Describing other revisions, or reordering, splitting, squashing, rebasing, committing, or creating
-revisions still requires explicit approval except for the work-placement `jj new` authorized above.
+Keep review fixes in the fresh `@` so their diff remains isolated. Squash them into the reviewed
+revision only after focused verification and explicit approval, then review the resulting revision
+again.
+
+The `iterate` skill retains its own finalization lifecycle and is exempt from this automatic commit
+rule until that workflow is explicitly redesigned.
 
 Wrap body and footer lines at 72 characters, except for unbreakable URLs and inline code. Separate
 footers from the body with a blank line. Use `Closes #123` or `Fixes JIRA-456` for issue references.
