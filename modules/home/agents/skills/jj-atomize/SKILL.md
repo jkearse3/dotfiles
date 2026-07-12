@@ -1,11 +1,11 @@
 ---
 name: jj-atomize
-description: Finalize jj revision descriptions and split only when review clarity requires it
+description: Organize unpublished jj changes into coherent, atomic, fully described revisions
 argument-hint: "[intent and optional revision]"
 ---
 
-Analyze a jj revision and either describe it as one coherent revision or propose the fewest coherent
-revisions needed for review, rollback, and history.
+Analyze unpublished jj changes and organize them into the fewest coherent, fully described revisions
+needed for review, rollback, and history.
 
 ## Arguments
 
@@ -19,8 +19,9 @@ The request may be natural language. Infer three intents before acting:
   clearly names one.
 - Boundary intent: default to the fewest coherent revisions. Treat requests such as "single
   revision", "workflow close", "describe only", or "do not split" as single-revision intent.
-- Execution intent: default to propose-only when mutation intent is unclear. Mutate only when the
-  user explicitly asks to apply, write, finalize, commit, describe, split, or otherwise execute.
+- Execution intent: execute when the invocation explicitly requests mutation and identifies either
+  current-task implementation authority or an explicit user request. An invocation that does not
+  establish mutation authority is proposal-only.
 
 Conservative parsing wins over cleverness: when target, boundary, or execution intent is ambiguous,
 state the inferred intent in the proposal and wait for confirmation before running any `jj` command
@@ -41,6 +42,10 @@ that do not belong in project history.
 
 1. **Verify revision** exists and has changes (fail if empty).
 
+   Before proposing mutations, inspect whether the target or affected descendants are published or
+   contain unrelated or user-authored work. Stop for approval when the destination, ownership, or
+   rewrite boundary is ambiguous.
+
 2. **Analyze changes**:
    - Get diff: `jj diff -r <revision>` (full) and `--stat` (summary)
    - For each file, identify:
@@ -52,8 +57,7 @@ that do not belong in project history.
      - Status quo or problem being solved
      - What the change does in response
      - Any breaking changes or related issues
-     - Caller-provided rationale, constraints, evidence, or verification details that improve the
-       description without contradicting the target diff
+     - Relevant caller context under the rules above
 
 3. **Group and order**:
    - Start from one candidate revision containing the full target diff.
@@ -68,9 +72,10 @@ that do not belong in project history.
    - If splitting is warranted, use the fewest coherent revisions. Build a dependency graph only for
      those proposed revisions (if B uses what A introduces, A comes first).
    - **Validate feasibility**:
-     - If any file appears in multiple proposed revisions, it requires hunk-level split.
-     - Merge affected revisions and note: "Grouped [X] and [Y] - splitting within [file] requires
-       interactive mode" unless single-revision intent requires stopping instead.
+     - If any file appears in multiple proposed revisions, it requires a hunk-level split.
+     - Do not invoke an interactive VCS command. Merge affected revisions and note: "Grouped [X] and
+       [Y] - splitting within [file] requires manual hunk selection" unless single-revision intent
+       requires stopping instead.
    - Order proposed revisions:
      1. Dependencies first (hard constraint)
      2. Then by complexity: style < chore < docs < test < ci < build < refactor < perf < fix < feat
@@ -78,16 +83,11 @@ that do not belong in project history.
 
 4. **Present proposal**:
 
-   Follow the repo's version-control rules when composing revision descriptions — type/scope
-   taxonomy, subject format (72 chars, imperative mood, no period), body (status quo first, then
-   change; contextual mood; domain language; wrap at 72), footer (breaking change trailer, issue
-   refs).
-
-   Use caller-provided context to sharpen the revision scope, subject, and body only when it is
-   relevant to the target diff. The diff remains the authority for changed content; do not include
-   caller context that is unrelated to the changed files or unsupported by the diff. Do not mention
-   agent actions, workflow phases, planning artifacts, task lists, or other task-management
-   mechanics. Convert useful context into codebase or domain rationale instead.
+   Follow documented repository conventions when composing revision descriptions. Otherwise use the
+   Conventional Commits type/scope taxonomy, a subject under 72 characters in imperative mood with
+   no period, and a body that states the status quo before the change in response. Wrap body and
+   footer lines at 72 characters; include breaking-change trailers and issue references when
+   applicable.
 
    If coherent as one revision, or if single-revision intent was supplied and the target is
    coherent:
@@ -137,11 +137,10 @@ that do not belong in project history.
    **Ordering**: [why this order]
    ```
 
-5. **Iterate** based on feedback until confirmed. If execution intent was not explicit, stop after
-   the proposal and ask for confirmation before mutating the target.
+5. **Iterate** based on feedback until confirmed. If inferred execution intent is not authorized,
+   stop after the proposal.
 
-6. **Execute** using the single-revision or multi-commit pattern from the repo's version-control
-   rules:
+6. **Execute** the accepted single-revision or multi-revision proposal:
    - Compose each full revision description (subject + body + footer) per the rules above
    - Validate the exact description variable with `commit-message-check` before every `jj describe`
      or `jj split` write. If validation fails, revise the description and rerun the checker before
@@ -157,16 +156,25 @@ that do not belong in project history.
      jj describe -r <target> -m "$desc"
      ```
 
-   - For one coherent revision: run `jj describe -r <target> -m "$desc"`. Do not create a new
-     revision.
-   - For multiple coherent revisions: use the multi-commit splitting pattern:
+   - For one coherent revision: run `jj describe -r <target> -m "$desc"`.
+   - For multiple coherent revisions, split every proposed revision except the final remainder in
+     dependency order:
 
      ```bash
      printf '%s\n' "$desc" | commit-message-check
      jj split -r <target> -m "$desc" file1 file2
      ```
 
-   - Track `first_commit` and `target` through splits
-   - Show result with `jj log -r '<first>::<last>'`
-   - If original target was `@` and splitting created finalized revisions: run `jj new` to create a
-     fresh working copy
+   - After each split, track the selected revision, the remaining revision, and the target's rebased
+     descendants. Use the remaining revision as the next target.
+   - Validate the final proposed description and apply it to the final remainder with
+     `jj describe -r <remainder> -m "$desc"`. `jj split -m` describes only the selected changes;
+     never leave the remainder with the original aggregate description or no description.
+   - Show every resulting revision and full description with
+     `jj log -r '<first>::<last>' --no-pager`.
+   - If the original target was `@`, run `jj new` after describing or splitting to create a fresh
+     working copy. Do not leave finalized work active for subsequent edits.
+
+7. **Report results**:
+   - Report the exact revision IDs and order produced.
+   - State any descendants rebased by execution.

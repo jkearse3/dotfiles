@@ -32,6 +32,10 @@ The input is free-form natural language. Interpret it to determine:
 2. **Additional context**: any background, known issues, review rules, artifact types, or focus
    areas included in the input. Note these for use during review.
 
+Determine whether the request is a diagnostic review or a final quality gate. Treat review requested
+before acceptance, validation, finalization, bookmark advancement, or publication as a final gate.
+An explicitly informal review of working changes is diagnostic.
+
 **If the input is empty**, error with:
 
 ```
@@ -89,6 +93,18 @@ author intent and review context, not as proof that the diff does what they clai
 Use the gathered intent to make review stricter: check whether the diff satisfies the stated
 problem, constraints, compatibility expectations, excluded scope, rationale, and risk called out by
 the descriptions.
+
+**Resolve revision and stack targets** before loading changed files:
+
+- For one revision, review that revision.
+- For multiple revisions, review each revision in dependency order, then review their aggregate
+  delta for cross-revision integration issues.
+- For a stacked bookmark, use its immediate parent bookmark as the aggregate base. Resolve the
+  parent from the target bookmark's ancestry and review `<parent>..<bookmark>`. Use
+  `jj-bookmark-previous` only after confirming the target is the current bookmark because the helper
+  resolves relative to `@`. Do not default every stack element to the repository's default bookmark.
+- If a merge, parent bookmark, revision order, or aggregate base is ambiguous, ask instead of
+  guessing.
 
 **Get changed files**: Run the diff. If the input described what to review rather than providing a
 literal command, determine the appropriate diff command now. Get the changed file list from the
@@ -315,6 +331,11 @@ Before writing findings, stop and re-examine:
 If deep analysis and self-challenge produce zero findings, write the `### Overview` section followed
 by an empty `### Findings` section with a single line stating no issues were found. The overview
 already summarizes what was investigated; do not repeat that information.
+
+For a final gate, continue reviewing undescribed revisions to find substantive issues, but add a
+blocking `clarity` finding for each and do not report a pass. Only report a final pass when every
+revision has a complete description and target resolution succeeded; otherwise characterize the
+result as diagnostic or blocked.
 
 Write findings as a structured list, preceded by the overview.
 
