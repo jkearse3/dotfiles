@@ -71,34 +71,15 @@ let
     '';
   };
 
-  opencode-nono-entrypoint = pkgs.writeShellScript "opencode-nono-entrypoint" ''
-    if [[ -z "''${NONO_OPENCODE_USE_PERMISSIONS:-}" ]]; then
-      export OPENCODE_PERMISSION='{"*":"allow","question":"deny","bash":{"*":"allow"}}'
-    fi
-    exec "${opencode-wrapped}/bin/opencode" "$@"
-  '';
-
-  opencode-unsafe-entrypoint = pkgs.writeShellApplication {
-    name = "opencode-unsafe-entrypoint";
-    text = ''
-      export OPENCODE_PERMISSION='{"*":"allow","question":"deny","bash":{"*":"allow"}}'
-      exec "${opencode-wrapped}/bin/opencode" "$@"
-    '';
-  };
-
   nono-opencode-entrypoint = mkNonoWrapper {
     name = "opencode-entrypoint";
     profile = "coding-agents";
-    command = "${opencode-nono-entrypoint}";
+    command = "${opencode-wrapped}/bin/opencode";
   };
 
   opencode = mkOpencodeWithSecrets {
     name = "opencode";
     command = "${opencode-wrapped}/bin/opencode";
-  };
-  opencode-unsafe = mkOpencodeWithSecrets {
-    name = "opencode-unsafe";
-    command = "${opencode-unsafe-entrypoint}/bin/opencode-unsafe-entrypoint";
   };
   nono-opencode = mkOpencodeWithSecrets {
     name = "nono-opencode";
@@ -108,7 +89,6 @@ in
 {
   home.packages = [
     opencode
-    opencode-unsafe
     nono-opencode
   ];
   home.file = {
@@ -132,9 +112,6 @@ in
     # sandbox. Autoloaded by command name, so it lives in its own file.
     ".config/fish/completions/nono-opencode.fish".text = ''
       complete -c nono-opencode --wraps opencode
-    '';
-    ".config/fish/completions/opencode-unsafe.fish".text = ''
-      complete -c opencode-unsafe --wraps opencode
     '';
   };
   xdg.configFile."sops/secrets/opencode.sops.yaml".source = ./secrets.sops.yaml;
