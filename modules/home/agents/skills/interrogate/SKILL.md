@@ -25,19 +25,38 @@ When no topic can be derived — neither from args nor from conversation context
 
 ## Execution
 
-Interview me relentlessly about every aspect of this until no uncertainties remain. Walk down each
-branch of the decision tree, resolving dependencies between decisions one-by-one. For each question,
-provide your recommended answer. Ask questions one at a time.
+Evaluate the topic exhaustively, but escalate questions selectively. Walk every relevant branch of
+the decision tree and resolve dependencies in order. Do not make the user answer questions that
+available evidence or a safe, obvious default can resolve.
 
-If a question can be answered by research (codebase exploration, web search, etc.), do the research
-instead of asking.
+Inspect relevant evidence before asking. Research factual questions directly through codebase
+exploration, documentation, web search, or other available read-only sources. Resolve a branch
+without asking when the evidence supports one answer or a default has no material downside. Record
+the evidence or rationale so the resolution is not an implicit assumption.
 
-Systematically probe every dimension of the plan. Question assumptions, challenge trade-offs, poke
-at edge cases, trace dependencies, flag risks, demand a validation strategy, and check that the
-scope boundaries are right.
+Ask the user only when the answer:
 
-Always walk the full branch taxonomy. If a branch is irrelevant, record it as `N/A` with the reason
-instead of skipping it silently.
+- Has multiple viable choices with consequential pros and cons.
+- Depends on their intent, priorities, risk tolerance, or ownership decision.
+- Is costly to reverse or materially affects correctness, scope, safety, or compatibility.
+- Cannot be established from available evidence without accepting material risk.
+
+For each user question, provide a recommendation, its rationale, and the relevant tradeoffs. Ask
+dependent questions one at a time. Batch independent questions when doing so does not obscure their
+consequences.
+
+Systematically probe every dimension of the plan. Question assumptions, challenge tradeoffs, test
+edge cases, trace dependencies, flag risks, require a validation strategy, and verify that scope
+boundaries are explicit.
+
+Always walk the full branch taxonomy. Give every branch one explicit disposition instead of silently
+skipping it:
+
+- `Resolved from evidence`: the outcome and supporting evidence.
+- `Resolved by safe default`: the outcome, rationale, and why alternatives have no material benefit.
+- `User decision required`: the choices, recommendation, and consequential tradeoffs.
+- `Not applicable`: why the branch does not affect this topic.
+- `Deferred`: why the question is non-blocking and what would resolve it later.
 
 - Problem/invariant: what durable problem must be solved, and what must remain true.
 - Non-goals: what is explicitly out of scope.
@@ -59,16 +78,17 @@ make the rule too broad or too narrow. Keep choices flexible when the invariant 
 more than one implementation.
 
 As each branch resolves, record the outcome in a compact artifact. Keep it brief enough to be used
-as planning input rather than a transcript.
+as planning input rather than a transcript. Do not treat a material unresolved choice as an
+assumption or defer it merely to finish the interrogation.
 
 ```
 ### Decisions
 
 - Decision and rationale.
 
-### Open Questions
+### User Decisions
 
-- Question, recommended answer if available, and what would resolve it.
+- Decision, viable choices, recommendation, and consequential tradeoffs.
 
 ### Assumptions
 
@@ -98,14 +118,20 @@ as planning input rather than a transcript.
 
 - Generic criteria the final plan or design should satisfy.
 
-### N/A Branches
+### Deferred Questions
 
-- Branch name: reason it is irrelevant.
+- Non-blocking question, why it can wait, and what would resolve it.
+
+### Branch Coverage
+
+- Branch: disposition and concise rationale.
 ```
 
-Before stopping, perform a challenge pass over the resolved artifact. Look for rules or criteria
-that are over-broad, too narrow, speculative, contradictory, untestable, or likely to leak internal
-mechanics into user-facing output. Ask follow-up questions or revise the artifact until those issues
-are resolved.
+Before stopping, perform an integrity pass over the resolved artifact. Verify that every taxonomy
+branch has a disposition and look for unsupported assumptions, omitted dependencies or failure
+modes, contradictory decisions, untestable criteria, unsafe defaults, and rules that are over-broad
+or too narrow. Resolve issues from evidence when possible and ask the user only when the correction
+requires a consequential design choice.
 
-Stop when every branch is resolved and no open questions remain.
+Stop when every branch has a justified disposition, no user decision remains unanswered, and the
+integrity pass finds no material hole. Deferred questions must be explicitly non-blocking.
