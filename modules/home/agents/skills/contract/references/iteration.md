@@ -60,8 +60,7 @@ Stop iteration when:
 - Unrelated or ambiguously owned work conflicts with the selected slice.
 - The intended base, bookmark stack, rewrite ownership, or publication boundary is ambiguous.
 - A review finding crosses agreement, ownership, or revision boundaries.
-- Repeated attempts fail without producing new evidence, or context pressure makes continuation
-  unsafe.
+- Repeated attempts fail without producing new evidence.
 
 Do not stop merely because implementation differs from non-binding guidance, a slice needs safe
 replanning, or a coherent revision advances more ACs than expected.
