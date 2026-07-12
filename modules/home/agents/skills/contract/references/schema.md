@@ -1,6 +1,8 @@
 # Schema
 
-New contracts use this shape. The top-level fields before sections are `Status:` and `Bookmark:`.
+New contracts use this shape. `Spec`, `Boundaries`, `Acceptance Criteria`, and `Validation` are
+mandatory. Include Context, Research, or Implementation Approach only when their noted durable
+information is relevant. The top-level fields before sections are `Status:` and `Bookmark:`.
 
 ```markdown
 # Branch Contract
@@ -8,6 +10,7 @@ New contracts use this shape. The top-level fields before sections are `Status:`
 Status: active
 Bookmark: <current-bookmark>
 
+<!-- Include Context only when it preserves relevant durable intent or background. -->
 ## Context
 
 ### User Intent
@@ -56,6 +59,7 @@ Bookmark: <current-bookmark>
 
 - <Decisions, risk, or ambiguity that require user direction.>
 
+<!-- Include Research only when durable findings or decisions matter. -->
 ## Research
 
 ### Findings
@@ -74,6 +78,7 @@ No open questions.
 
 No assumptions recorded.
 
+<!-- Include Implementation Approach only when safe implementation needs durable guidance. -->
 ## Implementation Approach
 
 ### Strategy
@@ -119,7 +124,8 @@ number.
 AC markers mean:
 
 - `[ ]`: not satisfied by the current checkout.
-- `[x]`: satisfied by the current checkout; `Evidence:` names the inspection or check.
+- `[x]`: satisfied by the current checkout; the declared `Check:` passed and `Evidence:` records its
+  exact result or inspected fact.
 - `[~]`: partially satisfied or externally/manual-satisfied as far as the agent can verify;
   `Evidence:` states what is present, what remains, or what external/manual confirmation is needed.
 - `[!]`: blocked; `Evidence:` names the blocker or user decision needed.
@@ -132,10 +138,14 @@ outcomes, not implementation tasks. An AC does not have to be independently impl
 coherent implementation slice may advance multiple ACs, and one AC may require multiple coherent
 slices.
 
+Run the declared `Check:` exactly when it is safe and feasible. Evidence must identify the command
+and result, or the inspected path, symbol, section, and observed fact. A failed declared check can
+never produce `[x]`; use `[ ]`, `[~]`, or `[!]` according to the observed state. Do not substitute a
+different check by interpretation. Changing an inadequate check is an approval-gated amendment.
+
 The contract does not store a `## Next Slice` section, task queue, or implementation-log state.
-Instead, keep `## Context`, `## Research`, `## Implementation Approach`, ACs, and validation
-exhaustive enough that a fresh implementation agent can lazily propose a reviewable next slice from
-the current measured state without needing session memory.
+Instead, keep the mandatory sections and any necessary conditional sections sufficient for a fresh
+implementation agent to propose a reviewable next slice from the current measured state.
 
 AC coverage must consider happy paths, negative or error paths, edge cases, existing behavior that
 must keep working, repo conventions, tests, formatting, docs, and operational effects when those are

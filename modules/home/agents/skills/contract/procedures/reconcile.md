@@ -19,9 +19,10 @@ Steps:
 4. Treat `## Acceptance Criteria`, `## Boundaries`, and `Check:` lines as authoritative.
 5. Inspect the current source of truth against every non-superseded AC. Superseded ACs use the `[-]`
    marker and keep their existing evidence.
-6. Run cheap relevant `Check:` commands when feasible. Skip checks that are expensive, unsafe,
-   require unavailable secrets, or need user setup. Record the limitation in `Evidence:` instead of
-   guessing.
+6. Run each declared `Check:` exactly when feasible. Skip checks that are expensive, unsafe, require
+   unavailable secrets, or need user setup. Record the limitation in `Evidence:` instead of
+   guessing. Never mark an AC `[x]` when its declared check fails, and do not substitute another
+   check.
 7. Update measured Markdown state only: AC markers, `Evidence:` lines, `Status:`, and directly
    verified research question or assumption status.
 8. Do not change agreement fields: `## Context`, `## Spec`, `## Boundaries`,

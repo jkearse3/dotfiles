@@ -19,10 +19,10 @@ Amendment may update `## Context`, `## Spec`, `## Boundaries`, `## Implementatio
 `## Validation`, AC wording, research decisions, or add and supersede ACs. It requires explicit user
 approval before writing.
 
-Before approval, run Contract Readiness against the amended agreement. If approval-relevant holes
-remain, ask the next question or present the unresolved concern and stop before writing. Do not ask
-for amendment approval until the agent and user agree the amended contract has no approval-relevant
-holes.
+Before approval, run Contract Readiness against the amended agreement. If blocked, report the finite
+readiness state and blocker and stop before writing. Broad unresolved product or design uncertainty
+is `blocked on user decision` and remains outside amendment. Only when readiness is
+`ready for approval` may the full amendment be presented for explicit approval.
 
 After approval, write only the contract file. Do not edit repository implementation files, workflow
 state files, skill source, commits, revision descriptions, bookmarks, or branches while amending.

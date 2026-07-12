@@ -13,21 +13,21 @@ Steps:
 1. Confirm the user already chose whether this contract uses the current bookmark or a new bookmark.
    If not, return to the runbook's bookmark decision and stop before drafting.
 2. Resolve Local State.
-3. Ensure `.agent/contracts/` exists and local ignore or exclude state covers `/.agent/contracts/`.
-   Verify the target contract path is ignored locally before writing it.
-4. Run Contract Readiness. Inspect enough repository facts to draft detailed context, boundaries,
-   research findings, implementation approach, validation, ACs, and checks. Do not edit
-   implementation files.
-5. If approval-relevant holes remain, ask the next question or present the unresolved concern and
-   stop before writing the contract file. Continue this loop until the agent and user agree the
-   branch agreement has no approval-relevant holes.
-6. Draft a contract from the user intent, resolved decisions, and current repo facts.
-7. Include detailed context, concrete boundaries, research findings/decisions/questions/assumptions,
-   implementation approach, validation, and verifiable ACs. Make the contract exhaustive enough that
-   a fresh implementation agent can propose a next slice lazily from the contract and current
-   checkout.
-8. Present the full draft and ask for explicit user approval before writing the contract file.
-9. After approval, write only the contract file.
+3. Verify that local ignore or exclude state covers `/.agent/contracts/` and that the target path
+   would be ignored. Do not create directories or change ignore state before approval.
+4. Draft the mandatory schema sections and only the conditional sections needed by the agreement.
+   Inspect repository facts required by the readiness checklist. Do not edit implementation files.
+5. Complete the draft from the user intent, resolved decisions, and current repo facts. Ensure every
+   AC has an exact declared check and pending evidence.
+6. Evaluate Contract Readiness against the complete draft. If blocked, report the finite readiness
+   state and blocker and stop. Treat broad unresolved product or design uncertainty as
+   `blocked on user decision`; do not resolve it as part of contract creation.
+7. Do not mutate files, directories, ignore state, or VCS state while drafting or awaiting approval.
+8. Only when readiness is `ready for approval`, present the full draft and ask for explicit user
+   approval before writing the contract file.
+9. After approval, ensure `.agent/contracts/` exists, establish the minimum repo-local ignore state
+   if needed, verify the target path is ignored, and write the contract file.
 
-Creation must not edit repository implementation files, workflow state files, skill source, commits,
-revision descriptions, bookmarks, or branches.
+Creation must not edit repository implementation files, workflow state files other than its approved
+contract and required local ignore state, skill source, commits, revision descriptions, bookmarks,
+or branches.

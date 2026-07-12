@@ -6,8 +6,9 @@ read-only proposal derived from the contract and the current checkout. It must n
 
 Before proposing a slice, read the contract and inspect enough current source of truth to understand
 which ACs are unsatisfied, partial, or blocked. Treat `## Acceptance Criteria`, `## Boundaries`,
-`## Implementation Approach`, `## Validation`, and `Check:` lines as authoritative. If the contract
-lacks enough context to choose safely, say what is missing and recommend amending the contract.
+`## Validation`, `Check:` lines, and any present `## Implementation Approach` as authoritative. If
+the contract lacks enough context to choose safely, say what is missing and recommend amending the
+contract.
 
 When work remains, propose the next reviewable implementation-ready slice that advances unsatisfied
 or partial ACs while staying independently verifiable. Prefer a slice with one primary review

@@ -10,9 +10,9 @@ argument-hint: "[intent or amendment]"
 
 # Contract
 
-Maintain a branch contract for the current jj bookmark. A branch contract is durable local state for
-what this bookmark is trying to satisfy, what is in and out of scope, and how the current checkout
-measures against that agreement.
+Maintain the bookmark-bound agreement and measured acceptance state for the current jj bookmark.
+Contract operations exclude broad product discovery, implementation, cross-session context
+transport, revision management, and defect review.
 
 The contract is a current agreement, not an implementation log. Current code is authoritative for AC
 status. Revision IDs and earlier notes are advisory only. The contract should still preserve durable
@@ -21,7 +21,7 @@ facts, and validation strategy. Do not record chronological progress except wher
 measured state.
 
 The Markdown contract is the only durable contract state. Do not create additional durable state,
-queues, or workflow-control files for this skill.
+queues, or workflow-control files.
 
 ## Arguments
 
@@ -29,7 +29,7 @@ queues, or workflow-control files for this skill.
 $ARGUMENTS
 ```
 
-- Empty: load and reconcile the contract for the current bookmark when one exists.
+- Empty: reconcile the contract for the current bookmark when one exists.
 - Non-empty with no current bookmark contract: draft a new contract from the user's intent.
 - Non-empty with an existing current bookmark contract: treat the request as an amendment or
   clarification unless the intent clearly asks to load/show/status/inspect or propose, derive,
@@ -38,9 +38,9 @@ $ARGUMENTS
 
 ## Runbook
 
-1. When the request clearly intends to create a new contract, ask whether it should use the current
-   bookmark or a new bookmark before resolving the contract path. Apply the user's choice using the
-   version-control work-placement rules, then continue with the selected current bookmark.
+1. When the request clearly intends to create a new contract, confirm whether it should use the
+   current bookmark or a new bookmark before resolving the contract path. If bookmark placement must
+   change, stop and require that placement to be completed outside this operation before continuing.
 2. Resolve the repository, current bookmark, and contract path using `references/local-state.md`.
 3. If local state cannot be resolved, stop with the exact blocker.
 4. If the current bookmark contract exists, read it before routing and stop if its `Bookmark:` value
@@ -54,6 +54,11 @@ $ARGUMENTS
 8. If arguments are empty and no contract exists, ask what contract to draft and stop.
 9. If arguments are non-empty and no contract exists, follow `procedures/create.md`.
 10. If arguments are non-empty and the contract exists, follow `procedures/amend.md`.
+
+Do not reinterpret one operation as another. Loading and proposing are read-only. Creation and
+amendment change the agreement only after explicit approval. Reconciliation may change measured
+contract state without changing the agreement. No operation edits implementation files or mutates
+bookmarks, branches, commits, or revision descriptions.
 
 ## Procedure Imports
 

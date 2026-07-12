@@ -1,38 +1,33 @@
 # Contract Readiness
 
-Contract creation and amendment are discovery-first and consensus-seeking. Do not request approval
-to write a contract until the agent and user agree there are no approval-relevant holes in the
-branch agreement.
+Contract creation and amendment end in exactly one readiness state:
 
-Before approval, pressure-test the agreement from multiple angles:
+- `ready for approval`: the finite checklist below passes; present the draft for explicit approval.
+- `blocked on user decision`: an agreement choice affects scope, behavior, boundaries, or proof;
+  report the decision needed and stop without writing.
+- `blocked on repository evidence`: a claim or check cannot be grounded from available repository
+  evidence; report the missing evidence and stop without writing.
 
-- Intended behavior, affected users or agents, and explicit non-goals.
-- Existing behavior, compatibility expectations, and current-state facts.
-- Edge cases, negative cases, failure modes, and recovery behavior.
-- Data, configuration, persistence, security, privacy, and trust-boundary implications.
-- User-visible behavior, developer-facing behavior, docs, tests, and operational effects.
-- Boundaries, stop-before conditions, assumptions, decisions, and open questions.
-- Relevant repo facts, likely touch points, implementation approach, and non-obvious constraints.
-- AC coverage, AC wording, and whether every `Check:` proves the AC without interpretation.
-- Validation coverage and whether completion can be measured without session memory.
-- Whether a fresh implementation agent could propose a reviewable next slice without guessing
-  agreement details.
+Evaluate only this checklist:
 
-A contract must be self-contained for a fresh agent with no session memory. Before approval, check
-whether a future agent could understand the user intent, relevant repo facts, agreed behavior,
-implementation direction, boundaries, validation path, and current state using only the contract and
-the current checkout. If not, keep drafting or ask targeted questions before writing.
+- The current bookmark and local contract path are resolved.
+- `Spec`, `Boundaries`, `Acceptance Criteria`, and `Validation` are present and internally
+  consistent.
+- Scope, non-goals, forbidden changes, and stop-before conditions are explicit enough to prevent an
+  implementation agent from changing the agreement silently.
+- Every AC is an independently verifiable current-checkout outcome with a declared, feasible,
+  unambiguous `Check:` and final `Evidence:` field.
+- Repository claims needed by the agreement or checks are supported by inspected evidence.
+- Any material user choice is resolved; normal implementation details may remain open inside the
+  approved boundaries.
+- Conditional Context, Research, or Implementation Approach content is included only when needed to
+  preserve durable intent, evidence, decisions, constraints, or safe implementation direction.
 
-Resolve uncertainty using the narrowest sufficient method. Inspect repo facts, patterns, tests,
-docs, and current behavior directly when the answer is discoverable. Ask the user when the answer is
-a decision. Prefer sequential questions when each answer may change which question or concern should
-be raised next; batch only independent questions.
+Complete explicit user requirements may pass directly to `ready for approval`. Inspect repository
+facts when the checklist depends on them. Ask only for a material agreement decision. Broad
+unresolved product or design uncertainty produces `blocked on user decision`; report the unresolved
+decision and stop without expanding contract readiness into product discovery.
 
-Treat these as approval blockers: vague ACs, vague or infeasible `Check:` lines, unclear boundaries,
-missing edge cases, unsafe assumptions, unresolved user decisions, ambiguous current-state claims,
-missing implementation-relevant context, stale or unsupported repo facts, incomplete validation, or
-insufficient context for a fresh implementation agent to propose a safe next slice lazily.
-
-Normal implementation unknowns may remain only when they can be resolved safely inside the approved
-boundaries without changing ACs, checks, stop-before conditions, or user-visible behavior. Record
-them as assumptions if future agents need to know they exist.
+Do not write in any blocked state. Approval authorizes the proposed contract-file write and the
+minimum directory and repo-local ignore setup required to keep it untracked. It does not authorize
+implementation or VCS mutation.
