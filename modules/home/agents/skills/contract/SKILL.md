@@ -41,8 +41,8 @@ $ARGUMENTS
 ## Runbook
 
 1. When the request clearly intends to create a new contract, confirm whether it should use the
-   current bookmark or a new bookmark before resolving the contract path. If bookmark placement must
-   change, stop and require that placement to be completed outside this operation before continuing.
+   current bookmark or a new bookmark before resolving the contract path. When the user chooses a
+   new bookmark, follow the placement phase in `procedures/create.md` before continuing.
 2. Resolve the repository, current bookmark, and contract path using `references/local-state.md`.
 3. If local state cannot be resolved, stop with the exact blocker.
 4. If the current bookmark contract exists, read it before routing and stop if its `Bookmark:` value
@@ -61,7 +61,10 @@ $ARGUMENTS
 Do not reinterpret one operation as another. Loading and proposing are read-only. Creation and
 amendment change the agreement only after explicit approval. Reconciliation may change measured
 contract state without changing the agreement. Iteration may change implementation and local VCS
-state under its procedure, but must not change the agreement without amendment approval.
+state under its procedure, but must not change the agreement without amendment approval. Creation
+may create one empty working-copy revision on the confirmed base and create and switch to one
+user-confirmed new bookmark during its placement phase; it must not perform other revision or
+bookmark mutations.
 
 ## Procedure Imports
 

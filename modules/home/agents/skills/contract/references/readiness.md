@@ -30,4 +30,5 @@ decision and stop without expanding contract readiness into product discovery.
 
 Do not write in any blocked state. Approval authorizes the proposed contract-file write and the
 minimum directory and repo-local ignore setup required to keep it untracked. It does not authorize
-implementation or VCS mutation.
+implementation or VCS mutation. A new bookmark requires separate name-and-base confirmation during
+the creation procedure's placement phase; contract approval does not provide that authority.
