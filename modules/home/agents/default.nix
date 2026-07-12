@@ -1,5 +1,6 @@
 {
   config,
+  internalPkgs,
   lib,
   ...
 }:
@@ -14,6 +15,8 @@ in
   ];
 
   config = {
+    home.packages = [ internalPkgs.token-count ];
+
     home.file = {
       ".codex/AGENTS.md".text = renderAgentsMarkdown {
         title = "Codex Instructions";

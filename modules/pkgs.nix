@@ -48,6 +48,7 @@
           inherit port-listeners-list;
         };
         port-listeners-list = pkgs.callPackage ../packages/port-listeners-list/package.nix { };
+        token-count = pkgs.callPackage ../packages/token-count/package.nix { };
       };
 
       _module.args = {
