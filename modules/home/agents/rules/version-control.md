@@ -41,19 +41,19 @@ base.
 - Continue a non-empty working-copy revision only when the request belongs to that exact concern.
 - When the working copy is empty, treat its parent as the presumptive intended base. Do not replace
   an unbookmarked parent with the nearest ancestral bookmark or default bookmark merely because it
-  lacks a bookmark. Use another base only when the user names it or evidence establishes that the
-  new concern is independent of the intervening revisions.
-- Start a new concern from its intended base. If the current revision is unrelated, preserve it and
-  use the intended base rather than creating a child that inherits unrelated ancestry.
-- Ask when the intended base or dependency relationship cannot be inferred safely.
+  lacks a bookmark.
+- Start a new concern from the current position, including on top of the current stack, unless the
+  user explicitly names another base. Do not move independent work to the default bookmark merely
+  because it is unrelated to the current stack.
+- Ask only when the user requests a different base but the target cannot be identified safely.
 - Before editing, assign each implementation concern its own non-default bookmark. Reuse the current
   bookmark only when it already represents that exact concern; otherwise create a task bookmark from
   the intended base.
 - Work directly on the default bookmark only when the user explicitly requests it. This is the sole
   exception to the dedicated-bookmark requirement.
 
-A revision must not contain unrelated changes, and a bookmark must not inherit revisions unrelated
-to its concern.
+A revision must not contain unrelated changes. A bookmark may inherit unrelated revisions when it
+starts from the current stack, but its own revisions must remain focused on its concern.
 
 ## Reviewable Lifecycle
 
@@ -90,8 +90,8 @@ change.
 ## Stacked Bookmarks
 
 Each bookmark is one review and publication unit and may contain one or more coherent revisions.
-Base a dependent bookmark on its immediate parent bookmark; base independent work on the default or
-other intended base rather than on the current stack tip.
+Base new bookmarks on the current position by default, whether or not the work depends on the
+current stack. Use the default or another base only when the user explicitly requests it.
 
 For a linear stack, review every revision selected by `<parent>..<bookmark>` in dependency order,
 then review that same aggregate delta for integration issues. Stop for an explicit base when a merge
