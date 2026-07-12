@@ -32,9 +32,11 @@ The input is free-form natural language. Interpret it to determine:
 2. **Additional context**: any background, known issues, review rules, artifact types, or focus
    areas included in the input. Note these for use during review.
 
-Determine whether the request is a diagnostic review or a final quality gate. Treat review requested
-before acceptance, validation, finalization, bookmark advancement, or publication as a final gate.
-An explicitly informal review of working changes is diagnostic.
+Determine whether the request is a diagnostic review or a final quality gate. A final gate requires
+the reviewable lifecycle in the version-control rules to be complete through revision finalization
+and clean-working-copy setup. A review requested before acceptance, bookmark advancement, or
+publication is final only when those prerequisites hold. A review of unshaped working changes or an
+explicitly informal review is diagnostic.
 
 **If the input is empty**, error with:
 

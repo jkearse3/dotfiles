@@ -49,15 +49,17 @@ to its concern.
 
 ## Reviewable Lifecycle
 
-Treat clean revision history as part of implementation, not optional cleanup. Before a final review
-of unpublished agent-authored implementation work can pass:
+Treat clean revision history as part of implementation, not optional cleanup. For unpublished
+agent-authored implementation work, perform these steps in order:
 
 1. Run focused verification.
 2. Establish the fewest coherent revision boundaries and validate complete descriptions for every
-   resulting revision. In jj repositories, leave a fresh empty working-copy revision above the
-   finalized work. In Git repositories, leave coherent, fully described commits and a clean
-   worktree.
-3. Review each revision in dependency order and the aggregate bookmark delta when the work spans
+   resulting revision.
+3. In jj repositories, create a fresh empty working-copy revision above the finalized work. Run the
+   final review from this clean working copy and target each finalized revision by stable change ID;
+   a review performed while an implementation revision is still `@` is diagnostic, not final. In Git
+   repositories, leave coherent, fully described commits and a clean worktree.
+4. Review each revision in dependency order and the aggregate bookmark delta when the work spans
    multiple revisions.
 
 An informal review of undescribed or unshaped working changes may guide implementation, but it is
@@ -66,9 +68,10 @@ revision boundaries, order, and base.
 
 Keep review fixes isolated from reviewed content. Fold a fix into its target only when it addresses
 that revision exclusively and the affected history is unpublished current-task work. Preserve or
-revalidate the destination description, restore a clean working state above the reviewed tip, then
-repeat affected verification and reviews. Ask when the destination or ownership is ambiguous, the
-fix spans revisions, unrelated changes are present, or other history would be rewritten.
+revalidate the destination description, create or restore a fresh empty working-copy revision above
+the reviewed tip, then repeat affected verification and reviews. Ask when the destination or
+ownership is ambiguous, the fix spans revisions, unrelated changes are present, or other history
+would be rewritten.
 
 Bind a revision review to its stable change ID, effective diff, description, order, and base; record
 the commit ID as evidence, not identity. Content changes, meaningful description changes, boundary
