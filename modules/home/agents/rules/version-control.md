@@ -34,10 +34,15 @@ state is identified.
 
 ## Work Placement
 
-Before the first edit for a new logical change, inspect the working-copy state, current bookmark
-when one exists, default bookmark, and intended base.
+Before the first edit for a new logical change, inspect the working-copy revision and parent, any
+bookmark pointing directly at the working-copy revision, the default bookmark, and the intended
+base.
 
 - Continue a non-empty working-copy revision only when the request belongs to that exact concern.
+- When the working copy is empty, treat its parent as the presumptive intended base. Do not replace
+  an unbookmarked parent with the nearest ancestral bookmark or default bookmark merely because it
+  lacks a bookmark. Use another base only when the user names it or evidence establishes that the
+  new concern is independent of the intervening revisions.
 - Start a new concern from its intended base. If the current revision is unrelated, preserve it and
   use the intended base rather than creating a child that inherits unrelated ancestry.
 - Ask when the intended base or dependency relationship cannot be inferred safely.
