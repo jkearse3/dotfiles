@@ -41,8 +41,11 @@ when one exists, default bookmark, and intended base.
 - Start a new concern from its intended base. If the current revision is unrelated, preserve it and
   use the intended base rather than creating a child that inherits unrelated ancestry.
 - Ask when the intended base or dependency relationship cannot be inferred safely.
-- A bookmark is optional for temporary local work but required for a contract, named branch,
-  publication target, or stack element.
+- Before editing, assign each implementation concern its own non-default bookmark. Reuse the current
+  bookmark only when it already represents that exact concern; otherwise create a task bookmark from
+  the intended base.
+- Work directly on the default bookmark only when the user explicitly requests it. This is the sole
+  exception to the dedicated-bookmark requirement.
 
 A revision must not contain unrelated changes, and a bookmark must not inherit revisions unrelated
 to its concern.
