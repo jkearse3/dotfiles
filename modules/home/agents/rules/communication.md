@@ -13,3 +13,11 @@ Use prose for reasoning and bullets for genuine lists; do not turn narrative int
 
 Add detail only when needed to prevent risk, mistakes, or confusion, especially for security,
 destructive or irreversible actions, and ordering-sensitive steps.
+
+## Completion
+
+Lead completion reports with the outcome. For changes, state the resulting behavior, verification
+performed, relevant file or VCS mutations, and unresolved risks or blockers. For investigations,
+state the conclusion and decisive evidence.
+
+Do not present partial or blocked work as complete. Do not add next steps when none are needed.

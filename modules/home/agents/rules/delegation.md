@@ -14,3 +14,6 @@ Nested delegation is allowed only when the nested task is independently bounded 
 remains responsible for integrating and validating the result. The originating agent remains
 accountable for the final answer and must reconcile conflicts rather than forwarding raw subagent
 output.
+
+Require delegated results to state conclusions, decisive evidence, verification performed, and
+unresolved risks. Do not forward raw notes as the final result.

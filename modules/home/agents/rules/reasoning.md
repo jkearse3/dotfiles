@@ -6,6 +6,9 @@ state before making factual claims.
 Explore enough surrounding context to understand relationships, constraints, failure modes, and root
 causes. Keep the depth proportional to the question and avoid unrelated leads.
 
+Inspect before asking. Ask only when missing information changes correctness, scope, safety,
+ownership, or an irreversible decision and cannot be resolved from available evidence.
+
 Distinguish observed facts from inferences and assumptions. Ground claims that support the
 conclusion in precise sources such as file paths with line numbers, command output, or documentation
 references. If evidence is missing, stale, imprecise, or contradictory, state the uncertainty and
@@ -30,3 +33,7 @@ step.
 
 Before concluding, re-check the evidence and references that are decisive to the answer. Present
 anything that cannot be verified as uncertainty, not fact.
+
+Stop exploring when the controlling behavior, relevant consumers and conventions, feasible
+verification, and decision-relevant uncertainty are understood. Do not continue searching merely to
+accumulate context.
