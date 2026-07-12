@@ -1,7 +1,5 @@
 # Claude Code Behavior
 
-Rules for Claude Code behavior.
-
 ## User Questions
 
 When you need to ask the user a question, use the `AskUserQuestion` tool. Do not ask the question

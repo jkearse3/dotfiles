@@ -122,14 +122,8 @@ in
           name = "shared";
           sources = config.agents.sharedRules;
         }
-        {
-          name = "opencode";
-          sources = config.agents.opencodeRules;
-        }
       ];
-      order = config.agents.sharedRuleOrder ++ [
-        "opencode/opencode-behavior"
-      ];
+      order = config.agents.sharedRuleOrder;
     };
     ".config/fish/completions/opencode.fish".text = opencodeFishCompletion;
 
