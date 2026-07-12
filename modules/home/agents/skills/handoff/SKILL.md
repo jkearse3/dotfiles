@@ -1,21 +1,19 @@
 ---
 name: handoff
 description: >-
-  Create, find, or load self-contained prompts for fresh sessions with zero prior context; use when
-  the user wants to turn an idea, plan, discussion, or current-session context into an aligned
-  handoff with clear purpose, scope, constraints, gaps, validation, and intended outcome.
-argument-hint: "[handoff intent, description, path, filename, or slug]"
+  Create, find, show, execute, or resume self-contained prompts for fresh sessions with zero prior
+  context; use when a request concerns a continuation artifact while keeping artifact handling
+  distinct from execution authority.
+argument-hint: "[create, find, show, description, path, filename, or slug]"
 ---
 
 # Handoff
 
-Create, find, or load self-contained fresh-session prompts. A handoff preserves enough context,
-scope, constraints, open questions, intended use, and intended outcome that another session can act
-without seeing the original conversation.
+Transport actionable context into a fresh session. A handoff preserves the purpose, relevant
+context, scope, constraints, uncertainty, validation, and intended outcome needed to continue work
+without the original conversation.
 
-This is not generic prompt engineering or passive note-taking. Optimize for session handoff quality:
-alignment, explicit uncertainty, safe scope, and actionable instructions for a fresh agent or
-session.
+Creating, finding, or showing a handoff does not execute or resume the work it describes.
 
 ## Arguments
 
@@ -28,154 +26,98 @@ subcommands.
 
 Infer the user's intent:
 
-- Create a new handoff when the user wants to capture, prepare, write, draft, create, or turn the
-  current context into a fresh-session prompt.
-- List or find handoffs when the user asks what handoffs exist, asks for recent handoffs, or wants
-  to locate a previous handoff.
-- Load a handoff when the user asks to open, load, show, use, resume from, or run an existing
-  handoff, or when the request contains a path, filename, or unique slug fragment.
+- **Create** when the user wants to capture, prepare, write, draft, or turn supplied or current
+  context into a fresh-session prompt.
+- **Find** when the user asks what handoffs exist or wants to locate one.
+- **Show** when the user asks to read, open, load, or display one without acting on it.
+- **Execute or resume** when the user asks to run, use, continue, or resume the work described by a
+  handoff. Resolve and read the handoff if needed, then treat its prompt as the task rather than
+  treating display as execution.
 
-If intent is ambiguous, ask one brief clarification question.
+If the intended operation remains materially ambiguous, ask one brief clarification question.
 
 ## Workflow
 
-1. Infer intent from arguments and conversation.
-2. For list or find requests, inspect `.agent/handoffs/` and respond with recent matching artifacts.
-3. For load requests, resolve one artifact, read it, and print its complete prompt inline.
-4. For new handoffs, gather the purpose, context, scope, constraints, unknowns, and intended
-   outcome.
-5. Run the Gap Check.
-6. Resolve material gaps with the user.
-7. Run the Alignment Check.
-8. Produce the final handoff prompt only after confirmation, or after explicit permission to proceed
-   with stated assumptions.
-9. Write the final prompt to `.agent/handoffs/YYYY-MM-DD-HHMM-<short-slug>.md` when file edits are
-   available and the destination is clear.
+1. Determine whether the request is create, find, show, or execute/resume.
+2. For find, inspect `.agent/handoffs/`, report matching artifacts, and stop.
+3. For show, resolve one artifact, print its complete prompt, state that it was only displayed, and
+   stop.
+4. For execute/resume, resolve and read the handoff, then follow its prompt under the authority of
+   the user's execution request. Do not edit the handoff merely to execute it.
+5. For create, identify the purpose, authoritative inputs, necessary context, scope, constraints,
+   assumptions, validation, intended next action, and outcome.
+6. If supplied content is complete and internally consistent, create the handoff without requiring
+   confirmation that merely restates it.
+7. Ask one targeted question before relying on a material inference, changing scope, or resolving a
+   contradiction. Do not silently invent missing facts or decisions.
+8. Write the prompt when file mutation is authorized and the destination and ignore state are safe.
+   Otherwise print the complete proposed prompt inline and say that no artifact was written.
 
-## Gap Check
+## Authority
 
-Before producing a new final prompt, examine whether the handoff is strong enough for a fresh
-session with zero prior context.
+Identify the inputs that govern the handoff and preserve exact user-provided technical content.
+Creating a handoff authorizes only the new artifact and any minimum local ignore state needed for
+its directory. It does not authorize implementation, revision changes, or mutation of referenced
+artifacts.
 
-Look for:
-
-- Missing context.
-- Ambiguous purpose.
-- Unclear scope.
-- Missing use instructions.
-- Hidden assumptions.
-- Conflicting constraints.
-- Undefined outcome.
-- Weak validation.
-- Risky operations.
-- Work that is too broad for one coherent prompt.
-
-When a gap would materially affect the final prompt, do not silently fill it in. Surface the gap,
-explain why it matters, and help the user resolve it using whatever clarification, pressure-testing,
-or decision-making approach fits the situation.
-
-Ask targeted questions only when the answer is needed. Offer options when the user may need to
-choose between valid directions. State assumptions only when they are safe, explicit, and easy for
-the user to correct.
-
-## Alignment Check
-
-Before writing a new final prompt, briefly summarize:
-
-- Purpose.
-- Scope.
-- Constraints.
-- Intended outcome.
-- Open assumptions.
-
-Ask the user to confirm or correct the summary. Do not produce the final handoff prompt until the
-user confirms the purpose, scope, constraints, and expected outcome, or explicitly asks to proceed
-with the stated assumptions.
+When a handoff depends on an authoritative external artifact, reference it by path rather than
+copying changing state as if it remains current. Label any necessary status excerpt as a snapshot
+and direct the fresh session to reload the authoritative artifact before relying on its current
+state.
 
 ## Artifact
 
-By default, write a new final handoff prompt to:
+Write new handoffs by default to:
 
 ```text
 .agent/handoffs/YYYY-MM-DD-HHMM-<short-slug>.md
 ```
 
 Use the current local date and 24-hour local time. Derive `<short-slug>` from the task in lowercase
-kebab case. If the path already exists, append a numeric suffix such as `-2` before `.md`.
+kebab case. If the path exists, append a numeric suffix such as `-2` before `.md`.
 
-Resolve the repository root with `jj root` when available. Create `<jj-root>/.agent/handoffs/` if
-needed. If `jj root` is unavailable, use the current Git repository root when clear. If no clear
-repository root exists, ask where to write the handoff before creating files.
+Resolve the repository root with `jj root` when available. Otherwise use the current Git repository
+root when clear. If neither is clear, ask where to write the handoff.
 
-Handoff files are local workflow artifacts and must not be tracked. Before writing a handoff file:
+Handoffs are local workflow artifacts and must not be tracked. Before writing:
 
-1. Ensure repo-local ignore or exclude state covers the whole handoffs directory:
+1. Ensure local ignore or exclude state covers `/.agent/handoffs/`.
+2. In a Git-backed repository, prefer `<repo-root>/.git/info/exclude` so tracked ignore files remain
+   unchanged.
+3. Verify the target path is ignored.
 
-   ```text
-   /.agent/handoffs/
-   ```
+Stop for user direction if local ignore state cannot be safely established or verified. Do not
+change the storage location or tracked project ignore files merely to avoid that blocker.
 
-2. In git-backed repositories, prefer `<repo-root>/.git/info/exclude` so the rule stays local and
-   tracked project ignore files are not modified.
-3. Verify the target handoff path is ignored before writing it.
+Do not amend an existing handoff. If the user requests a replacement, write a new timestamped
+artifact.
 
-Stop for user direction if the ignore or exclude rule cannot be written, if the target path cannot
-be verified as ignored, or if the repository uses a different local-ignore mechanism that is
-unclear.
+After writing, report the path, purpose, intended next action, and any material assumptions.
 
-After writing the file, respond with:
+## Finding
 
-- Handoff path.
-- Brief summary.
-- Remaining assumptions, if any.
+List matching files from `.agent/handoffs/`, newest first. Include the timestamp, filename, path,
+and first heading when readily available. If the directory is absent or empty, say so.
 
-Do not ask the user to manually save or copy the prompt when a file artifact can be written. If file
-edits are unavailable, print the complete prompt inline.
+## Showing
 
-## Listing
+Resolve an explicit path, filename, unique slug fragment, or clear natural-language match. If
+multiple artifacts match, report them and ask the user to choose. If none match, say so and show
+recent candidates when available.
 
-When the user asks what handoffs exist or asks for recent handoffs, list recent files from
-`.agent/handoffs/`, newest first.
-
-Show enough information to choose one:
-
-- Timestamp.
-- Slug or filename.
-- Path.
-- Short title from the first heading in the file, when available without expensive analysis.
-
-If `.agent/handoffs/` does not exist or contains no handoffs, say so directly.
-
-## Loading
-
-When the user wants to load, show, open, resume from, use, or run an existing handoff, resolve the
-requested artifact from `.agent/handoffs/`.
-
-Accept:
-
-- An explicit path.
-- A filename.
-- A unique slug fragment.
-- A natural-language description that can be matched against recent handoff filenames.
-
-If one handoff clearly matches, read it and print the complete prompt inline in a fenced markdown
-block. Do not summarize unless the user asks for a summary.
-
-After the block, say exactly:
+Print the complete prompt inline in a fenced Markdown block without summarizing unless requested.
+Then state:
 
 ```text
-Use this as the task for the fresh session.
+Displayed only; no task was executed or resumed.
 ```
 
-If the handoff appears stale, incomplete, or contains unresolved assumptions, mention that briefly
-after the block.
+Mention material staleness, incompleteness, unresolved assumptions, or authoritative external
+artifacts that should be reloaded.
 
-If multiple handoffs match, show the matches and ask the user to choose. If no handoff matches, say
-so and show recent handoffs if available.
+## Prompt Format
 
-## Final Prompt Format
-
-Produce new final handoff prompts with these sections when relevant:
+Use these sections when relevant:
 
 ```markdown
 # Purpose
@@ -186,9 +128,9 @@ Produce new final handoff prompts with these sections when relevant:
 
 # Constraints
 
-# Unknowns
+# Authoritative Inputs
 
-# Information
+# Assumptions And Unknowns
 
 # Use
 
@@ -199,25 +141,19 @@ Produce new final handoff prompts with these sections when relevant:
 # Response Guidance
 ```
 
-Every handoff must include `# Purpose`, `# Use`, and `# Outcome`. Keep the prompt concise, but
-complete. Include only facts, decisions, and assumptions the fresh session needs. Omit optional
-sections that are not relevant, but do not omit the required sections or produce archival notes.
+Every handoff must include `# Purpose`, `# Authoritative Inputs`, `# Use`, and `# Outcome`. `# Use`
+must name the intended next action. Omit irrelevant optional sections, but keep enough information
+for a fresh session with zero prior context.
 
-Informational handoffs are allowed, but they must still be prompts. Direct the fresh session to do
-something concrete with the information: produce, decide, validate, explain, compare, plan, review,
-or ask targeted follow-up questions.
+Informational handoffs must still request a concrete action such as explain, compare, decide,
+validate, plan, or review.
 
 ## Rules
 
 - Assume the fresh session has zero prior context.
-- Every handoff is an actionable fresh-session prompt, not an archive or passive note.
-- Do not invent facts, files, requirements, or decisions.
+- Produce an actionable prompt, not an archive or passive note.
+- Do not invent facts, files, requirements, decisions, or authority.
 - Preserve important uncertainty explicitly.
 - Prefer concrete instructions over generic advice.
-- Prefer alignment over premature prompt generation.
-- Use natural-language intent inference instead of requiring rigid subcommands.
-- Support research, coding, review, documentation, debugging, planning, external tool work, and
-  other context handoffs, including read-only or informational handoffs.
-- Ask targeted questions only when the answer would materially affect the final prompt.
-- Offer options when there are multiple valid directions.
-- State assumptions only when they are safe, explicit, and easy for the user to correct.
+- Ask only when the answer materially affects the handoff.
+- Keep the handoff concise while preserving what the next session needs.
