@@ -1,9 +1,11 @@
 {
+  internalPkgs,
   pkgs,
   ...
 }:
 {
   home.packages = [
+    internalPkgs.nix-cleanup
     pkgs.deadnix
     pkgs.devenv
     pkgs.nix-output-monitor

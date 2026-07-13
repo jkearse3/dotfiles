@@ -43,6 +43,7 @@
           inherit jj-bookmark-stacked;
         };
         jj-bookmark-select = pkgs.callPackage ../packages/jj-bookmark-select/package.nix { };
+        nix-cleanup = pkgs.callPackage ../packages/nix-cleanup/package.nix { };
         playwright-cli = pkgs.callPackage ../packages/playwright-cli/package.nix { };
         port-listeners-kill = pkgs.callPackage ../packages/port-listeners-kill/package.nix {
           inherit port-listeners-list;
