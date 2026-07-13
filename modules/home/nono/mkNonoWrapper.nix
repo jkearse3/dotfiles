@@ -1,6 +1,7 @@
 {
   pkgs,
   lib,
+  dockerConfig,
 }:
 {
   name ? null,
@@ -14,6 +15,23 @@ assert lib.assertMsg (
 ) "mkNonoWrapper: command must be null or non-empty";
 let
   wrapperName = if name != null then name else profile;
+  dockerEnv = # bash
+    ''
+      if [[ -n "''${DOCKER_CONTEXT+x}" && -z "''${DOCKER_CONFIG+x}" ]]; then
+        echo "nono-wrapper: DOCKER_CONTEXT requires an accessible DOCKER_CONFIG" >&2
+        exit 2
+      fi
+      if [[ -z "''${DOCKER_CONFIG+x}" ]]; then
+        export DOCKER_CONFIG="${dockerConfig}"
+        if [[ -z "''${DOCKER_HOST+x}" && -S "$HOME/.docker/run/docker.sock" ]]; then
+          export DOCKER_HOST="unix://$HOME/.docker/run/docker.sock"
+        fi
+      fi
+      if [[ -z "''${BUILDX_CONFIG+x}" ]]; then
+        BUILDX_CONFIG="$(mktemp -d "''${TMPDIR:-/tmp}/nono-buildx.XXXXXX")"
+        export BUILDX_CONFIG
+      fi
+    '';
   scriptBody = # bash
     ''
       #!${pkgs.runtimeShell} -e
@@ -24,6 +42,10 @@ let
       if [[ -n "$NONO_WRAPPER_DISABLE" ]]; then
         exec ${lib.optionalString (command != null) "${command} "}"$@"
       fi
+
+      # Keep Docker usable without directly granting its host config. Custom contexts require a
+      # caller-provided config because their metadata remains outside the sandbox.
+      ${dockerEnv}
 
       # Per-repo overlay: if ./.nono/profile.json exists relative to cwd,
       # pass its absolute path to `nono run --profile` instead of the named
@@ -62,8 +84,11 @@ in
 pkgs.runCommandLocal "nono-${wrapperName}"
   {
     nativeBuildInputs = [ pkgs.gnugrep ];
-    inherit scriptBody;
-    passAsFile = [ "scriptBody" ];
+    inherit dockerEnv scriptBody;
+    passAsFile = [
+      "dockerEnv"
+      "scriptBody"
+    ];
   }
   ''
     wrapper="$out/bin/nono-${wrapperName}"
@@ -83,4 +108,46 @@ pkgs.runCommandLocal "nono-${wrapperName}"
       || { echo "FAIL: missing overlay missing-extends warning" >&2; exit 1; }
     grep -q 'allow-unix-socket' "$wrapper" \
       || { echo "FAIL: missing SSH_AUTH_SOCK injection" >&2; exit 1; }
+    grep -q 'DOCKER_CONFIG' "$wrapper" \
+      || { echo "FAIL: missing isolated Docker configuration" >&2; exit 1; }
+    grep -q 'BUILDX_CONFIG' "$wrapper" \
+      || { echo "FAIL: missing writable Buildx configuration" >&2; exit 1; }
+    grep -q '\.docker/run/docker\.sock' "$wrapper" \
+      || { echo "FAIL: missing Docker Desktop socket selection" >&2; exit 1; }
+
+    test_root="$TMPDIR/docker-env-tests"
+    mkdir -p "$test_root/home" "$test_root/tmp"
+
+    run_default() (
+      export HOME="$test_root/home" TMPDIR="$test_root/tmp"
+      unset DOCKER_CONFIG DOCKER_CONTEXT DOCKER_HOST BUILDX_CONFIG
+      source "$dockerEnvPath"
+      [[ "$DOCKER_CONFIG" == "${dockerConfig}" ]]
+      [[ -d "$BUILDX_CONFIG" ]]
+      printf '%s' "$BUILDX_CONFIG"
+    )
+
+    first_buildx="$(run_default)"
+    second_buildx="$(run_default)"
+    [[ "$first_buildx" != "$second_buildx" ]] \
+      || { echo "FAIL: Buildx state is not private per wrapper" >&2; exit 1; }
+
+    (
+      export DOCKER_CONFIG=/custom/docker BUILDX_CONFIG=/custom/buildx
+      export DOCKER_HOST=unix:///custom/docker.sock
+      unset DOCKER_CONTEXT
+      source "$dockerEnvPath"
+      [[ "$DOCKER_CONFIG" == /custom/docker ]]
+      [[ "$BUILDX_CONFIG" == /custom/buildx ]]
+      [[ "$DOCKER_HOST" == unix:///custom/docker.sock ]]
+    ) || { echo "FAIL: explicit Docker environment was overridden" >&2; exit 1; }
+
+    if (
+      export DOCKER_CONTEXT=desktop-linux
+      unset DOCKER_CONFIG BUILDX_CONFIG
+      source "$dockerEnvPath"
+    ) 2>/dev/null; then
+      echo "FAIL: DOCKER_CONTEXT without DOCKER_CONFIG was accepted" >&2
+      exit 1
+    fi
   ''

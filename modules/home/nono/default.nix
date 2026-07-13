@@ -14,11 +14,16 @@ let
   nono = pkgs.nono.overrideAttrs (_: {
     doCheck = false;
   });
+  dockerConfig = pkgs.writeTextDir "config.json" (
+    builtins.toJSON {
+      cliPluginsExtraDirs = [ "/Applications/Docker.app/Contents/Resources/cli-plugins" ];
+    }
+  );
   mkNonoWrapper = import ./mkNonoWrapper.nix {
     pkgs = pkgs // {
       inherit nono;
     };
-    inherit lib;
+    inherit dockerConfig lib;
   };
   profile = {
     meta = {
@@ -98,6 +103,9 @@ let
         # Bypass only lifts nono deny-policy blocks; each path still needs a matching grant below.
         "${config.home.homeDirectory}/.agents"
 
+        # Docker Desktop's API socket is inside the otherwise-denied Docker credential directory.
+        "$HOME/.docker/run/docker.sock"
+
         # Home Manager generates this npm config with cache/prefix metadata only; pnpm reads it.
         "${config.home.homeDirectory}/.npmrc"
 
@@ -115,6 +123,10 @@ let
       allow_file = [
         # SSH may append host keys; authentication itself goes through the injected SSH_AUTH_SOCK.
         "${config.home.homeDirectory}/.ssh/known_hosts"
+
+        # No host Docker config paths are granted directly. The daemon socket is still a major
+        # trust boundary: Docker bind mounts can bypass nono's filesystem restrictions.
+        "$HOME/.docker/run/docker.sock"
       ];
       suppress_save_prompt = [
         # Suppress save-profile suggestions for the entire home directory. Agents probe
