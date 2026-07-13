@@ -142,9 +142,10 @@ that do not belong in project history.
 
 6. **Execute** the accepted single-revision or multi-revision proposal:
    - Compose each full revision description (subject + body + footer) per the rules above
-   - Validate the exact description variable with `commit-message-check` before every `jj describe`
-     or `jj split` write. If validation fails, revise the description and rerun the checker before
-     writing.
+   - Format each agent-authored description with `commit-message-format`, assign the result, and
+     validate that exact variable with `commit-message-check` before every `jj describe` or
+     `jj split` write. If validation fails, revise the description and rerun the formatter and
+     checker before writing. Do not format an exact user-supplied message.
    - Assign multi-line revision descriptions to a shell variable and pass the quoted variable to
      `-m`:
 
@@ -152,6 +153,7 @@ that do not belong in project history.
      desc='type(scope): description
 
      Status quo or problem, then change in response.'
+     desc="$(printf '%s\n' "$desc" | commit-message-format)"
      printf '%s\n' "$desc" | commit-message-check
      jj describe -r <target> -m "$desc"
      ```
@@ -161,6 +163,7 @@ that do not belong in project history.
      dependency order:
 
      ```bash
+     desc="$(printf '%s\n' "$desc" | commit-message-format)"
      printf '%s\n' "$desc" | commit-message-check
      jj split -r <target> -m "$desc" file1 file2
      ```

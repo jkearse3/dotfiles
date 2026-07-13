@@ -131,15 +131,17 @@ Breaking-change footers start with `BREAKING CHANGE:`.
 
 ## Message Validation
 
-Before writing any agent-authored git commit message or jj revision description, assign the complete
-message to a shell variable and validate that exact value:
+Before writing any agent-authored git commit message or jj revision description, format the complete
+message, assign the result to a shell variable, and validate that exact value:
 
 ```bash
+desc="$(printf '%s\n' "$desc" | commit-message-format)"
 printf '%s\n' "$desc" | commit-message-check
 ```
 
 Pass `"$desc"` unchanged to the mutating command. If validation fails, revise the message and rerun
-the checker. If the user supplied an exact invalid message, stop and report the validation failure.
+the formatter and checker. Do not format an exact user-supplied message; if it is invalid, stop and
+report the validation failure.
 
 ## Publication
 
