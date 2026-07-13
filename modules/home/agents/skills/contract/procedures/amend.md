@@ -1,7 +1,7 @@
 # Amend
 
-Use this path when arguments are non-empty and a contract exists, or when reconciliation shows the
-agreement itself is wrong, incomplete, or stale.
+Use this path when the user clearly asks to change an existing agreement, or when reconciliation
+shows the agreement itself is wrong, incomplete, or stale.
 
 Read these references before acting:
 
