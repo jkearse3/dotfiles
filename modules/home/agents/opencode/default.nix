@@ -25,6 +25,7 @@ let
     skills = config.agents.skills;
   };
   opencodeSecretsFile = "${config.xdg.configHome}/sops/secrets/opencode.sops.yaml";
+  preventIdleSleep = lib.optionalString pkgs.stdenv.hostPlatform.isDarwin "/usr/bin/caffeinate -i ";
 
   mkOpencodeWithSecrets =
     {
@@ -35,7 +36,7 @@ let
       inherit name;
       text = ''
         printf -v command_string '%q ' ${lib.escapeShellArg command} "$@"
-        exec ${lib.getExe pkgs.sops} exec-env --same-process \
+        exec ${preventIdleSleep}${lib.getExe pkgs.sops} exec-env --same-process \
           ${lib.escapeShellArg opencodeSecretsFile} "$command_string"
       '';
     };
