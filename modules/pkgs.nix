@@ -12,6 +12,9 @@
     {
       packages = rec {
         commit-message-check = pkgs.callPackage ../packages/commit-message-check/package.nix { };
+        commit-message-format = pkgs.callPackage ../packages/commit-message-format/package.nix {
+          inherit commit-message-check;
+        };
         git-branch-checkout = pkgs.callPackage ../packages/git-branch-checkout/package.nix { };
         git-branch-current = pkgs.callPackage ../packages/git-branch-current/package.nix { };
         git-branch-default = pkgs.callPackage ../packages/git-branch-default/package.nix { };

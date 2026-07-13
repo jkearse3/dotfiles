@@ -3,6 +3,7 @@
   "include": [
     "modules/home/agents/skills/**/scripts",
     "modules/home/vcs/commit-message-check",
+    "packages/commit-message-format",
     "packages/nix-cleanup",
     "packages/token-count"
   ]
