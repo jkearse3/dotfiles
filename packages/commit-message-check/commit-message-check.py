@@ -10,22 +10,6 @@ from typing import cast
 
 DEFAULT_BODY_WIDTH = 72
 DEFAULT_SUBJECT_WIDTH = 72
-DEFAULT_TYPES = (
-    "feat",
-    "fix",
-    "refactor",
-    "perf",
-    "style",
-    "chore",
-    "docs",
-    "test",
-    "ci",
-    "build",
-)
-SUBJECT_RE = re.compile(
-    r"^(?P<type>[a-z]+)(?:\((?P<scope>[^()\n]+)\))?(?P<breaking>!)?: "
-    + r"(?P<description>.+)$"
-)
 URL_RE = re.compile(r"https?://\S+")
 INLINE_CODE_RE = re.compile(r"`[^`\n]+`")
 
@@ -34,7 +18,6 @@ def validate_subject(
     subject: str,
     *,
     subject_width: int = DEFAULT_SUBJECT_WIDTH,
-    allowed_types: tuple[str, ...] = DEFAULT_TYPES,
 ) -> list[str]:
     errors: list[str] = []
 
@@ -45,28 +28,6 @@ def validate_subject(
         errors.append(
             f"line 1: subject is {len(subject)} characters (max {subject_width})"
         )
-
-    match = SUBJECT_RE.match(subject)
-    if match is None:
-        errors.append(
-            "line 1: subject must match "
-            + "'<type>(<scope>)?: <description>' with optional '!' before ':'"
-        )
-        return errors
-
-    commit_type = match.group("type")
-    description = match.group("description")
-
-    if commit_type not in allowed_types:
-        errors.append(
-            "line 1: type must be one of " + ", ".join(sorted(allowed_types))
-        )
-
-    if not re.match(r"[a-z]", description[0]):
-        errors.append("line 1: description must start with a lowercase letter")
-
-    if description.endswith("."):
-        errors.append("line 1: description must not end with a period")
 
     return errors
 
@@ -141,30 +102,15 @@ def positive_int(value: str) -> int:
     return parsed
 
 
-def parse_types(value: str) -> tuple[str, ...]:
-    types = tuple(item.strip() for item in value.split(",") if item.strip())
-    if not types:
-        raise argparse.ArgumentTypeError("must include at least one type")
-
-    invalid = [item for item in types if not re.fullmatch(r"[a-z]+", item)]
-    if invalid:
-        raise argparse.ArgumentTypeError(
-            "types must be lowercase ASCII words: " + ", ".join(invalid)
-        )
-
-    return types
-
-
 @dataclass(frozen=True)
 class Args:
     subject_width: int
     body_width: int
-    types: tuple[str, ...]
 
 
 def parse_args(argv: list[str] | None = None) -> Args:
     parser = argparse.ArgumentParser(
-        description="Validate a Conventional Commit description read from stdin."
+        description="Validate a commit description read from stdin."
     )
     _ = parser.add_argument(
         "--subject-width",
@@ -181,17 +127,10 @@ def parse_args(argv: list[str] | None = None) -> Args:
             + f"(default: {DEFAULT_BODY_WIDTH})"
         ),
     )
-    _ = parser.add_argument(
-        "--types",
-        type=parse_types,
-        default=DEFAULT_TYPES,
-        help="comma-separated allowed Conventional Commit types",
-    )
     namespace = parser.parse_args(argv)
     return Args(
         subject_width=cast(int, namespace.subject_width),
         body_width=cast(int, namespace.body_width),
-        types=cast(tuple[str, ...], namespace.types),
     )
 
 
@@ -203,7 +142,6 @@ def main(argv: list[str] | None = None) -> int:
     errors = validate_subject(
         subject,
         subject_width=args.subject_width,
-        allowed_types=args.types,
     )
     errors.extend(validate_body_lines(lines, body_width=args.body_width))
 

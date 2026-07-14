@@ -62,8 +62,12 @@ pkgs.stdenvNoCC.mkDerivation {
     Body line within limit.
     EOF
 
-    expect_pass --types custom <<'EOF'
-    custom: add checker path
+    expect_pass <<'EOF'
+    add a thing
+    EOF
+
+    expect_pass <<'EOF'
+    api: added some endpoint
     EOF
 
     expect_pass <<'EOF'
@@ -78,20 +82,30 @@ pkgs.stdenvNoCC.mkDerivation {
     Use `aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa` when testing.
     EOF
 
-    expect_error 'type must be one of' <<'EOF'
+    expect_pass <<'EOF'
     noop: add checker
     EOF
 
-    expect_error 'description must start with a lowercase letter' <<'EOF'
+    expect_pass <<'EOF'
+    feat(): add checker
+    EOF
+
+    expect_pass <<'EOF'
     feat: Add checker
     EOF
 
-    expect_error 'description must not end with a period' <<'EOF'
+    expect_pass <<'EOF'
     feat: add checker.
     EOF
 
+    expect_error 'subject is required' </dev/null
+
     expect_error 'subject is' --subject-width 20 <<'EOF'
     feat: add a longer subject
+    EOF
+
+    expect_error 'subject is' --subject-width 20 <<'EOF'
+    plain subject longer than twenty characters
     EOF
 
     expect_error 'line 3: body/footer line' <<'EOF'

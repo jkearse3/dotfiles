@@ -99,13 +99,16 @@ class CommitMessageFormatTests(unittest.TestCase):
 
     def test_subject_changes_only_when_valid_except_for_period(self) -> None:
         valid = format_message("feat: add formatter.\n").stdout
-        invalid = format_message("noop: Add formatter.\n").stdout
+        malformed = format_message("feat: Add formatter.\n").stdout
+        plain = format_message("api: Added formatter.\n").stdout
         overlong_subject = "feat: " + "a" * 70 + "."
         overlong = format_message(overlong_subject).stdout
         self.assertEqual(valid, "feat: add formatter\n")
-        self.assertEqual(invalid, "noop: Add formatter.\n")
+        self.assertEqual(malformed, "feat: Add formatter.\n")
+        self.assertEqual(plain, "api: Added formatter.\n")
         self.assertEqual(overlong, overlong_subject + "\n")
-        self.assertNotEqual(check_message(invalid).returncode, 0)
+        self.assertEqual(check_message(malformed).returncode, 0)
+        self.assertEqual(check_message(plain).returncode, 0)
         self.assertNotEqual(check_message(overlong).returncode, 0)
 
     def test_supported_output_is_valid_and_idempotent(self) -> None:
