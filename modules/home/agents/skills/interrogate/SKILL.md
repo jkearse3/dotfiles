@@ -1,6 +1,6 @@
 ---
 name: interrogate
-description: Pressure-tests plans, designs, ideas, decisions, requirements, scope, and tradeoffs through structured questioning; use when the user wants to interrogate, validate, refine, de-risk, or clarify direction before implementation.
+description: Establishes scope alignment by pressure-testing outcomes, boundaries, constraints, non-goals, and validation; use proactively when a consequential or complex action task lacks alignment or a material change invalidates it, and when the user asks to interrogate, validate, refine, de-risk, or clarify direction.
 argument-hint: "<topic>"
 ---
 

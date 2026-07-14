@@ -78,6 +78,7 @@ in
       default = [
         "shared/communication"
         "shared/reasoning"
+        "shared/scope-alignment"
         "shared/delegation"
         "shared/markdown"
         "shared/version-control"
