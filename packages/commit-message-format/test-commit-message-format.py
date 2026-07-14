@@ -50,6 +50,22 @@ class CommitMessageFormatTests(unittest.TestCase):
         self.assertTrue(all(len(line) <= 72 for line in lines[4:]))
         self.assertEqual(" ".join(lines[4:]), long)
 
+    def test_reflows_existing_prose_lines_as_one_paragraph(self) -> None:
+        message = (
+            "fix(vcs): accept plain commit subjects\n\n"
+            "The checker previously required every subject to use Conventional Commit\n"
+            "syntax, rejecting valid repository-specific forms. Limit subject\n"
+            "validation\n"
+            "to presence and width while retaining body width checks; agent-authored\n"
+            "descriptions remain governed by separate Conventional Commit guidance."
+        )
+        output = format_message(message).stdout
+        body = output.splitlines()[2:]
+        expected = " ".join(message.splitlines()[2:])
+        self.assertTrue(all(len(line) <= 72 for line in body))
+        self.assertEqual(" ".join(body), expected)
+        self.assertNotIn("validation\nto presence", output)
+
     def test_lists_and_trailers_use_continuation_indentation(self) -> None:
         message = (
             "feat: add formatter\n\n"
@@ -63,6 +79,36 @@ class CommitMessageFormatTests(unittest.TestCase):
         self.assertTrue(lines[5].startswith("BREAKING CHANGE: "))
         self.assertTrue(lines[6].startswith("  "))
         self.assertTrue(all(len(line) <= 40 for line in lines[2:]))
+
+    def test_issue_footers_remain_on_separate_lines(self) -> None:
+        message = (
+            "fix: preserve footers\n\n"
+            "Closes #123\n"
+            "Fixes JIRA-456"
+        )
+        self.assertEqual(format_message(message).stdout, message + "\n")
+        self.assertEqual(
+            format_message(message, "--body-width", "10").stdout,
+            message + "\n",
+        )
+
+    def test_line_sensitive_content_is_preserved(self) -> None:
+        message = (
+            "docs: preserve structured content\n\n"
+            "Hard break.  \n"
+            "Next line.\n\n"
+            "Heading\n"
+            "---\n\n"
+            "--- a/file\n"
+            "+++ b/file\n"
+            "old mode 100644\n"
+            "new mode 100755\n"
+            "-old\n"
+            "+new\n\n"
+            "State | Status\n"
+            "foo | running"
+        )
+        self.assertEqual(format_message(message).stdout, message + "\n")
 
     def test_urls_and_inline_code_are_not_split(self) -> None:
         url = "https://example.com/" + "a" * 80

@@ -30,6 +30,14 @@ LIST_RE = re.compile(r"^(?P<prefix>[ \t]*(?:[-+*]|\d+[.)])[ \t]+)(?P<text>\S.*)$
 TRAILER_RE = re.compile(
     r"^(?P<prefix>(?:BREAKING CHANGE|[A-Za-z0-9-]+):[ \t]+)(?P<text>\S.*)$"
 )
+FOOTER_RE = re.compile(r"^(?:Closes #[0-9]+|Fixes [A-Z][A-Z0-9]*-[0-9]+)$")
+DIFF_HEADER_RE = re.compile(
+    r"^(?:(?:old|new|deleted file|new file) mode [0-7]{6}"
+    + r"|(?:similarity|dissimilarity) index [0-9]+%"
+    + r"|(?:rename|copy) (?:from|to) .+"
+    + r"|index [0-9a-f]+\.\.[0-9a-f]+(?: [0-7]{6})?"
+    + r"|Binary files .+ differ)$"
+)
 URL_RE = re.compile(r"https?://\S+")
 INLINE_CODE_RE = re.compile(r"`[^`\n]+`")
 FENCE_RE = re.compile(r"^[ \t]*(?P<marker>`{3,}|~{3,})")
@@ -155,7 +163,7 @@ def format_subject(subject: str) -> str:
 
 
 def format_body_line(line: str, *, width: int) -> list[str]:
-    if not line or len(line) <= width:
+    if not line or len(line) <= width or FOOTER_RE.fullmatch(line) is not None:
         return [line]
 
     list_match = LIST_RE.fullmatch(line)
@@ -183,6 +191,18 @@ def format_body_line(line: str, *, width: int) -> list[str]:
     return wrap_line(line, width=width)
 
 
+def is_prose_line(line: str) -> bool:
+    return bool(
+        line
+        and line[0].isascii()
+        and line[0].isalnum()
+        and LIST_RE.fullmatch(line) is None
+        and TRAILER_RE.fullmatch(line) is None
+        and FOOTER_RE.fullmatch(line) is None
+        and not looks_preformatted(line)
+    )
+
+
 def looks_preformatted(line: str) -> bool:
     plain = line
     for start, end in reversed(unbreakable_spans(line)):
@@ -192,10 +212,14 @@ def looks_preformatted(line: str) -> bool:
         plain.startswith(("```", "~~~", ">", "|", "#", "$ ", "./"))
         or "\t" in plain
         or " --" in plain
+        or " | " in plain
         or " && " in plain
         or " || " in plain
         or plain.endswith(" \\")
+        or plain.endswith("  ")
         or plain[0] in "{["
+        or re.fullmatch(r"(?:={3,}|-{3,}|\*{3,})", plain) is not None
+        or DIFF_HEADER_RE.fullmatch(plain) is not None
     )
 
 
@@ -207,6 +231,13 @@ def format_message(message: str, *, body_width: int) -> str:
     lines = normalized.splitlines()
     result = [format_subject(lines[0])]
     fence: str | None = None
+    paragraph: list[str] = []
+
+    def flush_paragraph() -> None:
+        if paragraph:
+            result.extend(wrap_line(" ".join(paragraph), width=body_width))
+            paragraph.clear()
+
     for line in lines[1:]:
         fence_match = FENCE_RE.match(line)
         if fence is not None:
@@ -219,10 +250,16 @@ def format_message(message: str, *, body_width: int) -> str:
                 fence = None
             continue
         if fence_match is not None:
+            flush_paragraph()
             fence = fence_match.group("marker")
             result.append(line)
             continue
+        if is_prose_line(line):
+            paragraph.append(line)
+            continue
+        flush_paragraph()
         result.extend(format_body_line(line, width=body_width))
+    flush_paragraph()
     return "\n".join(result) + "\n"
 
 
