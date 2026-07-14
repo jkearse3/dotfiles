@@ -25,7 +25,6 @@
     ./rust
     ./secrets
     ./shell
-    ./sqlit
     ./terminal
     ./toml
     ./vcs
