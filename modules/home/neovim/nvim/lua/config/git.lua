@@ -7,14 +7,6 @@ require("lib.config").run({
 		gitsigns.setup({
 			signcolumn = false,
 			numhl = true,
-			on_attach = function(bufnr)
-				local buf_name = vim.api.nvim_buf_get_name(bufnr)
-				if buf_name:match("^diffview://") then
-					return false
-				end
-
-				return true
-			end,
 		})
 
 		local function stage_hunk()
@@ -120,187 +112,14 @@ require("lib.config").run({
 	end,
 })
 
--- Diffview Plus
+-- JJ diff review
 require("lib.config").run({
-	plugins = {
-		"https://github.com/nvim-lua/plenary.nvim",
-		"https://github.com/dlyongemallo/diffview-plus.nvim",
-	},
+	plugins = { "https://github.com/ibhagwan/fzf-lua" },
 	setup = function()
-		require("diffview").setup({
-			preferred_adapter = "jj",
-			view = {
-				default = { layout = "diff1_inline" },
-				file_history = { layout = "diff1_inline" },
-				inline = { style = "unified" },
-			},
-			file_panel = {
-				win_config = {
-					type = "split",
-					position = "bottom",
-					height = 14,
-				},
-			},
-		})
-
-		local function system_trim(command)
-			local output = vim.fn.system(command):gsub("%s+$", "")
-			if vim.v.shell_error ~= 0 then
-				return ""
-			end
-
-			return output
-		end
-
-		local function open_range_prompt()
-			vim.ui.input({ prompt = "Diffview range: " }, function(input)
-				if not input or input:match("^%s*$") then
-					return
-				end
-
-				vim.cmd("DiffviewOpen " .. input)
-			end)
-		end
-
-		local function open_previous_to_current_bookmark()
-			local previous_bookmark = system_trim("jj-bookmark-previous")
-			local current_bookmark = system_trim("jj-bookmark-current")
-			if previous_bookmark == "" or current_bookmark == "" then
-				vim.notify(
-					"Could not resolve previous and current bookmark endpoints; enter an explicit diff range.",
-					vim.log.levels.WARN
-				)
-				open_range_prompt()
-				return
-			end
-
-			vim.cmd("DiffviewOpen " .. previous_bookmark .. ".." .. current_bookmark)
-		end
-
-		local function open_previous_to_working_copy()
-			local previous_bookmark = system_trim("jj-bookmark-previous")
-			if previous_bookmark == "" then
-				vim.notify(
-					"Could not resolve previous bookmark endpoint; enter an explicit diff range.",
-					vim.log.levels.WARN
-				)
-				open_range_prompt()
-				return
-			end
-
-			vim.cmd("DiffviewOpen " .. previous_bookmark .. "..@")
-		end
-
-		local function parse_stacked_bookmarks(output)
-			local bookmarks = {}
-			local lines =
-				vim.split(output:gsub("\r\n", "\n"):gsub("\r", "\n"), "\n", { plain = true })
-			for index, line in ipairs(lines) do
-				if index == #lines and line == "" then
-					break
-				end
-
-				local bookmark = line:gsub("^%s+", ""):gsub("%s+$", "")
-				if bookmark == "" or bookmark:match("%s") or bookmark:find(",", 1, true) then
-					return nil
-				end
-
-				table.insert(bookmarks, bookmark)
-			end
-
-			return bookmarks
-		end
-
-		local function open_stacked_bookmark_picker()
-			local stack_output = vim.fn.system("jj-bookmark-stacked")
-			local stack_error = vim.v.shell_error
-			local stacked_bookmarks = parse_stacked_bookmarks(stack_output)
-			if stack_error ~= 0 or not stacked_bookmarks or #stacked_bookmarks < 2 then
-				vim.notify(
-					"Could not resolve a stacked bookmark range; enter an explicit diff range.",
-					vim.log.levels.WARN
-				)
-				open_range_prompt()
-				return
-			end
-
-			local default_bookmark = system_trim("jj-bookmark-default")
-			vim.ui.select(
-				stacked_bookmarks,
-				{ prompt = "Stacked bookmark diff: " },
-				function(selected)
-					if not selected then
-						return
-					end
-
-					local selected_index
-					for index, bookmark in ipairs(stacked_bookmarks) do
-						if bookmark == selected then
-							selected_index = index
-							break
-						end
-					end
-
-					local base_bookmark = selected_index and stacked_bookmarks[selected_index + 1]
-						or nil
-					if selected == default_bookmark or not base_bookmark or base_bookmark == "" then
-						vim.notify(
-							"Could not resolve selected stacked bookmark endpoints; enter an explicit diff range.",
-							vim.log.levels.WARN
-						)
-						open_range_prompt()
-						return
-					end
-
-					vim.cmd("DiffviewOpen " .. base_bookmark .. ".." .. selected)
-				end
-			)
-		end
-
-		vim.keymap.set(
-			"n",
-			"<leader>gdw",
-			"<cmd>DiffviewOpen<cr>",
-			{ desc = "Diffview: Working changes" }
-		)
-		vim.keymap.set("n", "<leader>gdx", "<cmd>DiffviewClose<cr>", { desc = "Diffview: Close" })
-		vim.keymap.set(
-			"n",
-			"<leader>gdp",
-			open_previous_to_current_bookmark,
-			{ desc = "Diffview: Previous to current bookmark" }
-		)
-		vim.keymap.set(
-			"n",
-			"<leader>gdc",
-			open_previous_to_working_copy,
-			{ desc = "Diffview: Previous bookmark to working copy" }
-		)
-		vim.keymap.set(
-			"n",
-			"<leader>gds",
-			open_stacked_bookmark_picker,
-			{ desc = "Diffview: Stacked bookmark" }
-		)
-		vim.keymap.set(
-			"n",
-			"<leader>gdr",
-			"<cmd>DiffviewOpen @-..@<cr>",
-			{ desc = "Diffview: Previous revision" }
-		)
-		vim.keymap.set("n", "<leader>gdR", open_range_prompt, { desc = "Diffview: Explicit range" })
-		vim.keymap.set(
-			"n",
-			"<leader>gdf",
-			"<cmd>DiffviewFileHistory %<cr>",
-			{ desc = "Diffview: File history" }
-		)
-		vim.keymap.set(
-			"n",
-			"<leader>gdh",
-			"<cmd>DiffviewFileHistory<cr>",
-			{ desc = "Diffview: Repo history" }
-		)
+		local jj_diff = require("lib.jj_diff")
+		vim.keymap.set("n", "<leader>gdr", jj_diff.pick_revision, { desc = "JJ diff: Revision" })
+		vim.keymap.set("n", "<leader>gdb", jj_diff.pick_bookmark, { desc = "JJ diff: Bookmark" })
+		vim.keymap.set("n", "<leader>gds", jj_diff.pick_retained_scope, { desc = "JJ diff: Scope" })
 	end,
 })
 

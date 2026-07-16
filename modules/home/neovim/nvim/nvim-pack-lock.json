@@ -17,10 +17,6 @@
       "rev": "1d457ad5f267b8ef855a6b8b3fe152403cb00947",
       "src": "https://github.com/zbirenbaum/copilot.lua"
     },
-    "diffview-plus.nvim": {
-      "rev": "1551fc496c29e14ebd4cf04543549a59dfe5d0dc",
-      "src": "https://github.com/dlyongemallo/diffview-plus.nvim"
-    },
     "fzf-lua": {
       "rev": "988416cc782dfe28bff3f0da9b8c943b236cd86a",
       "src": "https://github.com/ibhagwan/fzf-lua"
