@@ -81,7 +81,7 @@ in
         "shared/scope-alignment"
         "shared/markdown"
         "shared/version-control"
-        "shared/software-development"
+        "shared/making-changes"
       ];
       description = ''
         Fully qualified shared rule IDs in the order used by stitched agent
