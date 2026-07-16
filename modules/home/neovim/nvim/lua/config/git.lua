@@ -119,6 +119,7 @@ require("lib.config").run({
 		local jj_diff = require("lib.jj_diff")
 		vim.keymap.set("n", "<leader>gdr", jj_diff.pick_revision, { desc = "JJ diff: Revision" })
 		vim.keymap.set("n", "<leader>gdb", jj_diff.pick_bookmark, { desc = "JJ diff: Bookmark" })
+		vim.keymap.set("n", "<leader>gdl", jj_diff.open_cursor_revision, { desc = "JJ diff: Line" })
 		vim.keymap.set("n", "<leader>gds", jj_diff.pick_retained_scope, { desc = "JJ diff: Scope" })
 	end,
 })

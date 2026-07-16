@@ -26,6 +26,12 @@ local M = {}
 ---@field description? string
 ---@field display? string Picker label added by `list_revisions`.
 
+---@class lib.jj_diff.Attribution
+---@field commit_id string
+---@field change_id string
+---@field line_number integer
+---@field original_line_number integer
+
 ---@class lib.jj_diff.Bookmark
 ---@field name string
 ---@field target any[] Targets reported by JJ; normal bookmarks have exactly one commit ID.
@@ -201,6 +207,20 @@ local changed_files_template = table.concat({
 	' ++ ",\\"status\\":" ++ status_char.escape_json() ++ "}\\n"',
 })
 
+--- Builds a structured annotation template that emits only the requested line.
+---@param line integer
+---@return string
+local function annotation_line_template(line)
+	return table.concat({
+		"if(line_number == ",
+		tostring(line),
+		', "{\\"commit_id\\":" ++ json(commit.commit_id())',
+		' ++ ",\\"change_id\\":" ++ json(commit.change_id())',
+		' ++ ",\\"line_number\\":" ++ json(line_number)',
+		' ++ ",\\"original_line_number\\":" ++ json(original_line_number) ++ "}\\n")',
+	})
+end
+
 --- Builds arguments that render changed files as newline-delimited JSON.
 ---@param comparison lib.jj_diff.Comparison
 ---@return string[]
@@ -225,6 +245,59 @@ function M.repo_root(cwd, runner)
 		return nil, "jj returned an empty repository root"
 	end
 	return root
+end
+
+--- Attributes one working-copy line to the revision that introduced it.
+---@param repo string Repository root.
+---@param path string Root-relative working-copy path.
+---@param line integer One-based working-copy line number.
+---@param runner? lib.jj_diff.Runner
+---@return lib.jj_diff.Attribution? attribution
+---@return string? error
+function M.annotate_line(repo, path, line, runner)
+	if type(line) ~= "number" or line < 1 or line % 1 ~= 0 then
+		return nil, "JJ line attribution requires a positive line number"
+	end
+	local output, err = (runner or run_jj)({
+		"file",
+		"annotate",
+		"-r",
+		"@",
+		"-T",
+		annotation_line_template(line),
+		"--color",
+		"never",
+		"--",
+		path,
+	}, repo)
+	if not output then
+		return nil, err
+	end
+
+	local values
+	values, err = json_lines(output)
+	if not values then
+		return nil, err
+	end
+	if #values == 0 then
+		return nil, "JJ returned no attribution for line " .. line
+	end
+	if #values ~= 1 then
+		return nil, "JJ returned ambiguous attribution for line " .. line
+	end
+	local attribution = values[1]
+	if
+		not valid_commit_id(attribution.commit_id)
+		or type(attribution.change_id) ~= "string"
+		or attribution.change_id == ""
+		or attribution.line_number ~= line
+		or type(attribution.original_line_number) ~= "number"
+		or attribution.original_line_number < 1
+		or attribution.original_line_number % 1 ~= 0
+	then
+		return nil, "JJ returned invalid line-attribution data"
+	end
+	return attribution
 end
 
 --- Lists all revisions with stable identifiers and picker labels.
@@ -707,6 +780,65 @@ function M.map_line(patch, path, line)
 	return file.new_path, line + offset
 end
 
+--- Resolves a working-copy line to its location in the responsible revision.
+---@param repo string Repository root.
+---@param path string Root-relative working-copy path.
+---@param line integer One-based working-copy line number.
+---@param runner? lib.jj_diff.Runner
+---@return lib.jj_diff.ReviewComparison? comparison
+---@return lib.jj_diff.Location|string? location_or_error
+function M.resolve_line_revision(repo, path, line, runner)
+	local attribution, err = M.annotate_line(repo, path, line, runner)
+	if not attribution then
+		return nil, err
+	end
+	local comparison = M.revision_comparison(repo, attribution)
+	local revision_patch
+	revision_patch, err = M.patch(comparison, nil, runner)
+	if not revision_patch then
+		return nil, err
+	end
+	local forward_patch
+	forward_patch, err =
+		M.patch({ repo = repo, from = attribution.commit_id, target = "@" }, nil, runner)
+	if not forward_patch then
+		return nil, err
+	end
+
+	local matches = {}
+	local seen = {}
+	local parsed = M.parse_patch(revision_patch)
+	local candidates = vim.tbl_values(parsed.rows)
+	for _, file in ipairs(parsed.files) do
+		if file.old_path and file.new_path and file.old_path ~= file.new_path and not file.copy then
+			table.insert(
+				candidates,
+				{ path = file.new_path, line = attribution.original_line_number }
+			)
+		end
+	end
+	for _, candidate in ipairs(candidates) do
+		if candidate.path and candidate.line == attribution.original_line_number then
+			local key = candidate.path .. "\0" .. candidate.line
+			if not seen[key] then
+				seen[key] = true
+				local mapped_path, mapped_line =
+					M.map_line(forward_patch, candidate.path, candidate.line)
+				if mapped_path == path and mapped_line == line then
+					table.insert(matches, candidate)
+				end
+			end
+		end
+	end
+	if #matches == 0 then
+		return nil, "Attributed line is deleted, copied, or cannot be mapped to this file"
+	end
+	if #matches ~= 1 then
+		return nil, "Attributed line maps ambiguously to this file"
+	end
+	return comparison, matches[1]
+end
+
 --- Reports a recoverable JJ diff error without interrupting Neovim.
 ---@param message? string
 local function notify_error(message)
@@ -801,20 +933,12 @@ local function clear_patch_quickfix(buffer)
 	end
 end
 
---- Opens a comparison patch in the shared read-only review buffer.
----
---- A successful refresh replaces the buffer contents and its quickfix entries in place. A failed
---- patch command leaves any retained review state unchanged.
+--- Replaces the shared review buffer with a patch that has already been generated successfully.
 ---@param comparison lib.jj_diff.ReviewComparison
----@param path? string Optional root-relative path scope.
+---@param patch string
 ---@param runner? lib.jj_diff.Runner
----@return integer? buffer
----@return string? error
-function M.open_patch(comparison, path, runner)
-	local patch, err = M.patch(comparison, path, runner)
-	if not patch then
-		return nil, err
-	end
+---@return integer buffer
+local function show_patch(comparison, patch, runner)
 	local parsed = M.parse_patch(patch)
 	local buffer = retained_patch_buffer()
 	if not buffer then
@@ -860,6 +984,124 @@ function M.open_patch(comparison, path, runner)
 	return buffer
 end
 
+--- Opens a comparison patch in the shared read-only review buffer.
+---
+--- A successful refresh replaces the buffer contents and its quickfix entries in place. A failed
+--- patch command leaves any retained review state unchanged.
+---@param comparison lib.jj_diff.ReviewComparison
+---@param path? string Optional root-relative path scope.
+---@param runner? lib.jj_diff.Runner
+---@return integer? buffer
+---@return string? error
+function M.open_patch(comparison, path, runner)
+	local patch, err = M.patch(comparison, path, runner)
+	if not patch then
+		return nil, err
+	end
+	return show_patch(comparison, patch, runner)
+end
+
+--- Opens the responsible revision's file-scoped patch for one absolute working-copy location.
+---@param absolute string Absolute working-copy path.
+---@param line integer One-based working-copy line number.
+---@param runner? lib.jj_diff.Runner
+---@return boolean opened
+---@return string? error
+function M.open_line_revision(absolute, line, runner)
+	if type(absolute) ~= "string" or absolute:sub(1, 1) ~= "/" then
+		return false, "JJ line attribution requires an absolute file path"
+	end
+	absolute = vim.uv.fs_realpath(absolute) or vim.fs.normalize(absolute)
+	local stat = vim.uv.fs_stat(absolute)
+	if not stat or stat.type ~= "file" then
+		return false, "JJ line attribution requires an existing file"
+	end
+	if type(line) ~= "number" or line < 1 or line % 1 ~= 0 then
+		return false, "JJ line attribution requires a positive line number"
+	end
+	for _, buffer in ipairs(vim.api.nvim_list_bufs()) do
+		local buffer_name = vim.api.nvim_buf_get_name(buffer)
+		local buffer_path = vim.uv.fs_realpath(buffer_name) or vim.fs.normalize(buffer_name)
+		if
+			vim.api.nvim_buf_is_loaded(buffer)
+			and buffer_path == absolute
+			and vim.bo[buffer].modified
+		then
+			return false, "Save the buffer before opening its JJ line revision"
+		end
+	end
+
+	local repo, err = M.repo_root(vim.fs.dirname(absolute), runner)
+	if not repo then
+		return false, err
+	end
+	repo = vim.uv.fs_realpath(repo) or vim.fs.normalize(repo)
+	local path = vim.fs.relpath(repo, absolute)
+	if not path or path == "." or path:match("^%.%.[/\\]") then
+		return false, "File is outside the JJ repository"
+	end
+	local comparison, location_or_error = M.resolve_line_revision(repo, path, line, runner)
+	if not comparison then
+		return false, location_or_error
+	end
+	local location = location_or_error --[[@as lib.jj_diff.Location]]
+	local patch
+	patch, err = M.patch(comparison, location.path, runner)
+	if not patch then
+		return false, err
+	end
+	local parsed = M.parse_patch(patch)
+	local row
+	for candidate_row, candidate in pairs(parsed.rows) do
+		if candidate.path == location.path and candidate.line == location.line then
+			if row then
+				return false, "Attributed line appears ambiguously in its revision patch"
+			end
+			row = candidate_row
+		end
+	end
+	if not row then
+		for _, file in ipairs(parsed.files) do
+			if
+				file.old_path
+				and file.new_path == location.path
+				and file.old_path ~= file.new_path
+				and not file.copy
+			then
+				row = file.row
+				break
+			end
+		end
+	end
+	if not row then
+		return false, "Attributed line is missing from its revision patch"
+	end
+
+	show_patch(comparison, patch, runner)
+	vim.api.nvim_win_set_cursor(0, { row, 0 })
+	return true
+end
+
+--- Opens the responsible revision for the current cursor line.
+---@return boolean opened
+function M.open_cursor_revision()
+	local buffer = vim.api.nvim_get_current_buf()
+	if vim.bo[buffer].buftype ~= "" then
+		notify_error("JJ line attribution requires a file buffer")
+		return false
+	end
+	local absolute = vim.api.nvim_buf_get_name(buffer)
+	if absolute == "" then
+		notify_error("JJ line attribution requires a named file buffer")
+		return false
+	end
+	local opened, err = M.open_line_revision(absolute, vim.api.nvim_win_get_cursor(0)[1])
+	if not opened then
+		notify_error(err)
+	end
+	return opened
+end
+
 --- Reopens scope selection for the comparison retained by the patch buffer.
 function M.pick_retained_scope()
 	local buffer = retained_patch_buffer()
@@ -878,19 +1120,9 @@ end
 --- Creates an fzf-lua previewer backed by exact source-entry lookup.
 ---@param entry_map table<string, any>
 ---@param preview lib.jj_diff.Preview
----@return table previewer_class
+---@return table previewer_spec
 local function previewer(entry_map, preview)
 	local class = require("fzf-lua.previewer.builtin").base:extend()
-
-	--- Initializes an fzf-lua previewer instance.
-	---@param options any
-	---@param picker_options any
-	---@param fzf_window any
-	---@return table
-	function class:new(options, picker_options, fzf_window)
-		self.super.new(self, options, picker_options, fzf_window)
-		return self
-	end
 
 	--- Populates the preview buffer for an encoded picker entry.
 	---@param entry string
@@ -904,7 +1136,11 @@ local function previewer(entry_map, preview)
 		self.win:update_preview_title(title or "jj diff error")
 	end
 
-	return class
+	return {
+		_ctor = function()
+			return class
+		end,
+	}
 end
 
 --- Encodes picker entries with stable unique prefixes and a reverse lookup.

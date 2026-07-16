@@ -266,27 +266,420 @@ describe("jj diff comparisons", function()
 		assert.truthy(err:find("jj returned invalid JSON"))
 	end)
 
-	it("constructs the pinned fzf-lua previewer", function()
+	it("attributes one line with structured argv-safe output", function()
+		local calls = {}
+		local attribution =
+			assert(jj_diff.annotate_line("/repo", "odd name.txt", 7, function(args, cwd)
+				table.insert(calls, { args = args, cwd = cwd })
+				return table.concat({
+					'{"commit_id":"0123456789abcdef","change_id":"abcdefghijklmnop",',
+					'"line_number":7,"original_line_number":3}\n',
+				})
+			end))
+
+		assert.are.same({
+			commit_id = "0123456789abcdef",
+			change_id = "abcdefghijklmnop",
+			line_number = 7,
+			original_line_number = 3,
+		}, attribution)
+		assert.are.equal("/repo", calls[1].cwd)
+		assert.are.same(
+			{ "file", "annotate", "-r", "@", "-T" },
+			vim.list_slice(calls[1].args, 1, 5)
+		)
+		assert.truthy(calls[1].args[6]:find("line_number == 7", 1, true))
+		assert.truthy(calls[1].args[6]:find("json(commit.commit_id())", 1, true))
+		assert.are.same(
+			{ "--color", "never", "--", "odd name.txt" },
+			vim.list_slice(calls[1].args, 7)
+		)
+	end)
+
+	it("rejects missing and malformed line attribution", function()
+		local attribution, err = jj_diff.annotate_line("/repo", "file.txt", 1, function()
+			return ""
+		end)
+		assert.is_nil(attribution)
+		assert.truthy(err:find("no attribution"))
+
+		attribution, err = jj_diff.annotate_line("/repo", "file.txt", 1, function()
+			return '{"commit_id":"not-hex","change_id":"change","line_number":1,'
+				.. '"original_line_number":1}\n'
+		end)
+		assert.is_nil(attribution)
+		assert.are.equal("JJ returned invalid line-attribution data", err)
+
+		attribution, err = jj_diff.annotate_line("/repo", "file.txt", 1, function()
+			return "not json\n"
+		end)
+		assert.is_nil(attribution)
+		assert.truthy(err:find("jj returned invalid JSON"))
+	end)
+
+	it("opens a renamed and shifted attributed line with complete retained scope", function()
+		local directory = vim.fn.tempname()
+		vim.fn.mkdir(directory, "p")
+		local absolute = vim.fs.joinpath(directory, "moved.txt")
+		vim.fn.writefile({ "inserted", "line" }, absolute)
+		local revision_patch = table.concat({
+			"diff --git a/old.txt b/old.txt",
+			"--- a/old.txt",
+			"+++ b/old.txt",
+			"@@ -1 +1 @@",
+			"-before",
+			"+line",
+		}, "\n")
+		local forward_patch = table.concat({
+			"diff --git a/old.txt b/moved.txt",
+			"similarity index 80%",
+			"rename from old.txt",
+			"rename to moved.txt",
+			"--- a/old.txt",
+			"+++ b/moved.txt",
+			"@@ -1 +1,2 @@",
+			"+inserted",
+			" line",
+		}, "\n")
+		local calls = {}
+		local commit_id = "0123456789abcdef"
+		local function runner(args, cwd)
+			table.insert(calls, { args = vim.deepcopy(args), cwd = cwd })
+			if args[1] == "root" then
+				return directory .. "\n"
+			end
+			if args[1] == "file" then
+				return string.format(
+					'{"commit_id":"%s","change_id":"abcdefghijklmnop",'
+						.. '"line_number":2,"original_line_number":1}\n',
+					commit_id
+				)
+			end
+			if args[4] == "--from" then
+				return forward_patch
+			end
+			return revision_patch
+		end
+
+		local opened, err = jj_diff.open_line_revision(absolute, 2, runner)
+		assert.is_true(opened, err)
+		local buffer = vim.api.nvim_get_current_buf()
+		assert.are.equal("jj-diff://review", vim.api.nvim_buf_get_name(buffer))
+		assert.are.same({ 6, 0 }, vim.api.nvim_win_get_cursor(0))
+		assert.are.same({
+			repo = vim.uv.fs_realpath(directory),
+			target = commit_id,
+			title = "jj revision abcdefghijkl",
+		}, vim.b[buffer].jj_diff_comparison)
+		local scoped_call
+		for _, call in ipairs(calls) do
+			if call.args[#call.args] == 'root-file:"old.txt"' then
+				scoped_call = call
+			end
+		end
+		assert.is_not_nil(scoped_call)
+
+		local picked
+		local pick_scope = jj_diff.pick_scope
+		jj_diff.pick_scope = function(comparison)
+			picked = comparison
+		end
+		jj_diff.pick_retained_scope()
+		jj_diff.pick_scope = pick_scope
+		assert.are.same(vim.b[buffer].jj_diff_comparison, picked)
+
+		vim.api.nvim_buf_delete(buffer, {})
+		vim.fn.delete(directory, "rf")
+	end)
+
+	it("supports lines attributed to the working-copy commit", function()
+		local revision_patch = table.concat({
+			"diff --git a/file.txt b/file.txt",
+			"--- a/file.txt",
+			"+++ b/file.txt",
+			"@@ -0,0 +1 @@",
+			"+working line",
+		}, "\n")
+		local calls = 0
+		local comparison, location = jj_diff.resolve_line_revision(
+			"/repo",
+			"file.txt",
+			1,
+			function(args)
+				calls = calls + 1
+				if args[1] == "file" then
+					return '{"commit_id":"aaaaaaaa","change_id":"workingcopyid",'
+						.. '"line_number":1,"original_line_number":1}\n'
+				end
+				if args[4] == "--from" then
+					return ""
+				end
+				return revision_patch
+			end
+		)
+
+		assert.are.equal(3, calls)
+		assert.are.equal("aaaaaaaa", comparison.target)
+		assert.are.same({ path = "file.txt", line = 1 }, location)
+	end)
+
+	it("opens a line attributed to a pure rename at the file header", function()
+		local directory = vim.fn.tempname()
+		vim.fn.mkdir(directory, "p")
+		local absolute = vim.fs.joinpath(directory, "new.txt")
+		vim.fn.writefile({ "unchanged" }, absolute)
+		local rename_patch = table.concat({
+			"diff --git a/old.txt b/new.txt",
+			"similarity index 100%",
+			"rename from old.txt",
+			"rename to new.txt",
+		}, "\n")
+		local function runner(args)
+			if args[1] == "root" then
+				return directory .. "\n"
+			end
+			if args[1] == "file" then
+				return '{"commit_id":"aaaaaaaa","change_id":"renamechange",'
+					.. '"line_number":1,"original_line_number":1}\n'
+			end
+			if args[4] == "--from" then
+				return ""
+			end
+			return rename_patch
+		end
+
+		local opened, err = jj_diff.open_line_revision(absolute, 1, runner)
+		assert.is_true(opened, err)
+		local buffer = vim.api.nvim_get_current_buf()
+		assert.are.same({ 1, 0 }, vim.api.nvim_win_get_cursor(0))
+		assert.are.same({
+			repo = vim.uv.fs_realpath(directory),
+			target = "aaaaaaaa",
+			title = "jj revision renamechange",
+		}, vim.b[buffer].jj_diff_comparison)
+
+		vim.api.nvim_buf_delete(buffer, {})
+		vim.fn.delete(directory, "rf")
+	end)
+
+	it("opens a renamed line outside the revision's edit hunks", function()
+		local directory = vim.fn.tempname()
+		vim.fn.mkdir(directory, "p")
+		local absolute = vim.fs.joinpath(directory, "new.txt")
+		vim.fn.writefile({ "one", "two", "three", "four", "five" }, absolute)
+		local rename_patch = table.concat({
+			"diff --git a/old.txt b/new.txt",
+			"similarity index 80%",
+			"rename from old.txt",
+			"rename to new.txt",
+			"--- a/old.txt",
+			"+++ b/new.txt",
+			"@@ -3,3 +3,3 @@",
+			" three",
+			"-before",
+			"+four",
+			" five",
+		}, "\n")
+		local function runner(args)
+			if args[1] == "root" then
+				return directory .. "\n"
+			end
+			if args[1] == "file" then
+				return '{"commit_id":"aaaaaaaa","change_id":"renamechange",'
+					.. '"line_number":1,"original_line_number":1}\n'
+			end
+			if args[4] == "--from" then
+				return ""
+			end
+			return rename_patch
+		end
+
+		local opened, err = jj_diff.open_line_revision(absolute, 1, runner)
+		assert.is_true(opened, err)
+		local buffer = vim.api.nvim_get_current_buf()
+		assert.are.same({ 1, 0 }, vim.api.nvim_win_get_cursor(0))
+		assert.are.same("aaaaaaaa", vim.b[buffer].jj_diff_comparison.target)
+
+		vim.api.nvim_buf_delete(buffer, {})
+		vim.fn.delete(directory, "rf")
+	end)
+
+	it("preserves retained review state when the line workflow fails", function()
+		local existing_comparison = {
+			repo = "/repo",
+			target = "aaaaaaaa",
+			title = "existing comparison",
+		}
+		local buffer = assert(jj_diff.open_patch(existing_comparison, nil, function()
+			return "existing patch"
+		end))
+		local quickfix = vim.fn.getqflist({ id = 0, title = 0 })
+		local directory = vim.fn.tempname()
+		vim.fn.mkdir(directory, "p")
+		local absolute = vim.fs.joinpath(directory, "file.txt")
+		vim.fn.writefile({ "line" }, absolute)
+		local function assert_preserved()
+			assert.are.same({ "existing patch" }, vim.api.nvim_buf_get_lines(buffer, 0, -1, false))
+			assert.are.same(existing_comparison, vim.b[buffer].jj_diff_comparison)
+			assert.are.same(quickfix, vim.fn.getqflist({ id = 0, title = 0 }))
+		end
+
+		local opened, err = jj_diff.open_line_revision(absolute, 1, function(args)
+			if args[1] == "root" then
+				return directory .. "\n"
+			end
+			return "not json\n"
+		end)
+		assert.is_false(opened)
+		assert.truthy(err:find("invalid JSON"))
+		assert_preserved()
+
+		local revision_patch = table.concat({
+			"diff --git a/old.txt b/old.txt",
+			"--- a/old.txt",
+			"+++ b/old.txt",
+			"@@ -0,0 +1 @@",
+			"+line",
+		}, "\n")
+		local copy_patch = table.concat({
+			"diff --git a/old.txt b/file.txt",
+			"similarity index 100%",
+			"copy from old.txt",
+			"copy to file.txt",
+		}, "\n")
+		opened, err = jj_diff.open_line_revision(absolute, 1, function(args)
+			if args[1] == "root" then
+				return directory .. "\n"
+			end
+			if args[1] == "file" then
+				return '{"commit_id":"aaaaaaaa","change_id":"changeid",'
+					.. '"line_number":1,"original_line_number":1}\n'
+			end
+			if args[4] == "--from" then
+				return copy_patch
+			end
+			return revision_patch
+		end)
+		assert.is_false(opened)
+		assert.truthy(err:find("copied"))
+		assert_preserved()
+
+		local patch_calls = 0
+		opened, err = jj_diff.open_line_revision(absolute, 1, function(args)
+			if args[1] == "root" then
+				return directory .. "\n"
+			end
+			if args[1] == "file" then
+				return '{"commit_id":"aaaaaaaa","change_id":"changeid",'
+					.. '"line_number":1,"original_line_number":1}\n'
+			end
+			patch_calls = patch_calls + 1
+			if patch_calls == 1 then
+				return revision_patch:gsub("old%.txt", "file.txt")
+			end
+			if patch_calls == 2 then
+				return ""
+			end
+			return nil, "scoped patch failed"
+		end)
+		assert.is_false(opened)
+		assert.are.equal("scoped patch failed", err)
+		assert_preserved()
+
+		vim.api.nvim_buf_delete(buffer, {})
+		vim.fn.delete(directory, "rf")
+	end)
+
+	it("rejects modified, unnamed, non-file, and out-of-repository buffers", function()
+		local directory = vim.fn.tempname()
+		vim.fn.mkdir(directory, "p")
+		local absolute = vim.fs.joinpath(directory, "file.txt")
+		vim.fn.writefile({ "saved" }, absolute)
+		local buffer = vim.fn.bufadd(absolute)
+		vim.fn.bufload(buffer)
+		vim.api.nvim_buf_set_lines(buffer, 0, -1, false, { "unsaved" })
+		local called = false
+		local opened, err = jj_diff.open_line_revision(absolute, 1, function()
+			called = true
+			return nil, "runner should not be called"
+		end)
+		assert.is_false(opened)
+		assert.are.equal("Save the buffer before opening its JJ line revision", err)
+		assert.is_false(called)
+		vim.api.nvim_buf_delete(buffer, { force = true })
+
+		opened, err = jj_diff.open_line_revision(absolute, 1, function(args)
+			if args[1] == "root" then
+				return "/other/repo\n"
+			end
+			error("runner should not continue")
+		end)
+		assert.is_false(opened)
+		assert.are.equal("File is outside the JJ repository", err)
+
+		vim.cmd("enew")
+		local messages = {}
+		local notify = vim.notify
+		vim.notify = function(message)
+			table.insert(messages, message)
+		end
+		assert.is_false(jj_diff.open_cursor_revision())
+		assert.truthy(messages[#messages]:find("named file buffer"))
+		vim.bo.buftype = "nofile"
+		assert.is_false(jj_diff.open_cursor_revision())
+		assert.truthy(messages[#messages]:find("file buffer"))
+		vim.notify = notify
+		vim.cmd("bdelete!")
+		vim.fn.delete(directory, "rf")
+	end)
+
+	it("constructs revision and bookmark previewers after fzf-lua normalization", function()
 		local fzf = require("fzf-lua")
-		local changed_files = jj_diff.changed_files
+		local config = require("fzf-lua.config")
 		local fzf_exec = fzf.fzf_exec
-		local options
+		local repo_root = jj_diff.repo_root
+		local list_revisions = jj_diff.list_revisions
+		local list_bookmarks = jj_diff.list_bookmarks
+		local captured = {}
 		local ok, err = pcall(function()
-			jj_diff.changed_files = function()
-				return {}
+			jj_diff.repo_root = function()
+				return "/repo"
+			end
+			jj_diff.list_revisions = function()
+				return {
+					{
+						commit_id = "aaaaaaaa",
+						change_id = "revisionchange",
+						display = "revision",
+					},
+				}
+			end
+			jj_diff.list_bookmarks = function()
+				return {
+					{ name = "feature", target = { "aaaaaaaa" }, display = "feature" },
+				}
 			end
 			fzf.fzf_exec = function(_, picker_options)
-				options = picker_options
+				table.insert(captured, picker_options)
 			end
-			jj_diff.pick_scope({ repo = "/repo", target = "aaaaaaaa", title = "jj test" })
+			jj_diff.pick_revision()
+			jj_diff.pick_bookmark()
 		end)
-		jj_diff.changed_files = changed_files
 		fzf.fzf_exec = fzf_exec
+		jj_diff.repo_root = repo_root
+		jj_diff.list_revisions = list_revisions
+		jj_diff.list_bookmarks = list_bookmarks
 		assert(ok, err)
 
-		local class = options.previewer()
-		local instance = require("fzf-lua.previewer").new(class, {})
-		assert.are.equal("function", type(instance.setup_opts))
+		assert.are.equal(2, #captured)
+		for _, options in ipairs(captured) do
+			local normalized = config.normalize_opts(options, {})
+			local instance = require("fzf-lua.previewer").new(normalized.previewer, normalized)
+			assert.are.equal("function", type(instance.get_tmp_buffer))
+			local buffer = instance:get_tmp_buffer()
+			assert.is_true(vim.api.nvim_buf_is_valid(buffer))
+			vim.api.nvim_buf_delete(buffer, { force = true })
+		end
 	end)
 
 	it("retains and reuses one listed patch buffer", function()
