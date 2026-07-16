@@ -2,162 +2,94 @@
 
 ## Repository Mode
 
-Before file-changing or VCS-affecting work, determine the repository mode with read-only commands:
+Before VCS-affecting work, determine the repository mode using read-only commands. Use jj for
+mutations in jj repositories and Git otherwise; do not mix mutation models. Ask before
+`jj git init --colocate`. Never initialize jj for read-only work or outside a Git repository unless
+explicitly requested.
 
-- If jj is initialized, use jj for mutations and git only for read-only inspection.
-- If a git repository lacks jj, ask before running `jj git init --colocate`.
-- Do not initialize jj for read-only work.
-- Do not initialize jj outside an existing git repository unless the user explicitly requests it.
+## Authority And Safety
 
-Use the repository's active VCS for mutations. Do not mix mutation models in a colocated repository.
+An implementation plan identifying the change and base authorizes shaping current-task,
+agent-authored work into reviewable unpublished history: create, describe, split, or fold revisions
+and move task-created references. Mutating a named existing target also requires clear ownership and
+unpublished status; naming it for inspection or review grants no mutation authority.
 
-## Local Mutation Authority
+Ask before affecting published, unrelated, or user-authored history; discarding changes; moving
+pre-existing references; rewriting other descendants; or using an ambiguous base, target, or owner.
+Destructive operations require an explicit request for the identified outcome. Avoid interactive
+commands. Report mutations and requested work skipped or blocked.
 
-Once an implementation request has produced a concrete gameplan identifying the intended change and
-base, it authorizes the local VCS operations needed to turn current-task, agent-authored work into
-reviewable unpublished history. This includes creating and describing commits or revisions,
-splitting or folding current-task work, creating a fresh jj working-copy revision, and moving a
-task-created local bookmark to the reviewed tip. A request that explicitly names an existing
-revision or bookmark also authorizes those operations only when it asks for mutation and the
-target's ownership and unpublished state are clear. Naming a target for inspection or review does
-not authorize mutation.
+## Placement And Atomicity
 
-That authority applies only within the stated gameplan. It does not cover published revisions,
-unrelated or user-authored history, ambiguous bases or destinations, discarding changes, moving
-pre-existing bookmarks, rewriting other descendants outside the current task or explicitly named
-target stack, publication, pull requests, or remote named references. Inspect the affected state and
-ask before crossing one of those boundaries. Avoid interactive VCS commands.
+Before editing, inspect the working copy, parent, attached references, default reference, and
+intended base. Start from the current position unless the user names another base. In jj, keep an
+empty working copy's parent as the presumptive base; do not substitute an ancestral or default
+bookmark. Continue non-empty work only for the same concern.
 
-Do not run destructive commands such as `git reset --hard`, `git clean -fd`, or equivalent jj
-operations unless the user explicitly requests the exact destructive outcome after the affected
-state is identified.
+Keep one concern per revision. In jj, give each concern a task-owned, non-default bookmark. In Git,
+reuse the current branch only when it is already task-specific; otherwise create a task branch. Use
+the default reference only when explicitly requested. A task reference may inherit revisions outside
+its concern from the current base, but its own revisions must remain focused.
 
-## Work Placement
+## Finalization And Review
 
-Before the first edit for a new logical change, inspect the working-copy revision and parent, any
-bookmark pointing directly at the working-copy revision, the default bookmark, and the intended
-base.
+For unpublished agent-authored work:
 
-- Continue a non-empty working-copy revision only when the request belongs to that exact concern.
-- When the working copy is empty, treat its parent as the presumptive intended base. Do not replace
-  an unbookmarked parent with the nearest ancestral bookmark or default bookmark merely because it
-  lacks a bookmark.
-- Start a new concern from the current position, including on top of the current stack, unless the
-  user explicitly names another base. Do not move independent work to the default bookmark merely
-  because it is unrelated to the current stack.
-- Ask only when the user requests a different base but the target cannot be identified safely.
-- Before editing, assign each implementation concern its own non-default bookmark. Reuse the current
-  bookmark only when it already represents that exact concern; otherwise create a task bookmark from
-  the intended base.
-- Work directly on the default bookmark only when the user explicitly requests it. This is the sole
-  exception to the dedicated-bookmark requirement.
+1. Run focused verification and establish the fewest coherent, fully described revisions.
+2. In jj, create a fresh empty working-copy revision above the finalized work; a review while the
+   implementation revision is still `@` is diagnostic, not final. In Git, leave a clean worktree.
+3. Review each revision in dependency order, then review `<parent>..<reference>` for aggregate
+   integration issues. If the parent or base is ambiguous, ask rather than guess.
 
-A revision must not contain unrelated changes. A bookmark may inherit unrelated revisions when it
-starts from the current stack, but its own revisions must remain focused on its concern.
+A final review covers the effective diff, description, boundaries, order, and base. Identify jj
+revisions by stable change ID; commit IDs are evidence, not identity. Changes invalidate affected
+reviews; a base change always invalidates the aggregate. Re-review descendants only when their diffs
+or assumptions change.
 
-## Reviewable Lifecycle
-
-Treat clean revision history as part of implementation, not optional cleanup. For unpublished
-agent-authored implementation work, perform these steps in order:
-
-1. Run focused verification.
-2. Establish the fewest coherent revision boundaries and validate complete descriptions for every
-   resulting revision.
-3. In jj repositories, create a fresh empty working-copy revision above the finalized work. Run the
-   final review from this clean working copy and target each finalized revision by stable change ID;
-   a review performed while an implementation revision is still `@` is diagnostic, not final. In Git
-   repositories, leave coherent, fully described commits and a clean worktree.
-4. Review each revision in dependency order and the aggregate bookmark delta when the work spans
-   multiple revisions.
-
-An informal review of undescribed or unshaped working changes may guide implementation, but it is
-not a final review pass. A final pass applies only to the exact reviewed content, descriptions,
-revision boundaries, order, and base.
-
-Keep review fixes isolated from reviewed content. Fold a fix into its target only when it addresses
-that revision exclusively and the affected history is unpublished current-task work. Preserve or
-revalidate the destination description, create or restore a fresh empty working-copy revision above
-the reviewed tip, then repeat affected verification and reviews. Ask when the destination or
-ownership is ambiguous, the fix spans revisions, unrelated changes are present, or other history
-would be rewritten.
-
-Bind a revision review to its stable change ID, effective diff, description, order, and base; record
-the commit ID as evidence, not identity. Content changes, meaningful description changes, boundary
-changes, or reordering invalidate the affected revision review. A changed base always invalidates
-the aggregate review; re-review descendant revisions only when their effective diffs or assumptions
-change.
-
-## Stacked Bookmarks
-
-Each bookmark is one review and publication unit and may contain one or more coherent revisions.
-Base new bookmarks on the current position by default, whether or not the work depends on the
-current stack. Use the default or another base only when the user explicitly requests it.
-
-For a linear stack, review every revision selected by `<parent>..<bookmark>` in dependency order,
-then review that same aggregate delta for integration issues. Stop for an explicit base when a merge
-or multiple plausible parent bookmarks make the range ambiguous. After a parent changes, restack its
-descendants and repeat affected verification and reviews. Advance a task-created local bookmark to
-the reviewed tip only after those checks pass; ask before moving a pre-existing bookmark.
+Create review fixes separately. Fold one into its target only when revision-local and the history is
+unpublished and task-owned; then revalidate its description and repeat affected verification and
+reviews from a clean working copy. Ask before involving multiple revisions, unrelated changes,
+uncertain ownership, or other history. After changing a stack parent, restack descendants and repeat
+affected verification and reviews. Move a task-created reference only after checks pass; ask before
+moving a pre-existing reference.
 
 ## Revision Descriptions
 
-Follow documented repository conventions, then recent history. Otherwise use Conventional Commits:
+Repository documentation, then recent history, determines subject format. Otherwise use
+`type(scope): description`, with optional scope and `!` for breaking changes. Allowed types are
+`feat`, `fix`, `refactor`, `perf`, `style`, `chore`, `docs`, `test`, `ci`, and `build`. Use an
+imperative lowercase description without a period and keep it under 72 characters. Choose type by
+effect: agent configuration is `feat` when behavior changes, `refactor` when reorganized, and `docs`
+only when behavior is unchanged.
 
-`type(scope): description`
+Every agent-authored description requires a non-redundant body explaining why. Describe the prior
+state or constraint, then the response. Include material constraints, durable behavior,
+compatibility, risks, exclusions, and non-obvious choices. Exclude review history, tool output,
+scratch work, agent actions, task state, workflow narration, and unsupported claims.
 
-- Allowed types are `feat`, `fix`, `refactor`, `perf`, `style`, `chore`, `docs`, `test`, `ci`, and
-  `build`.
-- Scope is optional and names the affected module, component, or area.
-- Use an imperative, lowercase description without a trailing period.
-- Keep the subject under 72 characters.
-- Mark breaking changes with `!` before the colon.
+Wrap body and footer lines at 72 characters except unbreakable URLs and inline code. Separate
+footers with a blank line; use `Closes #123`, `Fixes JIRA-456`, and `BREAKING CHANGE:` as
+applicable.
 
-Choose the type by behavioral effect rather than file format. Agent rules, skills, prompts, and
-similar configuration are `feat` when they change behavior, `refactor` when they reorganize
-behavior, and `docs` only when behavior is unchanged.
-
-Keep one concern per revision.
-
-Every revision description must include a non-empty body that explains why the change is needed; a
-subject alone is never sufficient. The body must add information rather than restate the subject.
-Describe the prior state or constraint first, then the change in response. Include relevant
-constraints, durable behavior, compatibility boundaries, risks, excluded scope, and non-obvious
-design choices. Do not include review history, tool output, scratch work, agent actions, task state,
-workflow narration, or claims unsupported by the diff or durable project context.
-
-Wrap body and footer lines at 72 characters, except for unbreakable URLs and inline code. Separate
-footers from the body with a blank line. Use `Closes #123` or `Fixes JIRA-456` for issue references.
-Breaking-change footers start with `BREAKING CHANGE:`.
-
-## Message Validation
-
-Before writing any agent-authored git commit message or jj revision description, format the complete
-message, assign the result to a shell variable, and validate that exact value:
+Format each complete agent-authored message into `desc`, validate that exact value, and pass it
+unchanged to the mutation:
 
 ```bash
 desc="$(printf '%s\n' "$desc" | commit-message-format)"
 printf '%s\n' "$desc" | commit-message-check
 ```
 
-Pass `"$desc"` unchanged to the mutating command. If validation fails, revise the message and rerun
-the formatter and checker. Do not format an exact user-supplied message; if it is invalid, stop and
-report the validation failure.
+If validation fails, revise and repeat. Never format an exact user-supplied message; if it fails
+validation, stop and report the failure.
 
-## Publication
+## Publication And Helpers
 
-Do not push, publish bookmarks or branches, create pull requests, merge, or close remote artifacts
-unless explicitly requested. Before publication, inspect the outgoing revisions, target, review
-state, and remote state. Publish dependent stacks parent-first unless the hosting workflow provides
-an atomic stack operation. Never force-push without explicit approval.
+Do not push, publish references, create pull requests, merge, or close remote artifacts without an
+explicit request. First inspect outgoing revisions, target, review state, and remote state. Publish
+dependent stacks parent-first unless the hosting workflow provides an atomic stack operation. Never
+force-push without explicit approval.
 
-In a colocated jj repository, pass `$(jj-bookmark-current)` when a `gh` command requires a branch
-name because git may be detached.
-
-## Available Helpers
-
-Use `jj-bookmark-{current,default,previous,stacked}` or the corresponding `git-branch-*` helpers for
-repository and stack discovery. The jj previous and stacked helpers resolve relative to `@`; use
-them for another target only after confirming `@` is on that target's stack.
-
-Report VCS mutations performed, including created or moved revisions and named references, and any
-requested mutation that was skipped or blocked.
+Use `jj-bookmark-{current,default,previous,stacked}` or corresponding `git-branch-*` helpers for
+discovery. The jj previous and stacked helpers resolve relative to `@`; use them for another target
+only after confirming `@` is on its stack. In colocated repositories, pass `$(jj-bookmark-current)`
+when `gh` needs a branch name because Git may be detached.
