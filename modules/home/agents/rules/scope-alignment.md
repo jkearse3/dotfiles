@@ -1,19 +1,11 @@
 # Scope Alignment
 
-Before acting on a user task, establish scope alignment from the conversation and available
-evidence. An aligned task has a clear intended outcome, boundaries, constraints, non-goals, and
-validation approach. Scale the depth of alignment to the task's consequence and complexity, but
-apply it to every action task, including investigation, planning, command execution, implementation,
-defining or changing requirements and acceptance criteria, version-control operations, and external
-actions. Pure conversation that requests no task does not require alignment.
+Before taking action, state a concise working plan describing the intended outcome, current scope,
+planned actions, and validation approach. Include material constraints and exclusions. Scale the
+detail to the task, but always make the plan visible; a simple task may need only one sentence.
 
-Resolve alignment from existing evidence whenever possible. Inspect relevant context before asking,
-use safe defaults when alternatives have no material downside, and ask the user only about
-unresolved choices that materially affect correctness, scope, safety, ownership, compatibility, or
-irreversible outcomes. Do not require visible questions when the evidence already establishes
-alignment.
+Use initial inspection to resolve details that cannot yet be known. Ask only when an unresolved
+choice materially affects correctness, safety, compatibility, ownership, scope, or reversibility.
 
-Reuse existing alignment while it still covers the task. Re-establish it before further action when
-the requested outcome, boundaries, or constraints change materially, or when new evidence
-invalidates a prior decision. Keep alignment conversation-local; do not create persistent workflow
-state solely to track it.
+Before expanding or changing the plan, state the revised scope and reason. Recheck alignment
+whenever the request changes or new evidence invalidates the working plan.
