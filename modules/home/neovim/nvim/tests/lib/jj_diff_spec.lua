@@ -150,6 +150,31 @@ describe("jj diff patches", function()
 end)
 
 describe("jj diff comparisons", function()
+	it("lists current local bookmarks between revision IDs and descriptions", function()
+		local calls = {}
+		local revisions = assert(jj_diff.list_revisions("/repo", function(args, cwd)
+			table.insert(calls, { args = args, cwd = cwd })
+			return table.concat({
+				'{"commit_id":"aaaaaaaaaaaaaaaa","change_id":"changeonechangeone",'
+					.. '"description":"First revision","bookmarks":["zeta","alpha"]}',
+				'{"commit_id":"bbbbbbbbbbbbbbbb","change_id":"changetwochangetwo",'
+					.. '"description":"Second revision","bookmarks":[]}',
+			}, "\n")
+		end))
+
+		assert.are.equal("/repo", calls[1].cwd)
+		assert.truthy(calls[1].args[6]:find("local_bookmarks.map", 1, true))
+		assert.are.same({ "alpha", "zeta" }, revisions[1].bookmarks)
+		assert.are.equal(
+			"changeonecha  aaaaaaaaaaaa  [alpha, zeta]  First revision",
+			revisions[1].display
+		)
+		assert.are.equal(
+			"changetwocha  bbbbbbbbbbbb  [-]            Second revision",
+			revisions[2].display
+		)
+	end)
+
 	it("uses a selected revision commit without shell interpolation", function()
 		local calls = {}
 		local comparison = jj_diff.revision_comparison("/repo", {

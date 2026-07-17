@@ -25,6 +25,7 @@ local M = {}
 ---@field commit_id string
 ---@field change_id string
 ---@field description? string
+---@field bookmarks? string[]
 ---@field display? string Picker label added by `list_revisions`.
 
 ---@class lib.jj_diff.Attribution
@@ -307,13 +308,19 @@ end
 ---@return lib.jj_diff.Revision[]? revisions
 ---@return string? error
 function M.list_revisions(repo, runner)
+	local template = '"{"'
+		.. ' ++ "\\"commit_id\\":" ++ json(commit_id)'
+		.. ' ++ ",\\"change_id\\":" ++ json(change_id)'
+		.. ' ++ ",\\"description\\":" ++ json(description)'
+		.. ' ++ ",\\"bookmarks\\":" ++ json(local_bookmarks.map(|b| b.name()))'
+		.. ' ++ "}\\n"'
 	local output, err = (runner or run_jj)({
 		"log",
 		"--no-graph",
 		"-r",
 		"all()",
 		"-T",
-		'json(self) ++ "\\n"',
+		template,
 		"--color",
 		"never",
 	}, repo)
@@ -326,14 +333,32 @@ function M.list_revisions(repo, runner)
 	if not revisions then
 		return nil, err
 	end
-	for _, revision in ipairs(revisions) do
+	local bookmark_labels = {}
+	local bookmark_width = 3
+	for index, revision in ipairs(revisions) do
 		if not valid_commit_id(revision.commit_id) or type(revision.change_id) ~= "string" then
 			return nil, "jj returned a revision without stable identifiers"
 		end
+		if type(revision.bookmarks) ~= "table" then
+			return nil, "jj returned invalid revision bookmark data"
+		end
+		for _, bookmark in ipairs(revision.bookmarks) do
+			if type(bookmark) ~= "string" or bookmark == "" then
+				return nil, "jj returned invalid revision bookmark data"
+			end
+		end
+		table.sort(revision.bookmarks)
+		bookmark_labels[index] = #revision.bookmarks > 0
+				and "[" .. table.concat(revision.bookmarks, ", ") .. "]"
+			or "[-]"
+		bookmark_width = math.max(bookmark_width, #bookmark_labels[index])
+	end
+	for index, revision in ipairs(revisions) do
 		revision.display = string.format(
-			"%-12s  %-12s  %s",
+			"%-12s  %-12s  %-" .. bookmark_width .. "s  %s",
 			revision.change_id:sub(1, 12),
 			revision.commit_id:sub(1, 12),
+			bookmark_labels[index],
 			display_text(revision.description)
 		)
 	end
