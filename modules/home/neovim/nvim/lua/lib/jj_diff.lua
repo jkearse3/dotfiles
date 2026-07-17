@@ -333,9 +333,7 @@ function M.list_revisions(repo, runner)
 	if not revisions then
 		return nil, err
 	end
-	local bookmark_labels = {}
-	local bookmark_width = 3
-	for index, revision in ipairs(revisions) do
+	for _, revision in ipairs(revisions) do
 		if not valid_commit_id(revision.commit_id) or type(revision.change_id) ~= "string" then
 			return nil, "jj returned a revision without stable identifiers"
 		end
@@ -348,17 +346,16 @@ function M.list_revisions(repo, runner)
 			end
 		end
 		table.sort(revision.bookmarks)
-		bookmark_labels[index] = #revision.bookmarks > 0
-				and "[" .. table.concat(revision.bookmarks, ", ") .. "]"
-			or "[-]"
-		bookmark_width = math.max(bookmark_width, #bookmark_labels[index])
 	end
-	for index, revision in ipairs(revisions) do
+	for _, revision in ipairs(revisions) do
+		local bookmark_prefix = #revision.bookmarks > 0
+				and "[" .. table.concat(revision.bookmarks, ", ") .. "] "
+			or ""
 		revision.display = string.format(
-			"%-12s  %-12s  %-" .. bookmark_width .. "s  %s",
+			"%-12s  %-12s  %s%s",
 			revision.change_id:sub(1, 12),
 			revision.commit_id:sub(1, 12),
-			bookmark_labels[index],
+			bookmark_prefix,
 			display_text(revision.description)
 		)
 	end
