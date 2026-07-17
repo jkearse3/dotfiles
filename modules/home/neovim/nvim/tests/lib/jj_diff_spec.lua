@@ -155,6 +155,7 @@ describe("jj diff comparisons", function()
 		local comparison = jj_diff.revision_comparison("/repo", {
 			commit_id = "0123456789abcdef",
 			change_id = "abcdefghijklmnop",
+			description = "Add the revision preview",
 		})
 		local patch = assert(jj_diff.patch(comparison, nil, function(args, cwd)
 			table.insert(calls, { args = args, cwd = cwd })
@@ -162,6 +163,7 @@ describe("jj diff comparisons", function()
 		end))
 
 		assert.are.equal("patch", patch)
+		assert.are.equal("Add the revision preview", comparison.description)
 		assert.are.same({
 			args = {
 				"--config",
@@ -175,6 +177,34 @@ describe("jj diff comparisons", function()
 			},
 			cwd = "/repo",
 		}, calls[1])
+	end)
+
+	it("previews revision descriptions above changed files", function()
+		local comparison = {
+			repo = "/repo",
+			target = "0123456789abcdef",
+			title = "jj revision abcdefghijkl",
+			description = "feat: summarize revisions\n\nExplain why.\n",
+		}
+		local summary = assert(jj_diff.preview_summary(comparison, function()
+			return "file.txt | 2 +-\n1 file changed, 1 insertion(+), 1 deletion(-)\n"
+		end))
+
+		assert.are.equal(
+			"feat: summarize revisions\n\nExplain why.\n\n"
+				.. "file.txt | 2 +-\n1 file changed, 1 insertion(+), 1 deletion(-)\n",
+			summary
+		)
+		assert.are.equal(
+			"unchanged stat\n",
+			jj_diff.preview_summary({
+				repo = "/repo",
+				target = "0123456789abcdef",
+				title = "jj bookmark main..feature",
+			}, function()
+				return "unchanged stat\n"
+			end)
+		)
 	end)
 
 	it("uses stats and structured changed-file commands for a revision", function()

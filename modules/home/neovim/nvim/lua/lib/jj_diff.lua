@@ -19,6 +19,7 @@ local M = {}
 
 ---@class lib.jj_diff.ReviewComparison: lib.jj_diff.Comparison
 ---@field title string Display title used by patch views.
+---@field description? string Revision description displayed above preview stats.
 
 ---@class lib.jj_diff.Revision
 ---@field commit_id string
@@ -399,6 +400,7 @@ function M.revision_comparison(repo, revision)
 		repo = repo,
 		target = revision.commit_id,
 		title = "jj revision " .. revision.change_id:sub(1, 12),
+		description = revision.description,
 	}
 end
 
@@ -467,6 +469,26 @@ end
 ---@return string? error
 function M.stat(comparison, runner)
 	return (runner or run_jj)(comparison_stat_args(comparison), comparison.repo)
+end
+
+--- Renders a comparison's preview summary, including its revision description when available.
+---@param comparison lib.jj_diff.ReviewComparison
+---@param runner? lib.jj_diff.Runner
+---@return string? summary
+---@return string? error
+function M.preview_summary(comparison, runner)
+	local stat, err = M.stat(comparison, runner)
+	if not stat then
+		return nil, err
+	end
+	local description = trim(comparison.description)
+	if description == "" then
+		return stat
+	end
+	if trim(stat) == "" then
+		return description
+	end
+	return description .. "\n\n" .. stat
 end
 
 --- Lists changed files in a comparison with display labels.
@@ -1226,9 +1248,9 @@ local function picker(entries, prompt, resolve)
 				if not comparison then
 					return nil, err
 				end
-				local stat
-				stat, err = M.stat(comparison)
-				return stat, err, comparison.title, ""
+				local summary
+				summary, err = M.preview_summary(comparison)
+				return summary, err, comparison.title, ""
 			end)
 		end,
 		actions = {
