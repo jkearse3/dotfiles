@@ -2,10 +2,15 @@
   config,
   internalPkgs,
   lib,
+  pkgs,
   ...
 }:
 let
   renderAgentsMarkdown = import ./renderAgentsMarkdown.nix { inherit lib; };
+  renderSkillsDir = import ./renderSkillsDir.nix {
+    inherit lib pkgs;
+    skills = config.agents.skills;
+  };
 in
 {
   imports = [
@@ -28,6 +33,7 @@ in
         ];
         order = config.agents.sharedRuleOrder;
       };
+      ".agents/skills" = renderSkillsDir { };
     };
   };
 }
