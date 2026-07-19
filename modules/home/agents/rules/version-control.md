@@ -36,15 +36,21 @@ its concern from the current base, but its own revisions must remain focused.
 For unpublished agent-authored work:
 
 1. Run focused verification and establish the fewest coherent, fully described revisions.
-2. In jj, create a fresh empty working-copy revision above the finalized work; a review while the
-   implementation revision is still `@` is diagnostic, not final. In Git, leave a clean worktree.
-3. Review each revision in dependency order, then review `<parent>..<reference>` for aggregate
-   integration issues. If the parent or base is ambiguous, ask rather than guess.
+2. Finalize the implementation before review. In jj, create a fresh empty working-copy revision
+   above the finalized work. In Git, commit the finalized work and leave a clean worktree.
+3. Review each newly finalized or materially changed revision in dependency order. For one revision,
+   that review also covers its aggregate delta from the intended base. For multiple revisions that
+   jointly comprise the current task, also review `<parent>..<reference>` for integration issues. Do
+   not re-review unchanged ancestors merely because they are present in the stack. If the parent or
+   base is ambiguous, ask rather than guess.
+
+Do not begin formal diff or revision review before the finalization conditions above hold.
+Pre-finalization inspection by the implementor is verification, not review.
 
 A final review covers the effective diff, description, boundaries, order, and base. Identify jj
 revisions by stable change ID; commit IDs are evidence, not identity. Changes invalidate affected
-reviews; a base change always invalidates the aggregate. Re-review descendants only when their diffs
-or assumptions change.
+reviews. A base change invalidates only reviews whose diffs or assumptions it changes. Re-review
+descendants only when their diffs or assumptions change.
 
 Create review fixes separately. Fold one into its target only when revision-local and the history is
 unpublished and task-owned; then revalidate its description and repeat affected verification and

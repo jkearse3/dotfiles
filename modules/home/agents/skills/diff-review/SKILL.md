@@ -1,8 +1,8 @@
 ---
 name: diff-review
 description: >-
-  Reviews current changes, diffs, PRs, branches, or working trees as an independent quality gate;
-  finds actionable bugs, regressions, safety risks, compatibility breaks, missing validation, stale
+  Reviews finalized revisions, commit ranges, PRs, or branches as an independent quality gate; finds
+  actionable bugs, regressions, safety risks, compatibility breaks, missing validation, stale
   artifacts, and maintainability issues across code, docs, config, infra, prompts, skills, and other
   changed artifacts. Use when asked to review changes or when a workflow needs independent diff
   quality review before acceptance or validation.
@@ -32,11 +32,12 @@ The input is free-form natural language. Interpret it to determine:
 2. **Additional context**: any background, known issues, review rules, artifact types, or focus
    areas included in the input. Note these for use during review.
 
-Determine whether the request is a diagnostic review or a final quality gate. A final gate requires
-the reviewable lifecycle in the version-control rules to be complete through revision finalization
-and clean-working-copy setup. A review requested before acceptance, bookmark advancement, or
-publication is final only when those prerequisites hold. A review of unshaped working changes or an
-explicitly informal review is diagnostic.
+Before reviewing unpublished agent-authored work, require the reviewable lifecycle in the
+version-control rules to be complete through revision finalization and clean-working-copy setup. A
+request to review unfinalized or unshaped working changes is blocked; pre-finalization implementor
+inspection is verification rather than diff review. Published revisions, PRs, and branches require a
+stable resolvable target but are not blocked by unrelated local working-copy state. If the target
+does not meet its applicable prerequisites, report the unmet condition and stop.
 
 **If the input is empty**, error with:
 
@@ -45,7 +46,7 @@ Error: describe what to review
 
 Examples:
   review my branch changes against main
-  jj diff --from main --to @
+  jj diff --from main --to @-
   review PR #42, focus on error handling
   git diff HEAD~3..HEAD - adding auth middleware, watch for session leaks
   git diff main..HEAD - docs, config, and migration changes need compatibility review
@@ -86,11 +87,10 @@ author intent and review context, not as proof that the diff does what they clai
   git log --format=fuller --no-patch <range>
   ```
 
-- If reviewing a working-tree diff with no described revision or commit, record that no revision
-  description is available and infer intent from the user request and diff.
-- If descriptions are empty, vague, or inconsistent with the changed files, keep reviewing. Report
-  an actionable `clarity`, `accuracy`, or `question` finding only when the missing or mismatched
-  intent materially affects reviewability, risk, or the change contract.
+- If a revision description is missing, report that finalization is incomplete and stop. If a
+  description is vague or inconsistent with the changed files, keep reviewing. Report an actionable
+  `clarity`, `accuracy`, or `question` finding only when the weak or mismatched intent materially
+  affects reviewability, risk, or the change contract.
 
 Use the gathered intent to make review stricter: check whether the diff satisfies the stated
 problem, constraints, compatibility expectations, excluded scope, rationale, and risk called out by
@@ -101,6 +101,9 @@ the descriptions.
 - For one revision, review that revision.
 - For multiple revisions, review each revision in dependency order, then review their aggregate
   delta for cross-revision integration issues.
+- When `@` is a fresh empty undescribed jj working-copy revision, treat `@-` as the finalized target
+  for lifecycle and description checks. A literal diff may retain `@` as its endpoint only when it
+  resolves to the same tree.
 - For a stacked bookmark, use its immediate parent bookmark as the aggregate base. Resolve the
   parent from the target bookmark's ancestry and review `<parent>..<bookmark>`. Use
   `jj-bookmark-previous` only after confirming the target is the current bookmark because the helper
@@ -334,10 +337,9 @@ If deep analysis and self-challenge produce zero findings, write the `### Overvi
 by an empty `### Findings` section with a single line stating no issues were found. The overview
 already summarizes what was investigated; do not repeat that information.
 
-For a final gate, continue reviewing undescribed revisions to find substantive issues, but add a
-blocking `clarity` finding for each and do not report a pass. Only report a final pass when every
-revision has a complete description and target resolution succeeded; otherwise characterize the
-result as diagnostic or blocked.
+Only report a pass when every revision has a complete description and target resolution succeeded.
+If either prerequisite proves false during review, report the result as blocked rather than
+diagnostic.
 
 Write findings as a structured list, preceded by the overview.
 
