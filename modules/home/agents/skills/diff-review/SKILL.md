@@ -1,12 +1,13 @@
 ---
 name: diff-review
 description: >-
-  Reviews finalized revisions, commit ranges, PRs, or branches as an independent quality gate; finds
-  actionable bugs, regressions, safety risks, compatibility breaks, missing validation, stale
-  artifacts, and maintainability issues across code, docs, config, infra, prompts, skills, and other
-  changed artifacts. Use when asked to review changes or when a workflow needs independent diff
-  quality review before acceptance or validation.
-argument-hint: "review my branch changes | review jj diff --from main | review PR #42"
+  Reviews finalized revisions, commit ranges, PRs, or branches as an independent quality gate;
+  assesses explicitly declared criteria when supplied and finds actionable bugs, regressions, safety
+  risks, compatibility breaks, missing validation, stale artifacts, and maintainability issues
+  across code, docs, config, infra, prompts, skills, and other changed artifacts. Use when asked to
+  review changes or when a workflow needs independent diff quality review before acceptance or
+  validation.
+argument-hint: "review my branch | review jj diff --from main | review PR #42 against criteria.md"
 ---
 
 # Diff Review
@@ -29,8 +30,15 @@ The input is free-form natural language. Interpret it to determine:
    changes", "PR #42", "the last 3 commits"), determine the appropriate diff command. If the intent
    is clear but the exact diff cannot be determined (e.g., "review my changes" without enough
    context to know the base), ask for clarification rather than guessing.
-2. **Additional context**: any background, known issues, review rules, artifact types, or focus
-   areas included in the input. Note these for use during review.
+2. **Declared criteria**: criteria stated explicitly in the request or loaded from an explicitly
+   referenced authoritative artifact. Preserve each criterion's exact wording and supplied proof
+   method. Never infer or invent criteria from general context. Treat revision descriptions as
+   intent unless they explicitly declare criteria. Criterion-source resolution is a review
+   prerequisite, not a criterion status. If a requested source cannot be resolved, report the
+   blocker and stop rather than silently omitting it.
+3. **Additional context**: any intent, boundaries, non-goals, known issues, review rules, artifact
+   types, or focus areas included in the input. Note these for use during review, but do not promote
+   them to criteria.
 
 Before reviewing unpublished agent-authored work, require the reviewable lifecycle in the
 version-control rules to be complete through revision finalization and clean-working-copy setup. A
@@ -50,6 +58,7 @@ Examples:
   review PR #42, focus on error handling
   git diff HEAD~3..HEAD - adding auth middleware, watch for session leaks
   git diff main..HEAD - docs, config, and migration changes need compatibility review
+  review PR #42 against the criteria in docs/release-criteria.md
 ```
 
 ## Philosophy
@@ -65,6 +74,9 @@ Examples:
   exists or an existing pattern is clearly problematic.
 - Scope is diff quality: correctness, safety, compatibility, accuracy, design, clarity, coverage,
   testing, accessibility, operability, and maintainability across all changed artifacts.
+- Once review prerequisites are resolved, declared criteria add outcome assessment to this quality
+  review; they never replace or stop the intrinsic review early.
+- Review is read-only. Do not mutate implementation files or fix findings during review.
 
 ## Execution
 
@@ -96,6 +108,11 @@ Use the gathered intent to make review stricter: check whether the diff satisfie
 problem, constraints, compatibility expectations, excluded scope, rationale, and risk called out by
 the descriptions.
 
+**Build the criterion list when criteria were declared**. Keep an in-memory entry for every
+criterion containing its exact text, source, scope, and supplied proof method. Apply criteria to the
+aggregate review target unless the request scopes them more narrowly. Do not persist criterion
+identifiers, evidence, progress, approval, or workflow state.
+
 **Resolve revision and stack targets** before loading changed files:
 
 - For one revision, review that revision.
@@ -113,8 +130,12 @@ the descriptions.
 
 **Get changed files**: Run the diff. If the input described what to review rather than providing a
 literal command, determine the appropriate diff command now. Get the changed file list from the
-output. If the command fails, report the error and stop. If no files changed, report "no changes
-found" and stop.
+output. If the command fails, report the error and stop. If no files changed and no criteria were
+declared, report "no changes found" and stop. If criteria were declared, report no changes, mark
+each criterion `blocked` because the resolved target contains no changed artifacts and gathering
+evidence would require the excluded checkout-only review, identify a non-empty diff target as the
+resolution path, and stop after writing the normal `### Overview`, `### Criteria Assessment`, and
+empty `### Findings` sections.
 
 **Classify changed files before deep review**. Assign each changed file one or more artifact types:
 
@@ -172,6 +193,13 @@ not skim. Exhaust every applicable category against this file's changes before p
    behavior, ordering, defaults, error semantics, concurrency safety, rendering, deployment
    behavior, or generated output, confirm it by reading the source, docs, tests, manifests, or
    generated delta.
+
+6. **Collect criterion evidence when applicable**. Gather fresh evidence during the same file and
+   consumer analysis rather than running a duplicate verification workflow. Inspect relevant
+   unchanged behavior in the resulting checkout when a criterion depends on it, and run safe,
+   feasible checks as needed. Previous claims, descriptions, planned checks, and earlier results are
+   context rather than proof. Evidence may come from code or diff inspection, tests, commands,
+   documentation, generated output, or safely available external or manual evidence.
 
 **Review every applicable category against this file's changes:**
 
@@ -289,6 +317,7 @@ After all per-file analysis, review findings across the full changeset:
 - Integration gaps: mismatched interfaces, broken contracts, missing docs, invalid examples, stale
   generated artifacts, incompatible lockfiles, or CI/deployment drift.
 - Emergent concerns invisible in per-file analysis.
+- Criterion evidence and outcomes that depend on interactions across files or revisions.
 
 ### Step 4: Synthesize Overview
 
@@ -303,6 +332,15 @@ additional tool calls. This step is pure synthesis.
    - The file's artifact type and role in the system.
    - What changed and why it matters.
 
+3. **Criterion assessment**: When criteria were declared, assign each one exactly one status from
+   the evidence already gathered:
+   - `satisfied`: fresh evidence establishes the criterion.
+   - `not satisfied`: evidence contradicts it or required behavior is absent.
+   - `blocked`: safe, feasible evidence cannot be obtained or the criterion is materially ambiguous.
+
+For each criterion, retain concise fresh evidence or a precise blocker and resolution path. Do not
+add this assessment when no criteria were declared.
+
 This overview will appear before findings in the written block to orient the reader.
 
 ### Step 5: Self-Challenge
@@ -314,6 +352,9 @@ Before writing findings, stop and re-examine:
 - Look at the changeset fresh: what would a skeptical reviewer flag that you did not?
 - Check whether any non-code artifact weakened a code, test, docs, config, infra, data, dependency,
   prompt, or asset contract.
+- Recheck every `satisfied` criterion for unsupported inference, every `not satisfied` criterion for
+  a concrete contradiction or omission, and every `blocked` criterion for a precise blocker and
+  resolution path.
 - Promote or add findings discovered in this step.
 
 ### Step 6: Dedupe and Write
@@ -333,13 +374,23 @@ Before writing findings, stop and re-examine:
 - If the answer is "maybe consider...", investigate first, make a concrete call.
 - Only report findings with clear, actionable fixes.
 
-If deep analysis and self-challenge produce zero findings, write the `### Overview` section followed
-by an empty `### Findings` section with a single line stating no issues were found. The overview
-already summarizes what was investigated; do not repeat that information.
+If deep analysis and self-challenge produce zero findings, write the `### Overview` section, the
+`### Criteria Assessment` section when criteria were declared, then an empty `### Findings` section
+with a single line stating no issues were found. The overview already summarizes what was
+investigated; do not repeat that information.
 
-Only report a pass when every revision has a complete description and target resolution succeeded.
-If either prerequisite proves false during review, report the result as blocked rather than
-diagnostic.
+Only report a pass when every revision has a complete description, target resolution succeeded, and
+the findings section is empty. If a description is incomplete or target resolution fails, report the
+result as blocked rather than diagnostic. A non-empty findings section is a diagnostic non-pass, not
+a blocked review. When criteria were declared, a pass also requires every criterion to be
+`satisfied`; a clean findings section does not override a `not satisfied` or `blocked` criterion.
+After source and target resolution, criteria failure does not end intrinsic review early.
+
+Keep criterion assessment and findings distinct. Assessment states whether declared outcomes are
+established; findings tell the author what must change. A `not satisfied` criterion produces a
+finding when the reviewed change has a concrete corrective action. A `blocked` criterion is not
+automatically a finding unless required validation is absent or the change improperly claims
+completion. Avoid repeating the same explanation verbatim in both sections.
 
 Write findings as a structured list, preceded by the overview.
 
@@ -351,6 +402,16 @@ artifacts relate to each other.>
 
 - `path/file.go` (code) - <file's role in the system>; <what changed and why it matters>
 - `docs/guide.md` (docs) - <file's role in the system>; <what changed and why it matters>
+
+<!-- Include only when criteria were declared. -->
+### Criteria Assessment
+
+- **Satisfied:** <exact criterion text>
+  Evidence: <concise fresh evidence>
+- **Not satisfied:** <exact criterion text>
+  Evidence: <concrete contradiction or omission>
+- **Blocked:** <exact criterion text>
+  Blocker: <precise blocker and resolution path>
 
 ### Findings
 
