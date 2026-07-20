@@ -1,27 +1,25 @@
 ---
 name: contract
 description: >-
-  Branch/bookmark contracts for the current jj bookmark. Use only for creating, loading, amending,
-  reconciling, proposing, or autonomously fulfilling verifiable acceptance criteria for the
-  current jj bookmark; not for general product specs, test specs, or design docs.
-argument-hint: "[fulfill [once] | intent or amendment]"
+  Branch/bookmark contracts for the current jj bookmark. Use only for creating, reading, amending,
+  or reconciling an ordered milestone agreement; not for implementation, general product specs,
+  test specs, or design docs.
+argument-hint: "[reconcile | status | creation or amendment intent]"
 ---
 
 # Contract
 
 Maintain the bookmark-bound agreement and measured acceptance state for the current jj bookmark.
-Contract operations exclude broad product discovery and cross-session context transport. Only the
-`fulfill` operation may implement the agreement; applicable implementation and version-control rules
-govern all resulting repository and revision lifecycle behavior.
+Contract operations exclude broad product discovery, implementation planning, implementation, and
+cross-session context transport.
 
-The contract is a current agreement, not an implementation log. Current code is authoritative for AC
-status. Revision IDs and earlier notes are advisory only. The contract should still preserve durable
-implementation-relevant context: agreed approach, relevant files, constraints, non-obvious repo
-facts, and validation strategy. Do not record chronological progress except where it changes current
-measured state.
+The contract is a current agreement, not an implementation log or workflow engine. Its milestones
+are an ordered sequence of accepted outcomes. Each milestone owns the acceptance criteria that prove
+its outcome. Document order is the only sequencing rule.
 
-The Markdown contract is the only durable contract state. Do not create additional durable state,
-queues, or workflow-control files.
+The Markdown contract is the only durable contract state. AC markers and evidence are the only
+measured state. Derive milestone and contract state whenever needed; never persist summaries,
+queues, selections, readiness, or revision maps.
 
 ## Arguments
 
@@ -29,46 +27,38 @@ queues, or workflow-control files.
 $ARGUMENTS
 ```
 
-- Empty: reconcile the contract for the current bookmark when one exists.
-- `fulfill`: autonomously implement coherent revisions until the contract is complete or blocked.
-- `fulfill once`: complete at most one coherent revision, reconcile, and stop.
-- Equivalent imperative language clearly directing implementation of the current contract also
-  authorizes fulfillment. Questions, hypotheticals, status requests, and ambiguous references do
-  not.
-- Non-empty with no current bookmark contract: draft a new contract from the user's intent.
-- Non-empty with an existing current bookmark contract: route only when the intent clearly selects
-  fulfillment, amendment, loading, or next-slice proposal; otherwise ask for clarification.
+- Empty or `reconcile`: lazily reconcile the ordered contract against the current checkout.
+- A reconciliation request with a target, scope, or mode is unsupported. Do not discard its
+  arguments or reinterpret it as ordinary reconciliation; explain that `reconcile` now performs the
+  single ordered pass and ask whether to proceed.
+- `status`, loading, showing, or inspection intent: report recorded state without running checks.
+- Creation intent with no current bookmark contract: draft a new contract.
+- Amendment intent with an existing contract: draft the agreement change for approval.
+- Never interpret a contract request as implementation authority. When implementation is requested,
+  explain that reconciliation produces the acceptance gap consumed by planning or execution.
 
 ## Runbook
 
-1. When the request clearly intends to create a new contract, confirm whether it should use the
-   current bookmark or a new bookmark before resolving the contract path. When the user chooses a
-   new bookmark, follow the placement phase in `procedures/create.md` before continuing.
-2. Resolve the repository, current bookmark, and contract path using `references/local-state.md`.
-3. If local state cannot be resolved, stop with the exact blocker.
-4. If the current bookmark contract exists, read it before routing and stop if its `Bookmark:` value
+1. Resolve the repository, current bookmark, and contract path using `references/local-state.md`.
+2. If local state cannot be resolved, stop with the exact blocker.
+3. If the current bookmark contract exists, read it before routing and stop if its `Bookmark:` value
    does not match the current bookmark.
-5. If the user clearly directs implementation of the current contract, follow
-   `procedures/fulfill.md`. Use its one-revision mode only when the request clearly limits the work
-   to one coherent revision.
-6. If the user clearly asks to propose, derive, refresh, or update the next slice, follow
-   `procedures/propose-slice.md`.
-7. If the user clearly asks to load, show, inspect, or report contract status, follow
-   `procedures/load.md`.
-8. If arguments are empty and the current bookmark contract exists, follow
-   `procedures/reconcile.md`.
-9. If arguments are empty and no contract exists, ask what contract to draft and stop.
-10. If arguments are non-empty and no contract exists, follow `procedures/create.md`.
-11. If the user clearly asks to change the existing agreement, follow `procedures/amend.md`.
-12. Otherwise, ask which contract operation the user intends and stop.
+4. If no contract exists, report it and stop for status, loading, reconciliation, or amendment
+   requests. For clear creation intent, follow `procedures/create.md`; for an empty or ambiguous
+   request, ask what contract to draft and stop.
+5. If the contract does not satisfy the current schema, report the exact defects and stop. Do not
+   infer, migrate, or preserve behavior from another schema.
+6. If arguments are empty or request reconciliation, follow `procedures/reconcile.md`.
+   Reconciliation has no selectable scope or mode. Stop for confirmation first when the request
+   includes one.
+7. If the user requests status, loading, showing, inspection, or reporting without measurement,
+   follow `procedures/load.md`.
+8. If the user clearly asks to change the existing agreement, follow `procedures/amend.md`.
+9. Otherwise, ask whether the user intends reconciliation, status, or amendment and stop.
 
-Do not reinterpret one operation as another. Loading and proposing are read-only. Creation and
-amendment change the agreement only after explicit approval. Reconciliation may change measured
-contract state without changing the agreement. Fulfillment may change implementation and local VCS
-state under its procedure, but must not change the agreement without amendment approval. Creation
-may create one empty working-copy revision on the confirmed base and create and switch to one
-user-confirmed new bookmark during its placement phase; it must not perform other revision or
-bookmark mutations.
+Do not reinterpret one operation as another. Loading is read-only. Creation and amendment change the
+agreement only after explicit approval. Reconciliation changes measured state without changing the
+agreement. No operation edits implementation or version-control state.
 
 ## Procedure Imports
 
@@ -78,19 +68,15 @@ procedures.
 
 Shared references:
 
-- `references/local-state.md`: repository, bookmark, slug, contract path, local-ignore, and
-  no-extra-state rules.
-- `references/schema.md`: contract schema, statuses, AC marker meanings, and measured-state rules.
+- `references/local-state.md`: repository, bookmark, contract path, local-ignore, and no-extra-state
+  rules.
+- `references/schema.md`: ordered milestone schema, derived states, AC markers, and evidence rules.
+- `references/template.md`: contract shape loaded only during creation.
 - `references/readiness.md`: creation and amendment readiness checks and approval blockers.
-- `references/slice-selection.md`: lazy next-slice proposal guidance.
-- `references/iteration.md`: autonomous slice, pivot, and contract-specific stop rules.
 
 Procedures:
 
-- `procedures/create.md`: create a new contract after approval.
-- `procedures/load.md`: read and summarize the current contract without edits.
-- `procedures/reconcile.md`: measure the current source of truth against the contract.
-- `procedures/amend.md`: change the agreement after approval.
-- `procedures/propose-slice.md`: propose a next implementation slice without editing the contract.
-- `procedures/fulfill.md`: apply the applicable implementation lifecycle until the contract
-  terminates.
+- `procedures/create.md`: create a new milestone contract after approval.
+- `procedures/load.md`: derive and summarize the current contract without edits.
+- `procedures/reconcile.md`: lazily measure milestones in document order until the first gap.
+- `procedures/amend.md`: change the milestone agreement after approval.

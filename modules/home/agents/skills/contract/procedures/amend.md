@@ -1,7 +1,7 @@
 # Amend
 
-Use this path when the user clearly asks to change an existing agreement, or when reconciliation
-shows the agreement itself is wrong, incomplete, or stale.
+Use this path when the user clearly asks to change an existing agreement, or reconciliation shows
+the agreement is wrong, incomplete, stale, or ordered incorrectly.
 
 Read these references before acting:
 
@@ -9,30 +9,31 @@ Read these references before acting:
 - `references/schema.md`
 - `references/readiness.md`
 
-Amendment changes the agreement. Reconciliation measures code against the existing agreement. Keep
-that distinction explicit.
+Amendment changes agreement data. Reconciliation changes only AC markers and evidence. Keep that
+distinction explicit.
 
-During reconciliation, update only measured state: AC markers, evidence, status, and directly
-verified research question or assumption status.
+Amendment may change conditional sections, spec, boundaries, milestone order, outcomes, AC wording
+or checks, or add and remove milestones and ACs. Every amendment requires explicit user approval
+before writing.
 
-Amendment may update `## Context`, `## Spec`, `## Boundaries`, `## Implementation Approach`,
-`## Validation`, AC wording, research decisions, or add and supersede ACs. It requires explicit user
-approval before writing.
+## Identity And Boundary Rules
 
-Before approval, run Contract Readiness against the amended agreement. If blocked, report the finite
-readiness state and blocker and stop before writing. Broad unresolved product or design uncertainty
-is `blocked on user decision` and remains outside amendment. Only when readiness is
-`ready for approval` may the full amendment be presented for explicit approval.
+- Preserve unaffected milestone IDs and AC numbers.
+- Assign added milestones and ACs numbers above the highest retained number. Do not renumber
+  retained entries merely to close gaps.
+- Reset a changed AC to `[ ]` with `Evidence: Pending.`. Remove an obsolete AC instead of retaining
+  a supersession chain; the contract represents the current agreement, not amendment history.
+- Reset all AC evidence whose meaning, check, milestone outcome, order, or applicable boundary makes
+  the prior result unreliable.
+- Reordering, splitting, or merging milestones is a material agreement change. Ensure the resulting
+  document order is a coherent acceptance sequence.
+- Restoring regressed behavior may reuse its existing AC when the agreement and check are unchanged.
 
-After approval, write only the contract file. Do not edit repository implementation files, workflow
-state files, skill source, commits, revision descriptions, bookmarks, or branches while amending.
+Before approval, inspect enough source to ground changed agreement claims and run Contract Readiness
+against the complete amended agreement. If blocked, report the finite approval-readiness state and
+blocker and stop. Only `ready for approval` permits presenting the full amendment for explicit
+approval.
 
-Rules for AC changes:
-
-- Never renumber ACs.
-- If an AC already has evidence or likely related work, supersede it with `[-]` and add a
-  replacement AC with a new number.
-- Tiny wording clarifications may edit an AC in place only when the meaning does not change.
-- Do not silently rewrite `## Context`, `## Spec`, `## Boundaries`, `## Implementation Approach`,
-  `## Validation`, AC wording, or existing decisions during reconciliation. Propose an amendment
-  instead.
+After approval, write only the contract file. Do not edit implementation files, other workflow
+state, skill source, commits, revision descriptions, bookmarks, or branches while amending. Never
+silently alter agreement data during reconciliation.

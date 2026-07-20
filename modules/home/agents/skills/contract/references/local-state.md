@@ -20,9 +20,12 @@ Do not create multi-bookmark or stack contracts.
 Contract files are untracked local state. Do not add them to Git or jj, and do not create tracked or
 exported snapshots.
 
-Keep the human agreement and measured state in the Markdown contract. Do not move `Status:`, AC
-markers, `Check:`, `Evidence:`, research decisions, questions, assumptions, or boundaries into
-another file. Do not create additional workflow-control files or queues.
+Keep agreement data, measured AC markers, and `Evidence:` in the Markdown contract. Do not move
+milestone metadata, `Check:`, research decisions, questions, assumptions, or boundaries into another
+file. Milestone and contract states are derived, not agreement fields.
+
+Do not create or persist status summaries, selected-milestone state, progress queues, workflow
+control files, implementation logs, exported snapshots, or revision maps.
 
 Before creating a contract file:
 
@@ -33,10 +36,9 @@ Before creating a contract file:
    /.agent/contracts/
    ```
 
-   In this git-backed setup, prefer `<jj-root>/.git/info/exclude` so the ignore rules stay local.
+   In this git-backed setup, prefer `<jj-root>/.git/info/exclude` so the rule stays local.
 
 3. Verify the target contract path is ignored before writing it.
 
-Stop for user direction if the ignore or exclude rule cannot be written, if the target path cannot
-be verified as ignored, or if the repository uses a different local-ignore mechanism that is
-unclear.
+Stop for user direction if the ignore or exclude rule cannot be written, the target path cannot be
+verified as ignored, or the repository uses an unclear local-ignore mechanism.
