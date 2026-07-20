@@ -26,6 +26,14 @@ intended base. Start from the current position unless the user names another bas
 empty working copy's parent as the presumptive base; do not substitute an ancestral or default
 bookmark. Continue non-empty work only for the same concern.
 
+Before editing work that spans multiple independently reviewable concerns, identify the next concern
+and its intended base. Broad authorization for the complete request does not combine independent
+concerns. Continue a non-empty working copy only when every change belongs to the current concern.
+
+Delegation does not widen this boundary. Assign a mutating delegate at most one concern, including
+its base, ownership boundary, and focused validation. The caller remains responsible for reaching
+the finalization and review checkpoint before another independent concern begins.
+
 Keep one concern per revision. In jj, give each concern a task-owned, non-default bookmark. In Git,
 reuse the current branch only when it is already task-specific; otherwise create a task branch. Use
 the default reference only when explicitly requested. A task reference may inherit revisions outside
@@ -33,16 +41,22 @@ its concern from the current base, but its own revisions must remain focused.
 
 ## Finalization And Review
 
-For unpublished agent-authored work:
+For each independently reviewable concern in unpublished agent-authored work, before starting
+another:
 
-1. Run focused verification and establish the fewest coherent, fully described revisions.
-2. Finalize the implementation before review. In jj, create a fresh empty working-copy revision
-   above the finalized work. In Git, commit the finalized work and leave a clean worktree.
+1. Run focused verification and establish the fewest coherent, fully described revisions needed for
+   that concern.
+2. Finalize the concern before review. In jj, create a fresh empty working-copy revision above the
+   finalized work. In Git, commit the finalized work and leave a clean worktree.
 3. Review each newly finalized or materially changed revision in dependency order. For one revision,
-   that review also covers its aggregate delta from the intended base. For multiple revisions that
-   jointly comprise the current task, also review `<parent>..<reference>` for integration issues. Do
-   not re-review unchanged ancestors merely because they are present in the stack. If the parent or
-   base is ambiguous, ask rather than guess.
+   that review also covers its aggregate delta from the intended base. When multiple revisions
+   comprise the concern, also review their aggregate delta from the concern's intended base. If the
+   parent or base is ambiguous, ask rather than guess.
+
+Resolve applicable review findings before beginning another independent concern. After all concerns
+in the task are finalized, run any deferred integration verification and review the complete task
+range for cross-concern issues. Do not re-review unchanged revisions unless their diffs or
+assumptions changed.
 
 Do not begin formal diff or revision review before the finalization conditions above hold.
 Pre-finalization inspection by the implementor is verification, not review.

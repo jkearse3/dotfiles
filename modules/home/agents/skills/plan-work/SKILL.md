@@ -39,12 +39,19 @@ provides a planning target, ask for one and stop.
 4. Determine the smallest complete scope. Trace affected consumers, dependencies, stakeholders,
    interfaces, persisted state, and operational effects far enough to include necessary work and
    exclude adjacent work explicitly.
-5. Sequence the fewest coherent actions that produce the outcome. Preserve implementation freedom
-   where multiple approaches satisfy the same invariant; make a choice explicit when later actions
-   depend on it.
-6. Define validation from the outcome and material risks. Prefer concrete commands, observations,
-   inspections, or acceptance signals that establish behavior rather than merely proving that steps
-   ran.
+5. Sequence the fewest coherent actions that produce the outcome. For repository mutations, group
+   actions into expected independently reviewable concerns. Define each concern by its outcome,
+   dependencies, and focused validation rather than exact files or hunks. A broader acceptance
+   milestone may contain multiple concerns, while code, tests, documentation, and configuration that
+   support one concern may remain together. Authority for the complete request does not combine
+   independent concerns. Assign at most one concern to each mutating delegation. Preserve
+   implementation freedom where multiple approaches satisfy the same invariant; make a choice
+   explicit when later actions depend on it.
+6. Define validation from the outcome and material risks. End each repository concern with focused
+   verification, finalization, and review before the next concern begins. Explicitly identify
+   integration checks that genuinely require later concerns and retain them for task completion.
+   Prefer concrete commands, observations, inspections, or acceptance signals that establish
+   behavior rather than merely proving that steps ran.
 7. Perform a proportional completeness pass across the lenses below. Resolve or report every
    material gap, but omit irrelevant categories and empty sections from the written plan.
 
@@ -105,7 +112,8 @@ Status: Ready | Blocked
 
 ### Actions
 
-1. <Ordered action, purpose, and material dependency.>
+1. <Ordered action, purpose, and material dependency. For repository mutations, identify the expected
+   revision concern and focused validation.>
 
 ### Validation
 

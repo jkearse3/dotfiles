@@ -40,8 +40,8 @@ apparent in the immediate result.
 Consider effects beyond the immediate target, including effects on people, related material,
 systems, workflows, and outputs or state that persist after the change.
 
-Before finalizing the implementation, inspect the result for unintended effects, incomplete updates,
-and inconsistencies with related material or state. Report how the result was assessed and any
-checks or assessment methods that were skipped, blocked, or failed.
+Before finalizing the current independently reviewable concern, inspect the result for unintended
+effects, incomplete updates, and inconsistencies with related material or state. Report how the
+result was assessed and any checks or assessment methods that were skipped, blocked, or failed.
 
 If blocked, preserve a safe state and identify what is needed to continue.
