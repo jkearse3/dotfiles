@@ -27,18 +27,24 @@ file. Milestone and contract states are derived, not agreement fields.
 Do not create or persist status summaries, selected-milestone state, progress queues, workflow
 control files, implementation logs, exported snapshots, or revision maps.
 
-Before creating a contract file:
+Before creating or updating a contract file:
 
 1. Create `<jj-root>/.agent/contracts/` if needed.
-2. Ensure repo-local ignore or exclude state covers the whole contracts directory:
+2. Ensure that directory has an untracked, self-ignoring `.gitignore` with whole-directory coverage:
 
    ```text
-   /.agent/contracts/
+   *
    ```
 
-   In this git-backed setup, prefer `<jj-root>/.git/info/exclude` so the rule stays local.
+   Create it when absent. If it already exists, inspect it and proceed only when its contents and
+   ownership are compatible; never overwrite it.
 
-3. Verify the target contract path is ignored before writing it.
+3. Make jj snapshot the working copy and use `jj status` and targeted `jj file list` output to
+   confirm the local `.gitignore` and an existing target contract are absent from the snapshot. For
+   a new contract, create and verify a temporary representative contract instead, then remove the
+   probe before writing the contract.
+4. After writing, repeat the jj verification for the actual contract path and local `.gitignore`.
 
-Stop for user direction if the ignore or exclude rule cannot be written, the target path cannot be
-verified as ignored, or the repository uses an unclear local-ignore mechanism.
+Stop for user direction if either path is already tracked, verification would require untracking an
+existing path, or the local `.gitignore` cannot be safely established and verified. Remove only a
+probe created by this procedure; do not discard pre-existing content.

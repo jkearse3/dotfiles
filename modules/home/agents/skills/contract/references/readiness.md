@@ -43,5 +43,5 @@ unresolved product or design uncertainty produces `blocked on user decision`; re
 decision and stop without expanding readiness into product discovery.
 
 Do not write in any blocked approval-readiness state. Approval authorizes the proposed contract-file
-write and minimum directory and repo-local ignore setup needed to keep it untracked. It does not
-authorize implementation or version-control mutation.
+write and minimum local directory and self-ignoring `.gitignore` setup needed to keep both
+untracked. It does not authorize implementation or version-control mutation.

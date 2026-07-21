@@ -34,6 +34,7 @@ against the complete amended agreement. If blocked, report the finite approval-r
 blocker and stop. Only `ready for approval` permits presenting the full amendment for explicit
 approval.
 
-After approval, write only the contract file. Do not edit implementation files, other workflow
-state, skill source, commits, revision descriptions, bookmarks, or branches while amending. Never
-silently alter agreement data during reconciliation.
+After approval, run the Local State setup and verification required before a contract update, then
+write only the contract file and minimum local `.gitignore` state. Do not edit implementation files,
+other workflow state, skill source, commits, revision descriptions, bookmarks, or branches while
+amending. Never silently alter agreement data during reconciliation.

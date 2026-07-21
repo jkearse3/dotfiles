@@ -13,8 +13,9 @@ Steps:
 
 1. Resolve Local State. Contract creation never creates, moves, or switches bookmarks; establish the
    intended current bookmark through the applicable version-control workflow first.
-2. Verify local ignore or exclude state covers `/.agent/contracts/` and the target would be ignored.
-   Do not create directories or change ignore state before approval.
+2. Inspect any existing `.agent/contracts/` directory, contract path, and local `.gitignore` without
+   changing them. Stop on incompatible ignore ownership or contents, or tracked local state. Do not
+   create directories, probes, or ignore state before approval.
 3. Draft the mandatory schema sections and only needed conditional sections. Organize outcomes as
    one or more ordered, coherent milestones with `M<number>` IDs and globally numbered
    milestone-owned ACs.
@@ -31,8 +32,10 @@ Steps:
    awaiting approval.
 8. Only when readiness is `ready for approval`, present the full draft and ask for explicit user
    approval before writing the contract file.
-9. After approval, ensure `.agent/contracts/` exists, establish minimum repo-local ignore state if
-   needed, verify the target is ignored, and write the contract atomically.
+9. After approval, ensure `.agent/contracts/` exists; establish its self-ignoring local
+   `.gitignore`; use a temporary contract probe to verify both paths remain absent from jj's
+   working-copy snapshot; remove the probe; write the contract atomically; then verify the contract
+   also remains absent.
 
 Creation must not edit implementation files, workflow state other than the approved contract and
 required local ignore state, skill source, revisions, revision descriptions, bookmarks, or branches.

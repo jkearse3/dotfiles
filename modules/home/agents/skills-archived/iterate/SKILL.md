@@ -80,8 +80,10 @@ Allowed control-field pairs:
 2. Resolve state file as `<jj-root>/.agent/iterate.md`.
 3. Missing state file: follow `procedures/new-iteration.md`.
 4. Existing state file: read fresh; validate required sections and `Status` / `Next` using State
-   Basics. Read `references/state-file.md` only when creating or repairing state-file structure,
-   applying AC Stability, or checking task traceability.
+   Basics. Before an operation's existing authority permits its first state-file write, read
+   `references/state-file.md` and run State File Setup. Also read that reference when repairing
+   state-file structure, applying AC Stability, or checking task traceability. Read-only operations
+   do not establish ignore state.
 5. Before following a procedure, read only the files it names for the current step; treat them as
    imported instructions, and do not preload files needed only by later procedures.
 6. Before routing a non-terminal existing state, disambiguate intent: if the user clearly asks to

@@ -27,20 +27,25 @@ State file:
 <jj-root>/.agent/iterate.md
 ```
 
-Before creation, add `/.agent/iterate.md` to repo-local Git exclude so iteration state stays
-untracked. Git is only for this exclude; jj owns workspace discovery and status.
+Before creating or updating the state file, ensure `<jj-root>/.agent/` has an untracked `.gitignore`
+with these narrow rules. Establish it only after the current operation has authority to write the
+state file and before that operation's first write:
 
-```sh
-workspace_root="$(jj root)"
-exclude_path="$(git -C "$workspace_root" rev-parse --git-path info/exclude)"
-mkdir -p "$(dirname "$exclude_path")"
-if ! grep -qxF '/.agent/iterate.md' "$exclude_path" 2>/dev/null; then
-  printf '\n/.agent/iterate.md\n' >> "$exclude_path"
-fi
-git -C "$workspace_root" check-ignore -q -- .agent/iterate.md
+```gitignore
+/.gitignore
+/iterate.md
 ```
 
-If exclude update or ignore check fails, stop before creation and ask for direction.
+Create the directory and file when absent. If `.agent/.gitignore` already exists, inspect it and
+proceed only when its contents and ownership are compatible and it does not hide unrelated `.agent`
+contents; never overwrite it. Existing shared Git exclude entries may remain but are not sufficient.
+
+Make jj snapshot the working copy and use `jj status` and targeted `jj file list` output to confirm
+the local `.gitignore` and an existing state file are absent from the snapshot. When no state file
+exists, create and verify an empty `.agent/iterate.md` probe instead, then remove it before creating
+the real state file. If either path is already tracked, verification would require untracking an
+existing path, or setup cannot be safely verified, stop before writing and ask for direction. Remove
+only the probe created by this procedure; do not discard pre-existing content.
 
 Before a new state file, run `jj st`. If it lists changes, stop and ask whether they belong in this
 iteration or should be handled first. Existing changes are fine when resuming an active state file.

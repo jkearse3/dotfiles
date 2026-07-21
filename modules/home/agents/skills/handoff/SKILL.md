@@ -57,18 +57,26 @@ root. Ask where to store the handoff if neither is clear.
 
 Handoffs are local workflow artifacts and must not be tracked. Before writing:
 
-1. Ensure local ignore or exclude state covers `/.agent/handoffs/`.
-2. In a Git-backed repository, prefer `<repo-root>/.git/info/exclude` so tracked ignore files remain
-   unchanged.
-3. Verify the target is ignored.
+1. Ensure `<repo-root>/.agent/handoffs/` exists.
+2. Ensure that directory has an untracked, self-ignoring `.gitignore` containing `*`, which covers
+   the ignore file and every handoff below it. Create it when absent. If it already exists, inspect
+   it and proceed only when its contents and ownership are compatible; never overwrite it.
+3. Verify the ignore file and an existing target handoff are absent from the working-copy snapshot.
+   For a new handoff, create and verify a temporary representative instead. When `jj root` succeeds,
+   make jj snapshot the working copy and confirm `jj status` and targeted `jj file list` output
+   report neither path. Otherwise, in a Git-only repository, verify both paths with Git. Remove any
+   temporary file before writing the handoff.
+4. After writing, repeat the applicable verification for the actual handoff path.
 
-Stop for user direction if ignore state cannot be safely established or verified. Do not change the
+Stop for user direction if either path is already tracked, verification would require untracking an
+existing path, or the local ignore file cannot be safely established and verified. Do not change the
 storage location or tracked ignore files merely to bypass that blocker.
 
 ## Drafting
 
-Creating or refining a handoff authorizes only that artifact and the minimum safe local ignore
-state. It does not authorize implementation, revision changes, or mutation of referenced artifacts.
+Creating or refining a handoff authorizes only that artifact and the minimum safe local directory
+and `.gitignore` setup. It does not authorize implementation, revision changes, or mutation of
+referenced artifacts.
 
 When creating a handoff:
 
