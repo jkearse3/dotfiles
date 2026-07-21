@@ -5,6 +5,13 @@
     "modules/home/vcs/commit-message-check",
     "packages/commit-message-format",
     "packages/nix-cleanup",
+    "packages/jj-worktree",
     "packages/token-count"
+  ],
+  "executionEnvironments": [
+    {
+      "root": "packages/jj-worktree",
+      "extraPaths": ["packages/jj-worktree/src"]
+    }
   ]
 }

@@ -1,0 +1,61 @@
+#compdef jj-worktree
+
+_jj_worktree_bookmarks() {
+  local operation
+  local -a bookmarks
+  operation=$(jj --no-pager --color=never --at-op=@ --ignore-working-copy \
+    op log --no-graph -n 1 -T id 2>/dev/null) || return
+  bookmarks=("${(@f)$(jj --no-pager --color=never --at-op="$operation" bookmark list \
+    -T 'if(remote, "", name ++ "\n")' 2>/dev/null)}")
+  _describe 'local bookmark' bookmarks
+}
+
+_jj_worktree_names() {
+  local line
+  local -a names
+  for line in "${(@f)$(jj-worktree list 2>/dev/null)}"; do
+    names+=("${line%%$'\t'*}")
+  done
+  _describe 'managed worktree' names
+}
+
+local context state state_descr line
+typeset -A opt_args
+
+_arguments -C \
+  '(-h --help)'{-h,--help}'[show help]' \
+  '1:command:((init\:"install managed-root exclusion" add\:"create a managed worktree" attach\:"attach an external worktree" path\:"print a managed worktree path" list\:"list managed worktrees" remove\:"remove a managed worktree"))' \
+  '*::argument:->arguments'
+
+case $line[1] in
+  init)
+    _arguments '(-h --help)'{-h,--help}'[show help]'
+    ;;
+  add)
+    _arguments \
+      '(-h --help)'{-h,--help}'[show help]' \
+      '(-r --revision)'{-r,--revision}'[use a revision instead of bookmark NAME]:revision:' \
+      '1:local bookmark:_jj_worktree_bookmarks'
+    ;;
+  attach)
+    _arguments \
+      '(-h --help)'{-h,--help}'[show help]' \
+      '1:worktree directory:_directories'
+    ;;
+  path)
+    _arguments \
+      '(-h --help)'{-h,--help}'[show help]' \
+      '1:managed worktree:_jj_worktree_names'
+    ;;
+  list)
+    _arguments \
+      '(-h --help)'{-h,--help}'[show help]' \
+      '*:managed worktree:_jj_worktree_names'
+    ;;
+  remove)
+    _arguments \
+      '(-h --help)'{-h,--help}'[show help]' \
+      '--yes[confirm destructive removal]' \
+      '1:managed worktree:_jj_worktree_names'
+    ;;
+esac

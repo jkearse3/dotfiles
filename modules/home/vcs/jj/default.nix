@@ -11,6 +11,7 @@
     internalPkgs.jj-bookmark-previous
     internalPkgs.jj-bookmark-select
     internalPkgs.jj-change-select
+    internalPkgs.jj-worktree
   ];
 
   programs.jujutsu = {
