@@ -73,6 +73,14 @@ uncertain ownership, or other history. After changing a stack parent, restack de
 affected verification and reviews. Move a task-created reference only after checks pass; ask before
 moving a pre-existing reference.
 
+## Squashing Revisions
+
+When using `jj squash`, always pass either `--use-destination-message` or
+`--message <complete-final-description>`. Never squash without one of these options when both source
+and destination may have descriptions because jj will open an editor to combine them. Use
+`--use-destination-message` only when the destination already has the complete final description and
+discarding the source description is intentional.
+
 ## Revision Descriptions
 
 Repository documentation, then recent history, determines subject format. Otherwise use
