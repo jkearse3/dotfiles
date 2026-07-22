@@ -68,8 +68,11 @@ Examples:
 - Be thorough to the point of paranoia: check every edge case, trace every affected consumer or
   contract, verify every assumption. The cost of a missed production, operations, policy, or user
   workflow break exceeds the cost of a thorough review.
-- Challenge design decisions: if there is a simpler way, a more robust way, or a way that better
-  fits existing patterns, flag it.
+- Challenge design decisions only when the diff introduces concrete present-day correctness, safety,
+  compatibility, operability, or maintainability harm. Prefer the smallest sufficient correction. Do
+  not require abstractions, extensibility, generalized robustness, speculative compatibility, or
+  handling of unsupported states without an explicit criterion, existing consumer, repository
+  convention, or demonstrated failure.
 - Repo patterns take precedence over general best practices. Only flag deviations when no pattern
   exists or an existing pattern is clearly problematic.
 - Scope is diff quality: correctness, safety, compatibility, accuracy, design, clarity, coverage,
@@ -372,7 +375,16 @@ Before writing findings, stop and re-examine:
 
 - If the answer is "nothing" or "accept as-is", do not report it.
 - If the answer is "maybe consider...", investigate first, make a concrete call.
-- Only report findings with clear, actionable fixes.
+- Only report findings with clear, actionable fixes. Recommend the smallest change that resolves the
+  demonstrated problem. Do not require generalized infrastructure, new abstractions, extensibility,
+  compatibility layers, or broader refactors unless evidence shows they are necessary for the
+  reviewed contract or an existing consumer.
+
+**Apply a scope test before reporting each finding.** Distinguish defects in the reviewed scope from
+possible product expansions. If resolving a concern requires supporting a new use case, consumer,
+platform, failure model, or compatibility promise, omit it unless that behavior is explicitly
+required. Investigation may be broad, but findings and fixes must remain evidence-based and within
+the reviewed scope.
 
 If deep analysis and self-challenge produce zero findings, write the `### Overview` section, the
 `### Criteria Assessment` section when criteria were declared, then an empty `### Findings` section
@@ -448,3 +460,5 @@ Format: `- path:line (category, priority): description`
 - "Consider whether..." without concrete concern.
 - Renaming suggestions that are not meaningfully clearer.
 - Findings where the action is "nothing".
+- Hypothetical future requirements, unsupported inputs or states, imagined consumers, and optional
+  extensibility without evidence of present harm.
