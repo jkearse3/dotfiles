@@ -1,0 +1,6 @@
+#compdef jj-ensure
+
+_arguments \
+  '(-h --help)'{-h,--help}'[show help]' \
+  '--dry-run[show the validated action without modifying the workspace]' \
+  '1:worktree directory:_directories'

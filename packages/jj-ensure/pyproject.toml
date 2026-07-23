@@ -3,13 +3,13 @@ requires = ["setuptools"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "jj-worktree"
+name = "jj-ensure"
 version = "0.0.0"
-description = "Manage isolated jj repositories backed by detached Git worktrees"
+description = "Ensure a Git checkout has compatible jj state"
 requires-python = ">=3.11"
 
 [project.scripts]
-jj-worktree = "jj_worktree.cli:main"
+jj-ensure = "jj_ensure.cli:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
