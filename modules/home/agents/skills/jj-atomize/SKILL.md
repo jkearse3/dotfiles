@@ -1,11 +1,15 @@
 ---
 name: jj-atomize
-description: Organize unpublished jj changes into coherent, atomic, fully described revisions
-argument-hint: "[intent and optional revision]"
+description: >-
+  Shapes unpublished jj history into coherent, fully described revisions. Use before describing or
+  finalizing revisions, squashing or folding review fixes, splitting revisions, or reordering
+  revisions in a stack, including changes involving only one revision; not for read-only inspection,
+  ordinary edits, `jj new`, or bookmark management.
+argument-hint: "[intent and optional revision set]"
 ---
 
-Analyze unpublished jj changes and organize them into the fewest coherent, fully described revisions
-needed for review, rollback, and history.
+Shape unpublished jj history by splitting, squashing, reordering, or describing revisions into the
+fewest coherent, fully described revisions needed for review, rollback, and a cohesive story.
 
 ## Arguments
 
@@ -15,8 +19,10 @@ $ARGUMENTS
 
 The request may be natural language. Infer three intents before acting:
 
-- Target revision: default to `@`. Use an explicit jj revset or revision id only when the request
-  clearly names one.
+- Target set: default to the task-owned bookmark ending at `@`, from its confirmed parent bookmark
+  through its tip. Use an explicit jj revset, revision id, or range only when the request clearly
+  names one. If no task-owned lower boundary can be established, stop and ask rather than absorbing
+  other unpublished ancestry. Do not include the base or a published revision in the mutable set.
 - Boundary intent: default to the fewest coherent revisions. Treat requests such as "single
   revision", "workflow close", "describe only", or "do not split" as single-revision intent.
 - Execution intent: execute when the invocation explicitly requests mutation and identifies either
@@ -40,14 +46,21 @@ that do not belong in project history.
 
 ## Steps
 
-1. **Verify revision** exists and has changes (fail if empty).
+1. **Verify revision set** exists and contains changes (fail if empty).
 
-   Before proposing mutations, inspect whether the target or affected descendants are published or
-   contain unrelated or user-authored work. Stop for approval when the destination, ownership, or
-   rewrite boundary is ambiguous.
+   Inspect the revisions in topological order, their parent relationships, bookmarks, affected
+   descendants, and publication and ownership status. Stop for approval when the base, destination,
+   ownership, or rewrite boundary is ambiguous. Never rewrite published revisions without explicit
+   approval. Before the first mutation, record the immutable base and the target tip's full commit
+   ID for final aggregate-diff verification:
 
-2. **Analyze changes**:
-   - Get diff: `jj diff -r <revision>` (full) and `--stat` (summary)
+   ```bash
+   old_tip="$(jj log -r <target> --no-graph -T 'commit_id')"
+   ```
+
+2. **Analyze changes and existing boundaries**:
+   - Get the ordered revision graph and full descriptions with `jj log`.
+   - Get each revision's full diff and `--stat` summary.
    - For each file, identify:
      - What it introduces (new functions, types, exports)
      - What it uses (imports, references)
@@ -59,24 +72,33 @@ that do not belong in project history.
      - Any breaking changes or related issues
      - Relevant caller context under the rules above
 
-3. **Group and order**:
-   - Start from one candidate revision containing the full target diff.
+   - Identify dependencies between changes, including references to symbols, files, configuration,
+     migrations, and behavior introduced elsewhere in the target set.
+
+3. **Group, transform, and order**:
+   - Start from the complete effective diff of the target set. Existing revision boundaries and
+     order are evidence, not constraints.
    - Treat a candidate as coherent when one revision description can explain the change as a single
      reviewable concern without unrelated "and" clauses.
    - Keep code, tests, docs, configuration, and caller updates together when they support the same
      concern.
-   - Propose a split only when independent concerns would be clearer, safer, or more reversible as
-     separate revisions for review, rollback, or history.
+   - Split a revision when it contains independent concerns that are clearer, safer, or more
+     reversible separately.
+   - Squash adjacent or related revisions when they are partial steps of one concern, including
+     fixups, tests, docs, or configuration that only make the same change complete.
+   - Reorder revisions when the current order obscures the story or places a consumer before its
+     dependency. Preserve dependency correctness; narrative preference never overrides it.
+   - Describe only when boundaries and order are already coherent.
    - Do not split just because files differ by type, directory, conventional-commit type, or
      implementation layer.
-   - If splitting is warranted, use the fewest coherent revisions. Build a dependency graph only for
-     those proposed revisions (if B uses what A introduces, A comes first).
+   - Use the fewest coherent revisions. Build a dependency graph for every proposed revision (if B
+     uses what A introduces, A comes first).
    - **Validate feasibility**:
      - If any file appears in multiple proposed revisions, it requires a hunk-level split.
      - Do not invoke an interactive VCS command. Merge affected revisions and note: "Grouped [X] and
        [Y] - splitting within [file] requires manual hunk selection" unless single-revision intent
        requires stopping instead.
-   - Order proposed revisions:
+   - Order the resulting stack:
      1. Dependencies first (hard constraint)
      2. Then by complexity: style < chore < docs < test < ci < build < refactor < perf < fix < feat
      3. Tie-breaker: fewer files first
@@ -120,7 +142,7 @@ that do not belong in project history.
    If multiple coherent revisions are warranted and single-revision intent was not supplied:
 
    ```
-   ## Split into N commits
+   ## Atomic Stack: N revisions
 
    ### 1. type(scope): description
 
@@ -135,17 +157,18 @@ that do not belong in project history.
    - file.ext (+X -Y): what changed
 
    **Ordering**: [why this order]
+   **Transformations**: [splits, squashes, reorders, and description-only updates]
    ```
 
 5. **Iterate** based on feedback until confirmed. If inferred execution intent is not authorized,
    stop after the proposal.
 
-6. **Execute** the accepted single-revision or multi-revision proposal:
+6. **Execute** the accepted transformation plan:
    - Compose each full revision description (subject + body + footer) per the rules above
    - Format each agent-authored description with `commit-message-format`, assign the result, and
-     validate that exact variable with `commit-message-check` before every `jj describe` or
-     `jj split` write. If validation fails, revise the description and rerun the formatter and
-     checker before writing. Do not format an exact user-supplied message.
+     validate that exact variable with `commit-message-check` before every `jj describe`,
+     `jj split`, or `jj squash --message` write. If validation fails, revise the description and
+     rerun the formatter and checker before writing. Do not format an exact user-supplied message.
    - Assign multi-line revision descriptions to a shell variable and pass the quoted variable to
      `-m`:
 
@@ -158,7 +181,16 @@ that do not belong in project history.
      jj describe -r <target> -m "$desc"
      ```
 
+   - Apply structural changes before final descriptions. Split mixed revisions, squash fragments of
+     the same concern, then reorder the resulting revisions into dependency order. Use
+     non-interactive commands only.
    - For one coherent revision: run `jj describe -r <target> -m "$desc"`.
+   - When using `jj squash`, always pass either `--use-destination-message` or `--message "$desc"`.
+     Never squash without one of these options when both source and destination may have
+     descriptions because jj will open an editor to combine them. Use `--use-destination-message`
+     only when the destination already has the complete final description and discarding the source
+     description is intentional. Also pass explicit `--from <source> --into <destination>`
+     revisions; never rely on the implicit `@` source and parent destination.
    - For multiple coherent revisions, split every proposed revision except the final remainder in
      dependency order:
 
@@ -170,14 +202,37 @@ that do not belong in project history.
 
    - After each split, track the selected revision, the remaining revision, and the target's rebased
      descendants. Use the remaining revision as the next target.
+   - For reordering within a linear stack, use `jj rebase --revision <revision>` with an explicit
+     `--insert-after <revision>` or `--insert-before <revision>` placement. Do not use `--source`,
+     which also moves descendants, or `--onto`, which may create siblings instead of inserting the
+     revision. Inspect the graph before and after every rebase and recompute rewritten revision IDs.
+   - Do not reorder a revision across a dependency, outside the accepted target set, or across a
+     merge boundary unless the proposal explicitly addresses the resulting graph and conflict risk.
    - Validate the final proposed description and apply it to the final remainder with
      `jj describe -r <remainder> -m "$desc"`. `jj split -m` describes only the selected changes;
      never leave the remainder with the original aggregate description or no description.
-   - Show every resulting revision and full description with
-     `jj log -r '<first>::<last>' --no-pager`.
-   - If the original target was `@`, run `jj new` after describing or splitting to create a fresh
-     working copy. Do not leave finalized work active for subsequent edits.
+   - Resolve the final tip's full commit ID and compare its tree directly with the original tip:
+
+     ```bash
+     new_tip="$(jj log -r <final-target> --no-graph -T 'commit_id')"
+     tree_diff="$(jj diff --from "$old_tip" --to "$new_tip" --summary)" || exit 1
+     test -z "$tree_diff"
+     ```
+
+     Treat output or a nonzero result as a tree-changing transformation. Resolve or report
+     conflicts; never present a conflicted or tree-changing stack as finalized.
+
+   - Show the resulting graph, stable change IDs, commit IDs, and full descriptions with:
+
+     ```bash
+     jj log -r '<result-set>' --no-pager \
+       --template 'change_id.short() ++ " " ++ commit_id.short() ++ "\n" ++ description ++ "\n\n"'
+     ```
+
+   - If the original target set ended at `@`, run `jj new` after finalizing the stack to create a
+     fresh working copy. Do not leave finalized work active for subsequent edits.
 
 7. **Report results**:
-   - Report the exact revision IDs and order produced.
+   - Report the exact revision IDs, order, and transformations produced.
    - State any descendants rebased by execution.
+   - State that the aggregate diff was preserved and whether conflicts occurred.
