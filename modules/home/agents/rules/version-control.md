@@ -9,69 +9,53 @@ or outside a Git repository unless explicitly requested.
 
 ## Authority And Safety
 
-An implementation plan identifying the change and base authorizes shaping current-task,
-agent-authored work into reviewable unpublished history: create, describe, split, or fold revisions
-and move task-created references. Mutating a named existing target also requires clear ownership and
-unpublished status; naming it for inspection or review grants no mutation authority.
-
-Ask before affecting published, unrelated, or user-authored history; discarding changes; moving
-pre-existing references; rewriting other descendants; or using an ambiguous base, target, or owner.
-Destructive operations require an explicit request for the identified outcome. Avoid interactive
-commands. Report mutations and requested work skipped or blocked.
+When implementation is authorized, a plan identifying the change and base permits organizing
+current-task, agent-authored, unpublished history. Ask before modifying anything published,
+pre-existing and not task-owned, unrelated, user-authored, destructive, or of uncertain ownership.
+Naming a target for inspection or review does not authorize modifying it. Use non-interactive VCS
+commands.
 
 ## Placement And Atomicity
 
-Before editing, inspect the working copy, parent, attached references, default reference, and
-intended base. Start from the current position unless the user names another base. In jj, keep an
-empty working copy's parent as the presumptive base; do not substitute an ancestral or default
-bookmark. Continue non-empty work only for the same concern.
+Before editing, inspect the working copy, parent, current and default bookmark or branch, and
+intended base. Start from the current position; if the user specifies another base, move there
+before editing. Otherwise, use an empty jj working copy's parent rather than another bookmark.
+Continue existing changes only when they belong to the same concern.
 
-Before editing work that spans multiple independently reviewable concerns, identify the next concern
-and its intended base. Broad authorization for the complete request does not combine independent
-concerns. Continue a non-empty working copy only when every change belongs to the current concern.
+Keep concerns separate in revisions and delegation. Give each concern a task-owned, non-default
+bookmark or branch, creating one unless the current bookmark or branch is already task-specific.
+Advance that reference after checks pass. Ask before moving any other reference or one whose
+ownership or purpose is uncertain. Use the default bookmark or branch only when explicitly
+requested.
 
-Delegation does not widen this boundary. Assign a mutating delegate at most one concern, including
-its base, ownership boundary, and focused validation. The caller remains responsible for reaching
-the finalization and review checkpoint before another independent concern begins.
-
-Keep one concern per revision. In jj, give each concern a task-owned, non-default bookmark. In Git,
-reuse the current branch only when it is already task-specific; otherwise create a task branch. Use
-the default reference only when explicitly requested. A task reference may inherit revisions outside
-its concern from the current base, but its own revisions must remain focused.
+Assign a mutating delegate at most one concern, including its base, ownership boundary, and focused
+validation. The caller remains responsible for finalizing and reviewing that concern before
+delegating another independent concern.
 
 ## Finalization And Review
 
-For each independently reviewable concern in unpublished agent-authored work, before starting
+Complete each independently reviewable concern in unpublished, agent-authored work before starting
 another:
 
-1. Run focused verification and establish the fewest coherent, fully described revisions needed for
-   that concern.
-2. Finalize the concern before review. In jj, create a fresh empty working-copy revision above the
-   finalized work. In Git, commit the finalized work and leave a clean worktree.
-3. Review each newly finalized or materially changed revision in dependency order. For one revision,
-   that review also covers its aggregate delta from the intended base. When multiple revisions
-   comprise the concern, also review their aggregate delta from the concern's intended base. If the
-   parent or base is ambiguous, ask rather than guess.
+1. Run focused verification and organize the concern into the fewest coherent, fully described
+   revisions.
+2. Finalize it before formal review: create an empty jj working-copy revision above it, or commit it
+   in Git and leave the worktree clean.
+3. Review every new or materially changed revision in dependency order, then review the concern's
+   aggregate delta from its intended base. Ask if the base is ambiguous.
 
-Resolve applicable review findings before beginning another independent concern. After all concerns
-in the task are finalized, run any deferred integration verification and review the complete task
-range for cross-concern issues. Do not re-review unchanged revisions unless their diffs or
-assumptions changed.
+Resolve applicable findings before starting another concern. After all concerns are complete, run
+deferred integration checks and review the complete task range for cross-concern issues.
 
-Do not begin formal diff or revision review before the finalization conditions above hold.
-Pre-finalization inspection by the implementor is verification, not review.
+A review covers the effective diff, description, revision boundaries, order, and base. Refer to jj
+revisions by stable change ID. Repeat only reviews affected by changed diffs or assumptions,
+including base or parent changes.
 
-A final review covers the effective diff, description, boundaries, order, and base. Identify jj
-revisions by stable change ID; commit IDs are evidence, not identity. Changes invalidate affected
-reviews. A base change invalidates only reviews whose diffs or assumptions it changes. Re-review
-descendants only when their diffs or assumptions change.
-
-Create review fixes separately. Fold one into its target only when revision-local and the history is
-unpublished and task-owned; then revalidate its description and repeat affected verification and
-reviews from a clean working copy. Ask before involving multiple revisions, unrelated changes,
-uncertain ownership, or other history. After changing a stack parent, restack descendants and repeat
-affected verification and reviews. Move a task-created reference only after checks pass; ask before
-moving a pre-existing reference.
+Create review fixes separately. Fold a fix into its target only when it is revision-local and the
+history is unpublished and task-owned. After folding or changing a parent, revalidate descriptions,
+restack affected descendants, and repeat affected verification and review from a clean working copy.
+Ask before modifying multiple revisions or any unrelated, pre-existing and not task-owned,
+user-authored, published, or uncertain history.
 
 ## Revision Descriptions
 
