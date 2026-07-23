@@ -1,0 +1,14 @@
+#compdef jj-worktree-add
+
+function _jj_worktree_add_revisions() {
+  local -a common bookmarks
+  common=('@:current revision' '@-:parent revision')
+  bookmarks=("${(@f)$(jj bookmark list --ignore-working-copy -T 'if(!remote && present, name ++ "\n")' 2>/dev/null)}")
+  _describe 'revision revset' common
+  compadd -a bookmarks
+}
+
+_arguments \
+  '(-h --help)'{-h,--help}'[show help]' \
+  '-r[revision revset]:revision revset:_jj_worktree_add_revisions' \
+  '1:worktree name:'

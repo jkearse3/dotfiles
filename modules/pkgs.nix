@@ -50,6 +50,10 @@
         jj-ensure = pkgs.callPackage ../packages/jj-ensure/package.nix {
           inherit (unstablePkgs) jujutsu;
         };
+        jj-worktree-add = pkgs.callPackage ../packages/jj-worktree-add/package.nix {
+          inherit jj-ensure;
+          inherit (unstablePkgs) jujutsu;
+        };
         nix-cleanup = pkgs.callPackage ../packages/nix-cleanup/package.nix { };
         playwright-cli = pkgs.callPackage ../packages/playwright-cli/package.nix { };
         port-listeners-kill = pkgs.callPackage ../packages/port-listeners-kill/package.nix {

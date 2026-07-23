@@ -6,12 +6,17 @@
     "packages/commit-message-format",
     "packages/nix-cleanup",
     "packages/jj-ensure",
+    "packages/jj-worktree-add",
     "packages/token-count"
   ],
   "executionEnvironments": [
     {
       "root": "packages/jj-ensure",
       "extraPaths": ["packages/jj-ensure/src"]
+    },
+    {
+      "root": "packages/jj-worktree-add",
+      "extraPaths": ["packages/jj-worktree-add/src"]
     }
   ]
 }
