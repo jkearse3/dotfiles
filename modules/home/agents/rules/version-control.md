@@ -3,9 +3,9 @@
 ## Repository Mode
 
 Before VCS-affecting work, determine the repository mode using read-only commands. Use jj for
-mutations in jj repositories and Git otherwise; do not mix mutation models. Ask before
-`jj git init --colocate`. Never initialize jj for read-only work or outside a Git repository unless
-explicitly requested.
+mutations in jj repositories and Git otherwise; do not mix mutation models. Ask before `jj-ensure`.
+Use `jj-ensure` rather than invoking `jj git init` directly. Never initialize jj for read-only work
+or outside a Git repository unless explicitly requested.
 
 ## Authority And Safety
 

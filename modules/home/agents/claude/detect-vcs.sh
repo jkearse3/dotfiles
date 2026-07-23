@@ -10,7 +10,7 @@ if jj root --ignore-working-copy &>/dev/null; then
 elif git rev-parse --git-dir &>/dev/null; then
 	vcs="git"
 else
-	vcs="none. Avoid VCS commands unless initializing — use jj git init --colocate."
+	vcs="none. Avoid VCS commands; jj-ensure requires an existing Git repository."
 fi
 
 jq -n --arg ctx "VCS: ${vcs}" '{
