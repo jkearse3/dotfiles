@@ -1,12 +1,12 @@
 ---
 name: plan-work
 description: >-
-  Creates, refines, or checks complete, evidence-grounded action plans for repository changes,
-  external operations, research, documentation, and mixed work. Use proactively before persistent
-  repository changes, external or shared-system mutations, and multi-step operational tasks, and
-  when the user asks to plan, scope, prepare, sequence, or make work portable to another context;
-  not for routine read-only work, execution within an established plan, or decision
-  pressure-testing.
+  Creates, refines, or validates proportionate working plans for any kind of actionable work,
+  including implementation, investigation, review, documentation, external operations, and mixed
+  tasks. Use when a working plan needs to be established, refined, or validated, even when a small
+  task needs only a one-sentence plan, and when the user asks to plan, scope, prepare, sequence, or
+  make work portable to another context. Do not use for purely conversational responses, decision
+  pressure-testing, or when an adequate working plan is already explicit in the conversation.
 argument-hint: "<outcome, request, or existing plan>"
 ---
 
