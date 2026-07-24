@@ -69,6 +69,49 @@ class EnsureBehaviorTests(RepositoryFixture):
         self.assertIn("would initialize linked", self.dry_run(linked))
         self.assertFalse((linked / ".jj").exists())
 
+    def test_rejects_git_lfs_before_initialization(self) -> None:
+        _ = (self.primary / ".gitattributes").write_text("*.bin filter=lfs diff=lfs merge=lfs -text\n")
+        with self.assertRaisesRegex(cli.EnsureError, "Git LFS is not supported by jj"):
+            _ = cli.plan(self.primary)
+        with self.assertRaisesRegex(cli.EnsureError, "Git LFS is not supported by jj"):
+            _ = cli.ensure(self.primary)
+        self.assertFalse((self.primary / ".jj").exists())
+
+    def test_rejects_git_lfs_in_existing_workspace(self) -> None:
+        _ = cli.ensure(self.primary)
+        _ = (self.primary / ".gitattributes").write_text("[attr]media filter=lfs -text\n")
+        with self.assertRaisesRegex(cli.EnsureError, "Git LFS is not supported by jj"):
+            _ = cli.ensure(self.primary)
+
+    def test_rejects_git_lfs_from_configured_global_attributes(self) -> None:
+        attributes = self.root / "global-attributes"
+        _ = attributes.write_text("*.bin filter=lfs\n")
+        _ = run("git", "-C", str(self.primary), "config", "core.attributesFile", str(attributes))
+        with self.assertRaisesRegex(cli.EnsureError, str(attributes)):
+            _ = cli.ensure(self.primary)
+
+    def test_resolves_relative_global_attributes_from_checkout(self) -> None:
+        attributes = self.primary / "config" / "attributes"
+        attributes.parent.mkdir()
+        _ = attributes.write_text("*.bin filter=lfs\n")
+        _ = run(
+            "git",
+            "-C",
+            str(self.primary),
+            "config",
+            "core.attributesFile",
+            "config/attributes",
+        )
+        with self.assertRaisesRegex(cli.EnsureError, str(attributes)):
+            _ = cli.ensure(self.primary)
+
+    def test_ignores_git_lfs_in_nested_repository(self) -> None:
+        nested = self.primary / "nested"
+        nested.mkdir()
+        _ = run("git", "init", str(nested))
+        _ = (nested / ".gitattributes").write_text("*.bin filter=lfs\n")
+        self.assertEqual(cli.ensure(self.primary), self.primary)
+
     def test_dry_run_reports_noop_and_enrollment_without_writing_marker(self) -> None:
         _ = cli.ensure(self.primary)
         self.assertIn("no changes: compatible", self.dry_run(self.primary))

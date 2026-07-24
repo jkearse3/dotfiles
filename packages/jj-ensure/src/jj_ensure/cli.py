@@ -123,6 +123,60 @@ def _line(command: Sequence[str], *, cwd: Path | None = None) -> str:
     return os.fsdecode(output[:-1])
 
 
+def _reject_git_lfs(checkout: GitCheckout) -> None:
+    """Reject checkouts whose active attribute files configure the LFS filter."""
+    attribute_files: list[Path] = []
+    for directory, names, _files in os.walk(checkout.root):
+        path = Path(directory)
+        if path != checkout.root and (path / ".git").exists():
+            names.clear()
+            continue
+        names[:] = [name for name in names if name not in {".git", ".jj"}]
+        attribute_files.append(path / ".gitattributes")
+    attribute_files.extend(
+        {
+            checkout.git_dir / "info" / "attributes",
+            checkout.common_git_dir / "info" / "attributes",
+        }
+    )
+    configured = subprocess.run(
+        ["git", "-C", os.fspath(checkout.root), "config", "--path", "--get", "core.attributesFile"],
+        check=False,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+    )
+    if configured.returncode == 0:
+        value = os.fsdecode(configured.stdout).strip()
+        if not value or "\n" in value:
+            raise EnsureError("git config core.attributesFile returned invalid output")
+        configured_path = Path(value).expanduser()
+        attribute_files.append(
+            configured_path if configured_path.is_absolute() else checkout.root / configured_path
+        )
+    elif configured.returncode != 1:
+        detail = os.fsdecode(configured.stderr).strip()
+        suffix = f": {detail}" if detail else ""
+        raise EnsureError(f"could not inspect Git attribute configuration{suffix}")
+    else:
+        config_home = Path(os.environ.get("XDG_CONFIG_HOME", Path.home() / ".config"))
+        attribute_files.append(config_home / "git" / "attributes")
+    git_prefix = Path(_line(["git", "--exec-path"])).parent.parent
+    attribute_files.append(git_prefix / "etc" / "gitattributes")
+    for path in attribute_files:
+        try:
+            lines = path.read_text(errors="surrogateescape").splitlines()
+        except FileNotFoundError:
+            continue
+        except OSError as error:
+            raise EnsureError(f"could not inspect Git attributes at {path}: {error}") from error
+        for line in lines:
+            fields = line.split()
+            if fields and not fields[0].startswith("#") and "filter=lfs" in fields[1:]:
+                raise EnsureError(
+                    f"Git LFS is not supported by jj; refusing checkout configured by {path}"
+                )
+
+
 def _existing_path(value: str, *, relative_to: Path) -> Path:
     """Resolve command-produced path text to a canonical existing path."""
     path = Path(value)
@@ -435,6 +489,7 @@ def plan(start: Path | None = None) -> Plan:
     so a planned action is not a promise that execution will succeed.
     """
     checkout = discover(Path(".") if start is None else start)
+    _reject_git_lfs(checkout)
     jj_dir = checkout.root / ".jj"
     try:
         mode = jj_dir.lstat().st_mode
@@ -469,6 +524,7 @@ def ensure(start: Path | None = None) -> Path:
     Returns the canonical Git worktree root.
     """
     checkout = discover(Path(".") if start is None else start)
+    _reject_git_lfs(checkout)
     jj_dir = checkout.root / ".jj"
     try:
         mode = jj_dir.lstat().st_mode
