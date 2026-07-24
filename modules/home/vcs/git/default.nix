@@ -11,6 +11,8 @@
     internalPkgs.git-branch-next
     internalPkgs.git-branch-previous
     internalPkgs.git-branch-stacked
+    internalPkgs.git-worktree-cd
+    internalPkgs.git-worktree-select
   ];
 
   programs.git = {

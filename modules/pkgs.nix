@@ -29,6 +29,8 @@
         git-branch-stacked = pkgs.callPackage ../packages/git-branch-stacked/package.nix {
           inherit git-branch-default;
         };
+        git-worktree-cd = pkgs.callPackage ../packages/git-worktree-cd/package.nix { };
+        git-worktree-select = pkgs.callPackage ../packages/git-worktree-select/package.nix { };
         gh-pr-comments = pkgs.callPackage ../packages/gh-pr-comments/package.nix {
           inherit jj-bookmark-current;
         };
