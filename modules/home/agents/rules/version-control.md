@@ -26,10 +26,12 @@ intended base. Start from the current position; if the user specifies another ba
 before editing. Otherwise, use an empty jj working copy's parent rather than another bookmark.
 Continue existing changes only when they belong to the same concern.
 
-Keep concerns separate in revisions and delegation. Give each concern a task-owned, non-default
-bookmark or branch, creating one unless the current bookmark or branch is already task-specific.
-Advance that reference after checks pass. Ask before moving any other reference or one whose
-ownership or purpose is uncertain. Use the default bookmark or branch only when explicitly
+Keep concerns separate in revisions and delegation. Give each independently publishable task or
+stack element a task-owned, non-default bookmark or branch. Multiple coherent revisions for one task
+may share its reference. Continue the current reference only when it is unpublished, clearly
+task-owned, and matches the requested work; otherwise create one unless its name, base, or ownership
+is ambiguous. Advance that reference after checks pass. Ask before moving any other reference or one
+whose ownership or purpose is uncertain. Use the default bookmark or branch only when explicitly
 requested.
 
 Assign a mutating delegate at most one concern, including its base, ownership boundary, and focused

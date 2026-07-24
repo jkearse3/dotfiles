@@ -11,3 +11,6 @@ them.
 
 Before changing a shared or external system, verify the target and scope and account for visibility,
 reversibility, downstream effects, and persistent state.
+
+Do not change issue state, assignment, labels, comments, relationships, or other tracker metadata
+without explicit authorization for that external mutation.
