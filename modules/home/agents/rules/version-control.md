@@ -88,14 +88,20 @@ printf '%s\n' "$desc" | commit-message-check
 If validation fails, revise and repeat. Never format an exact user-supplied message; if it fails
 validation, stop and report the failure.
 
-## Publication And Helpers
+## Reference Discovery
+
+Use `jj-bookmark-{current,default,previous,stacked}` or the corresponding `git-branch-*` helpers to
+discover bookmarks or branches. The jj `previous` and `stacked` helpers resolve relative to `@`;
+only use them for another target after confirming `@` belongs to that target's stack.
+
+In colocated repositories, Git may be detached. When `gh` requires a branch name, pass
+`$(jj-bookmark-current)` explicitly.
+
+## Publication
 
 Do not push, publish references, create pull requests, merge, or close remote artifacts without an
-explicit request. First inspect outgoing revisions, target, review state, and remote state. Publish
-dependent stacks parent-first unless the hosting workflow provides an atomic stack operation. Never
-force-push without explicit approval.
+explicit request. Before publication, inspect the outgoing revisions, target, review state, and
+remote state.
 
-Use `jj-bookmark-{current,default,previous,stacked}` or corresponding `git-branch-*` helpers for
-discovery. The jj previous and stacked helpers resolve relative to `@`; use them for another target
-only after confirming `@` is on its stack. In colocated repositories, pass `$(jj-bookmark-current)`
-when `gh` needs a branch name because Git may be detached.
+Publish dependent stacks parent-first unless the hosting workflow provides an atomic stack
+operation. Never force-push without explicit approval.
