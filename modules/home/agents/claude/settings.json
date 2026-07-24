@@ -138,41 +138,6 @@
       "~/.agents"
     ]
   },
-  "hooks": {
-    "UserPromptSubmit": [
-      {
-        "matcher": "",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "~/.claude/detect-vcs.sh"
-          }
-        ]
-      }
-    ],
-    "Stop": [
-      {
-        "matcher": "",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "osascript -e \"display notification \\\"$(basename \"$PWD\") at $(date '+%H:%M')\\\" with title \\\"Claude stopped\\\"\""
-          }
-        ]
-      }
-    ],
-    "Notification": [
-      {
-        "matcher": "",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "osascript -e \"display notification \\\"Waiting for permission/input in $(basename \"$PWD\") at $(date '+%H:%M')\\\" with title \\\"Claude needs attention\\\" sound name \\\"default\\\"\""
-          }
-        ]
-      }
-    ]
-  },
   "statusLine": {
     "type": "command",
     "command": "~/.claude/statusline.sh"

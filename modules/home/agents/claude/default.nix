@@ -78,7 +78,6 @@ in
       ];
     };
     ".claude/statusline.sh".source = mkSource ./statusline.sh;
-    ".claude/detect-vcs.sh".source = mkSource ./detect-vcs.sh;
 
     # The sandboxed `nono-claude` wrapper inherits claude's static fish-shipped completion via
     # `--wraps`. claude.fish is pure `complete -c claude` declarations with no binary invocation,
