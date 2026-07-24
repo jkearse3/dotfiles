@@ -73,9 +73,7 @@ in
           sources = config.agents.claudeRules;
         }
       ];
-      order = config.agents.sharedRuleOrder ++ [
-        "claude/claude-code-behavior"
-      ];
+      order = config.agents.sharedRuleOrder;
     };
     ".claude/statusline.sh".source = mkSource ./statusline.sh;
 
