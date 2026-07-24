@@ -4,6 +4,7 @@
 {
   imports = [
     ./ghostty
+    ./herdr
     ./tmux
   ];
 }
