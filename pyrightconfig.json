@@ -6,6 +6,7 @@
     "packages/commit-message-format",
     "packages/nix-cleanup",
     "packages/jj-ensure",
+    "packages/jj-bookmark-land",
     "packages/jj-worktree-add",
     "packages/token-count"
   ],
@@ -13,6 +14,10 @@
     {
       "root": "packages/jj-ensure",
       "extraPaths": ["packages/jj-ensure/src"]
+    },
+    {
+      "root": "packages/jj-bookmark-land",
+      "extraPaths": ["packages/jj-bookmark-land/src"]
     },
     {
       "root": "packages/jj-worktree-add",

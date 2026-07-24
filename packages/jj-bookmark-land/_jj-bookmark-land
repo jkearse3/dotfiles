@@ -1,0 +1,14 @@
+#compdef jj-bookmark-land
+
+function _jj_bookmark_land_bookmarks() {
+  local -a bookmarks
+  bookmarks=("${(@f)$(jj bookmark list --ignore-working-copy -T 'if(!remote && present, name ++ "\n")' 2>/dev/null)}")
+  compadd -a bookmarks
+}
+
+_arguments \
+  '(-h --help)'{-h,--help}'[show help]' \
+  '--into[destination bookmark]:bookmark:_jj_bookmark_land_bookmarks' \
+  '--forget[forget landed bookmarks]' \
+  '--dry-run[show the landing plan]' \
+  '1:stack-tip bookmark:_jj_bookmark_land_bookmarks'

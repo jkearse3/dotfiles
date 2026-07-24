@@ -1,0 +1,15 @@
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "jj-bookmark-land"
+version = "0.0.0"
+description = "Fast-forward a jj bookmark through a linear stack"
+requires-python = ">=3.11"
+
+[project.scripts]
+jj-bookmark-land = "jj_bookmark_land.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]

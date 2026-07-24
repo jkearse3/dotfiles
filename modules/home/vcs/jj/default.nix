@@ -12,6 +12,7 @@
     internalPkgs.jj-bookmark-select
     internalPkgs.jj-change-select
     internalPkgs.jj-ensure
+    internalPkgs.jj-bookmark-land
     internalPkgs.jj-worktree-add
   ];
 
