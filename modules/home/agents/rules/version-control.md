@@ -59,12 +59,14 @@ user-authored, published, or uncertain history.
 
 ## Revision Descriptions
 
-Repository documentation, then recent history, determines subject format. Otherwise use
-`type(scope): description`, with optional scope and `!` for breaking changes. Allowed types are
-`feat`, `fix`, `refactor`, `perf`, `style`, `chore`, `docs`, `test`, `ci`, and `build`. Use an
-imperative lowercase description without a period and keep it under 72 characters. Choose type by
-effect: agent configuration is `feat` when behavior changes, `refactor` when reorganized, and `docs`
-only when behavior is unchanged.
+Repository documentation determines the revision description format. When the repository does not
+specify one, use Conventional Commits: `type(scope): description`, with an optional scope and `!`
+for breaking changes.
+
+Default types are `feat`, `fix`, `refactor`, `perf`, `style`, `chore`, `docs`, `test`, `ci`, and
+`build`. Use an imperative lowercase description without a period, and keep the complete subject
+under 72 characters. Choose the type by effect: agent configuration is `feat` when behavior changes,
+`refactor` when reorganized, and `docs` only when behavior is unchanged.
 
 Every agent-authored description requires a non-redundant body explaining why. Describe the prior
 state or constraint, then the response. Include material constraints, durable behavior,
