@@ -2,10 +2,14 @@
 
 ## Repository Mode
 
-Before VCS-affecting work, determine the repository mode using read-only commands. Use jj for
-mutations in jj repositories and Git otherwise; do not mix mutation models. Ask before `jj-ensure`.
-Use `jj-ensure` rather than invoking `jj git init` directly. Never initialize jj for read-only work
-or outside a Git repository unless explicitly requested.
+Before any VCS operation, determine whether the workspace is in a Git repository using read-only
+commands. In a Git repository, run `jj-ensure` before further VCS operations, even when the
+requested work is otherwise read-only; this initialization is standing authorization. Then use jj
+whenever it has an equivalent. Use Git only when an operation has no jj equivalent, its behavior
+must occur specifically in Git, the user explicitly requests Git's view, or `jj-ensure` explicitly
+reports an unsupported repository feature such as Git LFS. After any other `jj-ensure` failure, stop
+before mutating work; read-only Git inspection may continue. Do not mix mutation models otherwise.
+Never invoke `jj git init` directly or run `jj-ensure` outside a Git repository.
 
 ## Authority And Safety
 
