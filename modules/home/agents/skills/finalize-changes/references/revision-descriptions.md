@@ -22,8 +22,8 @@ Format each complete agent-authored message into `desc`, validate that exact val
 unchanged to the mutation:
 
 ```bash
-desc="$(printf '%s\n' "$desc" | commit-message-format)"
-printf '%s\n' "$desc" | commit-message-check
+desc="$(printf '%s\n' "$desc" | commit-message format)"
+printf '%s\n' "$desc" | commit-message check
 ```
 
 If validation fails, revise and repeat. Never format an exact user-supplied message; if it fails

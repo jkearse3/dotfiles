@@ -3,7 +3,7 @@
 }:
 {
   imports = [
-    ./commit-message-check
+    ./commit-message
     ./gh
     ./git
     ./jj

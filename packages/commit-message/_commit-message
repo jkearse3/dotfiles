@@ -1,0 +1,20 @@
+#compdef commit-message
+
+_arguments -C \
+  '(-h --help)'{-h,--help}'[show help]' \
+  '1:command:((format\:format\ a\ commit\ description check\:validate\ a\ commit\ description))' \
+  '*::argument:->arguments'
+
+case $words[2] in
+  format)
+    _arguments \
+      '(-h --help)'{-h,--help}'[show help]' \
+      '--body-width[maximum body/footer line width]:characters'
+    ;;
+  check)
+    _arguments \
+      '(-h --help)'{-h,--help}'[show help]' \
+      '--subject-width[maximum subject width]:characters' \
+      '--body-width[maximum body/footer line width]:characters'
+    ;;
+esac

@@ -94,7 +94,7 @@ Steps:
 18. Draft `revision_description` as a complete proposed jj revision description based on the checked
     diff and state context, following the repository's revision-description rules.
 19. Assign the exact proposed `revision_description` to a shell variable and validate it with
-    `printf '%s\n' "$desc" | commit-message-check`. If validation fails, revise the proposed
+    `printf '%s\n' "$desc" | commit-message check`. If validation fails, revise the proposed
     description and rerun validation until it passes before writing the candidate.
 20. Replace any existing `## Finalization Candidate` with a fresh section containing only
     `closeout: finalize-revision`, `target_commit`, and `revision_description` in this exact shape:

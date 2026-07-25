@@ -53,7 +53,7 @@ current `@` differs from `target_commit`, refresh the candidate only after read-
 - Confirm the persisted `revision_description` still describes the current revision without material
   changes.
 - Assign the persisted `revision_description` to a shell variable exactly as extracted from the
-  state file and validate that exact value with `commit-message-check` before updating the
+  state file and validate that exact value with `commit-message check` before updating the
   candidate.
 
 When stale-candidate revalidation succeeds, update only `target_commit` in the current
@@ -63,7 +63,7 @@ or intent changed, the revision description would need material edits, or messag
 stop for user input before any VCS lifecycle action.
 
 For `closeout: finalize-revision`, assign the persisted `revision_description` to a shell variable
-exactly as extracted from the state file and validate that exact value with `commit-message-check`.
+exactly as extracted from the state file and validate that exact value with `commit-message check`.
 If validation fails, stop with the checker output. Do not edit the description during finalization
 unless the user sends the workflow back through implement or verify. If stale-candidate revalidation
 already validated the exact same persisted description after refreshing `target_commit`, this

@@ -2,8 +2,7 @@
   "$schema": "https://raw.githubusercontent.com/microsoft/pyright/main/packages/vscode-pyright/schemas/pyrightconfig.schema.json",
   "include": [
     "modules/home/agents/skills/**/scripts",
-    "modules/home/vcs/commit-message-check",
-    "packages/commit-message-format",
+    "packages/commit-message",
     "packages/nix-cleanup",
     "packages/jj-ensure",
     "packages/jj-bookmark-land",
@@ -11,6 +10,10 @@
     "packages/token-count"
   ],
   "executionEnvironments": [
+    {
+      "root": "packages/commit-message",
+      "extraPaths": ["packages/commit-message/src"]
+    },
     {
       "root": "packages/jj-ensure",
       "extraPaths": ["packages/jj-ensure/src"]

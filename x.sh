@@ -171,7 +171,7 @@ cmd:nix-flake-update() {
 	fi
 	cmd:nix-eval-home
 	desc='build(nix): update dependencies'
-	printf '%s\n' "$desc" | commit-message-check
+	printf '%s\n' "$desc" | commit-message check
 	jj commit -m "$desc"
 }
 
@@ -196,6 +196,7 @@ cmd:lint() {
 cmd:lint-nix() {
 	snapshot
 	local files=()
+	local existing_files=()
 	local file_list
 	file_list="$(mktemp)"
 	if ! git ls-files -z --cached --others --exclude-standard '*.nix' >"$file_list"; then
@@ -204,6 +205,10 @@ cmd:lint-nix() {
 	fi
 	mapfile -d '' -t files <"$file_list"
 	rm -f "$file_list"
+	for file in "${files[@]}"; do
+		[[ -f $file ]] && existing_files+=("$file")
+	done
+	files=("${existing_files[@]}")
 	if [[ ${#files[@]} -eq 0 ]]; then
 		echo "No Nix files found"
 		return 0

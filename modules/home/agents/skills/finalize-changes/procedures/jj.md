@@ -55,8 +55,8 @@ pass the exact validated value unchanged:
 desc='type(scope): description
 
 Prior state or constraint, followed by the change in response.'
-desc="$(printf '%s\n' "$desc" | commit-message-format)"
-printf '%s\n' "$desc" | commit-message-check
+desc="$(printf '%s\n' "$desc" | commit-message format)"
+printf '%s\n' "$desc" | commit-message check
 jj describe -r <target> -m "$desc"
 ```
 

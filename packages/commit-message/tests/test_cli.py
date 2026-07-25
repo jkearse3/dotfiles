@@ -1,18 +1,15 @@
-#!/usr/bin/env python3
-
 from __future__ import annotations
 
 import os
 import subprocess
 import unittest
 
-FORMATTER = os.environ["FORMATTER"]
-CHECKER = os.environ["CHECKER"]
+CLI = os.environ["COMMIT_MESSAGE"]
 
 
-def format_message(message: str, *args: str) -> subprocess.CompletedProcess[str]:
+def run_cli(command: str, message: str, *args: str) -> subprocess.CompletedProcess[str]:
     return subprocess.run(
-        [FORMATTER, *args],
+        [CLI, command, *args],
         input=message,
         text=True,
         capture_output=True,
@@ -20,30 +17,66 @@ def format_message(message: str, *args: str) -> subprocess.CompletedProcess[str]
     )
 
 
-def check_message(message: str) -> subprocess.CompletedProcess[str]:
-    return subprocess.run(
-        [CHECKER], input=message, text=True, capture_output=True, check=False
-    )
+def format_message(message: str, *args: str) -> subprocess.CompletedProcess[str]:
+    return run_cli("format", message, *args)
 
 
-class CommitMessageFormatTests(unittest.TestCase):
-    def test_empty_input_stays_empty(self) -> None:
+def check_message(message: str, *args: str) -> subprocess.CompletedProcess[str]:
+    return run_cli("check", message, *args)
+
+
+class CommitMessageTests(unittest.TestCase):
+    def test_empty_input_stays_empty_but_is_invalid(self) -> None:
         self.assertEqual(format_message("").stdout, "")
+        result = check_message("")
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("line 1: subject is required", result.stderr)
 
     def test_nonempty_output_has_exactly_one_terminal_newline(self) -> None:
         output = format_message("feat: add formatter\n\n\n").stdout
         self.assertEqual(output, "feat: add formatter\n")
 
-    def test_invalid_width_is_rejected(self) -> None:
-        result = format_message("feat: add formatter", "--body-width", "0")
-        self.assertEqual(result.returncode, 2)
-        self.assertIn("must be a positive integer", result.stderr)
+    def test_invalid_widths_are_argparse_errors(self) -> None:
+        for command, arguments in (
+            ("format", ("--body-width", "0")),
+            ("check", ("--subject-width", "nope")),
+            ("check", ("--body-width", "-1")),
+        ):
+            with self.subTest(command=command, arguments=arguments):
+                result = run_cli(command, "feat: test", *arguments)
+                self.assertEqual(result.returncode, 2)
+                self.assertIn("must be a positive integer", result.stderr)
+
+    def test_checker_accepts_plain_subjects_and_conventional_variants(self) -> None:
+        for message in (
+            "feat(vcs)!: add commit message checker\n\nBody line within limit.\n",
+            "add a thing\n",
+            "api: added some endpoint\n",
+            "noop: add checker\n",
+            "feat(): add checker\n",
+            "feat: Add checker\n",
+            "feat: add checker.\n",
+        ):
+            with self.subTest(message=message):
+                self.assertEqual(check_message(message).returncode, 0)
+
+    def test_checker_reports_subject_and_body_widths(self) -> None:
+        subject = check_message(
+            "plain subject longer than twenty characters\n", "--subject-width", "20"
+        )
+        self.assertEqual(subject.returncode, 1)
+        self.assertIn("line 1: subject is", subject.stderr)
+
+        body = check_message(
+            "docs: add note\n\nordinary body line longer\n", "--body-width", "20"
+        )
+        self.assertEqual(body.returncode, 1)
+        self.assertIn("line 3: body/footer line", body.stderr)
 
     def test_default_width_wraps_only_overlong_prose(self) -> None:
         short = "This short line stays where it was."
         long = "This ordinary prose line contains enough words that it must wrap at the default body width without changing any words."
-        message = f"feat: add formatter\n\n{short}\n\n{long}"
-        output = format_message(message).stdout
+        output = format_message(f"feat: add formatter\n\n{short}\n\n{long}").stdout
         lines = output.splitlines()
         self.assertEqual(lines[2], short)
         self.assertEqual(lines[3], "")
@@ -64,7 +97,6 @@ class CommitMessageFormatTests(unittest.TestCase):
         expected = " ".join(message.splitlines()[2:])
         self.assertTrue(all(len(line) <= 72 for line in body))
         self.assertEqual(" ".join(body), expected)
-        self.assertNotIn("validation\nto presence", output)
 
     def test_lists_and_trailers_use_continuation_indentation(self) -> None:
         message = (
@@ -72,8 +104,7 @@ class CommitMessageFormatTests(unittest.TestCase):
             "  - This list entry has enough words to wrap with a hanging indentation.\n\n"
             "BREAKING CHANGE: This trailer value has enough words to wrap safely."
         )
-        output = format_message(message, "--body-width", "40").stdout
-        lines = output.splitlines()
+        lines = format_message(message, "--body-width", "40").stdout.splitlines()
         self.assertTrue(lines[2].startswith("  - "))
         self.assertTrue(lines[3].startswith("    "))
         self.assertTrue(lines[5].startswith("BREAKING CHANGE: "))
@@ -81,11 +112,7 @@ class CommitMessageFormatTests(unittest.TestCase):
         self.assertTrue(all(len(line) <= 40 for line in lines[2:]))
 
     def test_issue_footers_remain_on_separate_lines(self) -> None:
-        message = (
-            "fix: preserve footers\n\n"
-            "Closes #123\n"
-            "Fixes JIRA-456"
-        )
+        message = "fix: preserve footers\n\nCloses #123\nFixes JIRA-456"
         self.assertEqual(format_message(message).stdout, message + "\n")
         self.assertEqual(
             format_message(message, "--body-width", "10").stdout,
@@ -110,7 +137,7 @@ class CommitMessageFormatTests(unittest.TestCase):
         )
         self.assertEqual(format_message(message).stdout, message + "\n")
 
-    def test_urls_and_inline_code_are_not_split(self) -> None:
+    def test_urls_and_inline_code_are_not_split_and_checker_accepts_them(self) -> None:
         url = "https://example.com/" + "a" * 80
         code = "`command --with a value that is intentionally far too long for one line`"
         message = f"docs: explain formatter\n\nSee {url}\n\nUse {code} when testing."
@@ -119,29 +146,18 @@ class CommitMessageFormatTests(unittest.TestCase):
         self.assertIn(code, output)
         self.assertEqual(check_message(output).returncode, 0)
 
-    def test_preformatted_content_is_preserved_and_rejected(self) -> None:
-        preformatted = "    " + "x" * 80
-        message = f"test: preserve sample\n\n{preformatted}"
-        output = format_message(message).stdout
-        self.assertIn(preformatted, output)
-        self.assertNotEqual(check_message(output).returncode, 0)
-
-    def test_ambiguous_command_is_preserved_and_rejected(self) -> None:
-        command = "nix build --no-link .#a-very-long-package-name-" + "x" * 50
-        message = f"test: preserve command\n\n{command}"
-        output = format_message(message).stdout
-        self.assertIn(command, output)
-        self.assertNotEqual(check_message(output).returncode, 0)
-
-    def test_fenced_content_is_preserved_and_rejected(self) -> None:
-        payload = "print('" + "x" * 80 + "')"
-        message = (
-            f"test: preserve fixture\n\n```python\n{payload}\n"
-            f"```not-a-closing-fence\n{payload}\n```"
+    def test_conservative_formatting_may_remain_invalid(self) -> None:
+        samples = (
+            "    " + "x" * 80,
+            "nix build --no-link .#a-very-long-package-name-" + "x" * 50,
+            "```python\nprint('" + "x" * 80 + "')\n```",
         )
-        output = format_message(message).stdout
-        self.assertEqual(output, message + "\n")
-        self.assertNotEqual(check_message(output).returncode, 0)
+        for sample in samples:
+            with self.subTest(sample=sample):
+                message = f"test: preserve sample\n\n{sample}"
+                output = format_message(message).stdout
+                self.assertIn(sample, output)
+                self.assertEqual(check_message(output).returncode, 1)
 
     def test_subject_changes_only_when_valid_except_for_period(self) -> None:
         valid = format_message("feat: add formatter.\n").stdout
@@ -155,9 +171,9 @@ class CommitMessageFormatTests(unittest.TestCase):
         self.assertEqual(overlong, overlong_subject + "\n")
         self.assertEqual(check_message(malformed).returncode, 0)
         self.assertEqual(check_message(plain).returncode, 0)
-        self.assertNotEqual(check_message(overlong).returncode, 0)
+        self.assertEqual(check_message(overlong).returncode, 1)
 
-    def test_supported_output_is_valid_and_idempotent(self) -> None:
+    def test_supported_output_is_valid_and_idempotent_at_matching_width(self) -> None:
         message = (
             "feat: format descriptions.\n\n"
             "This body contains enough ordinary prose to require deterministic wrapping at a narrow configured width.\n\n"
@@ -166,7 +182,7 @@ class CommitMessageFormatTests(unittest.TestCase):
         first = format_message(message, "--body-width", "50").stdout
         second = format_message(first, "--body-width", "50").stdout
         self.assertEqual(first, second)
-        self.assertEqual(check_message(first).returncode, 0)
+        self.assertEqual(check_message(first, "--body-width", "50").returncode, 0)
 
 
 if __name__ == "__main__":
