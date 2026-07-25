@@ -13,6 +13,9 @@
     {
       packages = rec {
         commit-message = pkgs.callPackage ../packages/commit-message/package.nix { };
+        direnv-worktree = pkgs.callPackage ../packages/direnv-worktree/package.nix {
+          inherit (unstablePkgs) git;
+        };
         git-branch-checkout = pkgs.callPackage ../packages/git-branch-checkout/package.nix { };
         git-branch-current = pkgs.callPackage ../packages/git-branch-current/package.nix { };
         git-branch-default = pkgs.callPackage ../packages/git-branch-default/package.nix { };

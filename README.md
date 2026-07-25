@@ -20,4 +20,5 @@ Configurations managed with Nix.
 
 ## Reference
 
+- [Direnv in linked worktrees](packages/direnv-worktree/README.md)
 - [Nix cheatsheet](docs/cheatsheets/nix.md)

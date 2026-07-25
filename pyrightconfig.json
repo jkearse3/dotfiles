@@ -3,6 +3,7 @@
   "include": [
     "modules/home/agents/skills/**/scripts",
     "packages/commit-message",
+    "packages/direnv-worktree",
     "packages/nix-cleanup",
     "packages/jj-ensure",
     "packages/jj-bookmark-land",

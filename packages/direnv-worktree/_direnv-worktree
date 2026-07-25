@@ -1,0 +1,19 @@
+#compdef direnv-worktree
+
+_arguments -C \
+  '(-h --help)'{-h,--help}'[show help]' \
+  '1:command:((enable\:enable\ automatic\ direnv\ preparation\ for\ linked\ worktrees disable\:disable\ automatic\ direnv\ preparation\ for\ linked\ worktrees post-checkout\:handle\ Git\x27s\ post-checkout\ hook))' \
+  '*::argument:->arguments'
+
+if [[ $state == arguments ]]; then
+  case $words[1] in
+    enable|disable)
+      _arguments '(-h --help)'{-h,--help}'[show help]'
+      ;;
+    post-checkout)
+      _arguments \
+        '(-h --help)'{-h,--help}'[show help]' \
+        '*:hook argument:'
+      ;;
+  esac
+fi

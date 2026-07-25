@@ -4,6 +4,7 @@
 }:
 {
   home.packages = [
+    internalPkgs.direnv-worktree
     internalPkgs.git-branch-checkout
     internalPkgs.git-branch-current
     internalPkgs.git-branch-default
@@ -28,6 +29,10 @@
         editor = "vim";
       };
       init.defaultBranch = "main";
+      hook.direnv-worktree = {
+        command = "${internalPkgs.direnv-worktree}/bin/direnv-worktree post-checkout";
+        event = "post-checkout";
+      };
       pull.rebase = true;
       url."git@github.com:".insteadOf = "https://github.com/";
       alias = {
