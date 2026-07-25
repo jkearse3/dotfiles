@@ -597,7 +597,6 @@ def main(argv: list[str] | None = None) -> int:
         if cast(bool, namespace.dry_run):
             print(plan(path).describe())
         else:
-            print(plan(path).describe(), file=sys.stderr, flush=True)
             print(ensure(path))
     except EnsureError as error:
         _exit_error(error)

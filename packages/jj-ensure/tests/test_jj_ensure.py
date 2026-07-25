@@ -345,38 +345,21 @@ class EnsureSafetyTests(RepositoryFixture):
 
 @final
 class CliTests(unittest.TestCase):
-    def test_cli_prints_plan_before_execution_and_concise_error(self) -> None:
-        class Report(io.StringIO):
-            flushed: bool = False
-
-            @override
-            def flush(self) -> None:
-                self.flushed = True
-                super().flush()
-
+    def test_cli_prints_only_canonical_root_and_concise_error(self) -> None:
         output = io.StringIO()
-        report = Report()
-        selected = cli.Plan(
-            cli.GitCheckout(Path("/canonical"), Path("/git"), Path("/git"), True),
-            cli.Action.INITIALIZE_PRIMARY,
-        )
-
-        def ensure_after_report(_path: Path) -> Path:
-            self.assertEqual(report.getvalue(), "would initialize colocated jj workspace at /canonical\n")
-            self.assertTrue(report.flushed)
-            return Path("/canonical")
-
+        error = io.StringIO()
         with (
-            patch.object(cli, "plan", return_value=selected),
-            patch.object(cli, "ensure", side_effect=ensure_after_report),
+            patch.object(cli, "plan", side_effect=AssertionError("live execution called plan")),
+            patch.object(cli, "ensure", return_value=Path("/canonical")),
             patch("sys.stdout", output),
-            patch("sys.stderr", report),
+            patch("sys.stderr", error),
         ):
             self.assertEqual(cli.main(["target"]), 0)
-        self.assertEqual(report.getvalue(), "would initialize colocated jj workspace at /canonical\n")
+        self.assertEqual(error.getvalue(), "")
         self.assertEqual(output.getvalue(), "/canonical\n")
-        error = io.StringIO()
-        with patch.object(cli, "plan", side_effect=cli.EnsureError("invalid target")), patch("sys.stderr", error):
+        with patch.object(cli, "ensure", side_effect=cli.EnsureError("invalid target")), patch(
+            "sys.stderr", error
+        ):
             with self.assertRaises(SystemExit) as status:
                 _ = cli.main([])
         self.assertEqual(status.exception.code, 1)
