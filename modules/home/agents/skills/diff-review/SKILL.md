@@ -1,12 +1,12 @@
 ---
 name: diff-review
 description: >-
-  Reviews finalized revisions, commit ranges, PRs, or branches as an independent quality gate;
+  Independently reviews stable, fully described finalized revisions, commit ranges, PRs, or branches;
   assesses explicitly declared criteria when supplied and finds actionable bugs, regressions, safety
   risks, compatibility breaks, missing validation, stale artifacts, and maintainability issues
-  across code, docs, config, infra, prompts, skills, and other changed artifacts. Use when asked to
-  review changes or when a workflow needs independent diff quality review before acceptance or
-  validation.
+  across code, docs, config, infra, prompts, skills, and other changed artifacts. Use when a stable
+  finalized target is ready for review; not for working changes, implementation, fixes, or history
+  mutation.
 argument-hint: "review my branch | review jj diff --from main | review PR #42 against criteria.md"
 ---
 
@@ -40,8 +40,8 @@ The input is free-form natural language. Interpret it to determine:
    types, or focus areas included in the input. Note these for use during review, but do not promote
    them to criteria.
 
-Before reviewing unpublished agent-authored work, require the reviewable lifecycle in the
-version-control rules to be complete through revision finalization and clean-working-copy setup. A
+Before reviewing unpublished agent-authored work, require fully described, finalized revisions and a
+clean working copy: an empty jj working-copy revision above the target, or a clean Git worktree. A
 request to review unfinalized or unshaped working changes is blocked; pre-finalization implementor
 inspection is verification rather than diff review. Published revisions, PRs, and branches require a
 stable resolvable target but are not blocked by unrelated local working-copy state. If the target
