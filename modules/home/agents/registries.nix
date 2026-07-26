@@ -79,7 +79,6 @@ in
         "shared/communication"
         "shared/reasoning"
         "shared/scope-alignment"
-        "shared/markdown"
         "shared/version-control"
         "shared/making-changes"
       ];
