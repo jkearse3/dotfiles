@@ -1,8 +1,9 @@
 ---
 name: handoff
 description: >-
-  Draft, refine, find, show, or execute self-contained prompts for fresh sessions; use when work
-  needs to be transported across sessions without treating artifact handling as execution.
+  Draft, refine, find, show, or execute self-contained prompts for fresh
+  sessions; use when work needs to be transported across sessions without
+  treating artifact handling as execution.
 argument-hint: "[draft, continue, find, show, execute, path, filename, or slug]"
 ---
 

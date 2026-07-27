@@ -1,6 +1,9 @@
 ---
 name: playwright-cli
-description: Use when browser automation, UI inspection, screenshots, snapshots, web interaction, Playwright test debugging, or browser session control is needed through the `playwright-cli` command.
+description:
+  Use when browser automation, UI inspection, screenshots, snapshots, web
+  interaction, Playwright test debugging, or browser session control is needed
+  through the `playwright-cli` command.
 ---
 
 # Playwright CLI

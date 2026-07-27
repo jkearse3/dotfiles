@@ -48,6 +48,7 @@ N comments from M reviewers.
   ```diff
   <diffHunk content>
   ```
+
   </details>
 
 ### Tasks
@@ -69,6 +70,7 @@ entry is added per phase created:
 
 ```markdown
 P. [ ] [PR Review M](./NN-phase-P-pr-review-M.md)
+
 P. [ ] [PR Review M — <slug>](./NN-phase-P-pr-review-M.md)
 ```
 

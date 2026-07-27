@@ -1,6 +1,8 @@
 ---
 name: objective
-description: Objective workflow — spec, iterate, finalize reliable work with optional research/review helpers
+description:
+  Objective workflow — spec, iterate, finalize reliable work with optional
+  research/review helpers
 argument-hint: "<intent or subcommand> [args]"
 ---
 

@@ -35,14 +35,15 @@ completion results.
    - If no ACs in `## Acceptance Criteria`: nudge — "No acceptance criteria
      defined yet. Want me to run `/objective spec`?" Then stop.
 
-2. Ensure exactly one focused phase. Find focused phases (`*` in `## Phases`).
+2. Ensure exactly one focused phase. Find focused phases (`[focus]` in
+   `## Phases`).
    - If exactly one focused phase exists: evaluate the objective checkpoint
      guard below, then go to Step 3.
    - If none: stop with this diagnostic — "No focused phase. Run
      `/objective iterate` to scope and execute the next phase, or
      `/objective phase-scope` to scope one manually."
    - If multiple focused phases exist: stop with a diagnostic listing them —
-     "Multiple focused phases. Keep exactly one `*`, then run
+     "Multiple focused phases. Keep exactly one `[focus]`, then run
      `/objective phase-iterate`; use `/objective iterate` or
      `/objective phase-scope` after resolving focus."
 
@@ -198,7 +199,8 @@ completion results.
         Stop, surface the independent concerns, and ask the user whether to
         narrow the phase, allow a split outside phase close, or move unrelated
         work out of scope.
-     3. Mark phase complete in index (`[x]`) and remove the focus marker (`*`).
+     3. Mark phase complete in index (`[x]`) and remove the focus marker
+        (`[focus]`).
      4. Validate the exact `desc` variable with
         `printf '%s\n' "$desc" | commit-message check`, revising and rerunning
         the checker until it passes, then commit the phase with the `jj-atomize`
@@ -246,7 +248,8 @@ completion results.
    2. If `jj-atomize` reports incoherence, treat it as phase scope drift. Return
       `PHASE_INCOMPLETE` with reason `implement_concerns` and details naming the
       independent concerns; do not approve a split or commit.
-   3. Mark phase complete in index (`[x]`) and remove the focus marker (`*`).
+   3. Mark phase complete in index (`[x]`) and remove the focus marker
+      (`[focus]`).
    4. Validate the exact `desc` variable with
       `printf '%s\n' "$desc" | commit-message check`, revising and rerunning the
       checker until it passes, then commit the phase with the `jj-atomize`

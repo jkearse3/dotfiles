@@ -77,7 +77,7 @@ Optional bookmark name. If provided, creates or moves to that bookmark.
 7. Load objective (auto-load after creation).
    - Resolve `.objectives/_current` through to the actual directory.
    - Read `00-main.md`.
-   - Find the focused phase (marked with `*` in `## Phases`).
+   - Find the focused phase (marked with `[focus]` in `## Phases`).
 
 8. Present context.
    - Confirm creation: "Created objective `<prefix>-<slug>` for branch

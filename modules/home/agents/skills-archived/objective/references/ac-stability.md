@@ -17,11 +17,16 @@ all existing references.
 Unlocked ACs (`[ ]` with no task references) can be updated in place. Locked ACs
 must be invalidated.
 
-**Invalidation format** (reuses `[-]` + strikethrough pattern from phases):
+**Invalidation format** (reuses `[-]` + strikethrough pattern from phases). Keep
+the invalidated and replacement criteria as separate lists so their stable
+numbers remain literal Markdown:
 
 ```markdown
 2. [-] ~~Offset-based pagination supports 10k+ rows~~ (superseded by AC5)
    - Was [~] with cursor implementation pending
+```
+
+```markdown
 5. [ ] Cursor-based pagination supports 10k+ rows (supersedes AC2)
 ```
 

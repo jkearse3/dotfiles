@@ -60,21 +60,22 @@ Run in order. Do not improvise or skip steps.
    of each iteration, then go to Step 4.
 
 4. Ensure one focused phase for this iteration. Read the `## Phases` index.
-   - If exactly one phase has `*`: go to Step 5.
-   - If multiple phases have `*`: stop with an incoherent-scope diagnostic
+   - If exactly one phase has `[focus]`: go to Step 5.
+   - If multiple phases have `[focus]`: stop with an incoherent-scope diagnostic
      listing them.
-   - If no phase has `*` and one or more phases are `[ ]`: add `*` to the
-     lowest-numbered `[ ]` phase, re-read `00-main.md`, and return to Step 4.
-   - If no phase has `*` and no phase is `[ ]` and no active `[ ]` ACs remain
-     (excluding `[-]` invalidated ACs): go to Step 6.
-   - If no phase has `*`: run `references/auto-scope-dispatch.md` § Dispatch
-     with these procedure-specific results:
+   - If no phase has `[focus]` and one or more phases are `[ ]`: add `[focus]`
+     to the lowest-numbered `[ ]` phase, re-read `00-main.md`, and return to
+     Step 4.
+   - If no phase has `[focus]` and no phase is `[ ]` and no active `[ ]` ACs
+     remain (excluding `[-]` invalidated ACs): go to Step 6.
+   - If no phase has `[focus]`: run `references/auto-scope-dispatch.md` §
+     Dispatch with these procedure-specific results:
      - No work remaining: re-read `00-main.md`. If active `[ ]` ACs remain, stop
        with a no-scope readiness diagnostic. Otherwise go to Step 6.
      - Readiness issues: surface them and stop.
      - Phase proposal: use the default Phase proposal acceptance from the
-       dispatch reference to add `P. [ ] [Phase Name](./NN-phase-P.md) *` to
-       `00-main.md`, then re-read `00-main.md` and return to Step 4.
+       dispatch reference to add `P. [ ] [Phase Name](./NN-phase-P.md) [focus]`
+       to `00-main.md`, then re-read `00-main.md` and return to Step 4.
 
 5. Run focused phase automatically. Locate the focused phase file per
    `references/phase-index.md` § Phase Resolution. Read and follow

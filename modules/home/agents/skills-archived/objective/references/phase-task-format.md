@@ -6,6 +6,7 @@ Task list format, annotations, and markers shared by phase subagent briefs.
 
 ```markdown
 ### Tasks
+
 1. [ ] Task description
 2. [ ] Another task (AC1, satisfy)
 3. [ ] Write test for feature (AC1, codify)

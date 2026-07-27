@@ -74,6 +74,9 @@ No assumptions recorded.
 Outcome: <One coherent accepted state.>
 
 1. [ ] <Verifiable checkout outcome.>
-   Check: <Exact safe command or bounded inspection, including the expected result.>
+
+   Check: <Exact safe command or bounded inspection, including the expected
+   result.>
+
    Evidence: Pending.
 ```

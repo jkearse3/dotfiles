@@ -129,6 +129,7 @@ Steps:
     target_commit: <current @ commit id>
 
     revision_description:
+
     ```text
     <complete proposed jj revision description>
     ```

@@ -1,5 +1,5 @@
 {
-  "embeddedLanguageFormatting": "off",
+  "embeddedLanguageFormatting": "auto",
   "overrides": [
     {
       "files": "*.md",

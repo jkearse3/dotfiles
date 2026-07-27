@@ -1,9 +1,10 @@
 ---
 name: investigate
 description: >-
-  Investigates questions across code, systems, documents, products, history, and other domains using
-  read-only evidence. Use for research, root-cause diagnosis, behavior tracing, factual comparisons,
-  or explanations; not for routine implementation inspection, brainstorming, or open-ended ideation.
+  Investigates questions across code, systems, documents, products, history, and
+  other domains using read-only evidence. Use for research, root-cause
+  diagnosis, behavior tracing, factual comparisons, or explanations; not for
+  routine implementation inspection, brainstorming, or open-ended ideation.
 argument-hint: "<question or topic>"
 ---
 

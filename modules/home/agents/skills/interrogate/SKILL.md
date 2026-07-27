@@ -1,10 +1,11 @@
 ---
 name: interrogate
 description: >-
-  Interviews the user to resolve material decisions in a plan, decision, or idea. Use proactively
-  when shared understanding depends on unresolved intent, ownership, priorities, risk tolerance, or
-  tradeoffs, and when the user asks to interrogate, validate, refine, de-risk, clarify, stress-test,
-  challenge, or grill their thinking; not for routine factual investigation, implementation
+  Interviews the user to resolve material decisions in a plan, decision, or
+  idea. Use proactively when shared understanding depends on unresolved intent,
+  ownership, priorities, risk tolerance, or tradeoffs, and when the user asks to
+  interrogate, validate, refine, de-risk, clarify, stress-test, challenge, or
+  grill their thinking; not for routine factual investigation, implementation
   planning, or ordinary implementation choices.
 argument-hint: "<plan, decision, or idea>"
 ---

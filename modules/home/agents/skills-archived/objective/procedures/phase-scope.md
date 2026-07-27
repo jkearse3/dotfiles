@@ -21,14 +21,14 @@ re-dispatching a fresh scoping subagent per feedback round.
    - If no ACs in `## Acceptance Criteria`: nudge — "No acceptance criteria
      defined yet. Want me to run `/objective spec`?"
 
-2. Find focused phase (`*` in `## Phases`).
+2. Find focused phase (`[focus]` in `## Phases`).
    - If a focused phase exists: stop — "Phase already in focus. Run
      `/objective iterate` to execute."
    - If none: go to Step 3.
 
 3. Gate check. All existing phases must be `[x]` or `[-]`. If any phase is `[ ]`
-   without `*`, stop — "Incomplete phase exists without focus. Mark it `[x]`,
-   `[-]`, or add `*` to resume."
+   without `[focus]`, stop — "Incomplete phase exists without focus. Mark it
+   `[x]`, `[-]`, or add `[focus]` to resume."
 
 4. Compute phase-file inputs. Follow `references/phase-file-inputs.md` § Compute
    Phase-File Inputs. Hold the four values (`objective_dir`, `P`, `NN`, path)
@@ -56,15 +56,15 @@ re-dispatching a fresh scoping subagent per feedback round.
        Repeat until approved or abandoned.
 
 7. Register phase in index (on approval). Add a linked entry to `## Phases` in
-   `00-main.md`: `P. [ ] [Phase Name](./NN-phase-P.md) *`. Move `*` from any
-   previously focused phase to the new entry. Present a summary confirming phase
-   creation.
+   `00-main.md`: `P. [ ] [Phase Name](./NN-phase-P.md) [focus]`. Move `[focus]`
+   from any previously focused phase to the new entry. Present a summary
+   confirming phase creation.
 
 ## Contracts
 
 - Preserve verbatim: the AC nudge, the focused-phase stop string, the gate-check
   stop string, the Auto-scope Dispatch no-work message ("No phase to scope."),
-  the index entry `P. [ ] [Phase Name](./NN-phase-P.md) *`, and the
+  the index entry `P. [ ] [Phase Name](./NN-phase-P.md) [focus]`, and the
   refinement-loop dispatch prompt from `references/auto-scope-dispatch.md` §
   Dispatch.
 - This procedure presents the proposal and waits for approval — it does not

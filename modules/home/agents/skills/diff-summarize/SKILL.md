@@ -1,7 +1,11 @@
 ---
 name: diff-summarize
-description: Summarizes code changes for a revision, commit, jj change ID, bookmark, branch, PR, diff command, or working tree; use when the user asks for a summary of changes.
-argument-hint: "branch changes | working changes | jj diff --from main | revision <rev>"
+description:
+  Summarizes code changes for a revision, commit, jj change ID, bookmark,
+  branch, PR, diff command, or working tree; use when the user asks for a
+  summary of changes.
+argument-hint:
+  "branch changes | working changes | jj diff --from main | revision <rev>"
 ---
 
 # Diff Summarize
@@ -64,15 +68,19 @@ Examples:
    ## Result: Diff Summary
 
    ### Summary Target
+
    <what was summarized>
 
    ### Review Scope
+
    No changes found.
 
    ### Overview
+
    No changes found.
 
    ### Changes
+
    None
    ```
 
@@ -106,20 +114,26 @@ Examples:
    ## Result: Diff Summary
 
    ### Summary Target
+
    <what was summarized>
 
    ### Review Scope
-   <how the diff was inspected, including whether files were reviewed individually or grouped>
+
+   <how the diff was inspected, including whether files were reviewed
+   individually or grouped>
 
    ### Overview
+
    <brief technical summary of the overall diff>
 
    ### Changes
+
    - **path/to/file.ext**: What the file does. What changed.
    - **another/file.ext**: File purpose. Specific modifications.
-   - **related/files/**/*.ext**: Shared purpose for this group. Common change across these files.
-   - **generated files (`api/**/*.pb.go`, 14 files)**: Generated API bindings. Grouped because the
-     changes are mechanical outputs from the schema update.
+   - **Related files** (`related/files/**/*.ext`): Shared purpose for this
+     group. Common change across these files.
+   - **Generated files** (`api/**/*.pb.go`, 14 files): Generated API bindings.
+     Grouped because the changes are mechanical outputs from the schema update.
    ```
 
 Guidelines:

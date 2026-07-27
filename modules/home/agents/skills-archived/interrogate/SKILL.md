@@ -1,6 +1,10 @@
 ---
 name: interrogate
-description: Pressure-tests plans, designs, ideas, decisions, requirements, scope, and tradeoffs through structured questioning; use when the user wants to interrogate, validate, refine, de-risk, or clarify direction before implementation.
+description:
+  Pressure-tests plans, designs, ideas, decisions, requirements, scope, and
+  tradeoffs through structured questioning; use when the user wants to
+  interrogate, validate, refine, de-risk, or clarify direction before
+  implementation.
 argument-hint: "<topic>"
 ---
 

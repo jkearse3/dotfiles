@@ -103,6 +103,7 @@ inspection.
 # Iterate
 
 Status: planning
+
 Next: planning
 
 ## Context
@@ -122,9 +123,13 @@ Next: planning
 ## Acceptance Criteria
 
 1. [ ] <observable behavior or repo state>
-   Check: <feasible inspection, command, or manual confirmation path that proves this AC>
+
+   Check: <feasible inspection, command, or manual confirmation path that proves
+   this AC>
+
    Details:
    - <optional AC-local supporting detail; omit `Details:` when unused>
+
    Evidence: Pending.
 
 ## Approach
@@ -133,8 +138,9 @@ Next: planning
 
 ## Boundaries
 
-- Iteration-specific limits for edits, inspection, workflow actions, and stop-before conditions. If
-  scope is discoverable, state the repo relationship that makes discovered files or behavior in scope.
+- Iteration-specific limits for edits, inspection, workflow actions, and
+  stop-before conditions. If scope is discoverable, state the repo relationship
+  that makes discovered files or behavior in scope.
 
 ## Tasks
 
@@ -217,6 +223,7 @@ closeout: finalize-revision
 target_commit: <current @ commit id>
 
 revision_description:
+
 ```text
 <complete proposed jj revision description>
 ```
@@ -254,14 +261,22 @@ If new information weakens, contradicts, supersedes, narrows, or makes evidence
 stale for a locked AC, block for user direction or invalidate the old AC with
 `[-]` and add a new AC.
 
-Invalidation format:
+Invalidation format. Keep the invalidated and replacement criteria as separate
+lists so their stable numbers remain literal Markdown:
 
 ```markdown
 2. [-] ~~Old behavior remains true~~ (superseded by AC5)
+
    Check: Previous proof method remains documented for auditability.
+
    Evidence: Previous evidence remains preserved.
+```
+
+```markdown
 5. [ ] New behavior replaces the old behavior. (supersedes AC2)
+
    Check: Inspect the replacement behavior.
+
    Evidence: Pending.
 ```
 

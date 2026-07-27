@@ -60,7 +60,8 @@ diff review and create cleanup phases for actionable findings.
    Register it in `00-main.md` using `references/phase-file-inputs.md` § Compute
    Phase-File Inputs and the review-specific conventions in
    `references/branch-review.md` § Autonomous Branch Review Conventions. Focus
-   the first created phase (`*` in index) if no phase is currently focused.
+   the first created phase (`[focus]` in index) if no phase is currently
+   focused.
 
 ## Contracts
 

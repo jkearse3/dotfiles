@@ -6,19 +6,19 @@ Phase index format and linked phase-file resolution.
 
 Compact numbered list linking to phase files. Never renumber.
 
-| Marker | Meaning                |
-| ------ | ---------------------- |
-| `[x]`  | Complete               |
-| `[ ]`  | Pending                |
-| `[-]`  | Cancelled              |
-| `*`    | In focus (exactly one) |
+| Marker    | Meaning                |
+| --------- | ---------------------- |
+| `[x]`     | Complete               |
+| `[ ]`     | Pending                |
+| `[-]`     | Cancelled              |
+| `[focus]` | In focus (exactly one) |
 
-Format: `N. [marker] [Phase Name](./NN-phase-P.md) *`
+Format: `N. [marker] [Phase Name](./NN-phase-P.md) [focus]`
 
 - `N` is the phase number, `P` in the filename matches it.
 - `NN` is the sequence number: file creation order in the objective directory.
 - Link target is the phase file.
-- `*` marks the focused phase; exactly one phase may be focused.
+- `[focus]` marks the focused phase; exactly one phase may be focused.
 
 ## Phase Resolution
 

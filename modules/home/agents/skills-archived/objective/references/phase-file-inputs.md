@@ -20,10 +20,10 @@ and any phase template references.
 Add a linked index entry in `00-main.md` under `## Phases`:
 
 ```markdown
-P. [ ] [Phase Name](./NN-phase-P.md) *
+P. [ ] [Phase Name](./NN-phase-P.md) [focus]
 ```
 
-Move `*` from the previously focused phase to the new entry.
+Move `[focus]` from the previously focused phase to the new entry.
 
 ## Contracts
 

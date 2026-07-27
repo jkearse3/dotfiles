@@ -30,12 +30,14 @@ operation used by `/objective finalize`.
 
      ```markdown
      ## Summary
+
      - What changed from user/system perspective
        - Sub-bullet for causal chain or relationship when needed
      - Another behavior change
      - Third change if applicable
 
      ### Implementation Notes
+
      - **Area**: Key technical detail worth knowing
      - **Area**: Another relevant detail
      ```

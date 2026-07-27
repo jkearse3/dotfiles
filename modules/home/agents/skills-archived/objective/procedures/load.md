@@ -69,7 +69,7 @@ No arguments. Explicit non-current selection is handled by
    - Resolve `.objectives/_current` through the objective entry to the actual
      directory.
    - Read `00-main.md` first.
-   - Find focused phases marked with `*` in `## Phases`.
+   - Find focused phases marked with `[focus]` in `## Phases`.
    - If exactly one focused phase exists, read `references/phase-index.md`, then
      resolve and read only that phase file via § Phase Resolution.
    - If the focused phase contains `### Continuation`, read it as the primary

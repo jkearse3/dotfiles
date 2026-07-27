@@ -1,10 +1,11 @@
 ---
 name: finalize-changes
 description: >-
-  Finalizes verified repository changes or authorized mutable history by creating, splitting,
-  squashing, reordering, or rewording coherent Git commits or jj revisions and leaving a clean
-  state. Use when working changes are verified and ready to commit, or when unpublished history
-  needs shaping or rewritten descriptions; not for implementation, verification, review,
+  Finalizes verified repository changes or authorized mutable history by
+  creating, splitting, squashing, reordering, or rewording coherent Git commits
+  or jj revisions and leaving a clean state. Use when working changes are
+  verified and ready to commit, or when unpublished history needs shaping or
+  rewritten descriptions; not for implementation, verification, review,
   publication, or releases.
 argument-hint: "[verified working changes | explicit mutable history set]"
 ---

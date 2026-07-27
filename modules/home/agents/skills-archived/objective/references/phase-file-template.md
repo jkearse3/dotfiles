@@ -23,6 +23,7 @@ Use this template for new phase files:
 [Strategy and architectural notes]
 
 ### Tasks
+
 1. [ ] [task description] (AC1, satisfy)
 2. [ ] [task description] (AC2, enhance)
 3. [ ] [cleanup or refactoring task]
@@ -35,6 +36,7 @@ this optional section before `### Tasks`:
 
 ```markdown
 ### Verification Hints
+
 - Negative checks: [forbidden behavior or output]
 - Remove: [phrases/patterns that should not remain]
 - Preserve: [phrases/patterns that must remain]

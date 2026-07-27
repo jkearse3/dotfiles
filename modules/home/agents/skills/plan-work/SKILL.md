@@ -1,12 +1,14 @@
 ---
 name: plan-work
 description: >-
-  Creates, refines, or validates proportionate working plans for any kind of actionable work,
-  including implementation, investigation, review, documentation, external operations, and mixed
-  tasks. Use when a working plan needs to be established, refined, or validated, even when a small
-  task needs only a one-sentence plan, and when the user asks to plan, scope, prepare, sequence, or
-  make work portable to another context. Do not use for purely conversational responses, decision
-  pressure-testing, or when an adequate working plan is already explicit in the conversation.
+  Creates, refines, or validates proportionate working plans for any kind of
+  actionable work, including implementation, investigation, review,
+  documentation, external operations, and mixed tasks. Use when a working plan
+  needs to be established, refined, or validated, even when a small task needs
+  only a one-sentence plan, and when the user asks to plan, scope, prepare,
+  sequence, or make work portable to another context. Do not use for purely
+  conversational responses, decision pressure-testing, or when an adequate
+  working plan is already explicit in the conversation.
 argument-hint: "<outcome, request, or existing plan>"
 ---
 
@@ -122,8 +124,8 @@ Status: Ready | Blocked
 
 ### Actions
 
-1. <Ordered action, purpose, and material dependency. For repository mutations, identify the expected
-   revision concern and focused validation.>
+1. <Ordered action, purpose, and material dependency. For repository mutations,
+   identify the expected revision concern and focused validation.>
 
 ### Validation
 

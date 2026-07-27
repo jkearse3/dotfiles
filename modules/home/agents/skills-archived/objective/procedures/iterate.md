@@ -56,15 +56,16 @@ Run in order. Do not improvise or skip steps.
    phase.
 
 3. Ensure one focused phase. Read the `## Phases` index.
-   - If exactly one phase has `*`: go to Step 4.
-   - If multiple phases have `*`: stop with a diagnostic listing them. Tell the
-     caller to keep exactly one `*`, or run `/objective phase-scope` after
-     resolving the index.
-   - If no phase has `*` and one or more phases are `[ ]`: add `*` to the
-     lowest-numbered `[ ]` phase, re-read `00-main.md`, and return to Step 3.
-   - If no phase has `*` and no active `[ ]` ACs remain (excluding `[-]`
+   - If exactly one phase has `[focus]`: go to Step 4.
+   - If multiple phases have `[focus]`: stop with a diagnostic listing them.
+     Tell the caller to keep exactly one `[focus]`, or run
+     `/objective phase-scope` after resolving the index.
+   - If no phase has `[focus]` and one or more phases are `[ ]`: add `[focus]`
+     to the lowest-numbered `[ ]` phase, re-read `00-main.md`, and return to
+     Step 3.
+   - If no phase has `[focus]` and no active `[ ]` ACs remain (excluding `[-]`
      invalidated ACs): go to Step 6.
-   - If no phase has `*` and active `[ ]` ACs remain: go to Step 3a.
+   - If no phase has `[focus]` and active `[ ]` ACs remain: go to Step 3a.
 
    Step 3a: scope the next phase. Run `references/auto-scope-dispatch.md` §
    Dispatch with these procedure-specific results:
@@ -72,8 +73,8 @@ Run in order. Do not improvise or skip steps.
      with a no-scope readiness diagnostic. Otherwise go to Step 6.
    - Readiness issues: surface them and stop.
    - Phase proposal: use the default Phase proposal acceptance from the dispatch
-     reference to add `P. [ ] [Phase Name](./NN-phase-P.md) *` to `00-main.md`,
-     then re-read `00-main.md` and return to Step 3.
+     reference to add `P. [ ] [Phase Name](./NN-phase-P.md) [focus]` to
+     `00-main.md`, then re-read `00-main.md` and return to Step 3.
 
 4. Run focused phase. Locate the focused phase file per
    `references/phase-index.md` § Phase Resolution. Read and follow
@@ -104,8 +105,8 @@ Run in order. Do not improvise or skip steps.
 ## Contracts
 
 - Preserve verbatim: the no-AC nudge, the default Auto-scope Dispatch acceptance
-  shape `P. [ ] [Phase Name](./NN-phase-P.md) *`, and the completion handoff
-  announcement.
+  shape `P. [ ] [Phase Name](./NN-phase-P.md) [focus]`, and the completion
+  handoff announcement.
 - One-phase boundary: this procedure advances at most one phase. It focuses at
   most one existing pending phase (the lowest-numbered `[ ]` phase when several
   are pending without focus) or scopes at most one new phase, delegates to

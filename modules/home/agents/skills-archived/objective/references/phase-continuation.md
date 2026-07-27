@@ -10,9 +10,13 @@ When present, `### Continuation` uses this minimal schema:
 ### Continuation
 
 Status: <status token>
+
 Source: <where the continuation was created>
+
 Route: <procedure or step to resume>
+
 Summary: <one-paragraph resume context>
+
 Clear when: <condition that makes the next resume point unambiguous>
 
 #### Payload

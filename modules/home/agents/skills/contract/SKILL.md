@@ -1,9 +1,9 @@
 ---
 name: contract
 description: >-
-  Branch/bookmark contracts for the current jj bookmark. Use only for creating, reading, amending,
-  or reconciling an ordered milestone agreement; not for implementation, general product specs,
-  test specs, or design docs.
+  Branch/bookmark contracts for the current jj bookmark. Use only for creating,
+  reading, amending, or reconciling an ordered milestone agreement; not for
+  implementation, general product specs, test specs, or design docs.
 argument-hint: "[reconcile | status | creation or amendment intent]"
 ---
 

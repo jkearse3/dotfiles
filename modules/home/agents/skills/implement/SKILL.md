@@ -1,9 +1,10 @@
 ---
 name: implement
 description: >-
-  Carries an authorized repository change through implementation, verification, finalization, and
-  review. Use for coding, configuration, documentation, tests, migrations, or review-fix edits; not
-  for read-only work, planning without execution, publication, or external-system operations.
+  Carries an authorized repository change through implementation, verification,
+  finalization, and review. Use for coding, configuration, documentation, tests,
+  migrations, or review-fix edits; not for read-only work, planning without
+  execution, publication, or external-system operations.
 argument-hint: "<authorized repository change>"
 ---
 

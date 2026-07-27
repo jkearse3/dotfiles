@@ -1,13 +1,16 @@
 ---
 name: diff-review
 description: >-
-  Independently reviews stable, fully described finalized revisions, commit ranges, PRs, or branches;
-  assesses explicitly declared criteria when supplied and finds actionable bugs, regressions, safety
-  risks, compatibility breaks, missing validation, stale artifacts, and maintainability issues
-  across code, docs, config, infra, prompts, skills, and other changed artifacts. Use when a stable
-  finalized target is ready for review; not for working changes, implementation, fixes, or history
-  mutation.
-argument-hint: "review my branch | review jj diff --from main | review PR #42 against criteria.md"
+  Independently reviews stable, fully described finalized revisions, commit
+  ranges, PRs, or branches; assesses explicitly declared criteria when supplied
+  and finds actionable bugs, regressions, safety risks, compatibility breaks,
+  missing validation, stale artifacts, and maintainability issues across code,
+  docs, config, infra, prompts, skills, and other changed artifacts. Use when a
+  stable finalized target is ready for review; not for working changes,
+  implementation, fixes, or history mutation.
+argument-hint:
+  "review my branch | review jj diff --from main | review PR #42 against
+  criteria.md"
 ---
 
 # Diff Review
@@ -473,27 +476,37 @@ Write findings as a structured list, preceded by the overview.
 ```markdown
 ### Overview
 
-<Concise overview of what the changeset does overall, key design decisions, and how the changed
-artifacts relate to each other.>
+<Concise overview of what the changeset does overall, key design decisions, and
+how the changed artifacts relate to each other.>
 
-- `path/file.go` (code) - <file's role in the system>; <what changed and why it matters>
-- `docs/guide.md` (docs) - <file's role in the system>; <what changed and why it matters>
+- `path/file.go` (code) - <file's role in the system>;
+  <what changed and why it matters>
+- `docs/guide.md` (docs) - <file's role in the system>;
+  <what changed and why it matters>
 
 <!-- Include only when criteria were declared. -->
+
 ### Criteria Assessment
 
 - **Satisfied:** <exact criterion text>
+
   Evidence: <concise fresh evidence>
+
 - **Not satisfied:** <exact criterion text>
+
   Evidence: <concrete contradiction or omission>
+
 - **Blocked:** <exact criterion text>
+
   Blocker: <precise blocker and resolution path>
 
 ### Findings
 
 - path/file.go:42 (bug, high): Race condition in session map access
-- docs/guide.md:18 (accuracy, medium): Documented flag name does not match the CLI parser
-- deploy/app.yaml:15 (compatibility, high): Removed env var still consumed by production job
+- docs/guide.md:18 (accuracy, medium): Documented flag name does not match the
+  CLI parser
+- deploy/app.yaml:15 (compatibility, high): Removed env var still consumed by
+  production job
 ```
 
 Format: `- path:line (category, priority): description`
