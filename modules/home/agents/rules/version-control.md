@@ -2,41 +2,39 @@
 
 ## Repository Mode
 
-Before any VCS operation, determine whether the workspace is in a Git repository
-using read-only commands. In a Git repository, run `jj-ensure` before further
-VCS operations, even when the requested work is otherwise read-only; this
-initialization is standing authorization. Then use jj whenever it has an
-equivalent. Use Git only when an operation has no jj equivalent, its behavior
-must occur specifically in Git, the user explicitly requests Git's view, or
-`jj-ensure` explicitly reports an unsupported repository feature such as Git
-LFS. After any other `jj-ensure` failure, stop before mutating work; read-only
-Git inspection may continue. Do not mix mutation models otherwise. Never invoke
-`jj git init` directly or run `jj-ensure` outside a Git repository.
+Before any VCS operation, use read-only commands to determine whether the
+workspace is a Git repository. If it is, run `jj-ensure` before further VCS
+operations; this initialization is standing authorization, including for
+read-only requests. Never run `jj-ensure` outside a Git repository or invoke
+`jj git init` directly.
 
-## Authority And Safety
+After successful initialization, prefer jj. Use Git only when no jj equivalent
+exists, the operation specifically requires Git, the user requests Git's view,
+or `jj-ensure` reports an unsupported feature such as Git LFS. After any other
+`jj-ensure` failure, do not mutate work; read-only Git inspection may continue.
+Do not otherwise mix mutation models.
 
-When implementation is authorized, a plan identifying the change and base
-permits organizing current-task, agent-authored, unpublished history. Ask before
-modifying anything published, pre-existing and not task-owned, unrelated,
-user-authored, destructive, or of uncertain ownership. Naming a target for
-inspection or review does not authorize modifying it. Use non-interactive VCS
+## History And References
+
+Implementation authorization and a plan naming the change and base permit
+organizing current-task, agent-authored, unpublished history. Ask before
+modifying history that is published, unrelated, user-authored, pre-existing and
+not task-owned, destructive, or of uncertain ownership. Use non-interactive VCS
 commands.
 
-## Reference Discovery
-
-Use `jj-bookmark-{current,default,previous,stacked}` or the corresponding
-`git-branch-*` helpers to discover bookmarks or branches. The jj `previous` and
-`stacked` helpers resolve relative to `@`; only use them for another target
-after confirming `@` belongs to that target's stack.
+Discover references with `jj-bookmark-{current,default,previous,stacked}` or the
+corresponding `git-branch-*` helpers. Because the jj `previous` and `stacked`
+helpers resolve relative to `@`, confirm that `@` belongs to another target's
+stack before using them for that target.
 
 In colocated repositories, Git may be detached. When `gh` requires a branch
 name, pass `$(jj-bookmark-current)` explicitly.
 
 ## Publication
 
-Do not push, publish references, create pull requests, merge, or close remote
-artifacts without an explicit request. Before publication, inspect the outgoing
-revisions, target, review state, and remote state.
+Only publish references, push, create pull requests, merge, or close remote
+artifacts when explicitly requested. First inspect the outgoing revisions,
+target, review state, and remote state.
 
-Publish dependent stacks parent-first unless the hosting workflow provides an
-atomic stack operation. Never force-push without explicit approval.
+Publish dependent stacks parent-first unless the hosting workflow supports an
+atomic stack operation. Force-pushing requires explicit approval.
