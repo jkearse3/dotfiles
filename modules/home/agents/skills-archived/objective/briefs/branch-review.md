@@ -1,70 +1,80 @@
 # Branch Review Brief
 
-Autonomous review pipeline over current branch changes: run an objective-context diff review and
-create cleanup phases for actionable findings.
+Autonomous review pipeline over current branch changes: run an objective-context
+diff review and create cleanup phases for actionable findings.
 
 ## References
 
-- `references/workflow-invariants.md` — § Invariants for the subagent write boundary and
-  caller-token preservation.
-- `references/branch-review.md` — § Autonomous Branch Review Conventions for the report fields,
-  review phase numbering, review filename, phase-file shape, and index-entry shape.
-- `references/phase-index.md` — Phase Index format and "never renumber" rule for the index entry
-  written in Step 7.
+- `references/workflow-invariants.md` — § Invariants for the subagent write
+  boundary and caller-token preservation.
+- `references/branch-review.md` — § Autonomous Branch Review Conventions for the
+  report fields, review phase numbering, review filename, phase-file shape, and
+  index-entry shape.
+- `references/phase-index.md` — Phase Index format and "never renumber" rule for
+  the index entry written in Step 7.
 - `references/phase-file-template.md` — New Phase template and task annotations.
 - `references/phase-task-boundary.md` — Phase Task Boundary and Phase Size.
-- `references/phase-file-inputs.md` — Compute Phase-File Inputs for `P`/`NN` and the index-entry
-  registration.
+- `references/phase-file-inputs.md` — Compute Phase-File Inputs for `P`/`NN` and
+  the index-entry registration.
 
 ## Write Permissions
 
-- Write phase files at computed paths (create review phase files per `references/branch-review.md` §
-  Autonomous Branch Review Conventions)
-- Modify entries in `## Phases` in `00-main.md` (register new phase index entries; never renumber
-  existing phases)
+- Write phase files at computed paths (create review phase files per
+  `references/branch-review.md` § Autonomous Branch Review Conventions)
+- Modify entries in `## Phases` in `00-main.md` (register new phase index
+  entries; never renumber existing phases)
 
 ## Steps
 
-1. Load objective context. Read `.objectives/_current/00-main.md`, including Context, Research,
-   Acceptance Criteria, Approach, Phases, and Summary when present.
+1. Load objective context. Read `.objectives/_current/00-main.md`, including
+   Context, Research, Acceptance Criteria, Approach, Phases, and Summary when
+   present.
 
-2. Load branch context. Run `jj diff --from "$(jj-bookmark-previous)" --stat` for the list of
-   changed files with line counts. This defines the review scope.
+2. Load branch context. Run `jj diff --from "$(jj-bookmark-previous)" --stat`
+   for the list of changed files with line counts. This defines the review
+   scope.
 
-3. Run objective-context diff review. Invoke the `diff-review` skill via the Skill tool with
-   `branch` as the argument. Include the loaded objective context and branch scope in the review
-   prompt so findings can account for objective intent, ACs, completed phases, and pre-PR drift.
-   Collect structured findings.
+3. Run objective-context diff review. Invoke the `diff-review` skill via the
+   Skill tool with `branch` as the argument. Include the loaded objective
+   context and branch scope in the review prompt so findings can account for
+   objective intent, ACs, completed phases, and pre-PR drift. Collect structured
+   findings.
 
-4. Filter concerns. Keep actionable findings that apply to the branch review scope and should become
-   objective cleanup work. Drop findings that are non-actionable, duplicates of existing open phase
-   issues, or outside the current branch scope.
+4. Filter concerns. Keep actionable findings that apply to the branch review
+   scope and should become objective cleanup work. Drop findings that are
+   non-actionable, duplicates of existing open phase issues, or outside the
+   current branch scope.
 
-5. Early exit. If zero actionable findings remain: report "No concerns found" and stop cleanly.
+5. Early exit. If zero actionable findings remain: report "No concerns found"
+   and stop cleanly.
 
-6. Group into phases. Cluster concerns into phases that satisfy `references/phase-task-boundary.md`
-   § Phase Size. Grouping criteria include same module/area, same type of concern (e.g., all naming
-   fixes, all error handling), or logical dependency (fix X before Y). If only one independently
+6. Group into phases. Cluster concerns into phases that satisfy
+   `references/phase-task-boundary.md` § Phase Size. Grouping criteria include
+   same module/area, same type of concern (e.g., all naming fixes, all error
+   handling), or logical dependency (fix X before Y). If only one independently
    valuable atomic group exists, create a single phase.
 
-7. Write phases. For each group, create a phase file per `references/phase-file-template.md` § New
-   Phase whose tasks satisfy `references/phase-task-boundary.md` § Phase Task Boundary and § Phase
-   Size. Register it in `00-main.md` using `references/phase-file-inputs.md` § Compute Phase-File
-   Inputs and the review-specific conventions in `references/branch-review.md` § Autonomous Branch
-   Review Conventions. Focus the first created phase (`*` in index) if no phase is currently
-   focused.
+7. Write phases. For each group, create a phase file per
+   `references/phase-file-template.md` § New Phase whose tasks satisfy
+   `references/phase-task-boundary.md` § Phase Task Boundary and § Phase Size.
+   Register it in `00-main.md` using `references/phase-file-inputs.md` § Compute
+   Phase-File Inputs and the review-specific conventions in
+   `references/branch-review.md` § Autonomous Branch Review Conventions. Focus
+   the first created phase (`*` in index) if no phase is currently focused.
 
 ## Contracts
 
 ### Invariants
 
-- Dispatched as a subagent for autonomous execution; the orchestrator owns only dispatch and the
-  user-facing summary.
-- Preserve verbatim: the no-objective nudge, the `No concerns found` early-exit string, the
-  `NN-phase-P-review-M.md` filename, and the phase-file and index-entry templates in
-  `references/branch-review.md` § Autonomous Branch Review Conventions.
-- The pipeline must not edit source files. Writes are limited to objective state: review phase files
-  and the `## Phases` index in `00-main.md`.
-- Multiple review sessions accumulate — each creates new phases with incrementing review numbers.
-- The inner loop (review step within `phase-iterate`) is unchanged — it keeps its structured
-  findings-to-issues pipeline for working-copy scope.
+- Dispatched as a subagent for autonomous execution; the orchestrator owns only
+  dispatch and the user-facing summary.
+- Preserve verbatim: the no-objective nudge, the `No concerns found` early-exit
+  string, the `NN-phase-P-review-M.md` filename, and the phase-file and
+  index-entry templates in `references/branch-review.md` § Autonomous Branch
+  Review Conventions.
+- The pipeline must not edit source files. Writes are limited to objective
+  state: review phase files and the `## Phases` index in `00-main.md`.
+- Multiple review sessions accumulate — each creates new phases with
+  incrementing review numbers.
+- The inner loop (review step within `phase-iterate`) is unchanged — it keeps
+  its structured findings-to-issues pipeline for working-copy scope.

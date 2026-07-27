@@ -13,5 +13,5 @@ Issue list format shared by phase verification and reconciliation.
 
 Number sequentially from existing issues. Do not renumber. Keep the list flat.
 
-Review issue types are `bug`, `design`, `clarity`, `question`, and `nit`. Review severities are
-`high`, `medium`, and `low`.
+Review issue types are `bug`, `design`, `clarity`, `question`, and `nit`. Review
+severities are `high`, `medium`, and `low`.

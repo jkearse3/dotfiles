@@ -4,14 +4,16 @@ List all objectives in the current repository.
 
 ## References
 
-- `references/objective-registry.md` — registry entries and valid-entry detection.
+- `references/objective-registry.md` — registry entries and valid-entry
+  detection.
 
 ## Steps
 
 1. Find objectives.
    - List entries in `.objectives/` excluding `_current` and `_config.yaml`.
    - Sort by name, most recent first.
-   - Check whether each entry is valid: directory exists or symlink target exists.
+   - Check whether each entry is valid: directory exists or symlink target
+     exists.
    - Stop if none: `No objectives found.`
 
 2. Get current.

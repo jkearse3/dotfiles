@@ -13,17 +13,20 @@ Each phase contains these required sections:
 
 Optional phase-local sections may be added when needed:
 
-- `### Decisions` — phase-local decisions from phase interrogation. Objective-wide decisions remain
-  in `00-main.md` under `## Research > ### Decisions`.
-- `### Verification Hints` — phase-local negative checks, forbidden output, phrases to remove or
-  preserve, old ACs or evidence to revisit, and grep/search terms that should inform verification.
-- `### Continuation` — phase-local resume state for unresolved follow-up, route changes, or
-  compaction recovery. Objective-wide state remains in `00-main.md`.
+- `### Decisions` — phase-local decisions from phase interrogation.
+  Objective-wide decisions remain in `00-main.md` under
+  `## Research > ### Decisions`.
+- `### Verification Hints` — phase-local negative checks, forbidden output,
+  phrases to remove or preserve, old ACs or evidence to revisit, and grep/search
+  terms that should inform verification.
+- `### Continuation` — phase-local resume state for unresolved follow-up, route
+  changes, or compaction recovery. Objective-wide state remains in `00-main.md`.
 
-A phase is scoped as one independently valuable atomic commit: the smallest cohesive change that can
-be reviewed, reverted, explained, and verified on its own. Keep tightly coupled setup, caller
-updates, tests, and contract changes together when splitting would add overhead without improving
-review or rollback. Apply `references/phase-task-boundary.md` § Phase Size when deciding whether to
+A phase is scoped as one independently valuable atomic commit: the smallest
+cohesive change that can be reviewed, reverted, explained, and verified on its
+own. Keep tightly coupled setup, caller updates, tests, and contract changes
+together when splitting would add overhead without improving review or rollback.
+Apply `references/phase-task-boundary.md` § Phase Size when deciding whether to
 split or keep tasks together.
 
 | Form       | Location                      | Heading            | Notes                                                                 |

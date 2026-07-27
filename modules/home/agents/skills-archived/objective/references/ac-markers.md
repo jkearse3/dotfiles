@@ -1,6 +1,7 @@
 # AC Markers
 
-Acceptance criterion marker states and evidence rules used by orchestration procedures.
+Acceptance criterion marker states and evidence rules used by orchestration
+procedures.
 
 ## AC States
 
@@ -18,7 +19,8 @@ Acceptance criterion marker states and evidence rules used by orchestration proc
 
 ## AC Validation Evidence
 
-When an AC transitions to `[~]` or `[x]`, add concise bullet points documenting evidence:
+When an AC transitions to `[~]` or `[x]`, add concise bullet points documenting
+evidence:
 
 ```markdown
 1. [x] Export produces valid CSV
@@ -33,6 +35,7 @@ When an AC transitions to `[~]` or `[x]`, add concise bullet points documenting 
 
 Rules:
 
-- Each bullet is a discrete piece of evidence (code location, test, user confirmation).
+- Each bullet is a discrete piece of evidence (code location, test, user
+  confirmation).
 - Never reference tasks or phases — evidence must be independently verifiable.
 - Bullets that restate the AC add nothing; point to _where_ or _how_.

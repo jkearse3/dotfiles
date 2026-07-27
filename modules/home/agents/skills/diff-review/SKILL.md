@@ -12,10 +12,11 @@ argument-hint: "review my branch | review jj diff --from main | review PR #42 ag
 
 # Diff Review
 
-Thorough, pedantic diff review that classifies changed artifacts, traces affected consumers and
-contracts, verifies behavior or claims, and checks every file against the review lenses that apply
-to code, tests, docs, config, infrastructure, migrations, dependencies, prompts, rules, skills,
-assets, and mixed changes.
+Thorough, pedantic diff review that classifies changed artifacts, traces
+affected consumers and contracts, verifies behavior or claims, and checks every
+file against the review lenses that apply to code, tests, docs, config,
+infrastructure, migrations, dependencies, prompts, rules, skills, assets, and
+mixed changes.
 
 ## Input
 
@@ -25,27 +26,31 @@ $ARGUMENTS
 
 The input is free-form natural language. Interpret it to determine:
 
-1. **What to diff**: a literal command, a description of what to review, or both. If the input
-   contains a runnable command, use it directly. If it describes what to review ("my branch
-   changes", "PR #42", "the last 3 commits"), determine the appropriate diff command. If the intent
-   is clear but the exact diff cannot be determined (e.g., "review my changes" without enough
+1. **What to diff**: a literal command, a description of what to review, or
+   both. If the input contains a runnable command, use it directly. If it
+   describes what to review ("my branch changes", "PR #42", "the last 3
+   commits"), determine the appropriate diff command. If the intent is clear but
+   the exact diff cannot be determined (e.g., "review my changes" without enough
    context to know the base), ask for clarification rather than guessing.
-2. **Declared criteria**: criteria stated explicitly in the request or loaded from an explicitly
-   referenced authoritative artifact. Preserve each criterion's exact wording and supplied proof
-   method. Never infer or invent criteria from general context. Treat revision descriptions as
-   intent unless they explicitly declare criteria. Criterion-source resolution is a review
-   prerequisite, not a criterion status. If a requested source cannot be resolved, report the
-   blocker and stop rather than silently omitting it.
-3. **Additional context**: any intent, boundaries, non-goals, known issues, review rules, artifact
-   types, or focus areas included in the input. Note these for use during review, but do not promote
-   them to criteria.
+2. **Declared criteria**: criteria stated explicitly in the request or loaded
+   from an explicitly referenced authoritative artifact. Preserve each
+   criterion's exact wording and supplied proof method. Never infer or invent
+   criteria from general context. Treat revision descriptions as intent unless
+   they explicitly declare criteria. Criterion-source resolution is a review
+   prerequisite, not a criterion status. If a requested source cannot be
+   resolved, report the blocker and stop rather than silently omitting it.
+3. **Additional context**: any intent, boundaries, non-goals, known issues,
+   review rules, artifact types, or focus areas included in the input. Note
+   these for use during review, but do not promote them to criteria.
 
-Before reviewing unpublished agent-authored work, require fully described, finalized revisions and a
-clean working copy: an empty jj working-copy revision above the target, or a clean Git worktree. A
-request to review unfinalized or unshaped working changes is blocked; pre-finalization implementor
-inspection is verification rather than diff review. Published revisions, PRs, and branches require a
-stable resolvable target but are not blocked by unrelated local working-copy state. If the target
-does not meet its applicable prerequisites, report the unmet condition and stop.
+Before reviewing unpublished agent-authored work, require fully described,
+finalized revisions and a clean working copy: an empty jj working-copy revision
+above the target, or a clean Git worktree. A request to review unfinalized or
+unshaped working changes is blocked; pre-finalization implementor inspection is
+verification rather than diff review. Published revisions, PRs, and branches
+require a stable resolvable target but are not blocked by unrelated local
+working-copy state. If the target does not meet its applicable prerequisites,
+report the unmet condition and stop.
 
 **If the input is empty**, error with:
 
@@ -63,250 +68,296 @@ Examples:
 
 ## Philosophy
 
-- Investigate before dismissing: if something looks off, trace it. Never move on without a concrete
-  verdict backed by evidence.
-- Be thorough to the point of paranoia: check every edge case, trace every affected consumer or
-  contract, verify every assumption. The cost of a missed production, operations, policy, or user
-  workflow break exceeds the cost of a thorough review.
-- Challenge design decisions only when the diff introduces concrete present-day correctness, safety,
-  compatibility, operability, or maintainability harm. Prefer the smallest sufficient correction. Do
-  not require abstractions, extensibility, generalized robustness, speculative compatibility, or
-  handling of unsupported states without an explicit criterion, existing consumer, repository
-  convention, or demonstrated failure.
-- Repo patterns take precedence over general best practices. Only flag deviations when no pattern
-  exists or an existing pattern is clearly problematic.
-- Scope is diff quality: correctness, safety, compatibility, accuracy, design, clarity, coverage,
-  testing, accessibility, operability, and maintainability across all changed artifacts.
-- Once review prerequisites are resolved, declared criteria add outcome assessment to this quality
-  review; they never replace or stop the intrinsic review early.
-- Review is read-only. Do not mutate implementation files or fix findings during review.
+- Investigate before dismissing: if something looks off, trace it. Never move on
+  without a concrete verdict backed by evidence.
+- Be thorough to the point of paranoia: check every edge case, trace every
+  affected consumer or contract, verify every assumption. The cost of a missed
+  production, operations, policy, or user workflow break exceeds the cost of a
+  thorough review.
+- Challenge design decisions only when the diff introduces concrete present-day
+  correctness, safety, compatibility, operability, or maintainability harm.
+  Prefer the smallest sufficient correction. Do not require abstractions,
+  extensibility, generalized robustness, speculative compatibility, or handling
+  of unsupported states without an explicit criterion, existing consumer,
+  repository convention, or demonstrated failure.
+- Repo patterns take precedence over general best practices. Only flag
+  deviations when no pattern exists or an existing pattern is clearly
+  problematic.
+- Scope is diff quality: correctness, safety, compatibility, accuracy, design,
+  clarity, coverage, testing, accessibility, operability, and maintainability
+  across all changed artifacts.
+- Once review prerequisites are resolved, declared criteria add outcome
+  assessment to this quality review; they never replace or stop the intrinsic
+  review early.
+- Review is read-only. Do not mutate implementation files or fix findings during
+  review.
 
 ## Execution
 
 ### Step 1: Gather Context
 
-**Get review intent context before deep review**. If the reviewed target maps to one or more
-revisions or commits, read their full descriptions before judging the diff. Treat descriptions as
-author intent and review context, not as proof that the diff does what they claim.
+**Get review intent context before deep review**. If the reviewed target maps to
+one or more revisions or commits, read their full descriptions before judging
+the diff. Treat descriptions as author intent and review context, not as proof
+that the diff does what they claim.
 
-- For jj revisions or revsets, use a template that prints the complete multi-line description, not a
-  compact log line. Prefer:
+- For jj revisions or revsets, use a template that prints the complete
+  multi-line description, not a compact log line. Prefer:
 
   ```bash
   jj log -r '<revset>' --no-graph --no-pager --template 'change_id.short() ++ " " ++ commit_id.short() ++ "\n" ++ description ++ "\n\n"'
   ```
 
-- For git commit ranges, use a format that prints full commit bodies, not `--oneline`. Prefer:
+- For git commit ranges, use a format that prints full commit bodies, not
+  `--oneline`. Prefer:
 
   ```bash
   git log --format=fuller --no-patch <range>
   ```
 
-- If a revision description is missing, report that finalization is incomplete and stop. If a
-  description is vague or inconsistent with the changed files, keep reviewing. Report an actionable
-  `clarity`, `accuracy`, or `question` finding only when the weak or mismatched intent materially
-  affects reviewability, risk, or the change contract.
+- If a revision description is missing, report that finalization is incomplete
+  and stop. If a description is vague or inconsistent with the changed files,
+  keep reviewing. Report an actionable `clarity`, `accuracy`, or `question`
+  finding only when the weak or mismatched intent materially affects
+  reviewability, risk, or the change contract.
 
-Use the gathered intent to make review stricter: check whether the diff satisfies the stated
-problem, constraints, compatibility expectations, excluded scope, rationale, and risk called out by
-the descriptions.
+Use the gathered intent to make review stricter: check whether the diff
+satisfies the stated problem, constraints, compatibility expectations, excluded
+scope, rationale, and risk called out by the descriptions.
 
-**Build the criterion list when criteria were declared**. Keep an in-memory entry for every
-criterion containing its exact text, source, scope, and supplied proof method. Apply criteria to the
-aggregate review target unless the request scopes them more narrowly. Do not persist criterion
-identifiers, evidence, progress, approval, or workflow state.
+**Build the criterion list when criteria were declared**. Keep an in-memory
+entry for every criterion containing its exact text, source, scope, and supplied
+proof method. Apply criteria to the aggregate review target unless the request
+scopes them more narrowly. Do not persist criterion identifiers, evidence,
+progress, approval, or workflow state.
 
 **Resolve revision and stack targets** before loading changed files:
 
 - For one revision, review that revision.
-- For multiple revisions, review each revision in dependency order, then review their aggregate
-  delta for cross-revision integration issues.
-- When `@` is a fresh empty undescribed jj working-copy revision, treat `@-` as the finalized target
-  for lifecycle and description checks. A literal diff may retain `@` as its endpoint only when it
-  resolves to the same tree.
-- For a stacked bookmark, use its immediate parent bookmark as the aggregate base. Resolve the
-  parent from the target bookmark's ancestry and review `<parent>..<bookmark>`. Use
-  `jj-bookmark-previous` only after confirming the target is the current bookmark because the helper
-  resolves relative to `@`. Do not default every stack element to the repository's default bookmark.
-- If a merge, parent bookmark, revision order, or aggregate base is ambiguous, ask instead of
-  guessing.
+- For multiple revisions, review each revision in dependency order, then review
+  their aggregate delta for cross-revision integration issues.
+- When `@` is a fresh empty undescribed jj working-copy revision, treat `@-` as
+  the finalized target for lifecycle and description checks. A literal diff may
+  retain `@` as its endpoint only when it resolves to the same tree.
+- For a stacked bookmark, use its immediate parent bookmark as the aggregate
+  base. Resolve the parent from the target bookmark's ancestry and review
+  `<parent>..<bookmark>`. Use `jj-bookmark-previous` only after confirming the
+  target is the current bookmark because the helper resolves relative to `@`. Do
+  not default every stack element to the repository's default bookmark.
+- If a merge, parent bookmark, revision order, or aggregate base is ambiguous,
+  ask instead of guessing.
 
-**Get changed files**: Run the diff. If the input described what to review rather than providing a
-literal command, determine the appropriate diff command now. Get the changed file list from the
-output. If the command fails, report the error and stop. If no files changed and no criteria were
-declared, report "no changes found" and stop. If criteria were declared, report no changes, mark
-each criterion `blocked` because the resolved target contains no changed artifacts and gathering
-evidence would require the excluded checkout-only review, identify a non-empty diff target as the
-resolution path, and stop after writing the normal `### Overview`, `### Criteria Assessment`, and
-empty `### Findings` sections.
+**Get changed files**: Run the diff. If the input described what to review
+rather than providing a literal command, determine the appropriate diff command
+now. Get the changed file list from the output. If the command fails, report the
+error and stop. If no files changed and no criteria were declared, report "no
+changes found" and stop. If criteria were declared, report no changes, mark each
+criterion `blocked` because the resolved target contains no changed artifacts
+and gathering evidence would require the excluded checkout-only review, identify
+a non-empty diff target as the resolution path, and stop after writing the
+normal `### Overview`, `### Criteria Assessment`, and empty `### Findings`
+sections.
 
-**Classify changed files before deep review**. Assign each changed file one or more artifact types:
+**Classify changed files before deep review**. Assign each changed file one or
+more artifact types:
 
-- `code`: runtime source, libraries, scripts, UI components, typed models, generated source that is
-  checked in for runtime use.
-- `test`: unit, integration, fixture, snapshot, harness, or test utility changes.
-- `docs`: README, runbook, reference, changelog, comments used as user-facing docs.
-- `config`: app config, editor config, package metadata, policy, feature flags, permissions.
-- `infra`: deployment, CI, containers, Nix, Terraform, orchestration, service manifests.
-- `migration`: database, data backfill, schema, serialized data, compatibility transition.
-- `dependency`: lockfiles, dependency manifests, vendored code, version constraints.
-- `generated`: compiled output, generated code, generated docs, snapshots, or codegen products.
-- `prompt/rule/skill`: AI prompts, agent rules, skills, command briefs, instruction files.
+- `code`: runtime source, libraries, scripts, UI components, typed models,
+  generated source that is checked in for runtime use.
+- `test`: unit, integration, fixture, snapshot, harness, or test utility
+  changes.
+- `docs`: README, runbook, reference, changelog, comments used as user-facing
+  docs.
+- `config`: app config, editor config, package metadata, policy, feature flags,
+  permissions.
+- `infra`: deployment, CI, containers, Nix, Terraform, orchestration, service
+  manifests.
+- `migration`: database, data backfill, schema, serialized data, compatibility
+  transition.
+- `dependency`: lockfiles, dependency manifests, vendored code, version
+  constraints.
+- `generated`: compiled output, generated code, generated docs, snapshots, or
+  codegen products.
+- `prompt/rule/skill`: AI prompts, agent rules, skills, command briefs,
+  instruction files.
 - `asset`: images, fonts, media, icons, design tokens, binary artifacts.
-- `mixed`: files that combine multiple artifact concerns or whose role is ambiguous.
+- `mixed`: files that combine multiple artifact concerns or whose role is
+  ambiguous.
 
-Generated output may be skipped when it is clearly derived and the source delta is sufficient.
-Review lockfiles and generated artifacts when their deltas reveal dependency, schema, API,
-compatibility, or release risk. When in doubt, review.
+Generated output may be skipped when it is clearly derived and the source delta
+is sufficient. Review lockfiles and generated artifacts when their deltas reveal
+dependency, schema, API, compatibility, or release risk. When in doubt, review.
 
 **Establish repo patterns** from changed artifact types:
 
-- Sample similar files, functions, docs, config blocks, workflows, prompts, or manifests.
-- Check neighboring artifacts for naming, structure, error handling, policy, schema, and formatting
-  patterns.
-- Search for project guidelines (`**/ARCHITECTURE.md`, `**/*style*.md`, `**/CONTRIBUTING.md`, agent
-  rules, workflow docs, release docs, etc.).
+- Sample similar files, functions, docs, config blocks, workflows, prompts, or
+  manifests.
+- Check neighboring artifacts for naming, structure, error handling, policy,
+  schema, and formatting patterns.
+- Search for project guidelines (`**/ARCHITECTURE.md`, `**/*style*.md`,
+  `**/CONTRIBUTING.md`, agent rules, workflow docs, release docs, etc.).
 
 ### Step 2: Deep File Analysis
 
-For each changed file, perform the full investigation and review before moving to the next file. Do
-not skim. Exhaust every applicable category against this file's changes before proceeding.
+For each changed file, perform the full investigation and review before moving
+to the next file. Do not skim. Exhaust every applicable category against this
+file's changes before proceeding.
 
 **Investigation (mandatory for every file):**
 
-1. **Load diff** for this file. Get the diff scoped to this specific file: derive a file-scoped
-   command, filter the full diff output, or use any method that isolates this file's changes.
+1. **Load diff** for this file. Get the diff scoped to this specific file:
+   derive a file-scoped command, filter the full diff output, or use any method
+   that isolates this file's changes.
 
-2. **Load full file**. Diffs alone hide surrounding context that determines correctness, accuracy,
-   and compatibility.
+2. **Load full file**. Diffs alone hide surrounding context that determines
+   correctness, accuracy, and compatibility.
 
-3. **Confirm artifact classification**. Record whether the file is code, test, docs, config, infra,
-   migration, dependency, generated, prompt/rule/skill, asset, or mixed. Apply all relevant review
-   lenses for mixed files.
+3. **Confirm artifact classification**. Record whether the file is code, test,
+   docs, config, infra, migration, dependency, generated, prompt/rule/skill,
+   asset, or mixed. Apply all relevant review lenses for mixed files.
 
-4. **Trace affected consumers and contracts** when the changes affect behavior, interfaces, policy,
-   documented usage, data, or generated output. Search for consumers of changed APIs, commands,
-   config keys, env vars, data shapes, paths, schemas, prompt behavior, docs promises, CI jobs,
-   deployment contracts, migration assumptions, asset references, and generated artifacts. Determine
-   whether existing consumers still work correctly. Skip only for purely cosmetic changes,
-   mechanical renames with complete find-replace evidence, or formatting-only deltas.
+4. **Trace affected consumers and contracts** when the changes affect behavior,
+   interfaces, policy, documented usage, data, or generated output. Search for
+   consumers of changed APIs, commands, config keys, env vars, data shapes,
+   paths, schemas, prompt behavior, docs promises, CI jobs, deployment
+   contracts, migration assumptions, asset references, and generated artifacts.
+   Determine whether existing consumers still work correctly. Skip only for
+   purely cosmetic changes, mechanical renames with complete find-replace
+   evidence, or formatting-only deltas.
 
-5. **Verify behavior and claims**. Do not assume how a function, library, tool, command, config key,
-   policy, schema, migration, prompt, or documented workflow behaves. If a change relies on specific
-   behavior, ordering, defaults, error semantics, concurrency safety, rendering, deployment
-   behavior, or generated output, confirm it by reading the source, docs, tests, manifests, or
-   generated delta.
+5. **Verify behavior and claims**. Do not assume how a function, library, tool,
+   command, config key, policy, schema, migration, prompt, or documented
+   workflow behaves. If a change relies on specific behavior, ordering,
+   defaults, error semantics, concurrency safety, rendering, deployment
+   behavior, or generated output, confirm it by reading the source, docs, tests,
+   manifests, or generated delta.
 
-6. **Collect criterion evidence when applicable**. Gather fresh evidence during the same file and
-   consumer analysis rather than running a duplicate verification workflow. Inspect relevant
-   unchanged behavior in the resulting checkout when a criterion depends on it, and run safe,
-   feasible checks as needed. Previous claims, descriptions, planned checks, and earlier results are
-   context rather than proof. Evidence may come from code or diff inspection, tests, commands,
-   documentation, generated output, or safely available external or manual evidence.
+6. **Collect criterion evidence when applicable**. Gather fresh evidence during
+   the same file and consumer analysis rather than running a duplicate
+   verification workflow. Inspect relevant unchanged behavior in the resulting
+   checkout when a criterion depends on it, and run safe, feasible checks as
+   needed. Previous claims, descriptions, planned checks, and earlier results
+   are context rather than proof. Evidence may come from code or diff
+   inspection, tests, commands, documentation, generated output, or safely
+   available external or manual evidence.
 
 **Review every applicable category against this file's changes:**
 
 _Code Correctness & Safety_
 
 - Error handling: all paths covered? errors informative?
-- Inputs: validated, sanitized, normalized, and trusted only at correct boundaries?
-- Edge cases: empty, null, missing, boundary, partial, duplicate, malformed, or out-of-order data?
+- Inputs: validated, sanitized, normalized, and trusted only at correct
+  boundaries?
+- Edge cases: empty, null, missing, boundary, partial, duplicate, malformed, or
+  out-of-order data?
 - State combinations: all input permutations and lifecycle states handled?
-- Logic: correct algorithm, ordering, off-by-one, time zone, locale, encoding, or precision
-  behavior?
+- Logic: correct algorithm, ordering, off-by-one, time zone, locale, encoding,
+  or precision behavior?
 - Secrets: any hardcoded, logged, exposed, over-permissioned, or committed?
-- Resource management: leaks, cleanup, cancellation, rollback, retries, idempotency?
-- Concurrency: race conditions, stale closures, deadlocks, reentrancy, shared mutable state?
+- Resource management: leaks, cleanup, cancellation, rollback, retries,
+  idempotency?
+- Concurrency: race conditions, stale closures, deadlocks, reentrancy, shared
+  mutable state?
 
 _Performance & Operability_
 
 - Algorithmic complexity: O(n^2) where O(n) works? unnecessary iteration?
-- Allocations and I/O: avoidable copies, conversions, network calls, filesystem work, or round
-  trips?
-- Caching and batching: repeated expensive lookups that should be shared or batched?
+- Allocations and I/O: avoidable copies, conversions, network calls, filesystem
+  work, or round trips?
+- Caching and batching: repeated expensive lookups that should be shared or
+  batched?
 - UI rendering: unnecessary re-renders, layout thrash, large bundle impact?
-- Operations: observability, rollout safety, failure modes, alert noise, logging quality?
+- Operations: observability, rollout safety, failure modes, alert noise, logging
+  quality?
 
 _Design & Architecture_
 
-- Separation of concerns: responsibility clear across code, config, docs, and automation?
+- Separation of concerns: responsibility clear across code, config, docs, and
+  automation?
 - Abstractions: appropriate level? over- or under-engineered?
-- Dependencies: coupling minimized? direction correct? version or platform constraints compatible?
+- Dependencies: coupling minimized? direction correct? version or platform
+  constraints compatible?
 - Patterns: consistent with repo conventions? deviation justified?
-- Security: trust boundaries, permissions, policy, sandbox, and supply-chain risks respected?
-- Visibility: narrowest possible? public symbols, config keys, docs promises, or workflow contracts
-  created without consumers?
-- Data integrity: schema changes backwards-compatible? migration safe? serialized data evolution
-  handled? Flag as `question` when intent is unclear.
+- Security: trust boundaries, permissions, policy, sandbox, and supply-chain
+  risks respected?
+- Visibility: narrowest possible? public symbols, config keys, docs promises, or
+  workflow contracts created without consumers?
+- Data integrity: schema changes backwards-compatible? migration safe?
+  serialized data evolution handled? Flag as `question` when intent is unclear.
 
 _Tests & Coverage_
 
-- Coverage: key behavior, policy, config, docs examples, migrations, prompts, and workflows tested
-  or otherwise validated?
-- Missing cases: obvious success, failure, edge, rollback, compatibility, accessibility, and
-  security cases not covered?
-- Quality: assertions meaningful? tests verify behavior, not implementation? brittle snapshots or
-  fixtures? tests that pass for the wrong reason?
-- Test artifacts: fixtures, snapshots, and helpers updated consistently with the behavior change?
+- Coverage: key behavior, policy, config, docs examples, migrations, prompts,
+  and workflows tested or otherwise validated?
+- Missing cases: obvious success, failure, edge, rollback, compatibility,
+  accessibility, and security cases not covered?
+- Quality: assertions meaningful? tests verify behavior, not implementation?
+  brittle snapshots or fixtures? tests that pass for the wrong reason?
+- Test artifacts: fixtures, snapshots, and helpers updated consistently with the
+  behavior change?
 
 _Docs & Accuracy_
 
-- User-facing claims: commands, examples, options, defaults, paths, screenshots, and limitations are
-  accurate after the diff?
-- Internal docs: comments, docstrings, runbooks, ADRs, and changelogs align with code/config
-  behavior?
-- Completeness: docs cover migration steps, compatibility notes, operational impact, or user action
-  where required?
-- Staleness: removed behavior, renamed fields, changed outputs, or old screenshots still referenced?
+- User-facing claims: commands, examples, options, defaults, paths, screenshots,
+  and limitations are accurate after the diff?
+- Internal docs: comments, docstrings, runbooks, ADRs, and changelogs align with
+  code/config behavior?
+- Completeness: docs cover migration steps, compatibility notes, operational
+  impact, or user action where required?
+- Staleness: removed behavior, renamed fields, changed outputs, or old
+  screenshots still referenced?
 
 _Config, Infrastructure & Automation_
 
-- Config semantics: default values, precedence, env vars, paths, permissions, and feature flags are
-  correct and documented where needed?
-- CI/CD: jobs, caches, artifacts, matrix entries, secrets, and triggers still match project intent?
-- Deployment: rollout order, rollback, health checks, resource limits, and platform constraints
-  safe?
-- Tooling: formatter, linter, generator, package manager, and shell behavior portable enough for the
-  repo's supported environments?
+- Config semantics: default values, precedence, env vars, paths, permissions,
+  and feature flags are correct and documented where needed?
+- CI/CD: jobs, caches, artifacts, matrix entries, secrets, and triggers still
+  match project intent?
+- Deployment: rollout order, rollback, health checks, resource limits, and
+  platform constraints safe?
+- Tooling: formatter, linter, generator, package manager, and shell behavior
+  portable enough for the repo's supported environments?
 
 _Data, Migrations & Dependencies_
 
-- Migrations: reversible or safely forward-only? ordering, locking, batching, backfill, and downtime
-  implications understood?
-- Compatibility: existing persisted data, clients, APIs, generated files, and external integrations
-  remain compatible or have clear migration paths?
-- Dependencies: lockfile deltas match manifest intent; licenses, supply-chain risk, transitive
-  changes, peer constraints, and runtime platform support are acceptable?
-- Generated artifacts: generated deltas are consistent with source changes and do not hide API,
-  schema, or release risk.
+- Migrations: reversible or safely forward-only? ordering, locking, batching,
+  backfill, and downtime implications understood?
+- Compatibility: existing persisted data, clients, APIs, generated files, and
+  external integrations remain compatible or have clear migration paths?
+- Dependencies: lockfile deltas match manifest intent; licenses, supply-chain
+  risk, transitive changes, peer constraints, and runtime platform support are
+  acceptable?
+- Generated artifacts: generated deltas are consistent with source changes and
+  do not hide API, schema, or release risk.
 
 _Prompts, Rules & Skills_
 
-- Instruction behavior: prompts and rules produce the intended agent behavior without conflicting
-  with higher-priority instructions or existing workflows?
-- Scope boundaries: write permissions, tool permissions, stop conditions, routing fields, and
-  contracts are explicit and safe?
-- Consumer contracts: command names, skill names, state-file fields, result blocks, and
-  parser-facing strings stay compatible where required?
-- Ambiguity: unclear precedence, missing examples, or open-ended instructions that could cause
-  unsafe or inconsistent execution?
+- Instruction behavior: prompts and rules produce the intended agent behavior
+  without conflicting with higher-priority instructions or existing workflows?
+- Scope boundaries: write permissions, tool permissions, stop conditions,
+  routing fields, and contracts are explicit and safe?
+- Consumer contracts: command names, skill names, state-file fields, result
+  blocks, and parser-facing strings stay compatible where required?
+- Ambiguity: unclear precedence, missing examples, or open-ended instructions
+  that could cause unsafe or inconsistent execution?
 
 _Assets & Accessibility_
 
-- Accessibility: semantic HTML, ARIA, focus, contrast, reduced motion, alt text, media captions, and
-  keyboard behavior where applicable?
-- Asset integrity: file format, dimensions, compression, licensing, cache busting, and references
-  are correct?
-- Visual behavior: responsive layout, density, localization, and theme interactions still work?
+- Accessibility: semantic HTML, ARIA, focus, contrast, reduced motion, alt text,
+  media captions, and keyboard behavior where applicable?
+- Asset integrity: file format, dimensions, compression, licensing, cache
+  busting, and references are correct?
+- Visual behavior: responsive layout, density, localization, and theme
+  interactions still work?
 
 _Clarity & Maintainability_
 
-- Naming: intent clear and consistent across code, docs, config, prompts, and artifacts?
+- Naming: intent clear and consistent across code, docs, config, prompts, and
+  artifacts?
 - Structure: focused functions, files, sections, manifests, and workflows?
-- Dead or stale material: unused code, config keys, docs, assets, snapshots, imports, assignments,
-  or generated output?
-- Comments and prose: explain why, not what. Flag noisy restatements, banners, stale rationale, and
-  missing rationale on non-obvious behavior.
+- Dead or stale material: unused code, config keys, docs, assets, snapshots,
+  imports, assignments, or generated output?
+- Comments and prose: explain why, not what. Flag noisy restatements, banners,
+  stale rationale, and missing rationale on non-obvious behavior.
 
 Record all findings for this file, then move to the next.
 
@@ -314,37 +365,43 @@ Record all findings for this file, then move to the next.
 
 After all per-file analysis, review findings across the full changeset:
 
-- Inconsistent patterns between files, docs, tests, config, infra, prompts, or assets.
-- Incomplete refactors, renamed concepts, updated commands, changed config keys, or partial
-  migrations.
-- Integration gaps: mismatched interfaces, broken contracts, missing docs, invalid examples, stale
-  generated artifacts, incompatible lockfiles, or CI/deployment drift.
+- Inconsistent patterns between files, docs, tests, config, infra, prompts, or
+  assets.
+- Incomplete refactors, renamed concepts, updated commands, changed config keys,
+  or partial migrations.
+- Integration gaps: mismatched interfaces, broken contracts, missing docs,
+  invalid examples, stale generated artifacts, incompatible lockfiles, or
+  CI/deployment drift.
 - Emergent concerns invisible in per-file analysis.
-- Criterion evidence and outcomes that depend on interactions across files or revisions.
+- Criterion evidence and outcomes that depend on interactions across files or
+  revisions.
 
 ### Step 4: Synthesize Overview
 
-Before self-challenge, synthesize a concise overview from context already gathered in Steps 1-3. No
-additional tool calls. This step is pure synthesis.
+Before self-challenge, synthesize a concise overview from context already
+gathered in Steps 1-3. No additional tool calls. This step is pure synthesis.
 
-1. **Concise overview**: Briefly explain what this changeset does overall, the key design decisions,
-   and how the changed artifacts relate to each other. Keep it short, but let the changeset size and
-   artifact mix determine the exact shape.
+1. **Concise overview**: Briefly explain what this changeset does overall, the
+   key design decisions, and how the changed artifacts relate to each other.
+   Keep it short, but let the changeset size and artifact mix determine the
+   exact shape.
 
 2. **Per-file breakdown**: For each changed file, state:
    - The file's artifact type and role in the system.
    - What changed and why it matters.
 
-3. **Criterion assessment**: When criteria were declared, assign each one exactly one status from
-   the evidence already gathered:
+3. **Criterion assessment**: When criteria were declared, assign each one
+   exactly one status from the evidence already gathered:
    - `satisfied`: fresh evidence establishes the criterion.
    - `not satisfied`: evidence contradicts it or required behavior is absent.
-   - `blocked`: safe, feasible evidence cannot be obtained or the criterion is materially ambiguous.
+   - `blocked`: safe, feasible evidence cannot be obtained or the criterion is
+     materially ambiguous.
 
-For each criterion, retain concise fresh evidence or a precise blocker and resolution path. Do not
-add this assessment when no criteria were declared.
+For each criterion, retain concise fresh evidence or a precise blocker and
+resolution path. Do not add this assessment when no criteria were declared.
 
-This overview will appear before findings in the written block to orient the reader.
+This overview will appear before findings in the written block to orient the
+reader.
 
 ### Step 5: Self-Challenge
 
@@ -352,12 +409,13 @@ Before writing findings, stop and re-examine:
 
 - Re-read each finding: is the evidence concrete or assumed?
 - Re-read each dismissal: did you actually investigate, or move on too fast?
-- Look at the changeset fresh: what would a skeptical reviewer flag that you did not?
-- Check whether any non-code artifact weakened a code, test, docs, config, infra, data, dependency,
-  prompt, or asset contract.
-- Recheck every `satisfied` criterion for unsupported inference, every `not satisfied` criterion for
-  a concrete contradiction or omission, and every `blocked` criterion for a precise blocker and
-  resolution path.
+- Look at the changeset fresh: what would a skeptical reviewer flag that you did
+  not?
+- Check whether any non-code artifact weakened a code, test, docs, config,
+  infra, data, dependency, prompt, or asset contract.
+- Recheck every `satisfied` criterion for unsupported inference, every
+  `not satisfied` criterion for a concrete contradiction or omission, and every
+  `blocked` criterion for a precise blocker and resolution path.
 - Promote or add findings discovered in this step.
 
 ### Step 6: Dedupe and Write
@@ -375,34 +433,40 @@ Before writing findings, stop and re-examine:
 
 - If the answer is "nothing" or "accept as-is", do not report it.
 - If the answer is "maybe consider...", investigate first, make a concrete call.
-- Only report findings with clear, actionable fixes. Recommend the smallest change that resolves the
-  demonstrated problem. Do not require generalized infrastructure, new abstractions, extensibility,
-  compatibility layers, or broader refactors unless evidence shows they are necessary for the
-  reviewed contract or an existing consumer.
+- Only report findings with clear, actionable fixes. Recommend the smallest
+  change that resolves the demonstrated problem. Do not require generalized
+  infrastructure, new abstractions, extensibility, compatibility layers, or
+  broader refactors unless evidence shows they are necessary for the reviewed
+  contract or an existing consumer.
 
-**Apply a scope test before reporting each finding.** Distinguish defects in the reviewed scope from
-possible product expansions. If resolving a concern requires supporting a new use case, consumer,
-platform, failure model, or compatibility promise, omit it unless that behavior is explicitly
-required. Investigation may be broad, but findings and fixes must remain evidence-based and within
-the reviewed scope.
+**Apply a scope test before reporting each finding.** Distinguish defects in the
+reviewed scope from possible product expansions. If resolving a concern requires
+supporting a new use case, consumer, platform, failure model, or compatibility
+promise, omit it unless that behavior is explicitly required. Investigation may
+be broad, but findings and fixes must remain evidence-based and within the
+reviewed scope.
 
-If deep analysis and self-challenge produce zero findings, write the `### Overview` section, the
-`### Criteria Assessment` section when criteria were declared, then an empty `### Findings` section
-with a single line stating no issues were found. The overview already summarizes what was
-investigated; do not repeat that information.
+If deep analysis and self-challenge produce zero findings, write the
+`### Overview` section, the `### Criteria Assessment` section when criteria were
+declared, then an empty `### Findings` section with a single line stating no
+issues were found. The overview already summarizes what was investigated; do not
+repeat that information.
 
-Only report a pass when every revision has a complete description, target resolution succeeded, and
-the findings section is empty. If a description is incomplete or target resolution fails, report the
-result as blocked rather than diagnostic. A non-empty findings section is a diagnostic non-pass, not
-a blocked review. When criteria were declared, a pass also requires every criterion to be
-`satisfied`; a clean findings section does not override a `not satisfied` or `blocked` criterion.
-After source and target resolution, criteria failure does not end intrinsic review early.
+Only report a pass when every revision has a complete description, target
+resolution succeeded, and the findings section is empty. If a description is
+incomplete or target resolution fails, report the result as blocked rather than
+diagnostic. A non-empty findings section is a diagnostic non-pass, not a blocked
+review. When criteria were declared, a pass also requires every criterion to be
+`satisfied`; a clean findings section does not override a `not satisfied` or
+`blocked` criterion. After source and target resolution, criteria failure does
+not end intrinsic review early.
 
-Keep criterion assessment and findings distinct. Assessment states whether declared outcomes are
-established; findings tell the author what must change. A `not satisfied` criterion produces a
-finding when the reviewed change has a concrete corrective action. A `blocked` criterion is not
-automatically a finding unless required validation is absent or the change improperly claims
-completion. Avoid repeating the same explanation verbatim in both sections.
+Keep criterion assessment and findings distinct. Assessment states whether
+declared outcomes are established; findings tell the author what must change. A
+`not satisfied` criterion produces a finding when the reviewed change has a
+concrete corrective action. A `blocked` criterion is not automatically a finding
+unless required validation is absent or the change improperly claims completion.
+Avoid repeating the same explanation verbatim in both sections.
 
 Write findings as a structured list, preceded by the overview.
 
@@ -437,13 +501,14 @@ Format: `- path:line (category, priority): description`
 **Categories:**
 
 - `bug`: likely incorrect behavior.
-- `safety`: security, data loss, trust-boundary, operational, or destructive-action risk.
-- `compatibility`: broken consumer, API, schema, config, docs, workflow, platform, or migration
-  contract.
-- `accuracy`: docs, comments, prompts, generated artifacts, examples, or metadata are wrong or
-  misleading.
-- `coverage`: missing or weak tests, validation, examples, fixtures, generated artifacts, or rollout
-  checks for important behavior.
+- `safety`: security, data loss, trust-boundary, operational, or
+  destructive-action risk.
+- `compatibility`: broken consumer, API, schema, config, docs, workflow,
+  platform, or migration contract.
+- `accuracy`: docs, comments, prompts, generated artifacts, examples, or
+  metadata are wrong or misleading.
+- `coverage`: missing or weak tests, validation, examples, fixtures, generated
+  artifacts, or rollout checks for important behavior.
 - `design`: architectural concern or trade-off.
 - `clarity`: readability, naming, structure, or instruction ambiguity.
 - `question`: something unclear, worth discussing.
@@ -460,5 +525,5 @@ Format: `- path:line (category, priority): description`
 - "Consider whether..." without concrete concern.
 - Renaming suggestions that are not meaningfully clearer.
 - Findings where the action is "nothing".
-- Hypothetical future requirements, unsupported inputs or states, imagined consumers, and optional
-  extensibility without evidence of present harm.
+- Hypothetical future requirements, unsupported inputs or states, imagined
+  consumers, and optional extensibility without evidence of present harm.

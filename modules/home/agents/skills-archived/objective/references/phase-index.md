@@ -22,9 +22,10 @@ Format: `N. [marker] [Phase Name](./NN-phase-P.md) *`
 
 ## Phase Resolution
 
-Centralized pattern for locating phase content. All procedures and briefs use this instead of
-assuming a phase file path directly.
+Centralized pattern for locating phase content. All procedures and briefs use
+this instead of assuming a phase file path directly.
 
 1. Read the `## Phases` index in `00-main.md`.
-2. Index entry contains a markdown link, for example `[Phase Name](./02-phase-1.md)`.
+2. Index entry contains a markdown link, for example
+   `[Phase Name](./02-phase-1.md)`.
 3. Resolve phase content from the linked file.

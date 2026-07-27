@@ -52,7 +52,8 @@ Full summary:
 
 ## AC Status Mapping
 
-Consumers that parse AC validation results derive `ac_status` from these sections:
+Consumers that parse AC validation results derive `ac_status` from these
+sections:
 
 | Verify section           | Status |
 | ------------------------ | ------ |

@@ -4,7 +4,8 @@ Configurations managed with Nix.
 
 ## Installation
 
-1. Install Nix via [Determinate Nix](https://determinate.systems/nix-installer/).
+1. Install Nix via
+   [Determinate Nix](https://determinate.systems/nix-installer/).
 2. Install [Homebrew](https://brew.sh/) (macOS).
 3. Clone into `~/dotfiles` (as out-of-store symlinks assume this path).
 4. Run `./x.sh nix-switch-system` to build and activate system config.

@@ -4,7 +4,8 @@ Caller-parsed result blocks for the phase scope brief.
 
 ## Phase Scope Result Blocks
 
-Return exactly one. Headings and fields are caller-parsed — do not rename or reorder.
+Return exactly one. Headings and fields are caller-parsed — do not rename or
+reorder.
 
 ```text
 ## Result: Readiness Issues

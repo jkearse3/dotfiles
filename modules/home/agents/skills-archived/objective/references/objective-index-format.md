@@ -4,8 +4,8 @@ Section layout for `00-main.md`, the objective index file.
 
 ## Objective Index Format
 
-`00-main.md` carries Context, Research, Acceptance Criteria, Approach, and the Phases index. Phase
-content lives in separate files.
+`00-main.md` carries Context, Research, Acceptance Criteria, Approach, and the
+Phases index. Phase content lives in separate files.
 
 ```markdown
 ## Context

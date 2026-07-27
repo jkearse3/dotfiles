@@ -20,4 +20,5 @@ Clear when: <condition that makes the next resume point unambiguous>
 [Optional structured details needed by the routed procedure]
 ```
 
-`#### Payload` is optional. Omit it when the fixed labels provide enough resume context.
+`#### Payload` is optional. Omit it when the fixed labels provide enough resume
+context.

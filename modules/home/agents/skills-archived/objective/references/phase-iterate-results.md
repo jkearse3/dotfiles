@@ -1,13 +1,14 @@
 # Phase Iterate Results
 
-Caller-parsed result blocks returned by `procedures/phase-iterate.md --auto-commit` for explicit
-autonomous callers.
+Caller-parsed result blocks returned by
+`procedures/phase-iterate.md --auto-commit` for explicit autonomous callers.
 
 ## Phase Iterate Result Blocks
 
 When explicit autonomous callers such as `procedures/auto-iterate.md` run
-`procedures/phase-iterate.md --auto-commit`, phase iteration returns one of these caller-consumed
-blocks. Callers must preserve token matching, field order, and field meanings exactly.
+`procedures/phase-iterate.md --auto-commit`, phase iteration returns one of
+these caller-consumed blocks. Callers must preserve token matching, field order,
+and field meanings exactly.
 
 Incomplete result:
 
@@ -20,11 +21,13 @@ details: <specific blockers or concerns>
 
 Meanings:
 
-- `PHASE_INCOMPLETE` — phase iteration stopped before commit because user-visible follow-up is
-  required.
+- `PHASE_INCOMPLETE` — phase iteration stopped before commit because
+  user-visible follow-up is required.
 - `phase` — focused phase number.
-- `reason` — machine-readable stop category; keep values limited to the listed tokens.
-- `details` — human-readable blockers, unresolved issues, or implementation concerns.
+- `reason` — machine-readable stop category; keep values limited to the listed
+  tokens.
+- `details` — human-readable blockers, unresolved issues, or implementation
+  concerns.
 
 Complete result:
 
@@ -37,7 +40,9 @@ ac_status: <list of AC number and new status, e.g. "AC1: [~], AC3: [~]">
 
 Meanings:
 
-- `PHASE_COMPLETE` — phase changes were committed and the phase index was marked complete.
+- `PHASE_COMPLETE` — phase changes were committed and the phase index was marked
+  complete.
 - `phase` — completed phase number.
 - `commit_message` — exact full revision description passed to `jj commit -m`.
-- `ac_status` — latest AC status snapshot captured by phase iteration for targeted ACs.
+- `ac_status` — latest AC status snapshot captured by phase iteration for
+  targeted ACs.

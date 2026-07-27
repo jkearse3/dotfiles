@@ -1,7 +1,8 @@
 # Contract Template
 
-Include Context or Research only when durable intent or evidence would otherwise be lost. Do not
-include implementation strategy; planning owns how to satisfy the agreement.
+Include Context or Research only when durable intent or evidence would otherwise
+be lost. Do not include implementation strategy; planning owns how to satisfy
+the agreement.
 
 ```markdown
 # Branch Contract

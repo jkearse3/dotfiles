@@ -4,8 +4,9 @@ Caller-parsed reconciliation result contract and routing table.
 
 ## Reconciliation Result Contract
 
-`briefs/phase-reconcile.md` returns this caller-consumed block. Callers must preserve top-level
-status token matching, field order, and field meanings exactly.
+`briefs/phase-reconcile.md` returns this caller-consumed block. Callers must
+preserve top-level status token matching, field order, and field meanings
+exactly.
 
 ```text
 ## Result: Reconciliation Summary
@@ -30,5 +31,5 @@ Status routes:
 - `NEEDS_USER_INPUT` — stop and surface concerns to the user.
 - `NEEDS_RESEARCH` — run `procedures/investigate.md`.
 - `NEEDS_DECISION` — run `procedures/interrogate.md` for `Scope: objective`.
-- `SPEC_CHANGE_REQUIRED` — run `procedures/spec.md`, then resume phase iteration at Step 3 (scope
-  announcement).
+- `SPEC_CHANGE_REQUIRED` — run `procedures/spec.md`, then resume phase iteration
+  at Step 3 (scope announcement).

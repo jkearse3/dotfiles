@@ -1,21 +1,25 @@
 # Review
 
-Orchestrate the autonomous branch-review pipeline: load the current objective, dispatch an
-objective-context branch review as a subagent, and present the returned summary.
+Orchestrate the autonomous branch-review pipeline: load the current objective,
+dispatch an objective-context branch review as a subagent, and present the
+returned summary.
 
-Can be run at any point — not tied to phase completion. Useful for whole-objective review after
-committing a phase, general cleanup passes, or pre-PR review.
+Can be run at any point — not tied to phase completion. Useful for
+whole-objective review after committing a phase, general cleanup passes, or
+pre-PR review.
 
 ## References
 
-- `references/current-objective.md` — § Load Current Objective for the load/nudge gate.
-- `references/branch-review.md` — § Autonomous Branch Review Conventions for the report fields
-  returned by the subagent and presented by this orchestrator.
+- `references/current-objective.md` — § Load Current Objective for the
+  load/nudge gate.
+- `references/branch-review.md` — § Autonomous Branch Review Conventions for the
+  report fields returned by the subagent and presented by this orchestrator.
 
 ## Steps
 
-1. Load state. Read `.objectives/_current/00-main.md` per `references/current-objective.md` § Load
-   Current Objective, including its no-objective nudge.
+1. Load state. Read `.objectives/_current/00-main.md` per
+   `references/current-objective.md` § Load Current Objective, including its
+   no-objective nudge.
 
 2. Dispatch the pipeline. Dispatch a subagent with prompt:
 
@@ -33,7 +37,7 @@ committing a phase, general cleanup passes, or pre-PR review.
 
 ### Invariants
 
-- The orchestrator owns only the load/nudge gate, dispatch, and the user-facing summary; the
-  subagent executes the pipeline.
-- Preserve verbatim: the dispatch prompt and the report fields in `references/branch-review.md` §
-  Autonomous Branch Review Conventions.
+- The orchestrator owns only the load/nudge gate, dispatch, and the user-facing
+  summary; the subagent executes the pipeline.
+- Preserve verbatim: the dispatch prompt and the report fields in
+  `references/branch-review.md` § Autonomous Branch Review Conventions.
