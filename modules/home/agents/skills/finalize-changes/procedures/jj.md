@@ -91,9 +91,10 @@ not replace or supplement it with assumed tree-object template fields.
 
    Any output, command failure, or conflict means finalization is incomplete.
 
-2. Move the current task-owned bookmark to the final tip when it is intended to
-   identify this stack. Do not move another bookmark or one with uncertain
-   ownership.
+2. Require a task-owned bookmark that identifies this change set, not a bookmark
+   that identifies only the immutable base or another change set. Move it to the
+   final tip and verify it points there. Do not move another bookmark or one
+   with uncertain ownership; stop if the required bookmark is absent.
 3. When the target ended at the pre-finalization `@`, create a fresh empty
    working-copy revision with `jj new <final-tip>` and confirm its parent is the
    final tip. Otherwise, preserve the existing working-copy position and confirm

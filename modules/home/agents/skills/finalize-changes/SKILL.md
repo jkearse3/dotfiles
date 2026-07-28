@@ -76,5 +76,5 @@ user-authored, pre-existing, or uncertain history without explicit authority.
   patch selector.
 - Preserve unrelated working changes by stopping rather than absorbing,
   resetting, stashing, or discarding them.
-- Move only a clearly task-owned bookmark or branch when needed to identify the
-  finalized tip.
+- For new work, require a clearly task-owned bookmark or branch and verify it
+  identifies the finalized tip. Move only that reference.

@@ -22,11 +22,12 @@ that is published, unrelated, user-authored, pre-existing and not task-owned,
 destructive, or of uncertain ownership. Use non-interactive VCS commands.
 
 Before mutating content or history, identify the intended change set with a
-relevant local reference: the current Git branch or a jj bookmark. Unless the
-user specifies another base, use the current checked-out revision or branch tip
-as the base for new work. Treat stacking on the current work as intentional by
-default; a differently named current reference does not by itself make the base
-or stacking unclear.
+task-owned local reference: the current Git branch or a jj bookmark. For new
+work, an existing reference that identifies only the base or another change set
+does not satisfy this invariant. Unless the user specifies another base, use the
+current checked-out revision or branch tip as the base for new work. Treat
+stacking on the current work as intentional by default; a differently named
+current reference does not by itself make the base or stacking unclear.
 
 For new work, create a Git branch at the intended base or bookmark an empty jj
 working-copy revision there. If the current jj revision is not empty, create and
@@ -34,7 +35,8 @@ bookmark an empty child. Reuse a reference only for the same change set. Keep
 the reference at the change-set tip. After jj finalization, leave the bookmark
 on the finalized tip and any empty working-copy child unbookmarked.
 Implementation authority covers creating and moving the reference, not
-publishing it.
+publishing it. Before completion, verify the task-owned reference points to the
+finalized tip.
 
 Discover references with `jj-bookmark-{current,default,previous,stacked}` or the
 corresponding `git-branch-*` helpers. Because the jj `previous` and `stacked`
