@@ -55,6 +55,8 @@ in
         internalPkgs = inputs.self.packages.${system};
         repoRoot = "dotfiles";
         llmAgents = llmAgents.${system};
+        herdr = inputs.herdr.packages.${system}.herdr;
+        herdrSource = inputs.herdr;
         hunk = llmAgents.${system}.hunk;
       };
     }
