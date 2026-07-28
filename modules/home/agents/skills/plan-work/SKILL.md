@@ -14,9 +14,11 @@ argument-hint: "<outcome, request, or existing plan>"
 
 # Plan Work
 
-Produce a self-contained plan that establishes what to do, what not to do, and
-how to know the outcome was achieved. Planning is read-only and owns no
-persistent workflow state.
+Produce a self-contained, evidence-grounded execution proposal that establishes
+the intended outcome, boundaries, approach, work sequence, and proof of
+completion. The plan makes the proposed attack visible for user-agent alignment
+while preserving implementation freedom where specific choices do not matter.
+Planning is read-only and owns no persistent workflow state.
 
 ## Input
 
@@ -29,8 +31,10 @@ outcome. If neither provides a planning target, ask for one and stop.
 
 ## Method
 
-1. Establish the intended outcome, affected targets, and completion boundary.
-   Distinguish the requested result from possible implementation details.
+1. Establish the intended outcome, affected targets, and observable completion
+   conditions. Distinguish the requested result from possible implementation
+   details. When an authoritative contract or specification exists, consume its
+   requirements without redefining its acceptance criteria.
 2. Inspect relevant code, documents, systems, history, or external sources
    through safe read-only methods. Resolve available facts directly. Do not
    perform a diagnostic action when it may mutate state, notify people, incur
@@ -45,29 +49,31 @@ outcome. If neither provides a planning target, ask for one and stop.
    dependencies, stakeholders, interfaces, persisted state, and operational
    effects far enough to include necessary work and exclude adjacent work
    explicitly.
-5. Sequence the fewest coherent actions that produce the outcome. For repository
-   mutations, group actions into expected independently reviewable concerns.
-   Define each concern by its outcome, dependencies, and focused validation
-   rather than exact files or hunks. A broader acceptance milestone may contain
-   multiple concerns, while code, tests, documentation, and configuration that
-   support one concern may remain together. Authority for the complete request
-   does not combine independent concerns. Assign at most one concern to each
-   mutating delegation. Preserve implementation freedom where multiple
-   approaches satisfy the same invariant; make a choice explicit when later
-   actions depend on it.
-6. Define validation from the outcome and material risks. End each repository
-   concern with focused verification, finalization, and review before the next
-   concern begins. Explicitly identify integration checks that genuinely require
-   later concerns and retain them for task completion. Prefer concrete commands,
-   observations, inspections, or acceptance signals that establish behavior
-   rather than merely proving that steps ran.
-7. Perform a proportional completeness pass across the lenses below. Resolve or
+5. Select an approach that resolves consequential strategy choices and explain
+   why it fits the evidence, constraints, and outcome. Commit to implementation
+   details only when correctness, compatibility, safety, external effects, or
+   later work depends on them. Otherwise preserve execution freedom.
+6. Sequence the fewest coherent work concerns that produce the outcome. Define
+   each concern by its purpose, expected result, material dependencies, and
+   focused validation rather than speculative files, symbols, or hunks. Keep
+   code, tests, documentation, configuration, and operational work together when
+   they support one result. For repository mutations, use expected independently
+   reviewable revision concerns. Authority for the complete request does not
+   combine independent concerns. Assign at most one concern to each mutating
+   delegation.
+7. Define validation from the completion conditions and material risks. End each
+   repository concern with focused verification, finalization, and review before
+   the next concern begins. Explicitly identify integration checks that
+   genuinely require later concerns and retain them for task completion. Prefer
+   concrete commands, observations, inspections, responses, or other signals
+   that establish behavior rather than merely proving that steps ran.
+8. Perform a proportional completeness pass across the lenses below. Resolve or
    report every material gap, but omit irrelevant categories and empty sections
    from the written plan.
 
 Completeness lenses:
 
-- Outcome and completion condition.
+- Outcome and completion conditions.
 - Current state and authoritative evidence.
 - Targets, users, stakeholders, and ownership.
 - Inputs, outputs, interfaces, and content boundaries.
@@ -76,7 +82,8 @@ Completeness lenses:
 - Dependencies, prerequisites, ordering, and parallelism.
 - Failure modes, downstream effects, recovery, and reversibility.
 - Permissions, approvals, visibility, and external impact.
-- Validation, acceptance, and regression protection.
+- Approach, work sequence, and implementation freedom.
+- Validation, completion evidence, and regression protection.
 - Stop conditions, escalation points, assumptions, and freshness risks.
 
 ## Readiness
@@ -86,16 +93,17 @@ prevents safe execution. If evidence or a user decision is required first,
 return `Blocked`, state exactly what is needed, and do not disguise assumptions
 as a complete plan.
 
-Keep depth proportional. A small task may need one sentence naming the action,
-validation, and exclusion. Complex or consequential work needs enough detail
-that a fresh session could execute the plan after reloading its authoritative
-inputs.
+Keep depth proportional. A small task may need only a compact statement of the
+outcome, scope, completion conditions, approach, work, validation, and any
+exclusion. Complex or consequential work needs enough detail that a fresh
+session could execute the plan after reloading its authoritative inputs.
 
 ## Output
 
-Use this structure flexibly. A one-sentence small plan may combine its outcome,
-scope, action, and validation. Otherwise include those four sections in every
-ready plan and include other sections only when they carry material information.
+Use this structure flexibly. Every ready plan conveys its outcome, scope,
+completion conditions, approach, work sequence, and validation, but related
+concepts may be combined and headings omitted when a compact plan is clearer.
+Include other sections only when they carry material information.
 
 ```markdown
 ## Plan: <concise outcome>
@@ -122,14 +130,27 @@ Status: Ready | Blocked
 
 - <Invariant, compatibility requirement, policy, or limit.>
 
-### Actions
+### Completion Conditions
 
-1. <Ordered action, purpose, and material dependency. For repository mutations,
-   identify the expected revision concern and focused validation.>
+- <Observable final state, preserved invariant, or required effect.>
+
+### Approach
+
+<Selected technical or operational strategy and why it fits the evidence and
+constraints. Identify prescribed implementation details only when material.>
+
+### Work Sequence
+
+1. **<Coherent work concern>.** <Purpose, expected result, and material
+   dependencies. Identify prescribed implementation or procedure only when
+   material, and name the focused validation required before dependent work
+   proceeds.>
 
 ### Validation
 
-- `<command or inspection>`: <what it establishes.>
+- `<command, inspection, response, or signal>`:
+  <completion condition or material
+  risk it establishes.>
 
 ### Risks And Recovery
 
@@ -163,6 +184,10 @@ Status: Ready | Blocked
 - Do not persist the plan or create a task registry, progress marker, approval
   record, or other workflow state. A separate user request may authorize another
   operation to persist the plan.
+- Do not copy authoritative acceptance criteria into a competing plan-level
+  agreement. Reference or summarize them as completion boundaries and leave
+  durable acceptance checks, evidence, and measured state with their owning
+  contract or specification.
 - Do not expand the requested outcome to satisfy the completeness lenses or turn
   normal implementation details into user decisions.
 - Do not treat the plan as implementation authority. A prior request may already
