@@ -108,29 +108,6 @@
         "type": "github"
       }
     },
-    "herdr": {
-      "inputs": {
-        "nixpkgs": [
-          "nixpkgs-unstable"
-        ],
-        "rust-overlay": [
-          "rust-overlay"
-        ]
-      },
-      "locked": {
-        "lastModified": 1785201215,
-        "narHash": "sha256-CpRc6hE+Sy/dISJo0CR5/LXBjCTUC/MceS9dfCkur5Y=",
-        "owner": "ogulcancelik",
-        "repo": "herdr",
-        "rev": "1491b7dd9c992ef0ad2b763f3e450befaf25c47f",
-        "type": "github"
-      },
-      "original": {
-        "owner": "ogulcancelik",
-        "repo": "herdr",
-        "type": "github"
-      }
-    },
     "home-manager-unstable": {
       "inputs": {
         "nixpkgs": [
@@ -228,7 +205,6 @@
         "darwin": "darwin",
         "dotfiles-private": "dotfiles-private",
         "flake-parts": "flake-parts",
-        "herdr": "herdr",
         "home-manager-unstable": "home-manager-unstable",
         "llm-agents": "llm-agents",
         "nixpkgs": "nixpkgs",

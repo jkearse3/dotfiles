@@ -18,6 +18,9 @@ let
   lib = inputs.nixpkgs.lib;
   home-manager = inputs.home-manager-unstable;
   llmAgents = inputs.llm-agents.packages;
+  herdrRelease = builtins.fromJSON (
+    builtins.readFile (inputs.llm-agents + "/packages/herdr/hashes.json")
+  );
   homeStateVersion = "26.05";
   isDarwin = lib.hasSuffix "-darwin" system;
   homeDirectory = if isDarwin then "/Users/${username}" else "/home/${username}";
@@ -55,8 +58,13 @@ in
         internalPkgs = inputs.self.packages.${system};
         repoRoot = "dotfiles";
         llmAgents = llmAgents.${system};
-        herdr = inputs.herdr.packages.${system}.herdr;
-        herdrSource = inputs.herdr;
+        herdr = llmAgents.${system}.herdr;
+        herdrSource = unstablePkgs.fetchFromGitHub {
+          owner = "ogulcancelik";
+          repo = "herdr";
+          tag = "v${herdrRelease.version}";
+          inherit (herdrRelease) hash;
+        };
         hunk = llmAgents.${system}.hunk;
       };
     }
