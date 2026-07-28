@@ -71,4 +71,7 @@
       };
     };
   };
+
+  programs.fish.shellAliases.jjbl = "jj-bookmark-land";
+  programs.zsh.shellAliases.jjbl = "jj-bookmark-land";
 }
