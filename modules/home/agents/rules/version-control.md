@@ -30,18 +30,22 @@ stacking on the current work as intentional by default; a differently named
 current reference does not by itself make the base or stacking unclear.
 
 For new work, create a Git branch at the intended base or bookmark an empty jj
-working-copy revision there. If the current jj revision is not empty, create and
-bookmark an empty child. Reuse a reference only for the same change set. Keep
-the reference at the change-set tip. After jj finalization, leave the bookmark
-on the finalized tip and any empty working-copy child unbookmarked.
-Implementation authority covers creating and moving the reference, not
-publishing it. Before completion, verify the task-owned reference points to the
-finalized tip.
+working-copy revision there. Determine placement from `@` itself before using
+bookmark helpers: if `@` is empty, bookmark it directly and do not create
+another revision; only when `@` is not empty, create and bookmark an empty
+child. Reuse a reference only for the same change set. Keep the reference at the
+change-set tip. After jj finalization, leave the bookmark on the finalized tip
+and any empty working-copy child unbookmarked. Implementation authority covers
+creating and moving the reference, not publishing it. Before completion, verify
+the task-owned reference points to the finalized tip.
 
 Discover references with `jj-bookmark-{current,default,previous,stacked}` or the
-corresponding `git-branch-*` helpers. Because the jj `previous` and `stacked`
-helpers resolve relative to `@`, confirm that `@` belongs to another target's
-stack before using them for that target.
+corresponding `git-branch-*` helpers. `jj-bookmark-current` reports the nearest
+contextual bookmark, not necessarily a bookmark attached to `@`; when exact
+attachment affects placement, ownership, or history mutation, inspect `@`
+directly with `jj log -r @ --no-graph -T 'local_bookmarks'`. Because the jj
+`previous` and `stacked` helpers resolve relative to `@`, confirm that `@`
+belongs to another target's stack before using them for that target.
 
 In colocated repositories, Git may be detached. When `gh` requires a branch
 name, pass `$(jj-bookmark-current)` explicitly.
