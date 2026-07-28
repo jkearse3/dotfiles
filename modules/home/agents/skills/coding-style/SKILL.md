@@ -175,6 +175,17 @@ if err != nil {
 - Avoid whitespace-only changes outside code already touched by the requested
   work.
 
+## Format Record Construction
+
+When a struct, record, or object literal initializes more than one named field,
+write it as a multiline block with one named field or property entry per line.
+Apply the same rule recursively to nested record values so their shape remains
+directly scannable.
+
+Keep empty and single-field literals compact when that is clearer. This rule
+does not require one-per-line formatting for positional arguments or collection
+elements. Follow a mandatory formatter when the language controls the layout.
+
 ## Check The Result
 
 For each materially changed concept:
@@ -187,10 +198,12 @@ For each materially changed concept:
 5. Scan each changed function and confirm each paragraph has one semantic
    purpose, each blank line marks a real transition, and directly related
    statements remain together.
-6. Confirm the paragraph sequence communicates the function's control and data
+6. Confirm multi-field record construction has one named field or property entry
+   per line, including in nested record values.
+7. Confirm the paragraph sequence communicates the function's control and data
    flow without requiring line-by-line parsing.
-7. Run the project's formatter and focused type, lint, and test checks.
-8. Inspect the diff for unnecessary renaming, comments, modules, API changes, or
+8. Run the project's formatter and focused type, lint, and test checks.
+9. Inspect the diff for unnecessary renaming, comments, modules, API changes, or
    whitespace-only changes.
 
 Optimize ambiguity, navigation cost, and semantic scanability, not identifier
