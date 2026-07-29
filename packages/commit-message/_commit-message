@@ -2,7 +2,7 @@
 
 _arguments -C \
   '(-h --help)'{-h,--help}'[show help]' \
-  '1:command:((format\:format\ a\ commit\ description check\:validate\ a\ commit\ description))' \
+  '1:command:((format\:format\ a\ commit\ description check\:check\ a\ commit\ description))' \
   '*::argument:->arguments'
 
 case $words[2] in

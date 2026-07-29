@@ -56,7 +56,7 @@ class CompletionTests(unittest.TestCase):
         lines = result.stdout.splitlines()
         subcommands = (
             r"1:command:((format\:format\ a\ commit\ description "
-            + r"check\:validate\ a\ commit\ description))"
+            + r"check\:check\ a\ commit\ description))"
         )
         self.assertIn(
             subcommands,
