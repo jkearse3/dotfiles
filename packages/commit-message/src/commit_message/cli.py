@@ -19,26 +19,6 @@ from typing import cast
 DEFAULT_BODY_WIDTH = 72
 DEFAULT_SUBJECT_WIDTH = 72
 
-# Types the formatter recognizes as Conventional Commits when deciding whether
-# a subject edit is safe. The checker accepts any subject form.
-CONVENTIONAL_TYPES = (
-    "feat",
-    "fix",
-    "refactor",
-    "perf",
-    "style",
-    "chore",
-    "docs",
-    "test",
-    "ci",
-    "build",
-)
-
-# Conventional Commit subject. Only the type and description are consumed;
-# the scope and breaking marker are matched but never inspected.
-SUBJECT_RE = re.compile(
-    r"^(?P<type>[a-z]+)(?:\([^()\n]+\))?!?: " + r"(?P<description>.+)$"
-)
 LIST_RE = re.compile(r"^(?P<prefix>[ \t]*(?:[-+*]|\d+[.)])[ \t]+)(?P<text>\S.*)$")
 TRAILER_RE = re.compile(
     r"^(?P<prefix>(?:BREAKING CHANGE|[A-Za-z0-9-]+):[ \t]+)(?P<text>\S.*)$"
@@ -153,32 +133,6 @@ def wrap_line(
     return lines
 
 
-def format_subject(subject: str, *, subject_width: int = DEFAULT_SUBJECT_WIDTH) -> str:
-    """Strip one trailing period from a well-formed Conventional Commit subject.
-
-    The edit applies only when the subject fits ``subject_width``, uses a
-    recognized type, and has a lowercase description ending in exactly one
-    period. Anything else is returned unchanged so an unfamiliar or malformed
-    subject is never partially rewritten.
-    """
-    if len(subject) > subject_width:
-        return subject
-
-    match = SUBJECT_RE.fullmatch(subject)
-    if match is None or match.group("type") not in CONVENTIONAL_TYPES:
-        return subject
-
-    description = match.group("description")
-    if (
-        re.match(r"[a-z]", description[0]) is None
-        or not description.endswith(".")
-        or description.endswith("..")
-    ):
-        return subject
-
-    return subject[:-1]
-
-
 def format_body_line(line: str, *, width: int) -> list[str]:
     """Return ``line`` reformatted to ``width`` as one or more lines.
 
@@ -263,20 +217,19 @@ def looks_preformatted(line: str) -> bool:
 def format_message(message: str, *, body_width: int) -> str:
     """Mechanically format a commit description.
 
-    The subject receives at most the conservative :func:`format_subject`
-    edit. Body prose paragraphs reflow to ``body_width``, and list items
-    and trailers wrap with continuation indentation. Fenced code,
-    preformatted-looking lines, issue-reference footers, and other
-    indented content pass through verbatim, so the result may still fail
-    the checker. Empty input stays empty; non-empty output ends with
-    exactly one newline.
+    The subject passes through unchanged. Body prose paragraphs reflow to
+    ``body_width``, and list items and trailers wrap with continuation
+    indentation. Fenced code, preformatted-looking lines, issue-reference
+    footers, and other indented content pass through verbatim, so the result
+    may still fail the checker. Empty input stays empty; non-empty output ends
+    with exactly one newline.
     """
     normalized = message.rstrip("\r\n")
     if not normalized:
         return ""
 
     lines = normalized.splitlines()
-    result = [format_subject(lines[0])]
+    result = [lines[0]]
     fence: str | None = None
     paragraph: list[str] = []
 

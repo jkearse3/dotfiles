@@ -159,19 +159,19 @@ class CommitMessageTests(unittest.TestCase):
                 self.assertIn(sample, output)
                 self.assertEqual(check_message(output).returncode, 1)
 
-    def test_subject_changes_only_when_valid_except_for_period(self) -> None:
-        valid = format_message("feat: add formatter.\n").stdout
-        malformed = format_message("feat: Add formatter.\n").stdout
-        plain = format_message("api: Added formatter.\n").stdout
-        overlong_subject = "feat: " + "a" * 70 + "."
-        overlong = format_message(overlong_subject).stdout
-        self.assertEqual(valid, "feat: add formatter\n")
-        self.assertEqual(malformed, "feat: Add formatter.\n")
-        self.assertEqual(plain, "api: Added formatter.\n")
-        self.assertEqual(overlong, overlong_subject + "\n")
-        self.assertEqual(check_message(malformed).returncode, 0)
-        self.assertEqual(check_message(plain).returncode, 0)
-        self.assertEqual(check_message(overlong).returncode, 1)
+    def test_subject_is_preserved_regardless_of_shape_or_width(self) -> None:
+        for subject in (
+            "feat: add formatter.",
+            "feat: Add formatter.",
+            "Added formatter.",
+            "api: Added formatter.",
+            "a" * 71 + ".",
+            "feat: " + "a" * 70 + ".",
+            ".",
+            "Wait..",
+        ):
+            with self.subTest(subject=subject):
+                self.assertEqual(format_message(subject).stdout, subject + "\n")
 
     def test_supported_output_is_valid_and_idempotent_at_matching_width(self) -> None:
         message = (
