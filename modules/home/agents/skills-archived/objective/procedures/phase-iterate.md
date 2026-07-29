@@ -60,8 +60,8 @@ completion results.
    If all guards pass, commit the objective to preserve the spec and phase plan
    as a checkpoint independent of implementation. Compose the full revision
    description using the repo's version-control rules. Validate the exact `desc`
-   variable with `printf '%s\n' "$desc" | commit-message check`, revising and
-   rerunning the checker until it passes, then commit with
+   variable with `printf '%s\n' "$desc" | commit-message validate`, revising and
+   rerunning the validator until it passes, then commit with
    `jj commit -m "$desc"`.
 
    If any guard fails, skip the checkpoint and keep all changes in `@`. Never
@@ -202,9 +202,9 @@ completion results.
      3. Mark phase complete in index (`[x]`) and remove the focus marker
         (`[focus]`).
      4. Validate the exact `desc` variable with
-        `printf '%s\n' "$desc" | commit-message check`, revising and rerunning
-        the checker until it passes, then commit the phase with the `jj-atomize`
-        description using `jj commit -m "$desc"`.
+        `printf '%s\n' "$desc" | commit-message validate`, revising and
+        rerunning the validator until it passes, then commit the phase with the
+        `jj-atomize` description using `jj commit -m "$desc"`.
      5. Re-read `.objectives/_current/00-main.md`.
      6. If any phase index entries remain `[ ]`: note "Phase complete. Run
         `/objective iterate` to continue."
@@ -251,8 +251,8 @@ completion results.
    3. Mark phase complete in index (`[x]`) and remove the focus marker
       (`[focus]`).
    4. Validate the exact `desc` variable with
-      `printf '%s\n' "$desc" | commit-message check`, revising and rerunning the
-      checker until it passes, then commit the phase with the `jj-atomize`
+      `printf '%s\n' "$desc" | commit-message validate`, revising and rerunning
+      the validator until it passes, then commit the phase with the `jj-atomize`
       description using `jj commit -m "$desc"`.
    5. Return the structured result.
 

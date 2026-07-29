@@ -171,7 +171,7 @@ cmd:nix-flake-update() {
 	fi
 	cmd:nix-eval-home
 	desc='build(nix): update dependencies'
-	printf '%s\n' "$desc" | commit-message check
+	printf '%s\n' "$desc" | commit-message validate
 	jj commit -m "$desc"
 }
 

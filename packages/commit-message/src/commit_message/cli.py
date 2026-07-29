@@ -1,11 +1,11 @@
-"""Format or check a commit description read from stdin.
+"""Format or validate a commit description read from stdin.
 
 The formatter is deliberately conservative: it rewrites only ordinary prose
 paragraphs, list items, and trailers, and leaves line-sensitive content (code
 fences, tables, diffs, other indented lines, URLs, inline code) byte-for-byte
-intact, so formatted output may still fail the checker. Line endings are
+intact, so formatted output may still fail validation. Line endings are
 normalized to LF and non-empty output ends with exactly one newline. The
-checker intentionally does not enforce Conventional Commit structure: any
+validator intentionally does not enforce Conventional Commit structure: any
 non-empty subject within the width limit is accepted.
 """
 
@@ -55,7 +55,7 @@ def unbreakable_spans(line: str) -> list[tuple[int, int]]:
     """Return the ordered, disjoint spans of ``line`` that must never split.
 
     URLs and inline code stop working when broken across lines, so wrapping
-    and width checking treat each span as atomic. Overlapping matches are
+    and width validation treat each span as atomic. Overlapping matches are
     merged into one span.
     """
     spans = [match.span() for match in URL_RE.finditer(line)]
@@ -114,7 +114,7 @@ def wrap_line(
     """Wrap ``text`` to ``width`` with first- and continuation-line prefixes.
 
     Words are never split, so an unbreakable word may leave a line over
-    ``width``; the checker tolerates exactly that overrun.
+    ``width``; validation tolerates exactly that overrun.
     """
     words = split_unbreakable_words(text)
     if not words:
@@ -221,7 +221,7 @@ def format_message(message: str, *, body_width: int) -> str:
     ``body_width``, and list items and trailers wrap with continuation
     indentation. Fenced code, preformatted-looking lines, issue-reference
     footers, and other indented content pass through verbatim, so the result
-    may still fail the checker. Empty input stays empty; non-empty output ends
+    may still fail validation. Empty input stays empty; non-empty output ends
     with exactly one newline.
     """
     normalized = message.rstrip("\r\n")
@@ -267,8 +267,8 @@ def format_message(message: str, *, body_width: int) -> str:
     return "\n".join(result) + "\n"
 
 
-def check_subject(subject: str, *, subject_width: int) -> list[str]:
-    """Return subject line errors; only presence and width are checked."""
+def validate_subject(subject: str, *, subject_width: int) -> list[str]:
+    """Return subject line errors; only presence and width are validated."""
     if not subject:
         return ["line 1: subject is required"]
     if len(subject) > subject_width:
@@ -276,7 +276,7 @@ def check_subject(subject: str, *, subject_width: int) -> list[str]:
     return []
 
 
-def check_body_lines(lines: list[str], *, body_width: int) -> list[str]:
+def validate_body_lines(lines: list[str], *, body_width: int) -> list[str]:
     """Return width errors for body/footer lines.
 
     Blank lines pass, as do lines whose overrun comes solely from
@@ -318,17 +318,17 @@ def has_allowed_unbreakable_overrun(line: str, *, body_width: int) -> bool:
     return len("".join(reduced_parts)) <= body_width
 
 
-def print_errors(errors: list[str]) -> None:
-    print("commit description check failed:", file=sys.stderr)
+def print_validation_errors(errors: list[str]) -> None:
+    print("commit description validation failed:", file=sys.stderr)
     for error in errors:
         print(f"- {error}", file=sys.stderr)
 
 
 def create_parser() -> argparse.ArgumentParser:
-    """Build the command-line parser for the format and check subcommands."""
+    """Build the command-line parser for the format and validate subcommands."""
     parser = argparse.ArgumentParser(
         prog="commit-message",
-        description="Format or check a commit description read from stdin.",
+        description="Format or validate a commit description read from stdin.",
     )
     subparsers = parser.add_subparsers(dest="command", required=True)
 
@@ -345,16 +345,16 @@ def create_parser() -> argparse.ArgumentParser:
         ),
     )
 
-    checker = subparsers.add_parser(
-        "check", description="Check a commit description read from stdin."
+    validator = subparsers.add_parser(
+        "validate", description="Validate a commit description read from stdin."
     )
-    _ = checker.add_argument(
+    _ = validator.add_argument(
         "--subject-width",
         type=positive_int,
         default=DEFAULT_SUBJECT_WIDTH,
         help=f"maximum subject width in characters (default: {DEFAULT_SUBJECT_WIDTH})",
     )
-    _ = checker.add_argument(
+    _ = validator.add_argument(
         "--body-width",
         type=positive_int,
         default=DEFAULT_BODY_WIDTH,
@@ -367,7 +367,7 @@ def create_parser() -> argparse.ArgumentParser:
 
 
 def main(argv: list[str] | None = None) -> int:
-    """Run the CLI: format or check a commit description read from stdin."""
+    """Run the CLI: format or validate a commit description read from stdin."""
     namespace = create_parser().parse_args(argv)
     message = sys.stdin.read()
 
@@ -379,10 +379,10 @@ def main(argv: list[str] | None = None) -> int:
 
     lines = message.splitlines()
     subject = lines[0] if lines else ""
-    errors = check_subject(subject, subject_width=cast(int, namespace.subject_width))
-    errors.extend(check_body_lines(lines, body_width=cast(int, namespace.body_width)))
+    errors = validate_subject(subject, subject_width=cast(int, namespace.subject_width))
+    errors.extend(validate_body_lines(lines, body_width=cast(int, namespace.body_width)))
 
     if errors:
-        print_errors(errors)
+        print_validation_errors(errors)
         return 1
     return 0

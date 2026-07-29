@@ -35,14 +35,14 @@ def fish_candidates(commandline: str) -> set[str]:
 class CompletionTests(unittest.TestCase):
     def test_fish_completes_subcommands_and_options(self) -> None:
         self.assertEqual(
-            {"format", "check"}, fish_candidates("commit-message ")
+            {"format", "validate"}, fish_candidates("commit-message ")
         )
         self.assertIn(
             "--body-width", fish_candidates("commit-message format --")
         )
-        check_options = fish_candidates("commit-message check --")
-        self.assertIn("--subject-width", check_options)
-        self.assertIn("--body-width", check_options)
+        validate_options = fish_candidates("commit-message validate --")
+        self.assertIn("--subject-width", validate_options)
+        self.assertIn("--body-width", validate_options)
 
     def test_zsh_defines_subcommands_and_options(self) -> None:
         result = run(
@@ -56,7 +56,7 @@ class CompletionTests(unittest.TestCase):
         lines = result.stdout.splitlines()
         subcommands = (
             r"1:command:((format\:format\ a\ commit\ description "
-            + r"check\:check\ a\ commit\ description))"
+            + r"validate\:validate\ a\ commit\ description))"
         )
         self.assertIn(
             subcommands,
@@ -65,7 +65,7 @@ class CompletionTests(unittest.TestCase):
 
         for command, expected in (
             ("format", "--body-width[maximum body/footer line width]:characters"),
-            ("check", "--subject-width[maximum subject width]:characters"),
+            ("validate", "--subject-width[maximum subject width]:characters"),
         ):
             with self.subTest(command=command):
                 command_result = run(

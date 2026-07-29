@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "commit-message"
 version = "0.0.0"
-description = "Format and check commit descriptions"
+description = "Format and validate commit descriptions"
 requires-python = ">=3.11"
 
 [project.scripts]

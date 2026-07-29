@@ -29,7 +29,7 @@ pkgs.python3Packages.buildPythonApplication {
       python3 -B -m unittest discover -s tests -p 'test_*.py'
     python3 -B -m unittest discover -s tests -p 'completion_test.py'
     "$out/bin/commit-message" format --help >/dev/null
-    "$out/bin/commit-message" check --help >/dev/null
+    "$out/bin/commit-message" validate --help >/dev/null
     runHook postInstallCheck
   '';
 }

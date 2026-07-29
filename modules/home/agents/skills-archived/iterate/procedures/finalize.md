@@ -62,7 +62,7 @@ candidate only after read-only revalidation:
   revision without material changes.
 - Assign the persisted `revision_description` to a shell variable exactly as
   extracted from the state file and validate that exact value with
-  `commit-message check` before updating the candidate.
+  `commit-message validate` before updating the candidate.
 
 When stale-candidate revalidation succeeds, update only `target_commit` in the
 current `## Finalization Candidate` to the current `@` commit id, reread
@@ -73,9 +73,9 @@ stop for user input before any VCS lifecycle action.
 
 For `closeout: finalize-revision`, assign the persisted `revision_description`
 to a shell variable exactly as extracted from the state file and validate that
-exact value with `commit-message check`. If validation fails, stop with the
-checker output. Do not edit the description during finalization unless the user
-sends the workflow back through implement or verify. If stale-candidate
+exact value with `commit-message validate`. If validation fails, stop with the
+validator output. Do not edit the description during finalization unless the
+user sends the workflow back through implement or verify. If stale-candidate
 revalidation already validated the exact same persisted description after
 refreshing `target_commit`, this message validation requirement is satisfied.
 

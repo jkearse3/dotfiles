@@ -25,7 +25,7 @@ value, and pass it unchanged to the mutation:
 
 ```bash
 desc="$(printf '%s\n' "$desc" | commit-message format)"
-printf '%s\n' "$desc" | commit-message check
+printf '%s\n' "$desc" | commit-message validate
 ```
 
 If validation fails, revise and repeat. Never format an exact user-supplied

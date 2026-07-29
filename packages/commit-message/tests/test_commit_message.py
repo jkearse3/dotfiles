@@ -21,14 +21,14 @@ def format_message(message: str, *args: str) -> subprocess.CompletedProcess[str]
     return run_cli("format", message, *args)
 
 
-def check_message(message: str, *args: str) -> subprocess.CompletedProcess[str]:
-    return run_cli("check", message, *args)
+def validate_message(message: str, *args: str) -> subprocess.CompletedProcess[str]:
+    return run_cli("validate", message, *args)
 
 
 class CommitMessageTests(unittest.TestCase):
     def test_empty_input_stays_empty_but_is_invalid(self) -> None:
         self.assertEqual(format_message("").stdout, "")
-        result = check_message("")
+        result = validate_message("")
         self.assertEqual(result.returncode, 1)
         self.assertIn("line 1: subject is required", result.stderr)
 
@@ -39,35 +39,35 @@ class CommitMessageTests(unittest.TestCase):
     def test_invalid_widths_are_argparse_errors(self) -> None:
         for command, arguments in (
             ("format", ("--body-width", "0")),
-            ("check", ("--subject-width", "nope")),
-            ("check", ("--body-width", "-1")),
+            ("validate", ("--subject-width", "nope")),
+            ("validate", ("--body-width", "-1")),
         ):
             with self.subTest(command=command, arguments=arguments):
                 result = run_cli(command, "feat: test", *arguments)
                 self.assertEqual(result.returncode, 2)
                 self.assertIn("must be a positive integer", result.stderr)
 
-    def test_checker_accepts_plain_subjects_and_conventional_variants(self) -> None:
+    def test_validator_accepts_plain_subjects_and_conventional_variants(self) -> None:
         for message in (
-            "feat(vcs)!: add commit message checker\n\nBody line within limit.\n",
+            "feat(vcs)!: add commit message validator\n\nBody line within limit.\n",
             "add a thing\n",
             "api: added some endpoint\n",
-            "noop: add checker\n",
-            "feat(): add checker\n",
-            "feat: Add checker\n",
-            "feat: add checker.\n",
+            "noop: add validator\n",
+            "feat(): add validator\n",
+            "feat: Add validator\n",
+            "feat: add validator.\n",
         ):
             with self.subTest(message=message):
-                self.assertEqual(check_message(message).returncode, 0)
+                self.assertEqual(validate_message(message).returncode, 0)
 
-    def test_checker_reports_subject_and_body_widths(self) -> None:
-        subject = check_message(
+    def test_validator_reports_subject_and_body_widths(self) -> None:
+        subject = validate_message(
             "plain subject longer than twenty characters\n", "--subject-width", "20"
         )
         self.assertEqual(subject.returncode, 1)
         self.assertIn("line 1: subject is", subject.stderr)
 
-        body = check_message(
+        body = validate_message(
             "docs: add note\n\nordinary body line longer\n", "--body-width", "20"
         )
         self.assertEqual(body.returncode, 1)
@@ -86,7 +86,7 @@ class CommitMessageTests(unittest.TestCase):
     def test_reflows_existing_prose_lines_as_one_paragraph(self) -> None:
         message = (
             "fix(vcs): accept plain commit subjects\n\n"
-            "The checker previously required every subject to use Conventional Commit\n"
+            "The validator previously required every subject to use Conventional Commit\n"
             "syntax, rejecting valid repository-specific forms. Limit subject\n"
             "validation\n"
             "to presence and width while retaining body width checks; agent-authored\n"
@@ -137,14 +137,14 @@ class CommitMessageTests(unittest.TestCase):
         )
         self.assertEqual(format_message(message).stdout, message + "\n")
 
-    def test_urls_and_inline_code_are_not_split_and_checker_accepts_them(self) -> None:
+    def test_urls_and_inline_code_are_not_split_and_validator_accepts_them(self) -> None:
         url = "https://example.com/" + "a" * 80
         code = "`command --with a value that is intentionally far too long for one line`"
         message = f"docs: explain formatter\n\nSee {url}\n\nUse {code} when testing."
         output = format_message(message).stdout
         self.assertIn(url, output)
         self.assertIn(code, output)
-        self.assertEqual(check_message(output).returncode, 0)
+        self.assertEqual(validate_message(output).returncode, 0)
 
     def test_conservative_formatting_may_remain_invalid(self) -> None:
         samples = (
@@ -157,7 +157,7 @@ class CommitMessageTests(unittest.TestCase):
                 message = f"test: preserve sample\n\n{sample}"
                 output = format_message(message).stdout
                 self.assertIn(sample, output)
-                self.assertEqual(check_message(output).returncode, 1)
+                self.assertEqual(validate_message(output).returncode, 1)
 
     def test_subject_is_preserved_regardless_of_shape_or_width(self) -> None:
         for subject in (
@@ -177,12 +177,17 @@ class CommitMessageTests(unittest.TestCase):
         message = (
             "feat: format descriptions.\n\n"
             "This body contains enough ordinary prose to require deterministic wrapping at a narrow configured width.\n\n"
-            "Fixes: This trailer value also needs deterministic wrapping for the checker."
+            "Fixes: This trailer value also needs deterministic wrapping for validation."
         )
         first = format_message(message, "--body-width", "50").stdout
         second = format_message(first, "--body-width", "50").stdout
         self.assertEqual(first, second)
-        self.assertEqual(check_message(first, "--body-width", "50").returncode, 0)
+        self.assertEqual(validate_message(first, "--body-width", "50").returncode, 0)
+
+    def test_check_subcommand_is_rejected(self) -> None:
+        result = run_cli("check", "feat: test")
+        self.assertEqual(result.returncode, 2)
+        self.assertIn("invalid choice: 'check'", result.stderr)
 
 
 if __name__ == "__main__":

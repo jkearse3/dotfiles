@@ -61,7 +61,7 @@ unpublished, task-owned commit set authorized for rewrite.
 
   Prior state or constraint, followed by the change in response.'
   desc="$(printf '%s\n' "$desc" | commit-message format)"
-  printf '%s\n' "$desc" | commit-message check
+  printf '%s\n' "$desc" | commit-message validate
   git commit --no-edit -m "$desc"
   ```
 
