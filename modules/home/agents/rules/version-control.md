@@ -2,10 +2,10 @@
 
 ## Repository Mode
 
-Before any VCS operation, use read-only commands to determine whether the
-workspace is a Git repository. If so, run `jj-ensure`; this initialization has
-standing authorization, including for read-only requests. Never run it outside a
-Git repository or invoke `jj git init` directly.
+Before any VCS operation, use `git rev-parse --is-inside-work-tree` to determine
+whether the workspace is a Git repository. If so, run `jj-ensure`; this
+initialization has standing authorization, including for read-only requests.
+Never run it outside a Git repository or invoke `jj git init` directly.
 
 After successful initialization, prefer jj and do not mix mutation models. Use
 Git only when jj lacks the operation, Git is specifically required, the user
