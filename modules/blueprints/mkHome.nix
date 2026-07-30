@@ -3,10 +3,12 @@
   withSystem,
 }:
 {
-  hostname,
+  blueprintId,
+  os,
   username,
   system,
   extraHomeModules ? [ ],
+  ...
 }:
 assert builtins.elem system [
   "aarch64-darwin"
@@ -22,12 +24,12 @@ let
     builtins.readFile (inputs.llm-agents + "/packages/herdr/hashes.json")
   );
   homeStateVersion = "26.05";
-  isDarwin = lib.hasSuffix "-darwin" system;
+  isDarwin = os == "darwin";
   homeDirectory = if isDarwin then "/Users/${username}" else "/home/${username}";
   editable = builtins.getEnv "DOTFILES_HOME_LOCKED" == "";
 in
 {
-  flake.homeConfigurations."${username}@${hostname}" = withSystem system (
+  flake.homeConfigurations."${username}@${blueprintId}" = withSystem system (
     {
       unstablePkgs,
       ...
@@ -43,6 +45,7 @@ in
             };
             programs.home-manager.enable = true;
             xdg.enable = true;
+            xdg.configFile."dotfiles/blueprint-id".text = "${blueprintId}\n";
           }
           // lib.optionalAttrs isDarwin {
             targets.darwin.copyApps.enable = false;

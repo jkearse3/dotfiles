@@ -54,7 +54,7 @@
       {
         imports = [
           inputs.treefmt-nix.flakeModule
-          ./modules/hosts
+          ./modules/blueprints
           ./modules/devshell.nix
           ./modules/pkgs.nix
           ./modules/treefmt.nix

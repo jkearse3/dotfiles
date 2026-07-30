@@ -1,8 +1,8 @@
 keys:
-  - &jk3-lap-001 age1x7euc977ng97cdgxa6y9pcet9y3duu8vcq2edpxgyt7t5hrndfkq7jxunq
+  - &personal age1x7euc977ng97cdgxa6y9pcet9y3duu8vcq2edpxgyt7t5hrndfkq7jxunq
 
 creation_rules:
   - path_regex: ^modules/home/agents/opencode/secrets\.sops\.yaml$
     key_groups:
       - age:
-          - *jk3-lap-001
+          - *personal

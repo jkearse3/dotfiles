@@ -3,10 +3,14 @@
   withSystem,
 }:
 {
-  hostname,
+  blueprintId,
+  os,
   username,
   system,
+  extraSystemModules ? [ ],
+  ...
 }:
+assert os == "darwin";
 assert builtins.elem system [
   "aarch64-darwin"
   "x86_64-darwin"
@@ -16,7 +20,7 @@ let
   darwinStateVersion = 5;
 in
 {
-  flake.darwinConfigurations.${hostname} = withSystem system (
+  flake.darwinConfigurations.${blueprintId} = withSystem system (
     {
       unstablePkgs,
       ...
@@ -55,7 +59,8 @@ in
             ];
           };
         }
-      ];
+      ]
+      ++ extraSystemModules;
       specialArgs = {
         inherit inputs;
       };
