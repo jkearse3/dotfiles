@@ -24,21 +24,34 @@ let
     inherit lib pkgs;
     skills = config.agents.skills;
   };
-  opencodeSecretsFile = "${config.xdg.configHome}/sops/secrets/opencode.sops.yaml";
+  sopsEnvironmentFile =
+    if config.agents.opencode.sopsEnvironmentFile == null then
+      null
+    else
+      builtins.path {
+        path = config.agents.opencode.sopsEnvironmentFile;
+        name = "opencode-sops-environment.sops.yaml";
+      };
   preventIdleSleep = lib.optionalString pkgs.stdenv.hostPlatform.isDarwin "/usr/bin/caffeinate -i ";
 
-  mkOpencodeWithSecrets =
+  mkOpencode =
     {
       name,
       command,
     }:
     pkgs.writeShellApplication {
       inherit name;
-      text = ''
-        printf -v command_string '%q ' ${lib.escapeShellArg command} "$@"
-        exec ${preventIdleSleep}${lib.getExe pkgs.sops} exec-env --same-process \
-          ${lib.escapeShellArg opencodeSecretsFile} "$command_string"
-      '';
+      text =
+        if sopsEnvironmentFile == null then
+          ''
+            exec ${preventIdleSleep}${lib.escapeShellArg command} "$@"
+          ''
+        else
+          ''
+            printf -v command_string '%q ' ${lib.escapeShellArg command} "$@"
+            exec ${preventIdleSleep}${lib.getExe pkgs.sops} exec-env --same-process \
+              ${sopsEnvironmentFile} "$command_string"
+          '';
     };
 
   opencodeFishCompletion = # fish
@@ -78,42 +91,52 @@ let
     command = "${opencode-wrapped}/bin/opencode";
   };
 
-  opencode = mkOpencodeWithSecrets {
+  opencode = mkOpencode {
     name = "opencode";
     command = "${opencode-wrapped}/bin/opencode";
   };
-  nono-opencode = mkOpencodeWithSecrets {
+  nono-opencode = mkOpencode {
     name = "nono-opencode";
     command = "${nono-opencode-entrypoint}/bin/nono-opencode-entrypoint";
   };
 in
 {
-  home.packages = [
-    opencode
-    nono-opencode
-  ];
-  home.file = {
-    ".config/opencode/opencode.jsonc".source = mkSource ./opencode.jsonc;
-    ".config/opencode/tui.json".source = mkSource ./tui.json;
-    ".config/opencode/skills" = renderSkillsDir { };
-    ".config/opencode/AGENTS.md".text = renderAgentsMarkdown {
-      title = "OpenCode Instructions";
-      registries = [
-        {
-          name = "shared";
-          sources = config.agents.sharedRules;
-        }
-      ];
-      order = config.agents.sharedRuleOrder;
-    };
-    ".config/fish/completions/opencode.fish".text = opencodeFishCompletion;
-
-    # The sandboxed `nono-opencode` wrapper inherits opencode's dynamic yargs completion via fish's
-    # `--wraps`. The wrapped function calls the bare `opencode` binary, so tabbing never launches the
-    # sandbox. Autoloaded by command name, so it lives in its own file.
-    ".config/fish/completions/nono-opencode.fish".text = ''
-      complete -c nono-opencode --wraps opencode
+  options.agents.opencode.sopsEnvironmentFile = lib.mkOption {
+    type = lib.types.nullOr lib.types.path;
+    default = null;
+    description = ''
+      SOPS-encrypted YAML file whose top-level values are injected into OpenCode
+      as environment variables. When unset, OpenCode starts without SOPS.
     '';
   };
-  xdg.configFile."sops/secrets/opencode.sops.yaml".source = ./secrets.sops.yaml;
+
+  config = {
+    home.packages = [
+      opencode
+      nono-opencode
+    ];
+    home.file = {
+      ".config/opencode/opencode.jsonc".source = mkSource ./opencode.jsonc;
+      ".config/opencode/tui.json".source = mkSource ./tui.json;
+      ".config/opencode/skills" = renderSkillsDir { };
+      ".config/opencode/AGENTS.md".text = renderAgentsMarkdown {
+        title = "OpenCode Instructions";
+        registries = [
+          {
+            name = "shared";
+            sources = config.agents.sharedRules;
+          }
+        ];
+        order = config.agents.sharedRuleOrder;
+      };
+      ".config/fish/completions/opencode.fish".text = opencodeFishCompletion;
+
+      # The sandboxed `nono-opencode` wrapper inherits opencode's dynamic yargs completion via fish's
+      # `--wraps`. The wrapped function calls the bare `opencode` binary, so tabbing never launches the
+      # sandbox. Autoloaded by command name, so it lives in its own file.
+      ".config/fish/completions/nono-opencode.fish".text = ''
+        complete -c nono-opencode --wraps opencode
+      '';
+    };
+  };
 }

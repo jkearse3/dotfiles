@@ -10,7 +10,11 @@ let
       os = "darwin";
       system = "aarch64-darwin";
       username = "johnnie";
-      extraHomeModules = [ ];
+      extraHomeModules = [
+        {
+          agents.opencode.sopsEnvironmentFile = ../home/agents/opencode/secrets.sops.yaml;
+        }
+      ];
       extraSystemModules = [ ];
     };
     laptop-lab = {
