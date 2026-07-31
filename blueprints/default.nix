@@ -1,71 +1,48 @@
-{
-  lib,
-  inputs,
-  withSystem,
-  ...
-}:
+_:
 let
-  blueprints = {
-    laptop-personal = {
-      os = "darwin";
-      system = "aarch64-darwin";
-      username = "johnnie";
-      extraHomeModules = [
-        {
-          agents.opencode.sopsEnvironmentFile = ../secrets/personal/opencode.sops.yaml;
-        }
-      ];
-      extraSystemModules = [ ];
-    };
-    laptop-lab = {
-      os = "darwin";
-      system = "aarch64-darwin";
-      username = "johnnie";
-      extraHomeModules = [ ];
-      extraSystemModules = [ ];
-    };
+  workstationHome = {
+    imports = [
+      ../modules/home
+    ];
   };
 
-  mkBlueprint =
-    blueprintId: blueprint:
-    let
-      args = blueprint // {
-        inherit blueprintId;
-      };
-    in
-    {
-      imports = [
-        ((import ../flake/mkDarwinConfiguration.nix { inherit inputs withSystem; }) args)
-        ((import ../flake/mkHomeConfiguration.nix { inherit inputs withSystem; }) args)
-      ];
-    };
+  workstationDarwin = { };
 in
 {
-  imports = lib.mapAttrsToList mkBlueprint blueprints;
-
-  options.flake = {
-    homeConfigurations = lib.mkOption {
-      type = lib.types.lazyAttrsOf lib.types.raw;
-      default = { };
-      description = "Home Manager configurations by user@blueprint ID";
+  dotfiles.blueprints = {
+    laptop-personal = {
+      system = "aarch64-darwin";
+      user = {
+        name = "johnnie";
+        homeDirectory = "/Users/johnnie";
+      };
+      home = {
+        stateVersion = "26.05";
+        module = {
+          imports = [ workstationHome ];
+          agents.opencode.sopsEnvironmentFile = ../secrets/personal/opencode.sops.yaml;
+        };
+      };
+      darwin = {
+        stateVersion = 5;
+        module = workstationDarwin;
+      };
     };
 
-    darwinConfigurations = lib.mkOption {
-      type = lib.types.lazyAttrsOf lib.types.raw;
-      default = { };
-      description = "Darwin configurations by blueprint ID";
-    };
-
-    blueprints = lib.mkOption {
-      type = lib.types.attrsOf lib.types.raw;
-      default = { };
-      description = "Blueprint metadata used to select canonical flake outputs";
+    laptop-lab = {
+      system = "aarch64-darwin";
+      user = {
+        name = "johnnie";
+        homeDirectory = "/Users/johnnie";
+      };
+      home = {
+        stateVersion = "26.05";
+        module = workstationHome;
+      };
+      darwin = {
+        stateVersion = 5;
+        module = workstationDarwin;
+      };
     };
   };
-
-  config.flake.blueprints = lib.mapAttrs (blueprintId: blueprint: {
-    inherit (blueprint) os system username;
-    homeConfiguration = "${blueprint.username}@${blueprintId}";
-    systemConfiguration = blueprintId;
-  }) blueprints;
 }
