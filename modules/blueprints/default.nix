@@ -12,7 +12,7 @@ let
       username = "johnnie";
       extraHomeModules = [
         {
-          agents.opencode.sopsEnvironmentFile = ../home/agents/opencode/secrets.sops.yaml;
+          agents.opencode.sopsEnvironmentFile = ../../secrets/personal/opencode.sops.yaml;
         }
       ];
       extraSystemModules = [ ];

@@ -2,7 +2,7 @@ keys:
   - &personal age1x7euc977ng97cdgxa6y9pcet9y3duu8vcq2edpxgyt7t5hrndfkq7jxunq
 
 creation_rules:
-  - path_regex: ^modules/home/agents/opencode/secrets\.sops\.yaml$
+  - path_regex: ^secrets/personal/
     key_groups:
       - age:
           - *personal
