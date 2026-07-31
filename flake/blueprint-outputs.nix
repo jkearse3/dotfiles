@@ -70,14 +70,16 @@ let
     };
   };
 
-  validateBlueprintIds =
+  validateBlueprintDeclarations =
     blueprintDeclarations:
     let
       invalidIds = lib.filter (blueprintId: builtins.match "^[a-z0-9][a-z0-9-]*$" blueprintId == null) (
         builtins.attrNames blueprintDeclarations
       );
     in
-    if invalidIds == [ ] then
+    if blueprintDeclarations == { } then
+      throw "At least one dotfiles.blueprintDeclarations entry is required"
+    else if invalidIds == [ ] then
       blueprintDeclarations
     else
       throw "Invalid blueprint IDs: ${lib.concatStringsSep ", " invalidIds}";
@@ -109,7 +111,7 @@ in
     dotfiles.blueprintDeclarations = mkOption {
       type = types.attrsOf blueprintDeclarationType;
       default = { };
-      apply = validateBlueprintIds;
+      apply = validateBlueprintDeclarations;
       description = "Complete Home Manager and nix-darwin configuration recipes";
     };
 

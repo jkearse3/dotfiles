@@ -1,6 +1,11 @@
 #!/usr/bin/env bash
 
-set -e
+if ((BASH_VERSINFO[0] < 4 || (BASH_VERSINFO[0] == 4 && BASH_VERSINFO[1] < 4))); then
+	echo "error: x.sh requires Bash 4.4 or newer; rerun as 'nix develop --command ./x.sh <command> [arguments]'" >&2
+	exit 1
+fi
+
+set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$ROOT"
@@ -14,8 +19,9 @@ HOME_RESULT_PATH=""
 SYSTEM_RESULT_PATH=""
 PRIVATE_OVERRIDE_ARGS=()
 
-snapshot() {
-	jj st >/dev/null 2>&1 || true
+snapshot_jj_working_copy() {
+	command -v jj >/dev/null 2>&1 || return 0
+	jj status >/dev/null
 }
 
 load_private_override_args() {
@@ -59,11 +65,18 @@ read_blueprint_marker() {
 	BLUEPRINT_SOURCE="marker $marker"
 }
 
-blueprint_inventory() {
+load_blueprint_inventory() {
 	# The public inventory is the shell-to-Nix contract; shell commands do not
 	# duplicate authored blueprint identities or output naming rules.
 	load_private_override_args
-	nix eval --json .#blueprints --accept-flake-config "${PRIVATE_OVERRIDE_ARGS[@]}"
+
+	local inventory
+	if ! inventory="$(nix eval --json .#blueprints --accept-flake-config "${PRIVATE_OVERRIDE_ARGS[@]}")"; then
+		echo "error: unable to evaluate canonical blueprint metadata" >&2
+		return 1
+	fi
+
+	printf '%s\n' "$inventory"
 }
 
 configure_blueprint_selection() {
@@ -105,7 +118,7 @@ require_blueprint() {
 	[[ -n $BLUEPRINT_ID ]] || read_blueprint_marker
 
 	local inventory
-	if ! inventory="$(blueprint_inventory)"; then
+	if ! inventory="$(load_blueprint_inventory)"; then
 		echo "error: unable to load canonical blueprint metadata" >&2
 		exit 1
 	fi
@@ -118,27 +131,16 @@ run_for_blueprint() {
 
 	if [[ $# -eq 0 ]]; then
 		:
-	elif [[ $# -eq 2 && $1 == --blueprint && -n $2 ]]; then
+	else
 		BLUEPRINT_ID="$2"
 		BLUEPRINT_SOURCE="--blueprint"
-	else
-		echo "error: blueprint commands accept only '--blueprint <blueprint-id>'" >&2
-		exit 1
 	fi
 
 	require_blueprint
 	"$fn"
 }
 
-require_no_arguments() {
-	if [[ $# -ne 0 ]]; then
-		echo "error: unexpected arguments: $*" >&2
-		exit 1
-	fi
-}
-
 nix-eval() {
-	snapshot
 	echo "Evaluating $1..."
 	load_private_override_args
 	nix eval --raw "$1" --accept-flake-config "${PRIVATE_OVERRIDE_ARGS[@]}" "${@:2}"
@@ -173,32 +175,33 @@ cmd:nix-eval-system() {
 
 nix-eval-all() {
 	local inventory
-	inventory="$(blueprint_inventory)"
+	inventory="$(load_blueprint_inventory)"
 
-	local blueprint
+	local blueprint blueprints
+	if ! blueprints="$(jq -r 'keys[]' <<<"$inventory")"; then
+		echo "error: unable to read canonical blueprint IDs" >&2
+		return 1
+	fi
 	while IFS= read -r blueprint; do
 		configure_blueprint_selection "$blueprint" "canonical inventory" "$inventory"
 		nix-eval "$HOME_FLAKE_ATTR"
 		nix-eval "$SYSTEM_FLAKE_ATTR"
-	done < <(jq -r 'keys[]' <<<"$inventory")
+	done <<<"$blueprints"
 }
 
 cmd:nix-eval-all() {
-	require_no_arguments "$@"
 	nix-eval-all
 }
 
 cmd:nix-blueprints() {
-	require_no_arguments "$@"
 	local inventory
-	inventory="$(blueprint_inventory)"
+	inventory="$(load_blueprint_inventory)"
 	jq -r 'keys[]' <<<"$inventory"
 }
 
 nix-build() {
 	NIX_BUILDER="nix"
 	[[ -x ~/.nix-profile/bin/nom ]] && NIX_BUILDER="nom"
-	snapshot
 	echo "Building $1..."
 	load_private_override_args
 	$NIX_BUILDER build "$1" -o "$2" --show-trace --accept-flake-config "${PRIVATE_OVERRIDE_ARGS[@]}" "${@:3}"
@@ -243,20 +246,38 @@ nvd-diff() {
 	nvd diff "$1" "$2"
 }
 
+require_result() {
+	local result_path=$1
+	local build_command=$2
+	local executable=${3:-}
+	if [[ ! -e $result_path ]]; then
+		echo "error: required result '$result_path' is missing; run '$build_command'" >&2
+		return 1
+	fi
+	if [[ -n $executable && ! -x $result_path/$executable ]]; then
+		echo "error: required executable '$result_path/$executable' is missing; run '$build_command'" >&2
+		return 1
+	fi
+}
+
 nix-diff-home() {
+	require_result "$HOME_RESULT_PATH" "./x.sh nix-build-home --blueprint $BLUEPRINT_ID" || return
 	nvd-diff ~/.local/state/nix/profiles/home-manager "$HOME_RESULT_PATH"
 }
 
 nix-diff-system() {
+	require_result "$SYSTEM_RESULT_PATH" "./x.sh nix-build-system --blueprint $BLUEPRINT_ID" || return
 	nvd-diff /run/current-system "$SYSTEM_RESULT_PATH"
 }
 
 nix-activate-home() {
+	require_result "$HOME_RESULT_PATH" "./x.sh nix-build-home --blueprint $BLUEPRINT_ID" activate || return
 	echo "Activating home config..."
 	"$HOME_RESULT_PATH/activate"
 }
 
 nix-activate-system() {
+	require_result "$SYSTEM_RESULT_PATH" "./x.sh nix-build-system --blueprint $BLUEPRINT_ID" activate || return
 	echo "Activating system config (requires sudo)..."
 	sudo "$SYSTEM_RESULT_PATH/activate"
 }
@@ -306,7 +327,11 @@ cmd:nix-switch-system() {
 }
 
 cmd:nix-package-update() {
-	snapshot
+	local updater_args=(--latest)
+	if [[ $# -eq 1 ]]; then
+		updater_args+=(--dry-run)
+	fi
+
 	shopt -s nullglob
 	local updaters=(packages/*/update.sh)
 	shopt -u nullglob
@@ -316,54 +341,53 @@ cmd:nix-package-update() {
 	fi
 	for updater in "${updaters[@]}"; do
 		echo "Updating $updater..."
-		"$updater" --latest "$@"
+		"$updater" "${updater_args[@]}"
 	done
 }
 
 cmd:nix-flake-update() {
 	load_private_override_args
-	if [[ $(jj log -r '@' --no-graph -T 'if(empty, "true", "false")') != true ]]; then
+	local working_copy_empty
+	if ! working_copy_empty="$(jj log -r '@' --no-graph -T 'if(empty, "true", "false")')"; then
+		echo "error: unable to inspect the jj working copy before updating dependencies" >&2
+		return 1
+	fi
+	if [[ $working_copy_empty != true ]]; then
 		jj new
 	fi
 	nix flake update --accept-flake-config "${PRIVATE_OVERRIDE_ARGS[@]}"
 	cmd:nix-package-update "$@"
 	local changed_files
-	changed_files="$(jj diff -r @ --name-only)"
+	if ! changed_files="$(jj diff -r @ --name-only)"; then
+		echo "error: unable to inspect dependency changes" >&2
+		return 1
+	fi
 	if [[ -z $changed_files ]]; then
-		echo "dependencies unchanged, skipping eval and commit"
+		echo "dependencies unchanged, skipping evaluation"
 		return
 	fi
 	nix-eval-all
-	desc='build(nix): update dependencies'
-	printf '%s\n' "$desc" | commit-message validate
-	jj commit -m "$desc"
 }
 
 cmd:fmt() {
-	require_no_arguments "$@"
-	snapshot
 	echo "Formatting..."
 	load_private_override_args
 	nix fmt --accept-flake-config "${PRIVATE_OVERRIDE_ARGS[@]}" -- --no-cache
 }
 
 cmd:fmt-check() {
-	require_no_arguments "$@"
-	snapshot
 	echo "Checking formatting..."
 	load_private_override_args
-	nix fmt --accept-flake-config "${PRIVATE_OVERRIDE_ARGS[@]}" -- --no-cache --fail-on-change
+	nix build .#checks.aarch64-darwin.treefmt --no-link --no-write-lock-file --accept-flake-config "${PRIVATE_OVERRIDE_ARGS[@]}"
 }
 
 cmd:lint() {
-	require_no_arguments "$@"
 	lint-nix
 	lint-shell
 	lint-python
 }
 
 lint-nix() {
-	snapshot
 	local files=()
 	local existing_files=()
 	local file_list
@@ -388,14 +412,24 @@ lint-nix() {
 }
 
 cmd:lint-nix() {
-	require_no_arguments "$@"
 	lint-nix
 }
 
 lint-shell() {
-	snapshot
 	local files=()
-	mapfile -d '' -t files < <(git ls-files -z --cached --others --exclude-standard '*.sh')
+	local existing_files=()
+	local file_list
+	file_list="$(mktemp)"
+	if ! git ls-files -z --cached '*.sh' '*.bash' >"$file_list"; then
+		rm -f "$file_list"
+		return 1
+	fi
+	mapfile -d '' -t files <"$file_list"
+	rm -f "$file_list"
+	for file in "${files[@]}"; do
+		[[ -f $file ]] && existing_files+=("$file")
+	done
+	files=("${existing_files[@]}")
 	if [[ ${#files[@]} -eq 0 ]]; then
 		echo "No shell scripts found"
 		return 0
@@ -405,48 +439,73 @@ lint-shell() {
 }
 
 cmd:lint-shell() {
-	require_no_arguments "$@"
 	lint-shell
 }
 
 lint-python() {
-	snapshot
 	echo "Checking Python types..."
 	basedpyright --project pyrightconfig.json --warnings
 }
 
 cmd:lint-python() {
-	require_no_arguments "$@"
 	lint-python
 }
 
 cmd:python-check() {
-	require_no_arguments "$@"
 	lint-python
 }
 
+validate_command_arguments() {
+	local command=$1
+	shift
+
+	case $command in
+	nix-activate-home | nix-activate-system | nix-build-home | nix-build-home-locked | nix-build-system | nix-diff-home | nix-diff-system | nix-eval-home | nix-eval-home-locked | nix-eval-system | nix-switch-home | nix-switch-home-locked | nix-switch-system)
+		[[ $# -eq 0 || ($# -eq 2 && $1 == --blueprint && -n $2) ]] || return 2
+		;;
+	nix-package-update)
+		[[ $# -eq 0 || ($# -eq 1 && $1 == --dry-run) ]] || return 2
+		;;
+	*)
+		[[ $# -eq 0 ]] || return 2
+		;;
+	esac
+}
+
 usage() {
-	echo "usage: $0 <command> [arguments]" >&2
-	echo "" >&2
-	echo "commands:" >&2
+	cat >&2 <<EOF
+usage: $0 <command> [arguments]
+
+Blueprint commands accept optional '--blueprint <blueprint-id>'.
+nix-package-update accepts optional '--dry-run'.
+nix-flake-update and fmt modify the working copy.
+
+commands:
+EOF
 	declare -F | sed -n 's/.*cmd://p' | sort | sed 's/^/  /' >&2
 }
 
 main() {
 	if [[ -z ${1:-} ]]; then
 		usage
-		exit 1
+		exit 2
 	fi
 	local command="$1"
 	local command_fn="cmd:$command"
 	shift
 
 	if declare -f "$command_fn" >/dev/null 2>&1; then
+		if ! validate_command_arguments "$command" "$@"; then
+			echo "error: invalid arguments for '$command': $*" >&2
+			usage
+			return 2
+		fi
+		snapshot_jj_working_copy || return
 		"$command_fn" "$@"
 	else
 		echo "error: unknown command '$command'" >&2
 		usage
-		exit 1
+		exit 2
 	fi
 }
 
