@@ -9,6 +9,17 @@ let
   herdrRelease = builtins.fromJSON (
     builtins.readFile (inputs.llm-agents + "/packages/herdr/hashes.json")
   );
+  useEditableHomeSources = builtins.getEnv "DOTFILES_HOME_LOCKED" == "";
+  homeManagerBaselineModule = {
+    home = {
+      username = blueprint.user.name;
+      inherit (blueprint.user) homeDirectory;
+      inherit (blueprint.home) stateVersion;
+    };
+    programs.home-manager.enable = true;
+    xdg.enable = true;
+    xdg.configFile."dotfiles/blueprint-id".text = "${blueprint.blueprintId}\n";
+  };
 in
 withSystem blueprint.system (
   {
@@ -18,18 +29,7 @@ withSystem blueprint.system (
   home-manager.lib.homeManagerConfiguration {
     pkgs = unstablePkgs;
     modules = [
-      {
-        home = {
-          username = blueprint.user.name;
-          inherit (blueprint.user) homeDirectory;
-          inherit (blueprint.home) stateVersion;
-        };
-        programs.home-manager.enable = true;
-        xdg.enable = true;
-        xdg.configFile."dotfiles/blueprint-id".text = "${blueprint.blueprintId}\n";
-        targets.darwin.copyApps.enable = false;
-        programs.man.generateCaches = false;
-      }
+      homeManagerBaselineModule
       blueprint.home.module
     ];
     extraSpecialArgs = {
@@ -45,8 +45,9 @@ withSystem blueprint.system (
       dotfilesSource = {
         root = inputs.self;
         repositoryDirectory = "dotfiles";
-        editable = builtins.getEnv "DOTFILES_HOME_LOCKED" == "";
+        editable = useEditableHomeSources;
       };
+
       herdrSource = unstablePkgs.fetchFromGitHub {
         owner = "ogulcancelik";
         repo = "herdr";

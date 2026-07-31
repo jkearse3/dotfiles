@@ -54,8 +54,12 @@
       {
         imports = [
           inputs.treefmt-nix.flakeModule
+
+          # The output module defines the declaration interface consumed by the
+          # authored blueprints; the Nix module system merges both imports.
+          ./flake/blueprint-outputs.nix
           ./blueprints
-          ./flake/configurations.nix
+
           ./flake/devshell.nix
           ./flake/packages.nix
           ./flake/treefmt.nix

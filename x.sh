@@ -35,6 +35,8 @@ load_private_override_args() {
 }
 
 read_blueprint_marker() {
+	# Home Manager writes this marker during activation; an explicit
+	# `--blueprint` selection bypasses it for first-time bootstrap.
 	local marker="${XDG_CONFIG_HOME:-$HOME/.config}/dotfiles/blueprint-id"
 	if [[ ! -f $marker ]]; then
 		echo "error: no blueprint selected; run './x.sh nix-blueprints', then bootstrap with './x.sh nix-switch-home --blueprint <blueprint-id>'" >&2
@@ -58,11 +60,13 @@ read_blueprint_marker() {
 }
 
 blueprint_inventory() {
+	# The public inventory is the shell-to-Nix contract; shell commands do not
+	# duplicate authored blueprint identities or output naming rules.
 	load_private_override_args
 	nix eval --json .#blueprints --accept-flake-config "${PRIVATE_OVERRIDE_ARGS[@]}"
 }
 
-configure_blueprint() {
+configure_blueprint_selection() {
 	local blueprint_id="$1"
 	local source="$2"
 	local inventory="$3"
@@ -72,14 +76,14 @@ configure_blueprint() {
 		exit 1
 	fi
 
-	local blueprint_os home_configuration system_configuration
+	local blueprint_os home_configuration_name darwin_configuration_name
 	blueprint_os="$(jq -r .os <<<"$metadata")"
-	home_configuration="$(jq -r .homeConfiguration <<<"$metadata")"
-	system_configuration="$(jq -r .systemConfiguration <<<"$metadata")"
+	home_configuration_name="$(jq -r .homeConfigurationName <<<"$metadata")"
+	darwin_configuration_name="$(jq -r .darwinConfigurationName <<<"$metadata")"
 
 	case "$blueprint_os" in
 	darwin)
-		SYSTEM_FLAKE_ATTR=".#darwinConfigurations.${system_configuration}.system"
+		SYSTEM_FLAKE_ATTR=".#darwinConfigurations.${darwin_configuration_name}.system"
 		;;
 	*)
 		echo "error: unsupported OS '$blueprint_os' for blueprint '$blueprint_id'" >&2
@@ -89,7 +93,7 @@ configure_blueprint() {
 
 	BLUEPRINT_ID="$blueprint_id"
 	BLUEPRINT_SOURCE="$source"
-	HOME_FLAKE_ATTR=".#homeConfigurations.${home_configuration}.activationPackage"
+	HOME_FLAKE_ATTR=".#homeConfigurations.${home_configuration_name}.activationPackage"
 	HOME_RESULT_PATH="./result-home-${blueprint_id}"
 	SYSTEM_RESULT_PATH="./result-system-${blueprint_id}"
 	BLUEPRINT_LOADED=1
@@ -105,7 +109,7 @@ require_blueprint() {
 		echo "error: unable to load canonical blueprint metadata" >&2
 		exit 1
 	fi
-	configure_blueprint "$BLUEPRINT_ID" "$BLUEPRINT_SOURCE" "$inventory"
+	configure_blueprint_selection "$BLUEPRINT_ID" "$BLUEPRINT_SOURCE" "$inventory"
 }
 
 run_for_blueprint() {
@@ -173,7 +177,7 @@ nix-eval-all() {
 
 	local blueprint
 	while IFS= read -r blueprint; do
-		configure_blueprint "$blueprint" "canonical inventory" "$inventory"
+		configure_blueprint_selection "$blueprint" "canonical inventory" "$inventory"
 		nix-eval "$HOME_FLAKE_ATTR"
 		nix-eval "$SYSTEM_FLAKE_ATTR"
 	done < <(jq -r 'keys[]' <<<"$inventory")

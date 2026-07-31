@@ -1,3 +1,6 @@
+# Registers repository packages against stable nixpkgs and constructs the
+# unstable set used for selected package dependencies, development tools, and
+# configuration outputs.
 {
   inputs,
   ...
@@ -11,6 +14,8 @@
       ...
     }:
     {
+      # `rec` lets package recipes explicitly inject sibling repository packages
+      # instead of discovering them through the eventual flake output.
       packages = rec {
         commit-message = pkgs.callPackage ../packages/commit-message/package.nix { };
         direnv-worktree = pkgs.callPackage ../packages/direnv-worktree/package.nix {
@@ -68,6 +73,9 @@
         token-count = pkgs.callPackage ../packages/token-count/package.nix { };
       };
 
+      # flake-parts makes this argument available to dev-shell and configuration
+      # constructors through `perSystem` and `withSystem`, respectively. These
+      # overlays affect that unstable boundary only, not the stable `pkgs` above.
       _module.args = {
         unstablePkgs = import inputs.nixpkgs-unstable {
           inherit system;

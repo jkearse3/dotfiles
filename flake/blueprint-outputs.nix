@@ -1,3 +1,5 @@
+# Defines the blueprint declaration interface and turns each declaration into
+# Home Manager, nix-darwin, and selector-inventory flake outputs.
 {
   config,
   inputs,
@@ -8,7 +10,7 @@
 let
   inherit (lib) mkOption types;
 
-  userType = types.submodule {
+  userDeclarationType = types.submodule {
     options = {
       name = mkOption {
         type = types.str;
@@ -21,7 +23,7 @@ let
     };
   };
 
-  homeType = types.submodule {
+  homeDeclarationType = types.submodule {
     options = {
       stateVersion = mkOption {
         type = types.str;
@@ -29,12 +31,12 @@ let
       };
       module = mkOption {
         type = types.deferredModule;
-        description = "Home Manager module composed by this blueprint";
+        description = "Unevaluated Home Manager composition selected by this blueprint";
       };
     };
   };
 
-  darwinType = types.submodule {
+  darwinDeclarationType = types.submodule {
     options = {
       stateVersion = mkOption {
         type = types.ints.unsigned;
@@ -42,45 +44,45 @@ let
       };
       module = mkOption {
         type = types.deferredModule;
-        description = "nix-darwin module composed by this blueprint";
+        description = "Unevaluated nix-darwin composition selected by this blueprint";
       };
     };
   };
 
-  blueprintType = types.submodule {
+  blueprintDeclarationType = types.submodule {
     options = {
       system = mkOption {
         type = types.enum [ "aarch64-darwin" ];
         description = "Nix platform supported by this blueprint";
       };
       user = mkOption {
-        type = userType;
+        type = userDeclarationType;
         description = "Primary user identity";
       };
       home = mkOption {
-        type = homeType;
+        type = homeDeclarationType;
         description = "Home Manager configuration";
       };
       darwin = mkOption {
-        type = darwinType;
+        type = darwinDeclarationType;
         description = "nix-darwin configuration";
       };
     };
   };
 
   validateBlueprintIds =
-    blueprints:
+    blueprintDeclarations:
     let
       invalidIds = lib.filter (blueprintId: builtins.match "^[a-z0-9][a-z0-9-]*$" blueprintId == null) (
-        builtins.attrNames blueprints
+        builtins.attrNames blueprintDeclarations
       );
     in
     if invalidIds == [ ] then
-      blueprints
+      blueprintDeclarations
     else
       throw "Invalid blueprint IDs: ${lib.concatStringsSep ", " invalidIds}";
 
-  normalizedBlueprints = lib.mapAttrs (blueprintId: blueprint: {
+  blueprintOutputSpecs = lib.mapAttrs (blueprintId: blueprint: {
     inherit blueprintId;
     inherit (blueprint)
       system
@@ -89,9 +91,9 @@ let
       darwin
       ;
     os = "darwin";
-    homeConfiguration = "${blueprint.user.name}@${blueprintId}";
-    systemConfiguration = blueprintId;
-  }) config.dotfiles.blueprints;
+    homeConfigurationName = "${blueprint.user.name}@${blueprintId}";
+    darwinConfigurationName = blueprintId;
+  }) config.dotfiles.blueprintDeclarations;
 
   mkHomeConfiguration = import ./mkHomeConfiguration.nix {
     inherit inputs withSystem;
@@ -102,8 +104,10 @@ let
 in
 {
   options = {
-    dotfiles.blueprints = mkOption {
-      type = types.attrsOf blueprintType;
+    # Authored declarations are internal inputs; `flake.blueprints` below is
+    # the smaller public inventory used to select the resulting outputs.
+    dotfiles.blueprintDeclarations = mkOption {
+      type = types.attrsOf blueprintDeclarationType;
       default = { };
       apply = validateBlueprintIds;
       description = "Complete Home Manager and nix-darwin configuration recipes";
@@ -130,21 +134,21 @@ in
 
   config.flake = {
     homeConfigurations = lib.mapAttrs' (
-      _: blueprint: lib.nameValuePair blueprint.homeConfiguration (mkHomeConfiguration blueprint)
-    ) normalizedBlueprints;
+      _: blueprint: lib.nameValuePair blueprint.homeConfigurationName (mkHomeConfiguration blueprint)
+    ) blueprintOutputSpecs;
 
     darwinConfigurations = lib.mapAttrs' (
-      _: blueprint: lib.nameValuePair blueprint.systemConfiguration (mkDarwinConfiguration blueprint)
-    ) normalizedBlueprints;
+      _: blueprint: lib.nameValuePair blueprint.darwinConfigurationName (mkDarwinConfiguration blueprint)
+    ) blueprintOutputSpecs;
 
     blueprints = lib.mapAttrs (_: blueprint: {
       inherit (blueprint)
-        homeConfiguration
+        darwinConfigurationName
+        homeConfigurationName
         os
         system
-        systemConfiguration
         ;
       username = blueprint.user.name;
-    }) normalizedBlueprints;
+    }) blueprintOutputSpecs;
   };
 }

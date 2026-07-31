@@ -34,5 +34,6 @@ blueprint's result.
 
 ## Reference
 
+- [Architecture](docs/architecture.md)
 - [Direnv in linked worktrees](packages/direnv-worktree/README.md)
 - [Nix cheatsheet](docs/cheatsheets/nix.md)

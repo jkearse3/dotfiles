@@ -1,6 +1,8 @@
+# Declares concrete blueprints and the reusable workstation composition modules
+# they select. Output construction and validation live under `flake/`.
 _:
 let
-  workstationHome = {
+  workstationHomeModule = {
     imports = [
       ../modules/home/agents
       ../modules/home/bash
@@ -29,9 +31,15 @@ let
       ../modules/home/vcs
       ../modules/home/yaml
     ];
+
+    # Applications are managed outside Home Manager.
+    targets.darwin.copyApps.enable = false;
+
+    # Darwin lacks the Linux mandb tooling used to generate Home Manager caches.
+    programs.man.generateCaches = false;
   };
 
-  workstationDarwin = {
+  workstationDarwinModule = {
     imports = [
       ../modules/darwin/determinate-nix.nix
       ../modules/darwin/homebrew.nix
@@ -41,7 +49,10 @@ let
   };
 in
 {
-  dotfiles.blueprints = {
+  # Each declaration is a complete activation contract. Identity and state
+  # versions are repeated intentionally so blueprints can evolve independently;
+  # policy shared across declarations belongs in the composition modules above.
+  dotfiles.blueprintDeclarations = {
     laptop-personal = {
       system = "aarch64-darwin";
       user = {
@@ -51,13 +62,14 @@ in
       home = {
         stateVersion = "26.05";
         module = {
-          imports = [ workstationHome ];
+          imports = [ workstationHomeModule ];
+
           agents.opencode.sopsEnvironmentFile = ../secrets/personal/opencode.sops.yaml;
         };
       };
       darwin = {
         stateVersion = 5;
-        module = workstationDarwin;
+        module = workstationDarwinModule;
       };
     };
 
@@ -69,11 +81,13 @@ in
       };
       home = {
         stateVersion = "26.05";
-        module = workstationHome;
+        module = {
+          imports = [ workstationHomeModule ];
+        };
       };
       darwin = {
         stateVersion = 5;
-        module = workstationDarwin;
+        module = workstationDarwinModule;
       };
     };
   };
