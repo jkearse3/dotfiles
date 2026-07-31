@@ -8,12 +8,18 @@ Configurations managed with Nix.
    [Determinate Nix](https://determinate.systems/nix-installer/).
 2. Install [Homebrew](https://brew.sh/) (macOS).
 3. Clone into `~/dotfiles` (as out-of-store symlinks assume this path).
-4. Run `./x.sh nix-blueprints` and choose the blueprint to apply.
-5. Run `./x.sh nix-switch-system --blueprint <blueprint-id>` to build and
-   activate the system config.
-6. Run `./x.sh nix-switch-home --blueprint <blueprint-id>` to build and activate
-   the home config. This creates `dotfiles/blueprint-id` under the XDG config
-   root (normally `~/.config`), so later commands do not need `--blueprint`.
+4. Run `nix develop --command jj-ensure` to initialize the required colocated jj
+   workspace.
+5. Run `nix develop --command ./x.sh nix-blueprints` and choose the blueprint to
+   apply. The development shell provides the complete bootstrap command
+   environment.
+6. Run
+   `nix develop --command ./x.sh nix-switch-system --blueprint <blueprint-id>`
+   to build and activate the system config.
+7. Run `nix develop --command ./x.sh nix-switch-home --blueprint <blueprint-id>`
+   to build and activate the home config. This creates `dotfiles/blueprint-id`
+   under the XDG config root (normally `~/.config`), so later commands can
+   invoke `./x.sh` directly without `--blueprint`.
 
 ## Usage
 
@@ -25,6 +31,7 @@ Configurations managed with Nix.
 - `./x.sh nix-blueprints` - list configured blueprint IDs
 - `./x.sh fmt` - format all files
 - `./x.sh fmt-check` - check formatting without modifying files
+- `./x.sh lint` - check Nix, tracked `.sh` and `.bash` files, and Python
 
 Blueprint-dependent evaluation, build, and switch commands use an explicit
 `--blueprint` first, then the Home Manager-managed blueprint marker. Builds use
