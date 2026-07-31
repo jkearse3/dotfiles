@@ -52,7 +52,7 @@ in
             programs.man.generateCaches = false;
           }
         )
-        ../home
+        ../modules/home
       ]
       ++ extraHomeModules;
       extraSpecialArgs = {

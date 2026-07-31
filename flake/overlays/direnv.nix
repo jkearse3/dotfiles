@@ -13,7 +13,7 @@ in
   # Tracking: https://github.com/NixOS/nixpkgs/issues/513019
   direnv =
     assert assertMsg (version == "2.37.1" && doCheck) (
-      "Overlay modules/overlays/direnv.nix may no longer be needed: "
+      "Overlay flake/overlays/direnv.nix may no longer be needed: "
       + "direnv=${version}, doCheck=${boolToString doCheck}. "
       + "Try removing the overlay."
     );

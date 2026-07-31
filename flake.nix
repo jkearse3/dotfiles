@@ -54,10 +54,10 @@
       {
         imports = [
           inputs.treefmt-nix.flakeModule
-          ./modules/blueprints
-          ./modules/devshell.nix
-          ./modules/pkgs.nix
-          ./modules/treefmt.nix
+          ./blueprints
+          ./flake/devshell.nix
+          ./flake/packages.nix
+          ./flake/treefmt.nix
         ];
 
         systems = [

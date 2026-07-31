@@ -12,7 +12,7 @@ let
       username = "johnnie";
       extraHomeModules = [
         {
-          agents.opencode.sopsEnvironmentFile = ../../secrets/personal/opencode.sops.yaml;
+          agents.opencode.sopsEnvironmentFile = ../secrets/personal/opencode.sops.yaml;
         }
       ];
       extraSystemModules = [ ];
@@ -35,8 +35,8 @@ let
     in
     {
       imports = [
-        ((import ./mkDarwin.nix { inherit inputs withSystem; }) args)
-        ((import ./mkHome.nix { inherit inputs withSystem; }) args)
+        ((import ../flake/mkDarwinConfiguration.nix { inherit inputs withSystem; }) args)
+        ((import ../flake/mkHomeConfiguration.nix { inherit inputs withSystem; }) args)
       ];
     };
 in
