@@ -1,9 +1,9 @@
 {
-  internalPkgs,
+  dotfilesPackages,
   ...
 }:
 {
   home.packages = [
-    internalPkgs.commit-message
+    dotfilesPackages.commit-message
   ];
 }

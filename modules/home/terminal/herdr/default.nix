@@ -1,27 +1,15 @@
 {
-  config,
-  editable,
-  herdr,
+  dotfilesPackages,
   herdrSource,
+  mkSource,
   pkgs,
-  repoRoot,
-  self,
   ...
 }:
 let
-  mkSource = import ../../mkSource.nix {
-    inherit
-      config
-      editable
-      repoRoot
-      self
-      ;
-    inherit (pkgs) lib;
-  };
   completions = pkgs.runCommand "herdr-completions" { } ''
     mkdir -p $out/share/fish/vendor_completions.d $out/share/zsh/site-functions
-    ${herdr}/bin/herdr completion fish > $out/share/fish/vendor_completions.d/herdr.fish
-    ${herdr}/bin/herdr completion zsh > $out/share/zsh/site-functions/_herdr
+    ${dotfilesPackages.herdr}/bin/herdr completion fish > $out/share/fish/vendor_completions.d/herdr.fish
+    ${dotfilesPackages.herdr}/bin/herdr completion zsh > $out/share/zsh/site-functions/_herdr
   '';
   skill = pkgs.linkFarm "herdr-skill" [
     {
@@ -31,8 +19,13 @@ let
   ];
 in
 {
+  imports = [
+    ../../agents/registries.nix
+    ../../lib/source.nix
+  ];
+
   home.packages = [
-    herdr
+    dotfilesPackages.herdr
     completions
   ];
   home.file.".config/herdr/config.toml".source = mkSource ./config.toml;

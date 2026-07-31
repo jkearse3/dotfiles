@@ -1,10 +1,10 @@
-{ internalPkgs, ... }:
+{ dotfilesPackages, ... }:
 {
   programs.fish = {
     enable = true;
     interactiveShellInit = # fish
       ''
-        source ${internalPkgs.git-worktree-cd.shellInit.fish}
+        source ${dotfilesPackages.git-worktree-cd.shellInit.fish}
       '';
   };
 

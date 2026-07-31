@@ -1,7 +1,7 @@
 {
   lib,
   config,
-  internalPkgs,
+  dotfilesPackages,
   ...
 }:
 {
@@ -44,7 +44,7 @@
     initContent = lib.mkMerge [
       (lib.mkBefore "typeset -U path PATH\n")
       (lib.mkAfter ''
-        source ${internalPkgs.git-worktree-cd.shellInit.zsh}
+        source ${dotfilesPackages.git-worktree-cd.shellInit.zsh}
       '')
     ];
   };

@@ -1,19 +1,19 @@
 {
-  internalPkgs,
+  dotfilesPackages,
   ...
 }:
 {
   home.packages = [
-    internalPkgs.direnv-worktree
-    internalPkgs.git-branch-checkout
-    internalPkgs.git-branch-current
-    internalPkgs.git-branch-default
-    internalPkgs.git-branch-delete
-    internalPkgs.git-branch-next
-    internalPkgs.git-branch-previous
-    internalPkgs.git-branch-stacked
-    internalPkgs.git-worktree-cd
-    internalPkgs.git-worktree-select
+    dotfilesPackages.direnv-worktree
+    dotfilesPackages.git-branch-checkout
+    dotfilesPackages.git-branch-current
+    dotfilesPackages.git-branch-default
+    dotfilesPackages.git-branch-delete
+    dotfilesPackages.git-branch-next
+    dotfilesPackages.git-branch-previous
+    dotfilesPackages.git-branch-stacked
+    dotfilesPackages.git-worktree-cd
+    dotfilesPackages.git-worktree-select
   ];
 
   programs.git = {
@@ -30,7 +30,7 @@
       };
       init.defaultBranch = "main";
       hook.direnv-worktree = {
-        command = "${internalPkgs.direnv-worktree}/bin/direnv-worktree post-checkout";
+        command = "${dotfilesPackages.direnv-worktree}/bin/direnv-worktree post-checkout";
         event = "post-checkout";
       };
       pull.rebase = true;

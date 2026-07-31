@@ -1,9 +1,9 @@
 {
-  internalPkgs,
+  dotfilesPackages,
   ...
 }:
 {
   home.packages = [
-    internalPkgs.port-listeners-list
+    dotfilesPackages.port-listeners-list
   ];
 }

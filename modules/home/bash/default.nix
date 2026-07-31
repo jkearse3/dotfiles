@@ -1,5 +1,5 @@
 {
-  internalPkgs,
+  dotfilesPackages,
   pkgs,
   ...
 }:
@@ -7,7 +7,7 @@
   programs.bash = {
     enable = true;
     initExtra = ''
-      source ${internalPkgs.git-worktree-cd.shellInit.bash}
+      source ${dotfilesPackages.git-worktree-cd.shellInit.bash}
     '';
   };
 

@@ -1,5 +1,5 @@
 {
-  internalPkgs,
+  dotfilesPackages,
   lib,
   pkgs,
   ...
@@ -9,7 +9,7 @@ let
     name = "jj-starship-prompt";
     runtimeInputs = [
       pkgs.jujutsu
-      internalPkgs.jj-bookmark-nearest
+      dotfilesPackages.jj-bookmark-nearest
     ];
     text = builtins.readFile ./jj-starship-prompt.sh;
   };

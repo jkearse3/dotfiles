@@ -1,24 +1,13 @@
 {
   config,
+  dotfilesPackages,
   pkgs,
   lib,
-  self,
-  llmAgents,
   mkNonoWrapper,
-  repoRoot,
-  editable,
+  mkSource,
   ...
 }:
 let
-  mkSource = import ../../mkSource.nix {
-    inherit
-      config
-      self
-      lib
-      repoRoot
-      editable
-      ;
-  };
   renderSkillsDir = import ../renderSkillsDir.nix {
     inherit lib pkgs;
     skills = config.agents.skills;
@@ -27,7 +16,7 @@ let
   claude-wrapped = pkgs.symlinkJoin {
     name = "claude-code-wrapped";
     paths = [
-      llmAgents.claude-code
+      dotfilesPackages.claude-code
     ];
     buildInputs = [
       pkgs.makeWrapper
@@ -46,10 +35,16 @@ let
   };
 in
 {
+  imports = [
+    ../../lib/source.nix
+    ../../nono
+    ../registries.nix
+  ];
+
   home.packages = [
     claude-wrapped
     nono-claude
-    llmAgents.ccusage
+    dotfilesPackages.ccusage
     (pkgs.writeShellScriptBin "claude-mcp-add-linear" ''
       exec claude mcp add linear-server -s local --transport http https://mcp.linear.app/mcp
     '')

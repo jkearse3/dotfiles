@@ -1,24 +1,13 @@
 {
   config,
+  dotfilesPackages,
   pkgs,
   lib,
-  self,
-  llmAgents,
   mkNonoWrapper,
-  repoRoot,
-  editable,
+  mkSource,
   ...
 }:
 let
-  mkSource = import ../../mkSource.nix {
-    inherit
-      config
-      self
-      lib
-      repoRoot
-      editable
-      ;
-  };
   renderAgentsMarkdown = import ../renderAgentsMarkdown.nix { inherit lib; };
   renderSkillsDir = import ../renderSkillsDir.nix {
     inherit lib pkgs;
@@ -71,7 +60,7 @@ let
   opencode-wrapped = pkgs.symlinkJoin {
     name = "opencode-wrapped";
     paths = [
-      llmAgents.opencode
+      dotfilesPackages.opencode
     ];
     buildInputs = [
       pkgs.makeWrapper
@@ -101,6 +90,12 @@ let
   };
 in
 {
+  imports = [
+    ../../lib/source.nix
+    ../../nono
+    ../registries.nix
+  ];
+
   options.agents.opencode.sopsEnvironmentFile = lib.mkOption {
     type = lib.types.nullOr lib.types.path;
     default = null;

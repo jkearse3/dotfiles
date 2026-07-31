@@ -1,11 +1,11 @@
 {
-  internalPkgs,
+  dotfilesPackages,
   pkgs,
   ...
 }:
 {
   home.packages = [
-    internalPkgs.nix-cleanup
+    dotfilesPackages.nix-cleanup
     pkgs.deadnix
     pkgs.devenv
     pkgs.nix-output-monitor

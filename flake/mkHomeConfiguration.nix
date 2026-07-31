@@ -9,7 +9,6 @@ let
   herdrRelease = builtins.fromJSON (
     builtins.readFile (inputs.llm-agents + "/packages/herdr/hashes.json")
   );
-  editable = builtins.getEnv "DOTFILES_HOME_LOCKED" == "";
 in
 withSystem blueprint.system (
   {
@@ -34,19 +33,26 @@ withSystem blueprint.system (
       blueprint.home.module
     ];
     extraSpecialArgs = {
-      inherit editable;
-      inherit (inputs) self;
-      internalPkgs = inputs.self.packages.${blueprint.system};
-      repoRoot = "dotfiles";
-      llmAgents = llmAgents.${blueprint.system};
-      herdr = llmAgents.${blueprint.system}.herdr;
+      dotfilesPackages = inputs.self.packages.${blueprint.system} // {
+        inherit (llmAgents.${blueprint.system})
+          ccusage
+          claude-code
+          herdr
+          hunk
+          opencode
+          ;
+      };
+      dotfilesSource = {
+        root = inputs.self;
+        repositoryDirectory = "dotfiles";
+        editable = builtins.getEnv "DOTFILES_HOME_LOCKED" == "";
+      };
       herdrSource = unstablePkgs.fetchFromGitHub {
         owner = "ogulcancelik";
         repo = "herdr";
         tag = "v${herdrRelease.version}";
         inherit (herdrRelease) hash;
       };
-      hunk = llmAgents.${blueprint.system}.hunk;
     };
   }
 )

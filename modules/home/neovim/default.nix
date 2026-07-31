@@ -1,24 +1,11 @@
 {
-  config,
+  mkSource,
   pkgs,
-  lib,
-  self,
-  repoRoot,
-  editable,
   ...
 }:
-let
-  mkSource = import ../mkSource.nix {
-    inherit
-      config
-      self
-      lib
-      repoRoot
-      editable
-      ;
-  };
-in
 {
+  imports = [ ../lib/source.nix ];
+
   home = {
     packages = [
       pkgs.copilot-language-server

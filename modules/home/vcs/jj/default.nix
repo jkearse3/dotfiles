@@ -1,19 +1,19 @@
 {
-  internalPkgs,
+  dotfilesPackages,
   ...
 }:
 {
   home.packages = [
-    internalPkgs.jj-bookmark-nearest
-    internalPkgs.jj-bookmark-current
-    internalPkgs.jj-bookmark-default
-    internalPkgs.jj-bookmark-stacked
-    internalPkgs.jj-bookmark-previous
-    internalPkgs.jj-bookmark-select
-    internalPkgs.jj-change-select
-    internalPkgs.jj-ensure
-    internalPkgs.jj-bookmark-land
-    internalPkgs.jj-worktree-add
+    dotfilesPackages.jj-bookmark-nearest
+    dotfilesPackages.jj-bookmark-current
+    dotfilesPackages.jj-bookmark-default
+    dotfilesPackages.jj-bookmark-stacked
+    dotfilesPackages.jj-bookmark-previous
+    dotfilesPackages.jj-bookmark-select
+    dotfilesPackages.jj-change-select
+    dotfilesPackages.jj-ensure
+    dotfilesPackages.jj-bookmark-land
+    dotfilesPackages.jj-worktree-add
   ];
 
   programs = {

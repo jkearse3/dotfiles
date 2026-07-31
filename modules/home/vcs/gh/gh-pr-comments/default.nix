@@ -1,9 +1,9 @@
 {
-  internalPkgs,
+  dotfilesPackages,
   ...
 }:
 {
   home.packages = [
-    internalPkgs.gh-pr-comments
+    dotfilesPackages.gh-pr-comments
   ];
 }

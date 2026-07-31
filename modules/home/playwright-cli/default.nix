@@ -1,9 +1,10 @@
 {
-  internalPkgs,
+  dotfilesPackages,
   ...
 }:
-
 {
-  home.packages = [ internalPkgs.playwright-cli ];
+  imports = [ ../agents/registries.nix ];
+
+  home.packages = [ dotfilesPackages.playwright-cli ];
   agents.extraSkills."playwright-cli" = ./skill;
 }

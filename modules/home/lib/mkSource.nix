@@ -1,7 +1,7 @@
 # Source helper for home-manager file delivery.
 #
-# In editable mode (`editable = true`), returns an out-of-store symlink rooted
-# at ~/<repoRoot> so working-tree edits take effect without rebuilding.
+# In editable mode, returns an out-of-store symlink rooted at the configured
+# repository directory so working-tree edits take effect without rebuilding.
 #
 # In locked mode (`editable = false`), returns the input Nix path unchanged so
 # home-manager performs its default copy-into-store delivery — safe to
@@ -17,32 +17,24 @@
 # flake-root prefix (editable, in-flake), or hands the path back for store
 # import.
 #
-# Inputs:
-#   editable — when true, deliver via out-of-store symlink to the working
-#              tree; when false, deliver via in-store copy.
-#   repoRoot — home-relative clone directory name (used in editable mode).
-#
-# Usage:
-#   let mkSource = import ../mkSource.nix { inherit config self lib repoRoot editable; };
-#   in { home.file.".config/nvim".source = mkSource ./nvim; }
+# `dotfilesSource` identifies the source root, its home-relative checkout
+# directory, and whether Home Manager should use editable delivery.
 {
   config,
-  self,
+  dotfilesSource,
   lib,
-  repoRoot,
-  editable,
 }:
 let
-  repoBase = "${config.home.homeDirectory}/${repoRoot}";
-  flakeSource = toString self;
+  repoBase = "${config.home.homeDirectory}/${dotfilesSource.repositoryDirectory}";
+  sourceRoot = toString dotfilesSource.root;
 in
 path:
 let
   pathStr = toString path;
 in
-if lib.hasPrefix "${flakeSource}/" pathStr then
-  if editable then
-    config.lib.file.mkOutOfStoreSymlink "${repoBase}/${lib.removePrefix "${flakeSource}/" pathStr}"
+if lib.hasPrefix "${sourceRoot}/" pathStr then
+  if dotfilesSource.editable then
+    config.lib.file.mkOutOfStoreSymlink "${repoBase}/${lib.removePrefix "${sourceRoot}/" pathStr}"
   else
     path
 else if lib.hasPrefix "/" pathStr then
