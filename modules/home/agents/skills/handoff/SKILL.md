@@ -1,20 +1,18 @@
 ---
 name: handoff
 description: >-
-  Draft, refine, find, show, reconcile readiness for, or execute self-contained
-  prompts for fresh sessions; use when work needs to be transported across
-  sessions without treating artifact handling as execution.
-argument-hint:
-  "[draft, continue, find, show, readiness, execute, path, filename, or slug]"
+  Create or execute a concise, self-contained prompt for a fresh session. Use
+  when the user asks for a handoff, wants to resume in a new session, or
+  explicitly asks to execute a handoff file.
+argument-hint: "[next-session goal or execute <path>]"
 ---
 
 # Handoff
 
 Transfer one actionable goal to a fresh session with zero prior context. A
-handoff is an ignored, ordinary, mutable Markdown prompt, not workflow state.
+handoff is an ignored, ordinary Markdown prompt, not workflow state.
 
-Creating, refining, finding, showing, or summarizing a handoff never authorizes
-the work described by its prompt.
+Creating a handoff never authorizes the work described by its prompt.
 
 ## Arguments
 
@@ -22,69 +20,93 @@ the work described by its prompt.
 $ARGUMENTS
 ```
 
-Interpret `$ARGUMENTS` and recent conversation as natural language. Do not
-require rigid subcommands. Infer the operation:
+Interpret `$ARGUMENTS` and recent conversation as natural language:
 
-- Create for a new handoff or fresh-session prompt.
-- Refine for `continue`, `resume`, amend, correct, or resolve-question intent.
-- Find, show, or summarize without acting on the prompt.
-- Reconcile readiness when explicitly requested.
-- Execute only when the user explicitly says `run` or `execute` and identifies
-  or confirms one handoff.
+- Create by default. Infer one next-session goal from the recent conversation.
+  Ask one focused question only when no single goal is safely inferable.
+- Execute only when the user explicitly says `run` or `execute` and identifies a
+  handoff.
+- An explicit request to show, find, summarize, or edit a handoff authorizes
+  only that ordinary file operation, never execution.
 
-`Continue` or `resume` means refine the prompt, never execute it. Ask one brief
-question when the artifact or requested operation remains materially ambiguous.
+## Create
 
-## Shared Contract
-
-Resolve canonical storage by running `lib/resolve-store.sh` relative to this
-skill's directory. It prints the Git main worktree, the non-Git jj `default`
-workspace, or the sole jj workspace. If it reports ambiguous jj workspaces, ask
-the user to choose one and resolve that named workspace; never guess. If it
-reports no repository, ask where to store the handoff.
-
-Store handoffs below the resolved root:
+1. Choose a concise lowercase kebab-case slug for the goal. Run
+   `scripts/prepare-path.sh <slug>` relative to this skill directory. It
+   resolves canonical storage, safely prepares the ignored store, and prints the
+   new absolute path. If it reports ambiguous storage or a safety failure, stop
+   and report that error rather than bypassing it.
+2. Write a concise prompt to that path using the structure below. Use recent
+   conversation as session context; inspect only an important path or claim
+   whose correctness is genuinely uncertain. Mark other uncertainty explicitly
+   instead of reconstructing the repository or rerunning validation.
+3. Report the absolute path and this two-line pickup text:
 
 ```text
-.agent/handoffs/YYYY-MM-DD-HHMMSS-<short-slug>.md
+Next session:
+Execute <absolute-handoff-path>
 ```
 
-Use the current local time and a concise lowercase kebab-case slug. Add a
-numeric suffix before `.md` if the path exists. The filename is an
-organizational convention, not a validity requirement.
+Creating the local store and handoff is the full authorized mutation. Do not
+perform the described task or modify revision history.
 
-Every Markdown file recursively below `.agent/handoffs/` is a candidate. Nested
-directories and names such as `drafts` or `finalized` have no lifecycle meaning.
-Do not migrate existing handoffs.
+## Execute
 
-- Assume the fresh session has zero prior context.
-- Require one explicit or safely inferable next-session goal and intended
-  outcome. Ask one focused question when materially different goals remain.
-- Require one concrete first action after orientation.
-- Include scope, material exclusions, constraints, authoritative inputs to
-  reload, and observable validation. Add context, decisions, assumptions,
-  blockers, risks, or response guidance only when useful.
-- Verify checkable paths, symbols, revisions, repository facts, completion
-  claims, and validation claims proportionately before writing them. Mark
-  material claims unverified when safe confirmation is unavailable.
-- Preserve exact user-provided technical text and important uncertainty.
-- Never copy secrets or personally identifiable information into a handoff.
-  Redact values such as credentials, tokens, cookies, private keys, `.env`
-  values, and personal details while preserving safe context such as service
-  names, variable names, file paths, and retrieval instructions.
-- Treat rationale and decisions as session context, not repository facts.
-- Prefer paths and symbols over fragile line numbers. Do not perform unrelated
-  research or implementation merely to fill sections.
-- Keep the prompt concise, actionable, and current rather than archival.
-- Do not add lifecycle markers, acceptance evidence, progress tracking,
-  ancestry, or execution state.
-- Never edit, move, annotate, archive, consume, or record execution on a
-  handoff.
+Execution requires an explicit `run` or `execute` request identifying one
+handoff. Resolve an explicit path directly. Otherwise run
+`scripts/resolve-store.sh` relative to this skill directory, then match an exact
+filename or unique slug below `<canonical-root>/.agent/handoffs/`. Preserve the
+resolver's ambiguity and failure handling, and ask the user to choose when
+multiple files match.
 
-## Procedures
+1. Read the complete handoff and report its resolved absolute path.
+2. Reload every path under `Read` and inspect current repository state needed to
+   identify material drift. Do not repeat checks that cannot affect the goal,
+   scope, authority, constraints, or first action.
+3. Report relevant non-blocking drift and continue. Stop for direction only when
+   drift invalidates the goal, scope, authority, a constraint, or a required
+   assumption.
+4. Treat the handoff as the authorized task and follow the applicable repository
+   workflow through completion, beginning with `Start Here`.
 
-Read only the procedure selected for the requested operation:
+Never edit, move, annotate, archive, consume, or record status on the handoff.
 
-- `procedures/create-refine.md` for creation or refinement.
-- `procedures/receive.md` for finding, listing, showing, summarizing, readiness
-  reconciliation, or execution.
+## Content
+
+Assume the receiver has zero conversation context. Prefer paths and symbols over
+copied content or fragile line numbers.
+
+```markdown
+# Handoff: <goal>
+
+## Goal
+
+<One next-session operation and intended outcome.>
+
+## Start Here
+
+<One concrete first action after orientation.>
+
+## Current State
+
+<Only context, decisions, and state needed to continue.>
+
+## Read
+
+- `<authoritative path>` - <why it must be reloaded>
+
+## Constraints
+
+<Material scope exclusions, authority, safety, and behavioral invariants.>
+
+## Done When
+
+<Observable completion and relevant validation.>
+```
+
+Omit empty optional sections. Add `Blockers`, `Failed Approaches`, or
+`Unverified` only when useful. Preserve exact user-provided technical text and
+material uncertainty. Never include credentials, tokens, cookies, private keys,
+`.env` values, personal details, or other secrets; name safe retrieval
+instructions instead. Do not add lifecycle state, ancestry, progress tracking,
+or execution records.
