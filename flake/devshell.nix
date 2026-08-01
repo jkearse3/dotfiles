@@ -21,7 +21,6 @@
           unstablePkgs.gnused
           unstablePkgs.jq
           unstablePkgs.jujutsu
-          unstablePkgs.nix
           unstablePkgs.nvd
           unstablePkgs.perl
           unstablePkgs.shellcheck
