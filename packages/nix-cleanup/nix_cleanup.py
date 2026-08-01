@@ -233,6 +233,19 @@ def run_command(arguments: list[str]) -> bool:
         raise CleanupError(f"could not run {arguments[0]}: {error}") from error
 
 
+def require_nix() -> None:
+    """Fail before any destructive step if no `nix` is on PATH.
+
+    The `nix` client is resolved from PATH rather than pinned at build time so
+    that it matches the daemon managing this host's store.
+    """
+    if shutil.which("nix") is None:
+        raise CleanupError(
+            "nix was not found on PATH; nix-cleanup uses the host's own nix so "
+            + "that store and profile operations match the running daemon"
+        )
+
+
 def retention(older_than: int | None) -> str | None:
     return f"{older_than}d" if older_than is not None else None
 
@@ -388,6 +401,10 @@ def main(argv: list[str] | None = None) -> int:
 
     selected_profiles = profiles()
     try:
+        # `report` only inspects the filesystem; every other command shells out to nix.
+        if args.command != "report":
+            require_nix()
+
         if args.command == "report":
             report(selected_profiles)
         elif args.command == "preview":

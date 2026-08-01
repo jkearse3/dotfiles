@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import io
 import os
 import shutil
 import sys
@@ -258,6 +259,29 @@ class NixCleanupTest(unittest.TestCase):
             ):
                 nix_cleanup.clean_user_profiles(self.profiles, None)
         self.assertNotIn(["nix", "store", "gc"], calls)
+
+    def test_report_runs_without_nix_on_path(self) -> None:
+        with (
+            patch.object(nix_cleanup, "profiles", return_value=self.profiles),
+            patch.object(nix_cleanup, "report") as reported,
+            patch.object(shutil, "which", return_value=None),
+        ):
+            self.assertEqual(nix_cleanup.main(["report"]), 0)
+        reported.assert_called_once()
+
+    def test_missing_nix_fails_before_any_command_runs(self) -> None:
+        for command in ("preview", "clean", "system-preview", "system-clean"):
+            with self.subTest(command=command):
+                errors = io.StringIO()
+                with (
+                    patch.object(nix_cleanup, "profiles", return_value=self.profiles),
+                    patch.object(shutil, "which", return_value=None),
+                    patch.object(nix_cleanup, "run_command") as run_command,
+                    patch.object(sys, "stderr", errors),
+                ):
+                    self.assertEqual(nix_cleanup.main([command]), 1)
+                run_command.assert_not_called()
+                self.assertIn("nix was not found on PATH", errors.getvalue())
 
 
 if __name__ == "__main__":
