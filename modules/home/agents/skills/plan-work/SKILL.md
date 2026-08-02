@@ -62,11 +62,12 @@ outcome. If neither provides a planning target, ask for one and stop.
    combine independent concerns. Assign at most one concern to each mutating
    delegation.
 7. Define validation from the completion conditions and material risks. End each
-   repository concern with focused verification, finalization, and review before
-   the next concern begins. Explicitly identify integration checks that
-   genuinely require later concerns and retain them for task completion. Prefer
-   concrete commands, observations, inspections, responses, or other signals
-   that establish behavior rather than merely proving that steps ran.
+   repository concern with focused verification and finalization, and place
+   review after the last repository concern rather than between them. Explicitly
+   identify integration checks that genuinely require later concerns and retain
+   them for task completion. Prefer concrete commands, observations,
+   inspections, responses, or other signals that establish behavior rather than
+   merely proving that steps ran.
 8. Perform a proportional completeness pass across the lenses below. Resolve or
    report every material gap, but omit irrelevant categories and empty sections
    from the written plan.
@@ -166,7 +167,8 @@ constraints. Identify prescribed implementation details only when material.>
 
 ### Authoritative Inputs
 
-- `<path, URL, system, or document>`: <what an executing session must reload.>
+- `<path, URL, system, or document>`: <what an executing session must reload,
+  and the command that rederives it when the work rebuilds it.>
 
 ### Assumptions
 

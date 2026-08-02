@@ -76,6 +76,7 @@ in
         "shared/delegation"
         "shared/version-control"
         "shared/mutation-safety"
+        "shared/change-review"
       ];
       description = ''
         Fully qualified shared rule IDs in the order used by stitched agent
