@@ -141,7 +141,7 @@
       "Bash(git rm:*)",
       "Bash(jj git push:*)"
     ],
-    "defaultMode": "acceptEdits",
+    "defaultMode": "auto",
     "additionalDirectories": [
       ".objectives",
       "~/.claude/skills",
