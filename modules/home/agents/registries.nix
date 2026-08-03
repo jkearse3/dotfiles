@@ -73,6 +73,7 @@ in
         "shared/communication"
         "shared/reasoning"
         "shared/scope-alignment"
+        "shared/delegation"
         "shared/version-control"
         "shared/mutation-safety"
       ];
