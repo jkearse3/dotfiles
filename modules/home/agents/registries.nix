@@ -7,29 +7,6 @@ let
     lib.attrNames config.agents.extraSkills
   );
 
-  mkRuleRegistryOption =
-    registryName:
-    lib.mkOption {
-      type = lib.types.attrsOf lib.types.path;
-      default = { };
-      description = ''
-        Markdown rule files for the ${registryName} registry. Stitched agent
-        instruction files select rules by registry-qualified IDs such as
-        `${registryName}/<name>`; source paths should point at Markdown files.
-
-        Each producer assigns a path directly
-        (`agents.${registryName}Rules.foo = ./bar.md;`).
-
-        Rule names must be unique within this registry; defining the same name in
-        two modules with different sources fails evaluation during normal Nix
-        option merging. The same bare rule name may appear in another registry
-        because stitched consumers use registry-qualified IDs.
-
-        Rule load order is controlled by each stitched instruction consumer, not
-        by the registry itself.
-      '';
-    };
-
   autoRegisterRules =
     dir:
     lib.mapAttrs'
@@ -70,9 +47,26 @@ in
       '';
     };
 
-    sharedRules = mkRuleRegistryOption "shared";
-    claudeRules = mkRuleRegistryOption "claude";
-    opencodeRules = mkRuleRegistryOption "opencode";
+    sharedRules = lib.mkOption {
+      type = lib.types.attrsOf lib.types.path;
+      default = { };
+      description = ''
+        Markdown rule files auto-registered from `modules/home/agents/rules`,
+        keyed by file name without the `.md` suffix. Stitched agent instruction
+        files select rules by the `shared/<name>` IDs listed in
+        `agents.sharedRuleOrder`; source paths should point at Markdown files.
+
+        Producers may also assign a path directly
+        (`agents.sharedRules.foo = ./bar.md;`).
+
+        Rule names must be unique; defining the same name in two modules with
+        different sources fails evaluation during normal Nix option merging.
+
+        Rule load order comes from `agents.sharedRuleOrder`, which every
+        stitched consumer passes; the registry itself does not order rules. A
+        registered rule that the order omits is silently dropped.
+      '';
+    };
     sharedRuleOrder = lib.mkOption {
       type = lib.types.listOf lib.types.str;
       default = [
@@ -100,8 +94,6 @@ in
     agents = {
       skills = localSkillSources // config.agents.extraSkills;
       sharedRules = autoRegisterRules ./rules;
-      claudeRules = autoRegisterRules ./claude/rules;
-      opencodeRules = autoRegisterRules ./opencode/rules;
     };
   };
 }

@@ -63,10 +63,6 @@ in
           name = "shared";
           sources = config.agents.sharedRules;
         }
-        {
-          name = "claude";
-          sources = config.agents.claudeRules;
-        }
       ];
       order = config.agents.sharedRuleOrder;
     };

@@ -120,7 +120,6 @@
       "Read(//nix/store/**)",
       "Read(.objectives/**)",
       "Read(~/.claude/skills/**)",
-      "Read(~/.claude/rules/**)",
       "Read(~/.agents/**)",
       "Read(~/dotfiles/modules/home/agents/**)",
       "Skill",
@@ -141,12 +140,7 @@
       "Bash(jj git push:*)"
     ],
     "defaultMode": "acceptEdits",
-    "additionalDirectories": [
-      ".objectives",
-      "~/.claude/skills",
-      "~/.claude/rules",
-      "~/.agents"
-    ]
+    "additionalDirectories": [".objectives", "~/.claude/skills", "~/.agents"]
   },
   "statusLine": {
     "type": "command",
