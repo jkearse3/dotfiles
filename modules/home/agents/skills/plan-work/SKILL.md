@@ -48,7 +48,16 @@ outcome. If neither provides a planning target, ask for one and stop.
 4. Determine the smallest complete scope. Trace affected consumers,
    dependencies, stakeholders, interfaces, persisted state, and operational
    effects far enough to include necessary work and exclude adjacent work
-   explicitly.
+   explicitly. When work introduces or changes an artifact or instruction that a
+   person or another system invokes or depends on, identify the actual consumer
+   contract, where it is established, and what it requires. Derive failure modes
+   reachable through the artifact's inputs, outputs, state changes, lifecycle,
+   and integration context. For each material behavior that construction does
+   not guarantee, record the observable invariant under `Completion Conditions`
+   and require a durable check or reviewer-rerunnable proof under `Validation`.
+   Put consequential choices under `Design` and residual exposure under
+   `Risks And Recovery`. Use `references/artifact-contracts.md` as prompts, not
+   as a checklist; do not copy prompts or explain irrelevant omissions.
 5. Select an approach that resolves consequential strategy choices and explain
    why it fits the evidence, constraints, and outcome. Commit to implementation
    details only when correctness, compatibility, safety, external effects, or
