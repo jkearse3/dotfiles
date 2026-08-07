@@ -17,6 +17,7 @@
       # `rec` lets package recipes explicitly inject sibling repository packages
       # instead of discovering them through the eventual flake output.
       packages = rec {
+        claude-settings-format = pkgs.callPackage ../packages/claude-settings-format/package.nix { };
         commit-message = pkgs.callPackage ../packages/commit-message/package.nix { };
         direnv-worktree = pkgs.callPackage ../packages/direnv-worktree/package.nix {
           inherit (unstablePkgs) git;
