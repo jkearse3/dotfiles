@@ -50,8 +50,7 @@ nix-darwin.
 Reusable Home modules receive `dotfilesPackages`, which combines repository
 packages with selected external packages, and `dotfilesSource`, which describes
 the repository source and editable-delivery mode. `modules/home/lib/source.nix`
-turns the latter into the shared `mkSource` helper. Feature-specific values such
-as `herdrSource` remain separate when that makes ownership clearer.
+turns the latter into the shared `mkSource` helper.
 
 Modules that contribute agent skills import the agent registry interface
 explicitly. Agent frontends import the nono module that provides their wrapper

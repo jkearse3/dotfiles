@@ -6,9 +6,6 @@ blueprint:
 let
   home-manager = inputs.home-manager-unstable;
   llmAgents = inputs.llm-agents.packages;
-  herdrRelease = builtins.fromJSON (
-    builtins.readFile (inputs.llm-agents + "/packages/herdr/hashes.json")
-  );
   useEditableHomeSources = builtins.getEnv "DOTFILES_HOME_LOCKED" == "";
   homeManagerBaselineModule = {
     home = {
@@ -46,13 +43,6 @@ withSystem blueprint.system (
         root = inputs.self;
         repositoryDirectory = "dotfiles";
         editable = useEditableHomeSources;
-      };
-
-      herdrSource = unstablePkgs.fetchFromGitHub {
-        owner = "ogulcancelik";
-        repo = "herdr";
-        tag = "v${herdrRelease.version}";
-        inherit (herdrRelease) hash;
       };
     };
   }

@@ -1,6 +1,5 @@
 {
   dotfilesPackages,
-  herdrSource,
   mkSource,
   pkgs,
   ...
@@ -11,12 +10,11 @@ let
     ${dotfilesPackages.herdr}/bin/herdr completion fish > $out/share/fish/vendor_completions.d/herdr.fish
     ${dotfilesPackages.herdr}/bin/herdr completion zsh > $out/share/zsh/site-functions/_herdr
   '';
-  skill = pkgs.linkFarm "herdr-skill" [
-    {
-      name = "SKILL.md";
-      path = herdrSource + "/SKILL.md";
-    }
-  ];
+  skill = pkgs.runCommand "herdr-skill" { } ''
+    mkdir -p $out
+    ${dotfilesPackages.herdr}/bin/herdr --skill > $out/SKILL.md
+    test -s $out/SKILL.md
+  '';
 in
 {
   imports = [
