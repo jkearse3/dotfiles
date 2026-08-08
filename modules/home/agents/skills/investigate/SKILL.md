@@ -1,16 +1,19 @@
 ---
 name: investigate
 description: >-
-  Investigates questions across code, systems, documents, products, history, and
-  other domains using read-only evidence. Use for research, root-cause
-  diagnosis, behavior tracing, factual comparisons, or explanations; not for
-  routine implementation inspection, brainstorming, or open-ended ideation.
+  Answers standalone questions whose requested result is an evidence-backed
+  factual conclusion, including research, root-cause diagnosis, behavior
+  tracing, factual comparison, and explanation. Use when inspection is needed
+  and no more specific skill owns the result; not for implementation, planning,
+  diff review or summary, user-decision interrogation, brainstorming, or a
+  single known fact at a known location.
 argument-hint: "<question or topic>"
 ---
 
 # Investigate
 
-Investigate the requested question without making persistent changes.
+Answer the controlling question using safe read-only evidence. Investigation
+does not grant authority to implement its findings.
 
 ## Input
 
@@ -19,45 +22,30 @@ $ARGUMENTS
 ```
 
 Use the arguments and relevant conversation context to identify the controlling
-question. If no question or topic can be established, ask for one and stop.
+question. Ask only when no question is available or materially different
+interpretations would change the scope or conclusion.
 
 ## Method
 
-1. Establish the controlling question, relevant scope, and any exclusions that
-   materially affect the answer. Identify the evidence most likely to decide the
-   question.
-2. Divide the question into the smallest useful lines of inquiry. Keep dependent
-   questions together so earlier findings can direct later research; keep
-   independent lines distinct until synthesis.
-3. Investigate each line using relevant artifacts, documentation, history,
-   observed behavior, or external sources. Resolve available factual questions
-   directly rather than asking the user.
-4. When independent lines can be researched concurrently, use the execution
-   environment's available concurrency mechanisms. Otherwise, investigate them
-   sequentially in priority order. Concurrency is optional and its absence must
-   not block or weaken the investigation.
-5. Synthesize results across all lines into a provisional answer. Reconcile
-   conflicting evidence, distinguish observed facts from inferences, and
-   identify gaps that could change the conclusion.
-6. Pursue bounded follow-up research for material gaps with an available source
-   or targeted search path, concurrently when useful and supported.
-   Re-synthesize after incorporating new evidence.
-7. Stop when the controlling question is sufficiently answered, remaining
-   uncertainty would not change the conclusion or next action, or no productive
-   evidence path remains.
-8. Re-check the decisive evidence before concluding.
-
-The invoking investigator remains responsible for scope, synthesis, conflict
-resolution, evidence quality, and the final conclusion regardless of how
-individual lines of inquiry are executed.
+1. Frame the controlling question, material scope and exclusions, and the
+   evidence most likely to decide it. Split lines of inquiry only when they need
+   distinct evidence or dependency order.
+2. Gather the cheapest authoritative evidence that settles each line. Use only
+   inspections and diagnostics that leave no persistent repository or external
+   state and do not notify, incur cost, or acquire resources without authority.
+   Keep dependent paths ordered; parallelize independent paths when useful.
+3. Synthesize the evidence, reconcile conflicts, distinguish observations from
+   inferences, and pursue bounded follow-up for gaps that could change the
+   conclusion or next action. Stop when no productive material evidence path
+   remains.
+4. Re-check the decisive claims and source locations before reporting.
 
 ## Result
 
-Lead with a direct answer, followed by the material findings and precise sources
-that support it. Identify inferences as such. Retain unresolved uncertainty only
-when it could change the conclusion or next action, and state what would resolve
-it.
+Lead with the direct answer, followed by material findings and precise sources.
+Identify inferences and report only uncertainty, exclusions, or evidence limits
+that affect the conclusion or next action.
 
 Synthesize the evidence rather than returning raw notes or a chronological
-research transcript. Do not turn findings into an implementation plan or perform
-the described work unless the user separately requests it.
+research transcript. Do not turn findings into a plan or execute recommendations
+as part of the investigation.
