@@ -3,8 +3,9 @@ name: coding-style
 description: >-
   Writes source code that search-driven agents and humans can efficiently find,
   understand, modify, and scan. Use whenever writing, editing, generating, or
-  refactoring source code. Apply searchable naming, precise types, and semantic
-  code paragraphs proportionally without unrelated cleanup or reformatting.
+  refactoring source code. Apply searchable naming, precise types, semantic code
+  paragraphs, and durable checks for unguaranteed behavioral contracts,
+  proportionally and without unrelated cleanup or reformatting.
 ---
 
 # Coding Style
@@ -16,7 +17,8 @@ control and data flow through coherent semantic paragraphs.
 Apply this skill to all source-code changes. Routine local edits may require
 only consistent vocabulary, clear types, and locally coherent formatting. Public
 interfaces, cross-module behavior, and structural refactors warrant a deliberate
-retrieval and flow check.
+retrieval and flow check. Apply durable-check guidance at either depth; it keys
+on artifact behavior and risk rather than change size.
 
 ## Write Searchable Code
 
@@ -186,6 +188,43 @@ Keep empty and single-field literals compact when that is clearer. This rule
 does not require one-per-line formatting for positional arguments or collection
 elements. Follow a mandatory formatter when the language controls the layout.
 
+## Write Durable Checks
+
+Write a durable check when work introduces or changes behavior whose failure
+would matter to a caller or persisted state, the artifact's construction does
+not guarantee it, and no existing check directly protects it. Common cases
+include artifacts that:
+
+- Produces deterministic behavior over an input domain with meaningful edge or
+  failure cases, including malformed and empty inputs a caller can supply.
+- Mutates files, persistent state, or an external system.
+- Is invoked by or depended on under a runtime contract by a person or another
+  system, such as arguments, output streams, exit codes, idempotence, or
+  change-detection behavior.
+
+A compiler, schema, or build guarantee can satisfy the construction clause; do
+not add a check that merely restates it.
+
+Use the mechanism the build already offers rather than introducing a harness.
+Missing checks in immediate neighbors are not a reason to skip one; compare the
+artifact with repository behavior carrying comparable risk.
+
+Durable checks must use repository fixtures, temporary files, in-memory state,
+explicitly provisioned disposable state, or sandboxed integrations. They must
+not read sensitive data or access or mutate protected, production, shared, or
+non-disposable user state. Treat explicitly authorized validation against such
+state as separate manual validation.
+
+Mocks and fakes count when they enforce behavior the artifact owns, such as
+request construction, call sequencing, error handling, or suppression of a side
+effect. They do not establish external compatibility when they merely restate
+assumptions about the external system.
+
+If representative automation is not practical, add the strongest meaningful safe
+partial check and report the remaining validation gap. If no meaningful partial
+check exists, report the whole gap. Do not touch sensitive state or add a
+disproportionate harness solely to satisfy this section.
+
 ## Check The Result
 
 For each materially changed concept:
@@ -202,9 +241,11 @@ For each materially changed concept:
    per line, including in nested record values.
 7. Confirm the paragraph sequence communicates the function's control and data
    flow without requiring line-by-line parsing.
-8. Run the project's formatter and focused type, lint, and test checks.
-9. Inspect the diff for unnecessary renaming, comments, modules, API changes, or
-   whitespace-only changes.
+8. Confirm every artifact covered by **Write Durable Checks** has the strongest
+   practical safe coverage and explicitly reports any remaining validation gap.
+9. Run the project's formatter and focused type, lint, and test checks.
+10. Inspect the diff for unnecessary renaming, comments, modules, API changes,
+    or whitespace-only changes.
 
 Optimize ambiguity, navigation cost, and semantic scanability, not identifier
 length, file count, or the number of blank lines.
