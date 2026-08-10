@@ -21,8 +21,11 @@ they do not inspect flake inputs, blueprint IDs, or blueprint declarations.
 `blueprints/default.nix` contains complete reusable configuration recipes. A
 blueprint coordinates one Home Manager module and one nix-darwin module for a
 typed platform, user identity, and state versions. The current workstation
-composition is local to this file, and both blueprints reuse it. The personal
-blueprint adds the OpenCode SOPS environment while the lab blueprint does not.
+composition is local to this file, and all three blueprints reuse it. The
+personal blueprint adds the OpenCode SOPS environment while the lab and work
+blueprints do not. The work blueprint composes local private profile data into
+repository-scoped Git and Jujutsu identities while retaining the shared personal
+identity as its default.
 
 `flake/` contains flake-parts integration and output constructors. `flake.nix`
 assembles these modules, while `flake/packages.nix` supplies shared per-system

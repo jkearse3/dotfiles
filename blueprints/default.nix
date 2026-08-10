@@ -1,6 +1,6 @@
 # Declares concrete blueprints and the reusable workstation composition modules
 # they select. Output construction and validation live under `flake/`.
-_:
+{ inputs, ... }:
 let
   workstationHomeModule = {
     imports = [
@@ -85,6 +85,41 @@ in
         module = {
           imports = [ workstationHomeModule ];
         };
+      };
+      darwin = {
+        stateVersion = 5;
+        module = workstationDarwinModule;
+      };
+    };
+
+    laptop-work = {
+      system = "aarch64-darwin";
+      user = {
+        name = "johnnie";
+        homeDirectory = "/Users/johnnie";
+      };
+      home = {
+        stateVersion = "26.05";
+        module =
+          let
+            inherit (inputs.dotfiles-private) workProfile;
+          in
+          {
+            imports = [ workstationHomeModule ];
+
+            vcs.identityPolicy = {
+              identities.work = {
+                name = "Johnnie Kearse III";
+                inherit (workProfile) email;
+              };
+              repositoryScopes = [
+                {
+                  root = workProfile.repositoriesRoot;
+                  identity = "work";
+                }
+              ];
+            };
+          };
       };
       darwin = {
         stateVersion = 5;

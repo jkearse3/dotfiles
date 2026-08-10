@@ -19,10 +19,6 @@
   programs.git = {
     enable = true;
     settings = {
-      user = {
-        name = "Johnnie Kearse III";
-        email = "jkearse3@gmail.com";
-      };
       core = {
         ignorecase = false;
         pager = "cat";

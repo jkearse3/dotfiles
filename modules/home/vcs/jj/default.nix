@@ -20,10 +20,6 @@
     jujutsu = {
       enable = true;
       settings = {
-        user = {
-          name = "Johnnie Kearse III";
-          email = "jkearse3@gmail.com";
-        };
         ui = {
           diff-editor = ":builtin";
           paginate = "never";
