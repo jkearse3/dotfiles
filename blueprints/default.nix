@@ -65,7 +65,7 @@ in
         module = {
           imports = [ workstationHomeModule ];
 
-          agents.opencode.sopsEnvironmentFile = ../secrets/personal/opencode.sops.yaml;
+          secrets.sops.environmentFiles.opencode = ../secrets/personal/opencode.sops.yaml;
         };
       };
       darwin = {

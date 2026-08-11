@@ -4,6 +4,7 @@
   pkgs,
   lib,
   mkNonoWrapper,
+  mkSecretEnvironmentWrapper,
   mkSource,
   ...
 }:
@@ -13,34 +14,27 @@ let
     inherit lib pkgs;
     skills = config.agents.skills;
   };
-  sopsEnvironmentFile =
-    if config.agents.opencode.sopsEnvironmentFile == null then
-      null
-    else
-      builtins.path {
-        path = config.agents.opencode.sopsEnvironmentFile;
-        name = "opencode-sops-environment.sops.yaml";
-      };
   preventIdleSleep = lib.optionalString pkgs.stdenv.hostPlatform.isDarwin "/usr/bin/caffeinate -i ";
 
+  # caffeinate stays outermost so its idle-sleep assertion covers the whole
+  # session, and secret resolution stays inside it but outside any sandbox.
   mkOpencode =
     {
       name,
       command,
     }:
+    let
+      secretEnvironment = mkSecretEnvironmentWrapper {
+        name = "${name}-secret-environment";
+        environmentName = "opencode";
+        inherit command;
+      };
+    in
     pkgs.writeShellApplication {
       inherit name;
-      text =
-        if sopsEnvironmentFile == null then
-          ''
-            exec ${preventIdleSleep}${lib.escapeShellArg command} "$@"
-          ''
-        else
-          ''
-            printf -v command_string '%q ' ${lib.escapeShellArg command} "$@"
-            exec ${preventIdleSleep}${lib.getExe pkgs.sops} exec-env --same-process \
-              ${sopsEnvironmentFile} "$command_string"
-          '';
+      text = ''
+        exec ${preventIdleSleep}${lib.getExe secretEnvironment} "$@"
+      '';
     };
 
   opencodeFishCompletion = # fish
@@ -93,17 +87,9 @@ in
   imports = [
     ../../lib/source.nix
     ../../nono
+    ../../secrets
     ../registries.nix
   ];
-
-  options.agents.opencode.sopsEnvironmentFile = lib.mkOption {
-    type = lib.types.nullOr lib.types.path;
-    default = null;
-    description = ''
-      SOPS-encrypted YAML file whose top-level values are injected into OpenCode
-      as environment variables. When unset, OpenCode starts without SOPS.
-    '';
-  };
 
   config = {
     home.packages = [

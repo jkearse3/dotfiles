@@ -22,10 +22,10 @@ they do not inspect flake inputs, blueprint IDs, or blueprint declarations.
 blueprint coordinates one Home Manager module and one nix-darwin module for a
 typed platform, user identity, and state versions. The current workstation
 composition is local to this file, and all three blueprints reuse it. The
-personal blueprint adds the OpenCode SOPS environment while the lab and work
-blueprints do not. The work blueprint composes local private profile data into
-repository-scoped Git and Jujutsu identities while retaining the shared personal
-identity as its default.
+personal blueprint configures the OpenCode secret environment through the
+secrets module while the lab and work blueprints do not. The work blueprint
+composes local private profile data into repository-scoped Git and Jujutsu
+identities while retaining the shared personal identity as its default.
 
 `flake/` contains flake-parts integration and output constructors. `flake.nix`
 assembles these modules, while `flake/packages.nix` supplies shared per-system
@@ -56,9 +56,13 @@ the repository source and editable-delivery mode. `modules/home/lib/source.nix`
 turns the latter into the shared `mkSource` helper.
 
 Modules that contribute agent skills import the agent registry interface
-explicitly. Agent frontends import the nono module that provides their wrapper
-factory. These dependencies do not rely on another aggregate import or import
-ordering.
+explicitly. Agent frontends import the modules providing the factories they use:
+nono for sandbox wrappers, secrets for secret-environment wrappers. These
+dependencies do not rely on another aggregate import or import ordering.
+
+`modules/home/secrets` owns which provider resolves secrets and how it is
+configured. Consuming modules name a logical secret environment only, so
+changing the provider does not change a consumer.
 
 ## Extension Rules
 
