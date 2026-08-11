@@ -10,11 +10,20 @@ period, and keep the complete subject under 72 characters. Choose the type by
 effect: agent configuration is `feat` when behavior changes, `refactor` when
 reorganized, and `docs` only when behavior is unchanged.
 
-Every agent-authored description requires a non-redundant body explaining why.
-Describe the prior state or constraint, then the response. Include material
-constraints, durable behavior, compatibility, risks, exclusions, and non-obvious
-choices. Exclude review history, tool output, scratch work, agent actions, task
-state, workflow narration, and unsupported claims.
+Every agent-authored description requires a non-redundant body. Use the body to
+record useful context or details that are not obvious from the subject.
+
+Explain why when a meaningful rationale is known. Include prior state or
+constraints only when they add value. If no useful rationale is apparent,
+emphasize non-obvious implementation details, durable behavior, compatibility,
+risks, exclusions, or design choices instead.
+
+Give each distinct chunk of information its own paragraph. In particular, keep
+prior state or constraints, the change made in response, and auxiliary details
+in separate paragraphs when more than one appears.
+
+Exclude review history, tool output, scratch work, agent actions, task state,
+workflow narration, and unsupported claims.
 
 Wrap body and footer lines at 72 characters except unbreakable URLs and inline
 code. Separate footers with a blank line; use `Closes #123`, `Fixes JIRA-456`,

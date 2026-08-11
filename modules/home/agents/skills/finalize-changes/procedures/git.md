@@ -59,7 +59,9 @@ unpublished, task-owned commit set authorized for rewrite.
   ```bash
   desc='type(scope): description
 
-  Prior state or constraint, followed by the change in response.'
+  Prior state or constraint, when it adds value.
+
+  The change made in response.'
   desc="$(printf '%s\n' "$desc" | commit-message format)"
   printf '%s\n' "$desc" | commit-message validate
   git commit --no-edit -m "$desc"

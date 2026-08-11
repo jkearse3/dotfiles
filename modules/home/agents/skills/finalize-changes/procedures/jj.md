@@ -66,7 +66,9 @@ agent-authored message, then pass the exact validated value unchanged:
 ```bash
 desc='type(scope): description
 
-Prior state or constraint, followed by the change in response.'
+Prior state or constraint, when it adds value.
+
+The change made in response.'
 desc="$(printf '%s\n' "$desc" | commit-message format)"
 printf '%s\n' "$desc" | commit-message validate
 jj describe -r <target> -m "$desc"
