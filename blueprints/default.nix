@@ -8,6 +8,7 @@ let
       ../modules/home/bash
       ../modules/home/build-deps
       ../modules/home/containers
+      ../modules/home/database
       ../modules/home/gcp
       ../modules/home/go
       ../modules/home/hunk
