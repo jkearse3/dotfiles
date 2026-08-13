@@ -367,6 +367,7 @@ cmd:nix-flake-update() {
 		return
 	fi
 	nix-eval-all
+	jj commit -m "build(nix): update dependencies"
 }
 
 cmd:fmt() {
