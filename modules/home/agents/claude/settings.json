@@ -160,5 +160,6 @@
   "theme": "dark-ansi",
   "editorMode": "vim",
   "verbose": true,
-  "skipAutoPermissionPrompt": true
+  "skipAutoPermissionPrompt": true,
+  "model": "claude-opus-4-8"
 }
