@@ -2,8 +2,29 @@
 
 set -euo pipefail
 
+usage() {
+	printf '%s\n' 'usage: prepare-path.sh --workspace <absolute-workspace> [slug]' >&2
+	exit 2
+}
+
+# Parse the explicit target workspace before invoking the resolver, so malformed
+# CLI input fails with a usage error rather than reaching repository discovery.
+if [[ ${1:-} != --workspace ]]; then
+	usage
+fi
+if [[ $# -lt 2 ]]; then
+	usage
+fi
+workspace=$2
+shift 2
+if [[ $# -gt 1 ]]; then
+	usage
+fi
+
 SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
-ROOT=$("$SCRIPT_DIR/resolve-store.sh")
+# The resolver performs authoritative absolute/directory validation of the
+# workspace; its non-zero status and stderr propagate through this substitution.
+ROOT=$("$SCRIPT_DIR/resolve-store.sh" --workspace "$workspace")
 STORE_RELATIVE=.agent/handoffs
 STORE="$ROOT/$STORE_RELATIVE"
 IGNORE="$STORE/.gitignore"

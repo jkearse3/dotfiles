@@ -32,10 +32,13 @@ Interpret `$ARGUMENTS` and recent conversation as natural language:
 ## Create
 
 1. Choose a concise lowercase kebab-case slug for the goal. Run
-   `scripts/prepare-path.sh <slug>` relative to this skill directory. It
-   resolves canonical storage, safely prepares the ignored store, and prints the
-   new absolute path. If it reports ambiguous storage or a safety failure, stop
-   and report that error rather than bypassing it.
+   `scripts/prepare-path.sh --workspace <target-repo> <slug>`, passing the
+   absolute path of the repository you are working in as `<target-repo>`. Invoke
+   the script by its path; it is independent of the current working directory
+   and never derives the target from where it runs. It resolves canonical
+   storage, safely prepares the ignored store, and prints the new absolute path.
+   If it reports ambiguous storage or a safety failure, stop and report that
+   error rather than bypassing it.
 2. Write a concise prompt to that path using the structure below. Use recent
    conversation as session context; inspect only an important path or claim
    whose correctness is genuinely uncertain. Mark other uncertainty explicitly
@@ -54,10 +57,12 @@ perform the described task or modify revision history.
 
 Execution requires an explicit `run` or `execute` request identifying one
 handoff. Resolve an explicit path directly. Otherwise run
-`scripts/resolve-store.sh` relative to this skill directory, then match an exact
-filename or unique slug below `<canonical-root>/.agent/handoffs/`. Preserve the
-resolver's ambiguity and failure handling, and ask the user to choose when
-multiple files match.
+`scripts/resolve-store.sh --workspace <target-repo>`, passing the absolute path
+of the repository you are working in as `<target-repo>`. Invoke the script by
+its path; it is independent of the current working directory and never derives
+the target from where it runs. Then match an exact filename or unique slug below
+`<canonical-root>/.agent/handoffs/`. Preserve the resolver's ambiguity and
+failure handling, and ask the user to choose when multiple files match.
 
 1. Read the complete handoff and report its resolved absolute path.
 2. Reload every path under `Read` and inspect current repository state needed to
