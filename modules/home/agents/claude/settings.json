@@ -128,7 +128,9 @@
       "mcp__ide__getDiagnostics"
     ],
     "deny": [
-      "AskUserQuestion"
+      "AskUserQuestion",
+      "EnterPlanMode",
+      "Agent(Plan)"
     ],
     "ask": [
       "Bash(git commit:*)",
