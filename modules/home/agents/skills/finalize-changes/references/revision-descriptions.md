@@ -18,6 +18,12 @@ constraints only when they add value. If no useful rationale is apparent,
 emphasize non-obvious implementation details, durable behavior, compatibility,
 risks, exclusions, or design choices instead.
 
+When a description explains a change by its prior behavior, a constraint, or a
+precedent, state that directly so the description is resolvable from itself and
+its own diff; cite an issue, commit, or component by name only to reinforce what
+the description already explains, never as the pointer a reader must follow to
+recover it.
+
 Give each distinct chunk of information its own paragraph. In particular, keep
 prior state or constraints, the change made in response, and auxiliary details
 in separate paragraphs when more than one appears.
