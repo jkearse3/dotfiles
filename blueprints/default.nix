@@ -64,8 +64,6 @@ in
         stateVersion = "26.05";
         module = {
           imports = [ workstationHomeModule ];
-
-          secrets.sops.environmentFiles.opencode = ../secrets/personal/opencode.sops.yaml;
         };
       };
       darwin = {

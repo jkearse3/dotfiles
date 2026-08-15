@@ -44,7 +44,7 @@ let
           if string match -qr '\s$' -- (commandline --current-process --cut-at-cursor)
               set tokens $tokens ""
           end
-          opencode --get-yargs-completions $tokens 2>/dev/null \
+          ${opencode-wrapped}/bin/opencode --get-yargs-completions $tokens 2>/dev/null \
               | string match -v -r '^\$0:' \
               | string replace -r '^([^:]+):(.*)$' '$1\t$2'
       end
@@ -113,8 +113,9 @@ in
       ".config/fish/completions/opencode.fish".text = opencodeFishCompletion;
 
       # The sandboxed `nono-opencode` wrapper inherits opencode's dynamic yargs completion via fish's
-      # `--wraps`. The wrapped function calls the bare `opencode` binary, so tabbing never launches the
-      # sandbox. Autoloaded by command name, so it lives in its own file.
+      # `--wraps`. That completion calls the `opencode-wrapped` binary directly, not the secret or
+      # caffeinate launcher, so tabbing never resolves secrets or launches the sandbox. Autoloaded by
+      # command name, so it lives in its own file.
       ".config/fish/completions/nono-opencode.fish".text = ''
         complete -c nono-opencode --wraps opencode
       '';

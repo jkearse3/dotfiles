@@ -23,6 +23,7 @@
           unstablePkgs.jujutsu
           unstablePkgs.nvd
           unstablePkgs.perl
+          unstablePkgs.secretspec
           unstablePkgs.shellcheck
           unstablePkgs.statix
         ];
