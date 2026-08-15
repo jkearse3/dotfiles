@@ -1,0 +1,15 @@
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "jj-description-format"
+version = "0.0.0"
+description = "Reformat a jj revision description in place"
+requires-python = ">=3.11"
+
+[project.scripts]
+jj-description-format = "jj_description_format.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]

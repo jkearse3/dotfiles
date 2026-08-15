@@ -1,0 +1,14 @@
+#compdef jj-description-format
+
+function _jj_description_format_bookmarks() {
+  local -a bookmarks
+  bookmarks=("${(@f)$(jj bookmark list --ignore-working-copy -T 'if(!remote && present, name ++ "\n")' 2>/dev/null)}")
+  compadd -a bookmarks
+}
+
+_arguments \
+  '(-h --help)'{-h,--help}'[show help]' \
+  '(-r --revision)'{-r,--revision}'[target revision]:revision:_jj_description_format_bookmarks' \
+  '--dry-run[show the diff without writing]' \
+  '--subject-width[maximum subject width]:width:' \
+  '--body-width[maximum body line width]:width:'
