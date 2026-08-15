@@ -61,6 +61,10 @@
         jj-bookmark-land = pkgs.callPackage ../packages/jj-bookmark-land/package.nix {
           inherit (unstablePkgs) jujutsu;
         };
+        jj-description-format = pkgs.callPackage ../packages/jj-description-format/package.nix {
+          inherit commit-message;
+          inherit (unstablePkgs) jujutsu;
+        };
         jj-worktree-add = pkgs.callPackage ../packages/jj-worktree-add/package.nix {
           inherit jj-ensure;
           inherit (unstablePkgs) jujutsu;

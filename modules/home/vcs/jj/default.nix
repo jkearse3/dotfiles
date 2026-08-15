@@ -13,6 +13,7 @@
     dotfilesPackages.jj-change-select
     dotfilesPackages.jj-ensure
     dotfilesPackages.jj-bookmark-land
+    dotfilesPackages.jj-description-format
     dotfilesPackages.jj-worktree-add
   ];
 

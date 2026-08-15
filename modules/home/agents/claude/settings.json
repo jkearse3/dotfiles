@@ -82,6 +82,8 @@
       "Bash(jj-bookmark-default:*)",
       "Bash(jj-bookmark-previous:*)",
       "Bash(jj-bookmark-stacked:*)",
+      "Bash(jj-description-format)",
+      "Bash(jj-description-format:*)",
       "Bash(jq:*)",
       "Bash(less:*)",
       "Bash(ln:*)",

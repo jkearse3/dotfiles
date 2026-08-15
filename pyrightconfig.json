@@ -7,6 +7,7 @@
     "packages/nix-cleanup",
     "packages/jj-ensure",
     "packages/jj-bookmark-land",
+    "packages/jj-description-format",
     "packages/jj-worktree-add",
     "packages/token-count"
   ],
@@ -22,6 +23,10 @@
     {
       "root": "packages/jj-bookmark-land",
       "extraPaths": ["packages/jj-bookmark-land/src"]
+    },
+    {
+      "root": "packages/jj-description-format",
+      "extraPaths": ["packages/jj-description-format/src"]
     },
     {
       "root": "packages/jj-worktree-add",
