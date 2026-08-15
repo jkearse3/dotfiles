@@ -54,7 +54,11 @@ in
   # versions are repeated intentionally so blueprints can evolve independently;
   # policy shared across declarations belongs in the composition modules above.
   dotfiles.blueprintDeclarations = {
-    laptop-personal = {
+    # Unmarked member of the laptop-dev family: the development workstation for
+    # every machine without variant tweaks. Secrets resolve through the
+    # machine-local SecretSpec provider, so this one blueprint serves any
+    # machine with no device-specific configuration identity.
+    laptop-dev-default = {
       system = "aarch64-darwin";
       user = {
         name = "johnnie";
@@ -72,25 +76,9 @@ in
       };
     };
 
-    laptop-lab = {
-      system = "aarch64-darwin";
-      user = {
-        name = "johnnie";
-        homeDirectory = "/Users/johnnie";
-      };
-      home = {
-        stateVersion = "26.05";
-        module = {
-          imports = [ workstationHomeModule ];
-        };
-      };
-      darwin = {
-        stateVersion = 5;
-        module = workstationDarwinModule;
-      };
-    };
-
-    laptop-work = {
+    # The laptop-dev family's work variant: the same workstation composition
+    # plus repository-scoped work VCS identity from the private profile input.
+    laptop-dev-work = {
       system = "aarch64-darwin";
       user = {
         name = "johnnie";

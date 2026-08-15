@@ -21,11 +21,14 @@ they do not inspect flake inputs, blueprint IDs, or blueprint declarations.
 `blueprints/default.nix` contains complete reusable configuration recipes. A
 blueprint coordinates one Home Manager module and one nix-darwin module for a
 typed platform, user identity, and state versions. The current workstation
-composition is local to this file, and all three blueprints reuse it. The
-personal blueprint configures the OpenCode secret environment through the
-secrets module while the lab and work blueprints do not. The work blueprint
-composes local private profile data into repository-scoped Git and Jujutsu
-identities while retaining the shared personal identity as its default.
+composition is local to this file, and both blueprints reuse it. The blueprints
+form the laptop-dev family: `laptop-dev-default` is the development workstation
+for any machine without work-specific tweaks, and `laptop-dev-work` is the same
+workstation with them. No blueprint configures a secret provider, because
+secrets resolve through machine-local SecretSpec state (see
+[Secrets](secrets.md)). The work blueprint composes local private profile data
+into repository-scoped Git and Jujutsu identities while retaining the shared
+personal identity as its default.
 
 `flake/` contains flake-parts integration and output constructors. `flake.nix`
 assembles these modules, while `flake/packages.nix` supplies shared per-system
@@ -60,9 +63,13 @@ explicitly. Agent frontends import the modules providing the factories they use:
 nono for sandbox wrappers, secrets for secret-environment wrappers. These
 dependencies do not rely on another aggregate import or import ordering.
 
-`modules/home/secrets` owns which provider resolves secrets and how it is
-configured. Consuming modules name a logical secret environment only, so
-changing the provider does not change a consumer.
+`modules/home/secrets` owns secret resolution mechanics: it runs each consumer's
+command under SecretSpec against the committed, value-free `secretspec.toml`
+registry. Consuming modules name a logical secret environment only, which maps
+to a same-named SecretSpec scope. The concrete provider is machine-local state
+mapped to the `dotfiles` alias, so neither a consumer nor a blueprint changes
+when the provider does. See [Secrets](secrets.md) for the full boundary and
+commissioning workflow.
 
 ## Extension Rules
 
