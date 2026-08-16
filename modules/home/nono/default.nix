@@ -5,7 +5,7 @@
   ...
 }:
 let
-  # Upstream nono 0.53.0's own integration test suite refuses to grant `/nix`
+  # Upstream nono 0.71.0's own integration test suite refuses to grant `/nix`
   # to the sandbox under test, because the Nix build sandbox mounts the
   # package's working tree under `/nix/var/nix/builds/...`, which overlaps
   # nono's "protected state root" guard. The failure is internal to nono's
@@ -19,11 +19,17 @@ let
       cliPluginsExtraDirs = [ "/Applications/Docker.app/Contents/Resources/cli-plugins" ];
     }
   );
+  onePasswordSsh = config.dotfiles.onePasswordSsh;
+  onePasswordSocket = onePasswordSsh.normalizedSocket;
+  sshPublicSelectors = [
+    onePasswordSsh.githubAuthenticationSelector
+    onePasswordSsh.githubSigningSelector
+  ];
   mkNonoWrapper = import ./mkNonoWrapper.nix {
     pkgs = pkgs // {
       inherit nono;
     };
-    inherit dockerConfig lib;
+    inherit dockerConfig lib onePasswordSocket;
   };
   profile = {
     meta = {
@@ -112,14 +118,18 @@ let
         # SSH metadata lives under deny_credentials, so file-level grants need matching bypasses.
         "${config.home.homeDirectory}/.ssh/config"
         "${config.home.homeDirectory}/.ssh/known_hosts"
-      ];
+        onePasswordSocket
+      ]
+      ++ sshPublicSelectors
+      ++ lib.optionals pkgs.stdenv.hostPlatform.isDarwin [ onePasswordSsh.darwinSocket ];
       read_file = [
         # npm/pnpm need this metadata-only config for cache and prefix discovery.
         "${config.home.homeDirectory}/.npmrc"
 
         # SSH config is non-secret metadata. Private keys remain denied.
         "${config.home.homeDirectory}/.ssh/config"
-      ];
+      ]
+      ++ sshPublicSelectors;
       allow_file = [
         # SSH may append host keys; authentication itself goes through the injected SSH_AUTH_SOCK.
         "${config.home.homeDirectory}/.ssh/known_hosts"

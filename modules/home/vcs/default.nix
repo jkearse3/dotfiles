@@ -1,5 +1,20 @@
-{ config, lib, ... }:
+{
+  config,
+  lib,
+  pkgs,
+  ...
+}:
 let
+  onePasswordSsh = config.dotfiles.onePasswordSsh;
+  sshSigner = pkgs.writeShellApplication {
+    name = "ssh-sign-with-1password";
+    text = ''
+      export SSH_AUTH_SOCK=${lib.escapeShellArg onePasswordSsh.normalizedSocket}
+      exec ${lib.getExe' pkgs.openssh "ssh-keygen"} "$@"
+    '';
+  };
+  sshSignerProgram = "${sshSigner}/bin/ssh-sign-with-1password";
+
   identityType = lib.types.submodule {
     options = {
       name = lib.mkOption {
@@ -9,6 +24,11 @@ let
       email = lib.mkOption {
         type = lib.types.nonEmptyStr;
         description = "Commit author email address";
+      };
+      signingKey = lib.mkOption {
+        type = lib.types.nullOr lib.types.nonEmptyStr;
+        default = null;
+        description = "Public SSH key used to sign commits, or null to disable signing";
       };
     };
   };
@@ -31,6 +51,36 @@ let
   hasDefaultIdentity = policy.defaultIdentity != null && identityExists policy.defaultIdentity;
   defaultIdentity = if hasDefaultIdentity then policy.identities.${policy.defaultIdentity} else null;
   validRepositoryScopes = lib.filter (scope: identityExists scope.identity) policy.repositoryScopes;
+  authorSettings = identity: {
+    inherit (identity) name email;
+  };
+  gitSigningSettings =
+    identity:
+    if identity.signingKey == null then
+      {
+        commit.gpgSign = false;
+        user.signingKey = "";
+      }
+    else
+      {
+        commit.gpgSign = true;
+        user.signingKey = identity.signingKey;
+      };
+  jujutsuSigningSettings =
+    identity:
+    if identity.signingKey == null then
+      {
+        signing.backend = "none";
+        git.sign-on-push = false;
+      }
+    else
+      {
+        signing = {
+          backend = "ssh";
+          key = identity.signingKey;
+        };
+        git.sign-on-push = true;
+      };
   repositoryScopeRoots = map (scope: scope.root) policy.repositoryScopes;
   normalizedRepositoryScopeRoots = map (
     root:
@@ -132,30 +182,53 @@ in
       identities.personal = lib.mkDefault {
         name = "Johnnie Kearse III";
         email = "jkearse3@gmail.com";
+        signingKey = onePasswordSsh.githubSigningSelector;
       };
       defaultIdentity = lib.mkDefault "personal";
     };
 
     programs.git = {
-      settings.user = {
-        useConfigOnly = true;
-      }
-      // lib.optionalAttrs (defaultIdentity != null) defaultIdentity;
+      settings = lib.recursiveUpdate {
+        gpg = {
+          format = "ssh";
+          ssh.program = sshSignerProgram;
+        };
+        user = {
+          useConfigOnly = true;
+        }
+        // lib.optionalAttrs (defaultIdentity != null) (authorSettings defaultIdentity);
+      } (lib.optionalAttrs (defaultIdentity != null) (gitSigningSettings defaultIdentity));
       includes = map (scope: {
         condition = "gitdir:${scope.root}/";
-        contents.user = policy.identities.${scope.identity};
+        contents = lib.recursiveUpdate {
+          user = authorSettings policy.identities.${scope.identity};
+        } (gitSigningSettings policy.identities.${scope.identity});
       }) validRepositoryScopes;
     };
 
     programs.jujutsu.settings =
-      lib.optionalAttrs (defaultIdentity != null) {
-        user = defaultIdentity;
-      }
+      lib.recursiveUpdate
+        {
+          signing = {
+            behavior = "drop";
+            backends.ssh.program = sshSignerProgram;
+          };
+        }
+        (
+          lib.optionalAttrs (defaultIdentity != null) (
+            lib.recursiveUpdate {
+              user = authorSettings defaultIdentity;
+            } (jujutsuSigningSettings defaultIdentity)
+          )
+        )
       // lib.optionalAttrs (validRepositoryScopes != [ ]) {
-        "--scope" = map (scope: {
-          "--when".repositories = [ scope.root ];
-          user = policy.identities.${scope.identity};
-        }) validRepositoryScopes;
+        "--scope" = map (
+          scope:
+          lib.recursiveUpdate {
+            "--when".repositories = [ scope.root ];
+            user = authorSettings policy.identities.${scope.identity};
+          } (jujutsuSigningSettings policy.identities.${scope.identity})
+        ) validRepositoryScopes;
       };
   };
 }

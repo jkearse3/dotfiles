@@ -19,6 +19,42 @@ HOME_RESULT_PATH=""
 SYSTEM_RESULT_PATH=""
 PRIVATE_OVERRIDE_ARGS=()
 
+ssh_agent_socket_is_responsive() {
+	local socket_path=$1
+	[[ -S $socket_path ]] || return 1
+
+	local status=0
+	SSH_AUTH_SOCK="$socket_path" ssh-add -l >/dev/null 2>&1 || status=$?
+	[[ $status -lt 2 ]]
+}
+
+select_1password_ssh_agent_socket() {
+	local platform=$1
+	local normalized_socket=$2
+	local darwin_socket=$3
+
+	if ssh_agent_socket_is_responsive "$normalized_socket"; then
+		printf '%s\n' "$normalized_socket"
+		return
+	fi
+
+	if [[ $platform == Darwin ]] && ssh_agent_socket_is_responsive "$darwin_socket"; then
+		printf '%s\n' "$darwin_socket"
+	fi
+}
+
+configure_1password_ssh_agent() {
+	local normalized_socket="$HOME/.1password/agent.sock"
+	# Home Manager creates the normalized symlink after the first activation.
+	local darwin_socket="$HOME/Library/Group Containers/2BUA8C4S2C.com.1password/t/agent.sock"
+	local selected_socket
+	selected_socket="$(select_1password_ssh_agent_socket "$(uname -s)" "$normalized_socket" "$darwin_socket")"
+
+	if [[ -n $selected_socket ]]; then
+		export SSH_AUTH_SOCK="$selected_socket"
+	fi
+}
+
 snapshot_jj_working_copy() {
 	command -v jj >/dev/null 2>&1 || return 0
 	jj status >/dev/null
@@ -501,6 +537,7 @@ main() {
 			usage
 			return 2
 		fi
+		configure_1password_ssh_agent
 		snapshot_jj_working_copy || return
 		"$command_fn" "$@"
 	else
@@ -510,4 +547,6 @@ main() {
 	fi
 }
 
-main "$@"
+if [[ ${BASH_SOURCE[0]} == "$0" ]]; then
+	main "$@"
+fi

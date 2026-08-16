@@ -2,6 +2,7 @@
   pkgs,
   lib,
   dockerConfig,
+  onePasswordSocket,
 }:
 {
   name ? null,
@@ -36,6 +37,7 @@ let
     ''
       #!${pkgs.runtimeShell} -e
       nono_bin="${lib.getBin pkgs.nono}/bin/nono"
+      one_password_socket=${lib.escapeShellArg onePasswordSocket}
       cwd_flag=${lib.optionalString allowCwd "--allow-cwd"}
       cmd_prefix=${lib.optionalString (command != null) "${command}"}
 
@@ -68,6 +70,9 @@ let
         "$nono_bin" "wrap" "--profile" "$profile_arg"
       )
       [[ -n "$cwd_flag" ]] && nono_cmd+=("$cwd_flag")
+      if [[ -S "$one_password_socket" ]]; then
+          nono_cmd+=("--allow-unix-socket" "$one_password_socket")
+      fi
       if [[ -n "$SSH_AUTH_SOCK" && -S "$SSH_AUTH_SOCK" ]]; then
           nono_cmd+=("--allow-unix-socket" "$SSH_AUTH_SOCK")
       fi
@@ -106,8 +111,10 @@ pkgs.runCommandLocal "nono-${wrapperName}"
       || { echo "FAIL: missing .nono/profile.json overlay detection" >&2; exit 1; }
     grep -q 'no .*extends.* key' "$wrapper" \
       || { echo "FAIL: missing overlay missing-extends warning" >&2; exit 1; }
-    grep -q 'allow-unix-socket' "$wrapper" \
-      || { echo "FAIL: missing SSH_AUTH_SOCK injection" >&2; exit 1; }
+    grep -Fq 'nono_cmd+=("--allow-unix-socket" "$one_password_socket")' "$wrapper" \
+      || { echo "FAIL: missing normalized 1Password socket injection" >&2; exit 1; }
+    grep -Fq 'nono_cmd+=("--allow-unix-socket" "$SSH_AUTH_SOCK")' "$wrapper" \
+      || { echo "FAIL: missing ambient SSH_AUTH_SOCK injection" >&2; exit 1; }
     grep -q 'DOCKER_CONFIG' "$wrapper" \
       || { echo "FAIL: missing isolated Docker configuration" >&2; exit 1; }
     grep -q 'BUILDX_CONFIG' "$wrapper" \

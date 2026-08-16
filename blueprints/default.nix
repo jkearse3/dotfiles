@@ -27,6 +27,7 @@ let
       ../modules/home/rust
       ../modules/home/secrets
       ../modules/home/shell
+      ../modules/home/ssh
       ../modules/home/terminal
       ../modules/home/toml
       ../modules/home/vcs
