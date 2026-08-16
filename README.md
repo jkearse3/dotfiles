@@ -4,22 +4,22 @@ Configurations managed with Nix.
 
 ## Installation
 
-1. Install Nix via
-   [Determinate Nix](https://determinate.systems/nix-installer/).
-2. Install [Homebrew](https://brew.sh/) (macOS).
-3. Clone into `~/dotfiles` (as out-of-store symlinks assume this path).
-4. Run `nix develop --command jj-ensure` to initialize the required colocated jj
-   workspace.
-5. Run `nix develop --command ./x.sh nix-blueprints` and choose the blueprint to
-   apply. The development shell provides the complete bootstrap command
-   environment.
-6. Run
-   `nix develop --command ./x.sh nix-switch-system --blueprint <blueprint-id>`
-   to build and activate the system config.
-7. Run `nix develop --command ./x.sh nix-switch-home --blueprint <blueprint-id>`
-   to build and activate the home config. This creates `dotfiles/blueprint-id`
-   under the XDG config root (normally `~/.config`), so later commands can
-   invoke `./x.sh` directly without `--blueprint`.
+Follow the [fresh Darwin installation guide](docs/installation.md). The flake
+has a private SSH input, so a new machine must commission 1Password and verify
+access to `dotfiles-private` before the first `nix develop` invocation.
+
+After installing the prerequisites and initializing the colocated Jujutsu
+workspace, the activation sequence is:
+
+```sh
+nix develop --accept-flake-config --command ./x.sh nix-blueprints
+nix develop --accept-flake-config --command ./x.sh nix-switch-system --blueprint <blueprint-id>
+nix develop --accept-flake-config --command ./x.sh nix-switch-home --blueprint <blueprint-id>
+```
+
+Home Manager creates `dotfiles/blueprint-id` under the XDG config root (normally
+`~/.config`), so later commands can invoke `./x.sh` directly without
+`--blueprint`.
 
 ## Usage
 
@@ -42,6 +42,8 @@ blueprint's result.
 ## Reference
 
 - [Architecture](docs/architecture.md)
+- [Installation](docs/installation.md)
 - [Secrets](docs/secrets.md)
+- [SSH and commit signing](docs/ssh.md)
 - [Direnv in linked worktrees](packages/direnv-worktree/README.md)
 - [Nix cheatsheet](docs/cheatsheets/nix.md)
