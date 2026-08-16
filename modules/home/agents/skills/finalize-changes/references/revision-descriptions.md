@@ -16,7 +16,8 @@ record useful context or details that are not obvious from the subject.
 Explain why when a meaningful rationale is known. Include prior state or
 constraints only when they add value. If no useful rationale is apparent,
 emphasize non-obvious implementation details, durable behavior, compatibility,
-risks, exclusions, or design choices instead.
+risks, exclusions, or a design choice whose consequence the diff does not
+already reveal.
 
 When a description explains a change by its prior behavior, a constraint, or a
 precedent, state that directly so the description is resolvable from itself and
@@ -29,7 +30,8 @@ prior state or constraints, the change made in response, and auxiliary details
 in separate paragraphs when more than one appears.
 
 Exclude review history, tool output, scratch work, agent actions, task state,
-workflow narration, and unsupported claims.
+workflow narration, alternatives weighed but not taken, and unsupported
+claims.
 
 Wrap body and footer lines at 72 characters except unbreakable URLs and inline
 code. Separate footers with a blank line; use `Closes #123`, `Fixes JIRA-456`,
