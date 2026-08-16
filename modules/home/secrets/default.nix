@@ -44,6 +44,7 @@
     # `secretspec` at the version the wrappers require.
     home.packages = [
       (lib.hiPrio pkgs.secretspec)
+      pkgs._1password-cli
     ];
   };
 }
