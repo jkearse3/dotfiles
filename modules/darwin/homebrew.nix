@@ -8,12 +8,20 @@ _: {
     };
     casks = [
       "1password"
+      "chatgpt"
+      "claude"
       "docker-desktop"
+      "firefox"
       "font-jetbrains-mono-nerd-font"
       "ghostty"
       "google-chrome"
+      "notion"
+      "slack"
+      "spotify"
+      "stats"
       "tailscale-app"
       "yubico-yubikey-manager"
+      "zed"
     ];
   };
 }
