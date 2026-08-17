@@ -447,39 +447,126 @@ for required_text in \
 	'Never add an empty section or' \
 	'Do not infer persistence' \
 	'Execution requires an explicit execute or run request' \
-	'Immediately before writing, reread the plan' \
 	'exact plan filename or path' \
 	'list valid plans by running the resolver with no plan identifier' \
 	'pass its exact path or filename back to the script for validation' \
 	'no candidate is plausible or multiple candidates remain plausible' \
-	'timestamp, mtime, listing order, lexical order, collision suffix'; do
+	'timestamp, mtime, listing order, lexical order, collision suffix' \
+	'ignored plan store does not' \
+	'provide durable shared history' \
+	'existing plans require no migration or automatic annotation'; do
 	[[ $skill_content == *"$required_text"* ]] || fail "plan contract must contain: $required_text"
 	printf 'ok - plan contract contains %s\n' "$required_text"
 done
 
 execute_content=${skill_content#*'### Execute'}
-execute_content=${execute_content%%'### Update Or Reconcile'*}
+execute_content=${execute_content%%'### Update'*}
+# shellcheck disable=SC2016
 for required_text in \
 	'compare current state with both the planning' \
-	'Stop only on plan-invalidating'; do
+	'Stop only on plan-invalidating' \
+	'Reject `Superseded`, reporting its exact' \
+	'Reject `Pending Supersession`' \
+	'another plan names it in `Supersedes` without a matching completed' \
+	'exactly one `Status: Superseded`' \
+	'exactly one `Superseded By` value' \
+	'exactly one `Supersedes` value' \
+	'Ordinary' \
+	'plans need no relationship metadata'; do
 	[[ $execute_content == *"$required_text"* ]] || fail "execute contract must contain: $required_text"
 	printf 'ok - execute contract contains %s\n' "$required_text"
 done
 
-update_content=${skill_content#*'### Update Or Reconcile'}
-update_content=${update_content%%'## Method'*}
+update_content=${skill_content#*'### Update'}
+update_content=${update_content%%'### Flag'*}
 for required_text in \
 	'compare current state with both the planning' \
-	'Incorporate baseline refreshes and expected plan deltas'; do
+	'Incorporate baseline refreshes and expected plan deltas' \
+	'Preserve its path and creation timestamp' \
+	'updates never create or alter reconciliation relationships' \
+	'Do not execute the' \
+	'archive it, rename it, or create a' \
+	'successor.'; do
 	[[ $update_content == *"$required_text"* ]] || fail "update contract must contain: $required_text"
 	printf 'ok - update contract contains %s\n' "$required_text"
 done
 
+flag_content=${skill_content#*'### Flag'}
+flag_content=${flag_content%%'### Reconcile'*}
+# shellcheck disable=SC2016
+for required_text in \
+	'Resolve and read the exact plan' \
+	'Permit flagging only `Ready` or an existing' \
+	'`Needs Reconciliation` plan' \
+	'Reject `Superseded`, `Pending Supersession`, and' \
+	'`Blocked`' \
+	'Immediately before' \
+	'writing, reread the plan and stop if it changed' \
+	'preserve any' \
+	'relationship metadata byte-for-byte'; do
+	[[ $flag_content == *"$required_text"* ]] || fail "flag contract must contain: $required_text"
+	printf 'ok - flag contract contains %s\n' "$required_text"
+done
+
+reconcile_content=${skill_content#*'### Reconcile'}
+reconcile_content=${reconcile_content%%'## Method'*}
+# shellcheck disable=SC2016
+for required_text in \
+	'Reconciliation applies only to plan-invalidating drift' \
+	'refreshes and expected plan deltas into the remaining work without creating a' \
+	'a predecessor can have at most one direct successor' \
+	"predecessor's exact filename in" \
+	'`Supersedes`; a predecessor can have at most one direct successor' \
+	'A single existing `Supersedes` header is valid' \
+	'preserve this backward relationship' \
+	'byte-for-byte' \
+	'`Reconciliation Reason`' \
+	'naming the invalidated plan claim and material evidence' \
+	'Write the complete' \
+	'successor there with `Status: Pending Supersession`' \
+	'Immediately before mutating the predecessor' \
+	'reread it and relist' \
+	'relationship headers' \
+	'task-owned pending successor' \
+	'replace only its status with `Status: Superseded`' \
+	'insert `Superseded By: <exact-successor-filename>`' \
+	'Preserve every other byte of its original body' \
+	'Replace only the successor' \
+	'Resolve both exact filenames again and verify' \
+	'leave both files unchanged' \
+	'`Blocked` requires' \
+	'`Decisions Needed`; otherwise it is `Ready`' \
+	'Never restore the predecessor' \
+	'successor is already final, validate' \
+	'and report the completed pair' \
+	'later plan link' \
+	'infer recovery from' \
+	'timestamps, ordering, or recency'; do
+	[[ $reconcile_content == *"$required_text"* ]] || fail "reconcile contract must contain: $required_text"
+	printf 'ok - reconcile contract contains %s\n' "$required_text"
+done
+
+after_pending_write=${reconcile_content#*"successor there with \`Status: Pending Supersession\`"}
+[[ $after_pending_write != "$reconcile_content" && $after_pending_write == *"predecessor becomes \`Superseded\`"* ]] ||
+	fail 'normal reconciliation must write a pending successor before superseding the predecessor'
+printf '%s\n' 'ok - normal reconciliation writes a pending successor before superseding the predecessor'
+
+after_predecessor_supersession=${reconcile_content#*"replace only its status with \`Status: Superseded\`"}
+[[ $after_predecessor_supersession != "$reconcile_content" && $after_predecessor_supersession == *"Replace only the successor's \`Pending Supersession\` status"* ]] ||
+	fail 'normal reconciliation must disable the predecessor before enabling the successor'
+printf '%s\n' 'ok - normal reconciliation disables the predecessor before enabling the successor'
+
 output_content=${skill_content#*'## Output'}
 output_content=${output_content%%'## Boundaries'*}
+# shellcheck disable=SC2016
 for required_text in \
 	'optional when the work has no material content for them' \
-	'Reference source entries instead of'; do
+	'Reference source entries instead of' \
+	'must not appear in a newly authored or completed plan. `Supersedes`' \
+	'`Superseded By`, and `Reconciliation Reason` appear only' \
+	'predecessor superseded from `Needs Reconciliation` retains its existing' \
+	'`Reconciliation Required` section as immutable audit content' \
+	'never as empty placeholders'; do
 	[[ $output_content == *"$required_text"* ]] || fail "output contract must contain: $required_text"
 	printf 'ok - output contract contains %s\n' "$required_text"
 done

@@ -42,9 +42,12 @@ File mutation requires explicit user language:
 - `update` or equivalent language naming an existing plan rewrites that exact
   plan without changing its path.
 - `reconcile` naming an existing plan reloads its authoritative inputs, resolves
-  material drift, and rewrites that exact plan when resolution is possible.
+  plan-invalidating drift, and creates a linked successor plan while preserving
+  the predecessor body.
 - `flag` or equivalent language naming an existing plan may persist
   `Needs Reconciliation` and its reconciliation details without resolving them.
+  It must reject `Superseded` and `Pending Supersession` plans and must not
+  alter reconciliation relationship metadata.
 - `read`, `show`, or `validate` alone is read-only. Report needed changes in the
   response and do not modify the plan.
 - `execute` or `run` naming an existing plan consumes it under authority
@@ -107,24 +110,35 @@ Execution requires an explicit execute or run request identifying one plan.
 1. Resolve and read the complete plan. Confirm the current request or another
    independently authorized task covers its outcome, scope, and consequential
    effects. Stop if the plan would broaden that authority.
-2. Require `Status: Ready`. Stop on `Blocked` or `Needs Reconciliation` and
-   report the unresolved section without editing the plan.
-3. Reload every material source and compare current state with both the planning
+2. Require `Status: Ready`. Reject `Superseded`, reporting its exact
+   `Superseded By` filename. Reject `Pending Supersession` and report that
+   reconciliation recovery is required. Stop on `Blocked` or
+   `Needs Reconciliation` and report the unresolved section without editing the
+   plan.
+3. Inspect relationship headers across the listed plans. For a `Ready` plan,
+   require exactly one status header and reject any `Superseded By` header. Then
+   stop if another plan names it in `Supersedes` without a matching completed
+   reciprocal relationship. When `Supersedes` is present, resolve that exact
+   predecessor filename and require it to have exactly one `Status: Superseded`
+   header and exactly one `Superseded By` value naming the selected plan.
+   Require exactly one `Supersedes` value in the selected successor. Ordinary
+   plans need no relationship metadata.
+4. Reload every material source and compare current state with both the planning
    baseline and planned target using the classifications under
    `Sources And Drift`. Continue after a baseline refresh or expected plan
    delta, adjusting only the remaining work. Stop only on plan-invalidating
    drift, report the affected plan claim, and do not flag it persistently unless
    that was separately requested.
-4. Treat the plan as the complete alignment input and follow its work sequence,
+5. Treat the plan as the complete alignment input and follow its work sequence,
    validation, finalization, and review under the applicable repository or
    operational workflow. Do not recover intent from prior conversation or reopen
    decisions the plan settles unless current evidence invalidates them.
-5. Never edit, annotate, archive, rename, delete, or record execution state on
+6. Never edit, annotate, archive, rename, delete, or record execution state on
    the plan while consuming it.
 
-### Update Or Reconcile
+### Update
 
-1. Resolve and read the complete plan. Retain the content read as the update
+1. Resolve and read the complete plan. Retain its content as the update
    baseline.
 2. Reload every material source and compare current state with both the planning
    baseline and planned target using the classifications under
@@ -135,12 +149,76 @@ Execution requires an explicit execute or run request identifying one plan.
    acquire resources, or otherwise have external effects.
 3. Rebuild the complete plan rather than appending notes or an execution log.
    Preserve its path and creation timestamp. Keep settled decisions unless new
-   evidence invalidates them.
+   evidence invalidates them. Reject `Superseded` and `Pending Supersession`;
+   updates never create or alter reconciliation relationships.
 4. Immediately before writing, reread the plan. If it differs from the update
    baseline, stop and report the conflict rather than overwriting it.
 5. Replace the complete plan at the same path in one edit. Report the path and
    material changes. Do not execute the plan, archive it, rename it, or create a
-   successor automatically.
+   successor.
+
+### Flag
+
+Resolve and read the exact plan. Permit flagging only `Ready` or an existing
+`Needs Reconciliation` plan. Reject `Superseded`, `Pending Supersession`, and
+`Blocked`; preserve any relationship metadata byte-for-byte. Immediately before
+writing, reread the plan and stop if it changed. Replace only the status and
+reconciliation-detail sections.
+
+### Reconcile
+
+Reconciliation applies only to plan-invalidating drift. Incorporate baseline
+refreshes and expected plan deltas into the remaining work without creating a
+successor. A completed reconciliation preserves a linear, locally auditable
+history through exact reciprocal filenames; the ignored plan store does not
+provide durable shared history.
+
+1. Resolve and read the complete predecessor. Retain its exact content as the
+   reconciliation baseline and require exactly one `Status: Ready` or
+   `Status: Needs Reconciliation`. If it is `Superseded`, direct the user to its
+   exact `Superseded By` filename. Reject `Pending Supersession`, `Blocked`, or
+   any `Superseded By` header. A single existing `Supersedes` header is valid
+   only when its exact predecessor is `Superseded` and names the selected plan
+   in exactly one `Superseded By` header; preserve this backward relationship
+   byte-for-byte. Reject duplicate, incomplete, or conflicting relationship
+   headers.
+2. List valid plans through `resolve-plan.sh` and inspect their relationship
+   headers. Stop if any plan already names the predecessor's exact filename in
+   `Supersedes`; a predecessor can have at most one direct successor.
+3. Reload every material source and compare current state with both the planning
+   baseline and planned target. Rebuild the complete successor in memory,
+   retaining settled decisions unless current evidence invalidates them. Its
+   final status must be `Ready` or `Blocked`, and it must include the exact
+   predecessor filename in `Supersedes` plus a concise `Reconciliation Reason`
+   naming the invalidated plan claim and material evidence.
+4. Reserve a new timestamped path with `prepare-path.sh`. Write the complete
+   successor there with `Status: Pending Supersession`; this internal state must
+   be written before the predecessor becomes `Superseded`.
+5. Immediately before mutating the predecessor, reread it and relist
+   relationship headers. If its content differs from the reconciliation baseline
+   or another successor appeared, remove only the task-owned pending successor
+   after confirming it still matches the content just written, then stop without
+   changing the predecessor.
+6. In the predecessor, replace only its status with `Status: Superseded` and
+   insert `Superseded By: <exact-successor-filename>` immediately after the
+   status. Preserve every other byte of its original body.
+7. Replace only the successor's `Pending Supersession` status with the final
+   `Ready` or `Blocked` status. Resolve both exact filenames again and verify
+   unique reciprocal links, final statuses, and predecessor-body preservation.
+8. Report both exact paths and the reconciliation reason. Do not execute either
+   plan or create a registry, index, active-plan pointer, or general ancestry
+   graph.
+
+If interruption or failure occurs after the predecessor becomes `Superseded`,
+leave both files unchanged and report both exact paths. If the successor is
+still `Pending Supersession`, recovery must resolve and validate the unique
+reciprocal pair, reread all relationship headers, and derive the successor's
+previously selected final status from its complete schema: `Blocked` requires
+`Decisions Needed`; otherwise it is `Ready`. Stop on an inconsistent schema or
+later plan link. Revalidate material sources, apply only that final status, and
+verify the completed pair. Never restore the predecessor or infer recovery from
+timestamps, ordering, or recency. If the successor is already final, validate
+and report the completed pair without changing either plan.
 
 ## Method
 
@@ -286,6 +364,12 @@ Use this conflict order:
 - `Needs Reconciliation`: a previously formed plan conflicts materially with
   current authoritative inputs or repository state. State the conflict and stop
   affected execution until the plan is reconciled.
+- `Superseded`: reconciliation preserved this plan as a predecessor audit
+  record. `Superseded By` must identify its one direct successor by exact
+  filename; the plan cannot be updated, reconciled again, or executed.
+- `Pending Supersession`: an internal fail-safe state written only while linking
+  a reconciliation successor. It is never a valid final authored status and
+  cannot be updated or executed.
 
 Baseline refreshes and expected plan deltas do not require reconciliation.
 Report them when they materially change residual work, then continue.
@@ -304,6 +388,13 @@ execution context is missing, not that every possible heading is present. Repeat
 # Plan: <concise outcome>
 
 Status: Ready | Blocked | Needs Reconciliation
+
+Supersedes: <Optional exact predecessor filename; successor plans only>
+
+Superseded By: <Optional exact successor filename; superseded plans only>
+
+Reconciliation Reason: <Required for a successor; invalidated claim and
+evidence>
 
 Workspace: <repository or system identity>; planned at `<absolute path>`
 
@@ -415,12 +506,21 @@ why it prevents safe execution.>
 - <Unresolved decision, recommendation, and material tradeoff.>
 ```
 
+The status line may additionally use `Superseded` for a completed predecessor;
+`Pending Supersession` is permitted only during the reconciliation protocol and
+must not appear in a newly authored or completed plan. `Supersedes`,
+`Superseded By`, and `Reconciliation Reason` appear only in the applicable
+reconciliation plans and never as empty placeholders.
+
 `Before Starting`, `Design`, `Risks And Recovery`, and `Sources And Drift` are
 optional when the work has no material content for them. `Preserve`,
 `Dependencies`, and `Validate` are optional within a work item. Include
 `Reconciliation Required` only for `Needs Reconciliation` and `Decisions Needed`
-only for `Blocked`. A `Ready` plan omits both. Never add an empty section or
-`None` placeholder.
+only for `Blocked` when authoring or rebuilding a plan. A `Ready` plan omits
+both. A predecessor superseded from `Needs Reconciliation` retains its existing
+`Reconciliation Required` section as immutable audit content; that section does
+not describe its new lifecycle status. Never add an empty section or `None`
+placeholder.
 
 ## Boundaries
 
@@ -430,8 +530,10 @@ only for `Blocked`. A `Ready` plan omits both. Never add an empty section or
   mutations authorized by explicit plan persistence or maintenance are the named
   files below `.agent/plans/` and safe creation of that ignored store.
 - Keep `.agent/plans/` entirely ignored and untracked. Never treat it as a task
-  registry or add progress, completion, ownership, ancestry, approval, execution
-  records, automatic lifecycle transitions, or an inferred active plan.
+  registry or add progress, completion, ownership, approval, execution records,
+  automatic lifecycle transitions, or an inferred active plan. Permit only the
+  exact reciprocal predecessor and successor links created by reconciliation; do
+  not build a general ancestry or dependency graph.
 - Do not copy authoritative acceptance criteria into a competing plan-level
   agreement. Reference or summarize them as completion boundaries and leave
   durable acceptance checks, evidence, and measured state with their owner.
@@ -446,4 +548,6 @@ only for `Blocked`. A `Ready` plan omits both. Never add an empty section or
   after the plan operation.
 - Do not edit, complete, archive, rename, or delete a persisted plan during its
   execution. Replan only when the requested outcome changes or material evidence
-  invalidates the current plan.
+  invalidates the current plan. Reconciliation may change only predecessor
+  lifecycle metadata and create its complete linked successor as specified
+  above; existing plans require no migration or automatic annotation.
