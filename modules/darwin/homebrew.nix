@@ -20,7 +20,6 @@ _: {
       "spotify"
       "stats"
       "tailscale-app"
-      "yubico-yubikey-manager"
       "zed"
     ];
   };
