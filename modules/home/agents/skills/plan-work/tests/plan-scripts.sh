@@ -156,7 +156,7 @@ assert_plan_failure "$TMPDIR_ROOT" 2 "$usage_diagnostic" 'extra arguments preced
 main="$TMPDIR_ROOT/main repo"
 linked="$TMPDIR_ROOT/linked repo"
 git init -q "$main"
-git -C "$main" -c user.name=Test -c user.email=test@example.com commit -q --allow-empty -m initial
+git -C "$main" -c user.name=Test -c user.email=test@example.com -c commit.gpgsign=false commit -q --allow-empty -m initial
 git -C "$main" worktree add -q --detach "$linked"
 
 assert_eq "$main" "$(cd "$UNRELATED_CWD" && "$RESOLVER" --workspace "$main")" 'primary checkout resolves canonical storage'
@@ -165,7 +165,7 @@ assert_eq "$main" "$(cd "$UNRELATED_CWD" && "$RESOLVER" --workspace "$linked")" 
 # Discovery treats absent and empty safe stores as successful empty listings.
 absent_store="$TMPDIR_ROOT/absent store"
 git init -q "$absent_store"
-git -C "$absent_store" -c user.name=Test -c user.email=test@example.com commit -q --allow-empty -m initial
+git -C "$absent_store" -c user.name=Test -c user.email=test@example.com -c commit.gpgsign=false commit -q --allow-empty -m initial
 assert_eq '' "$(cd "$UNRELATED_CWD" && "$RESOLVE_PLAN" --workspace "$absent_store")" 'absent plan store lists no plans'
 assert_plan_failure \
 	"$absent_store" \
@@ -176,7 +176,7 @@ assert_plan_failure \
 
 empty_store="$TMPDIR_ROOT/empty store"
 git init -q "$empty_store"
-git -C "$empty_store" -c user.name=Test -c user.email=test@example.com commit -q --allow-empty -m initial
+git -C "$empty_store" -c user.name=Test -c user.email=test@example.com -c commit.gpgsign=false commit -q --allow-empty -m initial
 mkdir -p "$empty_store/.agent/plans"
 printf '*\n' >"$empty_store/.agent/plans/.gitignore"
 assert_eq '' "$(cd "$UNRELATED_CWD" && "$RESOLVE_PLAN" --workspace "$empty_store")" 'empty safe plan store lists no plans'
@@ -184,7 +184,7 @@ assert_eq '' "$(cd "$UNRELATED_CWD" && "$RESOLVE_PLAN" --workspace "$empty_store
 # Existing non-directory store nodes are unsafe rather than absent.
 regular_store="$TMPDIR_ROOT/regular store node"
 git init -q "$regular_store"
-git -C "$regular_store" -c user.name=Test -c user.email=test@example.com commit -q --allow-empty -m initial
+git -C "$regular_store" -c user.name=Test -c user.email=test@example.com -c commit.gpgsign=false commit -q --allow-empty -m initial
 mkdir "$regular_store/.agent"
 printf 'not a directory\n' >"$regular_store/.agent/plans"
 assert_plan_failure \
@@ -195,7 +195,7 @@ assert_plan_failure \
 
 fifo_store="$TMPDIR_ROOT/fifo store node"
 git init -q "$fifo_store"
-git -C "$fifo_store" -c user.name=Test -c user.email=test@example.com commit -q --allow-empty -m initial
+git -C "$fifo_store" -c user.name=Test -c user.email=test@example.com -c commit.gpgsign=false commit -q --allow-empty -m initial
 mkdir "$fifo_store/.agent"
 mkfifo "$fifo_store/.agent/plans"
 assert_plan_failure \
@@ -206,7 +206,7 @@ assert_plan_failure \
 
 regular_agent="$TMPDIR_ROOT/regular agent node"
 git init -q "$regular_agent"
-git -C "$regular_agent" -c user.name=Test -c user.email=test@example.com commit -q --allow-empty -m initial
+git -C "$regular_agent" -c user.name=Test -c user.email=test@example.com -c commit.gpgsign=false commit -q --allow-empty -m initial
 printf 'not a directory\n' >"$regular_agent/.agent"
 assert_plan_failure \
 	"$regular_agent" \
@@ -220,7 +220,7 @@ separate_checkout="$TMPDIR_ROOT/separate checkout"
 separate_git_dir="$TMPDIR_ROOT/separate git dir"
 separate_linked="$TMPDIR_ROOT/separate linked"
 git init -q --separate-git-dir="$separate_git_dir" "$separate_checkout"
-git -C "$separate_checkout" -c user.name=Test -c user.email=test@example.com commit -q --allow-empty -m initial
+git -C "$separate_checkout" -c user.name=Test -c user.email=test@example.com -c commit.gpgsign=false commit -q --allow-empty -m initial
 git -C "$separate_checkout" worktree add -q --detach "$separate_linked"
 unsupported_diagnostic='resolve-store: unsupported non-bare Git topology does not expose a canonical primary worktree with a .git directory; choose a canonical workspace'
 
@@ -388,7 +388,7 @@ git init -q "$tracked"
 mkdir -p "$tracked/.agent/plans"
 printf '%s\n' tracked >"$tracked/.agent/plans/existing.md"
 git -C "$tracked" add .agent/plans/existing.md
-git -C "$tracked" -c user.name=Test -c user.email=test@example.com commit -qm tracked
+git -C "$tracked" -c user.name=Test -c user.email=test@example.com -c commit.gpgsign=false commit -qm tracked
 set +e
 (cd "$UNRELATED_CWD" && "$PREPARE_PATH" --workspace "$tracked" rejected >/dev/null 2>&1)
 tracked_status=$?
@@ -408,7 +408,7 @@ assert_status 1 "$tracked_listing_status" 'tracked plan store cannot be listed'
 # Store creation rejects pre-existing ignore rules it does not exclusively own.
 malformed="$TMPDIR_ROOT/malformed ignore"
 git init -q "$malformed"
-git -C "$malformed" -c user.name=Test -c user.email=test@example.com commit -q --allow-empty -m initial
+git -C "$malformed" -c user.name=Test -c user.email=test@example.com -c commit.gpgsign=false commit -q --allow-empty -m initial
 mkdir -p "$malformed/.agent/plans"
 printf '%s\n' '*.tmp' >"$malformed/.agent/plans/.gitignore"
 set +e
@@ -435,11 +435,16 @@ printf '*\n' >"$main/.agent/plans/.gitignore"
 skill_content=$(<"$SCRIPT_DIR/../SKILL.md")
 for required_text in \
 	'Status: Ready | Blocked | Needs Reconciliation' \
-	'## Design' \
-	'### Implementation Requirements' \
-	'### Executor Discretion' \
-	'## Authoritative Inputs' \
-	'## Reconciliation Required' \
+	'## Before Starting' \
+	'## Acceptance Criteria' \
+	'## Final Validation' \
+	'## Sources And Drift' \
+	'Expected Plan Delta' \
+	'Reconcile Only If' \
+	'Baseline refresh' \
+	'Expected plan delta' \
+	'A change is material only when the executor can name the affected' \
+	'Never add an empty section or' \
 	'Do not infer persistence' \
 	'Execution requires an explicit execute or run request' \
 	'Immediately before writing, reread the plan' \
@@ -450,4 +455,31 @@ for required_text in \
 	'timestamp, mtime, listing order, lexical order, collision suffix'; do
 	[[ $skill_content == *"$required_text"* ]] || fail "plan contract must contain: $required_text"
 	printf 'ok - plan contract contains %s\n' "$required_text"
+done
+
+execute_content=${skill_content#*'### Execute'}
+execute_content=${execute_content%%'### Update Or Reconcile'*}
+for required_text in \
+	'compare current state with both the planning' \
+	'Stop only on plan-invalidating'; do
+	[[ $execute_content == *"$required_text"* ]] || fail "execute contract must contain: $required_text"
+	printf 'ok - execute contract contains %s\n' "$required_text"
+done
+
+update_content=${skill_content#*'### Update Or Reconcile'}
+update_content=${update_content%%'## Method'*}
+for required_text in \
+	'compare current state with both the planning' \
+	'Incorporate baseline refreshes and expected plan deltas'; do
+	[[ $update_content == *"$required_text"* ]] || fail "update contract must contain: $required_text"
+	printf 'ok - update contract contains %s\n' "$required_text"
+done
+
+output_content=${skill_content#*'## Output'}
+output_content=${output_content%%'## Boundaries'*}
+for required_text in \
+	'optional when the work has no material content for them' \
+	'Reference source entries instead of'; do
+	[[ $output_content == *"$required_text"* ]] || fail "output contract must contain: $required_text"
+	printf 'ok - output contract contains %s\n' "$required_text"
 done

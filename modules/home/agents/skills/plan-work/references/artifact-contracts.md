@@ -10,13 +10,17 @@ guaranteed by construction is not a completion condition. Material behavior that
 is not guaranteed needs a durable check where practical and otherwise a proof
 method a reviewer can rerun.
 
-Place each result where it belongs:
+Place each result once where it belongs:
 
-- `Completion Conditions`: externally observable behavior and preserved
+- `Acceptance Criteria`: externally observable behavior and preserved
   invariants.
-- `Design`: consequential choices and tradeoffs.
-- `Implementation Requirements`: handling the executor must implement.
-- `Validation`: durable checks, inspections, and rerunnable proof.
+- `Context`: relevant evidence and settled decisions.
+- `Requirements` or optional `Design`: cross-cutting constraints, choices, and
+  tradeoffs.
+- `Work`: concern-local implementation and failure handling.
+- Work-level `Validate`: proof required before dependent work proceeds.
+- `Final Validation`: end-to-end checks, inspections, and rerunnable proof not
+  already established by a work-level check.
 - `Risks And Recovery`: residual exposure, rollback, and recovery.
 
 ## Inputs And Outputs

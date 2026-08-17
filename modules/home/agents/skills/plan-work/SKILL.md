@@ -109,11 +109,12 @@ Execution requires an explicit execute or run request identifying one plan.
    effects. Stop if the plan would broaden that authority.
 2. Require `Status: Ready`. Stop on `Blocked` or `Needs Reconciliation` and
    report the unresolved section without editing the plan.
-3. Reload every authoritative input and inspect current repository or system
-   state needed to compare it with the planning baseline. Report incidental
-   drift and continue. Stop on material drift, report why the plan now needs
-   reconciliation, and do not flag it persistently unless that was separately
-   requested.
+3. Reload every material source and compare current state with both the planning
+   baseline and planned target using the classifications under
+   `Sources And Drift`. Continue after a baseline refresh or expected plan
+   delta, adjusting only the remaining work. Stop only on plan-invalidating
+   drift, report the affected plan claim, and do not flag it persistently unless
+   that was separately requested.
 4. Treat the plan as the complete alignment input and follow its work sequence,
    validation, finalization, and review under the applicable repository or
    operational workflow. Do not recover intent from prior conversation or reopen
@@ -125,9 +126,13 @@ Execution requires an explicit execute or run request identifying one plan.
 
 1. Resolve and read the complete plan. Retain the content read as the update
    baseline.
-2. Reload every authoritative input and inspect current state far enough to find
-   material drift. Do not perform diagnostics that may mutate state, notify
-   people, incur cost, acquire resources, or otherwise have external effects.
+2. Reload every material source and compare current state with both the planning
+   baseline and planned target using the classifications under
+   `Sources And Drift`. Incorporate baseline refreshes and expected plan deltas
+   directly. Resolve plan-invalidating drift in the rebuilt plan, or mark it
+   `Blocked` when required evidence or a consequential decision is unavailable.
+   Do not perform diagnostics that may mutate state, notify people, incur cost,
+   acquire resources, or otherwise have external effects.
 3. Rebuild the complete plan rather than appending notes or an execution log.
    Preserve its path and creation timestamp. Keep settled decisions unless new
    evidence invalidates them.
@@ -146,8 +151,8 @@ Execution requires an explicit execute or run request identifying one plan.
 2. Perform as much safe reconnaissance as needed to make a fresh session
    executable without recovering material context. Inspect relevant code,
    documents, systems, history, consumers, tests, and external sources. Record
-   material observations under `Current State` and make every external fact on
-   which execution depends reloadable under `Authoritative Inputs`.
+   only observations that affect the plan under `Context`. Give every external
+   dependency an exact, reloadable locator.
 3. Identify consequential uncertainty. Resolve factual questions from evidence,
    use safe defaults only when alternatives have no material consequence, and
    ask the user when intent, ownership, risk tolerance, compatibility, scope, or
@@ -161,38 +166,43 @@ Execution requires an explicit execute or run request identifying one plan.
    contract, where it is established, and what it requires. Derive failure modes
    reachable through the artifact's inputs, outputs, state changes, lifecycle,
    and integration context. For each material behavior that construction does
-   not guarantee, record the observable invariant under `Completion Conditions`
-   and require a durable check or reviewer-rerunnable proof under `Validation`.
-   Put consequential choices under `Design` and residual exposure under
-   `Risks And Recovery`. Use `references/artifact-contracts.md` as prompts, not
-   as a checklist; do not copy prompts or explain irrelevant omissions.
+   not guarantee, record the observable result under `Acceptance Criteria` and
+   require a durable check or reviewer-rerunnable proof under work-level
+   `Validate` or `Final Validation`. Use `references/artifact-contracts.md` as
+   prompts, not as a checklist; do not copy prompts or explain irrelevant
+   omissions.
 5. Resolve architecture, interfaces, data flow, and consequential strategy
    choices. Record decisions and rationale so execution does not reopen them.
    Prescribe implementation details when correctness, compatibility, safety,
    external effects, review boundaries, user intent, or later work depends on
-   them. State what remains executor discretion so detail does not accidentally
-   constrain inconsequential choices.
+   them. Use an optional `Design` section only when these choices cross work
+   items or need explanation beyond a requirement. Leave inconsequential choices
+   unstated rather than enumerating executor discretion.
 6. Sequence the fewest coherent work concerns that produce the outcome. Give
-   each concern its purpose, concrete changes, preserved behavior, dependencies,
-   implementation requirements, discretion, and focused validation. Name exact
-   files, symbols, interfaces, procedures, algorithms, edge cases, and failure
-   handling when reconnaissance establishes them and execution depends on them;
-   do not invent speculative targets. Keep code, tests, documentation,
-   configuration, and operational work together when they support one result.
-   For repository mutations, use expected independently reviewable revision
-   concerns. Authority for the complete request does not combine independent
-   concerns. Assign at most one concern to each mutating delegation.
+   each concern exact targets and concrete changes. Add preserved behavior,
+   dependencies, failure handling, and stage-gate validation only when they are
+   material to that concern. Name exact files, symbols, interfaces, procedures,
+   algorithms, and edge cases when reconnaissance establishes them and execution
+   depends on them; do not invent speculative targets. Keep code, tests,
+   documentation, configuration, and operational work together when they support
+   one result. For repository mutations, use expected independently reviewable
+   revision concerns. Authority for the complete request does not combine
+   independent concerns. Assign at most one concern to each mutating delegation.
 7. Define validation from the completion conditions and material risks. End each
-   repository concern with focused verification and finalization, and place
-   aggregate review after the last repository concern rather than between them.
-   Identify integration checks that genuinely require later concerns. Prefer
-   commands, observations, inspections, responses, or other signals that prove
-   behavior rather than merely proving steps ran.
-8. Perform a completeness pass across every standard section. Use `None` with a
-   short reason when a section is not applicable; never omit a standard section
-   or collapse an actual plan into a one-sentence working update.
+   concern with validation only when dependent work needs that proof. Put
+   end-to-end and aggregate checks under `Final Validation`; do not repeat the
+   same command or expected result at work, acceptance, and final-validation
+   levels. Generic repository finalization and review remain governed by the
+   applicable instructions and belong in the plan only when task-specific
+   revision boundaries or review evidence matter.
+8. Perform an isolation pass rather than a heading-completeness pass. A fresh
+   executor reading only the plan and its exactly named sources must be able to
+   identify the workspace, prerequisites, intended result, exclusions, settled
+   decisions, mandatory invariants, ordered work, proof of success, and the
+   conditions that require stopping. Omit inapplicable optional sections and
+   fields; never add `None` placeholders merely to fill the template.
 
-## Authoritative Inputs
+## Sources And Drift
 
 Authoritative inputs are external owners of facts or requirements that ground
 the plan and must be reloaded to execute it safely. The plan itself owns the
@@ -201,16 +211,27 @@ implementation requirements, and work sequence. Current source, specifications,
 contracts, policies, schemas, API documentation, and safely rederived state keep
 their existing ownership.
 
-For each input, record:
+Classify each material source by its actual role:
 
-- `Governs`: the fact, requirement, interface, or constraint it owns.
-- `Relevant Areas`: stable headings, symbols, endpoints, or outputs to inspect;
-  prefer these over fragile line numbers.
-- `Planning Baseline`: the material facts observed during reconnaissance.
-- `Reload`: the read-only action that obtains current state. Put mutating or
-  externally consequential verification under `Validation`, not here.
-- `Material Drift`: changes that would invalidate the outcome, scope, design,
-  sequencing, requirements, or validation and require reconciliation.
+- `Contract`: owns an external requirement, interface, policy, or acceptance
+  boundary.
+- `Current implementation`: establishes the edit baseline and behavior to
+  preserve or change.
+- `Validation evidence`: demonstrates behavior but does not own that behavior.
+- `Precedent`: suggests an approach but may be replaced without invalidating the
+  plan.
+- `Operational state`: establishes a mutable prerequisite, topology, access
+  condition, or sequencing fact.
+
+Use `Sources And Drift` only for mutable inputs on which safe execution depends.
+For each entry, record its role, the exact fact it owns or establishes, the
+material baseline observed during planning, a read-only reload action, and a
+testable `Reconcile Only If` predicate. Add `Expected Plan Delta` when the plan
+intentionally changes the baseline or may find its target already implemented.
+Use exact repository-relative paths and stable symbols or headings for
+repository sources; identify the workspace separately. Use exact URLs, issue
+IDs, commands, endpoints, versions, or system identifiers for external sources.
+Do not bundle unrelated authorities into one entry.
 
 The baseline records evidence; it never replaces the current source. A prior
 conversation, a timestamp, a digest, or a revision identifier alone is not an
@@ -218,6 +239,31 @@ authoritative input. Preserve material conversation context directly in the
 plan. Plans that need portable, shared, reviewable, or long-term authority must
 use a tracked specification, contract, or issue instead of the ignored local
 store.
+
+Do not classify drift from a changed file, version, location, command, test, or
+baseline alone. First compare current state with both the recorded baseline and
+the planned target:
+
+- `No relevant change`: continue.
+- `Baseline refresh`: the observation is stale, but the outcome, boundaries,
+  decisions, requirements, work, and proof remain valid. Retarget the affected
+  details and continue.
+- `Expected plan delta`: current state already contains some or all planned
+  work. Verify compatible behavior and ownership, skip redundant work, and
+  continue.
+- `Plan-invalidating drift`: current evidence falsifies a required invariant,
+  changes external authority or requirements, broadens consumers or effects,
+  makes the design or sequence unsafe, invalidates required proof, or requires a
+  new consequential decision. Reconcile before affected execution.
+
+A change is material only when the executor can name the affected scope
+boundary, decision, requirement, work dependency, acceptance criterion,
+authority, or validation claim and explain why the plan can no longer satisfy it
+safely. Changes outside a source's named area are incidental unless dependency
+tracing establishes that impact. Version changes require reconciliation only
+when a capability on which the plan depends changed. Repository workflow changes
+are refreshed automatically unless they alter authority, prohibit a planned
+effect, invalidate an essential revision boundary, or remove required proof.
 
 Use this conflict order:
 
@@ -241,138 +287,114 @@ Use this conflict order:
   current authoritative inputs or repository state. State the conflict and stop
   affected execution until the plan is reconciled.
 
-Incidental drift does not require reconciliation. Report it and continue when it
-cannot affect the plan's outcome, scope, requirements, design, sequence, or
-validation. Discovering material drift does not itself authorize editing a
+Baseline refreshes and expected plan deltas do not require reconciliation.
+Report them when they materially change residual work, then continue.
+Discovering plan-invalidating drift does not itself authorize editing a
 persisted plan: report the needed flag in the response unless the user
 explicitly requested `flag`, `update`, or `reconcile`.
 
 ## Output
 
-Every plan uses the complete structure below. Keep detail proportional within
-the sections, but do not omit headings, combine sections, or substitute a brief
-working update. Repeat the `Authoritative Inputs` and `Work Sequence` entries as
-needed.
+Every plan uses the standard sections below. Optional sections and fields are
+marked explicitly. Keep detail proportional: exhaustiveness means no material
+execution context is missing, not that every possible heading is present. Repeat
+`Work` and `Sources And Drift` entries as needed.
 
 ```markdown
 # Plan: <concise outcome>
 
 Status: Ready | Blocked | Needs Reconciliation
 
+Workspace: <repository or system identity>; planned at `<absolute path>`
+
 ## Outcome
 
 <Final state and user-visible or operational effect.>
 
-## Current State
+## Context
 
-- `<source>`: <Observed fact and its consequence for this plan.>
+- `<exact source or Decision>`: <Material fact, requirement, settled choice, and
+  its consequence.>
+
+## Before Starting
+
+- <Optional: access, approval, prerequisite, authority, or stop condition not
+  already expressed by a source entry. Reference source entries instead of
+  repeating their reload actions.>
 
 ## Scope
 
-- <Included behavior, systems, people, and artifacts.>
+### Included
 
-## Exclusions
+- <Behavior, systems, people, and artifacts affected.>
+
+### Excluded
 
 - <Adjacent work or behavior this plan must not change.>
 
-## Constraints
+## Requirements
 
-- <Invariant, compatibility requirement, policy, or limit.>
-
-## Completion Conditions
-
-- <Observable final state, preserved invariant, or required effect.>
+- <Invariant, compatibility boundary, safety rule, or mandatory design choice.>
 
 ## Design
 
-### Architecture
+<Optional: cross-cutting architecture, interfaces, data flow, ownership,
+migration, or sequencing decisions.>
 
-<Component boundaries, responsibilities, control flow, and dependencies.>
-
-### Interfaces And Data
-
-<APIs, types, schemas, configuration, persistence, inputs, and outputs.>
-
-### Decisions
-
-- **<Decision>:** <Choice, rationale, rejected alternatives when material, and
-  consequences.>
-
-### Implementation Requirements
-
-- <Detail every executor must follow exactly.>
-
-### Executor Discretion
-
-- <Choice intentionally left to implementation judgment.>
-
-## Work Sequence
+## Work
 
 ### 1. <Coherent work concern>
 
-**Purpose:** <Why this concern is needed and its expected result.>
+**Targets:** <Exact files, symbols, systems, or procedures where known.>
 
 **Changes:**
 
-- <Specific behavior, files, symbols, interfaces, or procedures to change.>
+- <Specific implementation, documentation, configuration, migration, or
+  operational work, including mandatory edge and failure handling.>
 
 **Preserve:**
 
-- <Existing behavior and invariants that must remain intact.>
+- <Optional: non-obvious existing behavior or state that must remain intact.>
 
 **Dependencies:**
 
-- <Required preceding concern or external prerequisite.>
+- <Optional: prerequisite not already obvious from the ordered sequence.>
 
-**Implementation Requirements:**
+**Validate:**
 
-- <Algorithms, edge cases, failure handling, migration, cleanup, or other
-  mandatory details.>
+- <Optional: stage-gate command or observation required before dependent work.>
 
-**Executor Discretion:**
+## Acceptance Criteria
 
-- <Safe local choices left open.>
+- <Observable final state, preserved invariant, or required effect.>
 
-**Validation:**
+## Final Validation
 
-- `<focused command, inspection, response, or signal>`: <What it proves before
-  dependent work proceeds.>
-
-## Validation
-
-- `<end-to-end, integration, regression, static, or manual check>`: <Completion
-  condition or material risk it establishes.>
+- `<end-to-end, integration, regression, static, or manual check>`: <Expected
+  result and the acceptance criterion or material risk it proves.>
 
 ## Risks And Recovery
 
-- **<Failure mode>:** <Prevention, recovery, or rollback.>
+- **<Optional material failure mode>:** <Prevention, recovery, or rollback.>
 
-## Authority And Approvals
-
-- <Permission or confirmation required before consequential action and its
-  provenance.>
-
-## Stop Conditions
-
-- <Discovery requiring reassessment, reconciliation, or user direction.>
-
-## Authoritative Inputs
+## Sources And Drift
 
 ### `<path, URL, command, or system identifier>`
 
-**Governs:** <Fact, requirement, interface, or constraint this source owns.>
+**Role:** Contract | Current implementation | Validation evidence | Precedent |
+Operational state
 
-**Relevant Areas:** <Stable headings, symbols, endpoints, or outputs.>
+**Owns Or Establishes:** <Exact source-owned requirement, interface, invariant,
+or fact.>
 
-**Planning Baseline:** <Material facts observed while preparing the plan.>
+**Baseline:** <Material fact observed while preparing the plan.>
 
-**Reload:** <Safe command or inspection that obtains current state.>
+**Expected Plan Delta:** <Optional intended difference from the baseline.>
 
-**Material Drift:** <Change that requires plan reconciliation.>
+**Reload:** <Read-only action and stable area that obtain current state.>
 
-## Assumptions
-
-- <Safe assumption and what would invalidate it.>
+**Reconcile Only If:** <Testable change that invalidates a named plan claim and
+why it prevents safe execution.>
 
 ## Reconciliation Required
 
@@ -393,10 +415,12 @@ Status: Ready | Blocked | Needs Reconciliation
 - <Unresolved decision, recommendation, and material tradeoff.>
 ```
 
-Use `None: <reason>` under `Reconciliation Required` unless the status is
-`Needs Reconciliation`. Use `None: <reason>` under `Decisions Needed` unless the
-status is `Blocked`. A `Ready` plan has neither unresolved material decisions
-nor reconciliation work.
+`Before Starting`, `Design`, `Risks And Recovery`, and `Sources And Drift` are
+optional when the work has no material content for them. `Preserve`,
+`Dependencies`, and `Validate` are optional within a work item. Include
+`Reconciliation Required` only for `Needs Reconciliation` and `Decisions Needed`
+only for `Blocked`. A `Ready` plan omits both. Never add an empty section or
+`None` placeholder.
 
 ## Boundaries
 
