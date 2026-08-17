@@ -88,6 +88,7 @@ in
       home = {
         stateVersion = "26.05";
         module =
+          { config, ... }:
           let
             inherit (inputs.dotfiles-private) workProfile;
           in
@@ -98,6 +99,7 @@ in
               identities.work = {
                 name = "Johnnie Kearse III";
                 inherit (workProfile) email;
+                signingKey = config.dotfiles.onePasswordSsh.githubSigningSelector;
               };
               repositoryScopes = [
                 {
