@@ -1,4 +1,5 @@
 {
+  dotfilesPackages,
   mkSource,
   pkgs,
   ...
@@ -11,6 +12,7 @@
       pkgs.copilot-language-server
       pkgs.neovim
       pkgs.tree-sitter
+      dotfilesPackages.nvim-pack-prune
     ];
     sessionVariables = {
       EDITOR = "nvim";

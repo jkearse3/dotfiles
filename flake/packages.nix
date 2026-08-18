@@ -70,6 +70,7 @@
           inherit (unstablePkgs) jujutsu;
         };
         nix-cleanup = pkgs.callPackage ../packages/nix-cleanup/package.nix { };
+        nvim-pack-prune = pkgs.callPackage ../packages/nvim-pack-prune/package.nix { };
         playwright-cli = pkgs.callPackage ../packages/playwright-cli/package.nix { };
         port-listeners-kill = pkgs.callPackage ../packages/port-listeners-kill/package.nix {
           inherit port-listeners-list;
