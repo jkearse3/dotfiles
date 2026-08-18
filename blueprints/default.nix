@@ -2,6 +2,14 @@
 # they select. Output construction and validation live under `flake/`.
 { inputs, ... }:
 let
+  # Personal commit identity shared by every blueprint. Signing key resolves from
+  # config, so this is a function of the home module's config.
+  personalIdentity = config: {
+    name = "Johnnie Kearse III";
+    email = "jkearse3@gmail.com";
+    signingKey = config.dotfiles.onePasswordSsh.githubSigningSelector;
+  };
+
   workstationHomeModule = {
     imports = [
       ../modules/home/agents
@@ -67,9 +75,16 @@ in
       };
       home = {
         stateVersion = "26.05";
-        module = {
-          imports = [ workstationHomeModule ];
-        };
+        module =
+          { config, ... }:
+          {
+            imports = [ workstationHomeModule ];
+
+            vcs.identityPolicy = {
+              identities.personal = personalIdentity config;
+              defaultIdentity = "personal";
+            };
+          };
       };
       darwin = {
         stateVersion = 5;
@@ -96,10 +111,12 @@ in
             imports = [ workstationHomeModule ];
 
             vcs.identityPolicy = {
+              identities.personal = personalIdentity config;
+              defaultIdentity = "personal";
               identities.work = {
                 name = "Johnnie Kearse III";
                 inherit (workProfile) email;
-                signingKey = config.dotfiles.onePasswordSsh.githubSigningSelector;
+                inherit (personalIdentity config) signingKey;
               };
               repositoryScopes = [
                 {

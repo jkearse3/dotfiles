@@ -27,8 +27,14 @@ let
       };
       signingKey = lib.mkOption {
         type = lib.types.nullOr lib.types.nonEmptyStr;
-        default = null;
-        description = "Public SSH key used to sign commits, or null to disable signing";
+        # Every identity must state signing intent explicitly. A key selector
+        # signs; an explicit null unsigns. The throwing default forces omission
+        # to fail evaluation instead of silently rendering unsigned: types.nullOr
+        # carries emptyValue = null, so a defaultless option would resolve to
+        # null (unsigned) on its own rather than erroring.
+        default = throw "vcs.identityPolicy identity: signingKey must be set explicitly — a key selector to sign, or null to explicitly disable signing";
+        defaultText = lib.literalMD "none; every identity must set `signingKey` explicitly";
+        description = "Public SSH key used to sign commits, or null to explicitly disable signing";
       };
     };
   };
@@ -177,15 +183,6 @@ in
         message = "vcs.identityPolicy.repositoryScopes must order broader roots before nested roots";
       }
     ];
-
-    vcs.identityPolicy = {
-      identities.personal = lib.mkDefault {
-        name = "Johnnie Kearse III";
-        email = "jkearse3@gmail.com";
-        signingKey = onePasswordSsh.githubSigningSelector;
-      };
-      defaultIdentity = lib.mkDefault "personal";
-    };
 
     programs.git = {
       settings = lib.recursiveUpdate {
