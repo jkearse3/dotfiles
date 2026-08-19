@@ -30,6 +30,19 @@ class RepositoryFixture(unittest.TestCase):
         self.temporary_directory = TemporaryDirectory()
         self.addCleanup(self.temporary_directory.cleanup)
         self.root = Path(self.temporary_directory.name).resolve()
+        home = self.root / "home"
+        (home / ".config").mkdir(parents=True)
+        environment = patch.dict(
+            os.environ,
+            {
+                "HOME": str(home),
+                "XDG_CONFIG_HOME": str(home / ".config"),
+                "XDG_CACHE_HOME": str(home / ".cache"),
+                "XDG_STATE_HOME": str(home / ".state"),
+            },
+        )
+        environment.start()
+        self.addCleanup(environment.stop)
         self.primary = self.root / "primary"
         self.primary.mkdir()
         _ = run("git", "init", str(self.primary))
@@ -52,6 +65,14 @@ class RepositoryFixture(unittest.TestCase):
 
     def operation(self, path: Path) -> bytes:
         return run("jj", "-R", str(path), "op", "log", "--no-graph", "-n", "1", "-T", "id").stdout
+
+    def jj_config(self, path: Path, key: str) -> str:
+        return run("jj", "-R", str(path), "config", "get", key).stdout.decode().strip()
+
+    def author_email(self, path: Path) -> str:
+        return run(
+            "jj", "-R", str(path), "log", "-r", "@", "--no-graph", "-T", "author.email()"
+        ).stdout.decode().strip()
 
 
 @final
@@ -220,6 +241,45 @@ class EnsureBehaviorTests(RepositoryFixture):
         description = run("jj", "-R", str(linked), "log", "-r", "@", "--no-graph", "-T", "description").stdout
         self.assertEqual(description, b"retained description\n")
         self.assertTrue(os.path.samefile(cli._jj_path(linked, "git", "root"), self.private_git(linked)))
+
+
+    def test_mirrors_git_identity_into_linked_workspace_outside_scope(self) -> None:
+        linked = self.linked("linked")
+        self.assertEqual(cli.ensure(linked), linked)
+        self.assertEqual(self.jj_config(linked, "user.email"), "test@example.com")
+        self.assertEqual(self.jj_config(linked, "user.name"), "Test User")
+        self.assertEqual(self.author_email(linked), "test@example.com")
+        self.assertEqual(self.jj_config(linked, "signing.backend"), "none")
+        self.assertEqual(self.jj_config(linked, "git.sign-on-push"), "false")
+
+    def test_mirrors_ssh_signing_selection(self) -> None:
+        key = self.root / "signing.pub"
+        _ = key.write_text("ssh-ed25519 AAAA test\n")
+        for name, value in (("commit.gpgSign", "true"), ("gpg.format", "ssh"), ("user.signingKey", str(key))):
+            _ = run("git", "-C", str(self.primary), "config", name, value)
+        linked = self.linked("signed")
+        _ = cli.ensure(linked)
+        self.assertEqual(self.jj_config(linked, "signing.backend"), "ssh")
+        self.assertEqual(self.jj_config(linked, "signing.key"), str(key))
+        self.assertEqual(self.jj_config(linked, "git.sign-on-push"), "true")
+
+    def test_reconfigures_existing_workspace_without_rewriting_author(self) -> None:
+        linked = self.linked("linked")
+        _ = cli.ensure(linked)
+        self.assertEqual(self.author_email(linked), "test@example.com")
+        operation = self.operation(linked)
+        _ = run("git", "-C", str(self.primary), "config", "user.email", "moved@example.com")
+        self.assertEqual(cli.ensure(linked), linked)
+        self.assertEqual(self.jj_config(linked, "user.email"), "moved@example.com")
+        self.assertEqual(self.author_email(linked), "test@example.com")
+        self.assertEqual(self.operation(linked), operation)
+
+    def test_dry_run_reports_mirrored_identity_without_writing_config(self) -> None:
+        output = io.StringIO()
+        with patch("sys.stdout", output):
+            self.assertEqual(cli.main(["--dry-run", str(self.primary)]), 0)
+        self.assertIn("would mirror jj commit identity test@example.com (signing disabled)", output.getvalue())
+        self.assertFalse((self.primary / ".jj").exists())
 
 
 @final

@@ -26,6 +26,19 @@ directory layout all agree. It then validates the repaired repository and
 attempts to restore the stale target if validation fails, reporting both
 errors if restoration also fails. It never repairs Git registration, recreates
 an existing jj repository, or modifies working-copy files.
+
+After a checkout is validated or initialized, its commit identity is mirrored
+from Git into repository-local jj configuration. Git already resolves the
+correct identity for every worktree through ``includeIf gitdir:`` conditions,
+which key off the private Git directory below the primary repository; jj scopes
+instead key off the workspace checkout path, so a worktree checked out beneath
+an unrelated directory would otherwise fall back to jj's default identity. This
+module reads Git's resolved ``user.name``, ``user.email``, and SSH signing
+selection for the checkout and writes them to the workspace's ``--repo`` jj
+config so jj agrees with Git wherever the checkout lives. For a freshly
+initialized workspace whose empty working-copy commit still carries jj's default
+author, the author is realigned once; a pre-existing workspace's commits are
+never rewritten.
 """
 
 from __future__ import annotations
@@ -64,6 +77,20 @@ class GitCheckout:
     primary: bool
 
 
+@dataclass(frozen=True)
+class GitIdentity:
+    """The commit identity Git resolves for a checkout, mirrored into jj.
+
+    ``signing_key`` is ``None`` when Git would not SSH-sign this checkout's
+    commits; that maps to jj's ``signing.backend = "none"``. A non-null value is
+    the signing key selector, mapping to jj's ``ssh`` backend and that key.
+    """
+
+    name: str
+    email: str
+    signing_key: str | None
+
+
 class Action(Enum):
     """A mutation that execution would perform, or an established no-op."""
 
@@ -81,15 +108,20 @@ class Plan:
     checkout: GitCheckout
     action: Action
     stale: Path | None = None
+    git_identity: GitIdentity | None = None
 
     def describe(self) -> str:
         """Render the plan for a human; wording is not a machine interface."""
-        return self.action.value.format(
+        text = self.action.value.format(
             root=self.checkout.root,
             git_dir=self.checkout.git_dir,
             identity=_identity_file(self.checkout),
             stale=self.stale,
         )
+        if self.git_identity is not None:
+            signing = "enabled" if self.git_identity.signing_key is not None else "disabled"
+            text += f"; would mirror jj commit identity {self.git_identity.email} (signing {signing})"
+        return text
 
 
 def _run(command: Sequence[str], *, cwd: Path | None = None) -> bytes:
@@ -481,6 +513,147 @@ def _remove_created_jj(path: Path) -> str:
     return ""
 
 
+def _git_config_value(root: Path, key: str, *, boolean: bool = False) -> str | None:
+    """Return one Git config value for ``root``, or ``None`` when it is unset.
+
+    ``git config --get`` exits 1 for a missing key; any other nonzero status is
+    a real failure. ``boolean`` normalizes truthy spellings to ``true``/``false``.
+    """
+    command = ["git", "-C", os.fspath(root), "config"]
+    if boolean:
+        command.append("--type=bool")
+    command.extend(["--get", key])
+    result = subprocess.run(command, check=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    if result.returncode == 1:
+        return None
+    if result.returncode != 0:
+        detail = os.fsdecode(result.stderr).strip()
+        suffix = f": {detail}" if detail else ""
+        raise EnsureError(f"could not read git config {key}{suffix}")
+    value = os.fsdecode(result.stdout)
+    return value[:-1] if value.endswith("\n") else value
+
+
+def _git_identity(checkout: GitCheckout) -> GitIdentity | None:
+    """Resolve Git's commit identity for the checkout, or ``None`` if incomplete.
+
+    Signing is mirrored only for SSH-formatted signing with a selected key,
+    matching this environment's configuration; any other shape maps to no jj
+    signing rather than guessing an incompatible backend.
+    """
+    name = _git_config_value(checkout.root, "user.name")
+    email = _git_config_value(checkout.root, "user.email")
+    if not name or not email:
+        return None
+    signs = (
+        _git_config_value(checkout.root, "commit.gpgSign", boolean=True) == "true"
+        and _git_config_value(checkout.root, "gpg.format") == "ssh"
+    )
+    signing_key = _git_config_value(checkout.root, "user.signingKey") if signs else None
+    return GitIdentity(name=name, email=email, signing_key=signing_key or None)
+
+
+def _jj_config_set(checkout: GitCheckout, key: str, value: str) -> None:
+    """Set one repository-local jj config value without snapshotting the tree."""
+    _ = _run(
+        [
+            "jj",
+            "--no-pager",
+            "--color=never",
+            "--ignore-working-copy",
+            "-R",
+            os.fspath(checkout.root),
+            "config",
+            "set",
+            "--repo",
+            key,
+            value,
+        ]
+    )
+
+
+def _apply_identity(checkout: GitCheckout, identity: GitIdentity) -> None:
+    """Write Git's resolved identity into the workspace's repository-local jj config.
+
+    ``config set`` records values without creating a jj operation, so this is
+    safe to repeat on an already-compatible workspace. Signing reproduces the
+    jj settings the identity policy would render: an SSH backend with the key
+    and push-time signing when Git signs, or an inert backend otherwise.
+    """
+    settings: list[tuple[str, str]] = [
+        ("user.name", identity.name),
+        ("user.email", identity.email),
+    ]
+    if identity.signing_key is not None:
+        settings += [
+            ("signing.backend", "ssh"),
+            ("signing.key", identity.signing_key),
+            ("git.sign-on-push", "true"),
+        ]
+    else:
+        settings += [
+            ("signing.backend", "none"),
+            ("git.sign-on-push", "false"),
+        ]
+    for key, value in settings:
+        _jj_config_set(checkout, key, value)
+
+
+def _align_working_copy_author(checkout: GitCheckout, identity: GitIdentity) -> None:
+    """Realign a freshly initialized empty working-copy commit's author to ``identity``.
+
+    jj fixes a commit's author at creation, so the empty working copy created
+    during initialization keeps jj's default author until rewritten. Only an
+    empty working-copy commit is realigned, so a workspace that already carries
+    work is never rewritten; the author is left untouched when it already
+    matches, avoiding a needless operation.
+    """
+    template = 'if(empty, "empty", "nonempty") ++ "\\n" ++ author.email() ++ "\\n" ++ author.name()'
+    output = _run(
+        [
+            "jj",
+            "--no-pager",
+            "--color=never",
+            "--ignore-working-copy",
+            "-R",
+            os.fspath(checkout.root),
+            "log",
+            "-r",
+            "@",
+            "--no-graph",
+            "-T",
+            template,
+        ]
+    )
+    fields = os.fsdecode(output).split("\n")
+    if len(fields) < 3:
+        raise EnsureError("jj returned malformed working-copy author metadata")
+    state, email, name = fields[0], fields[1], fields[2]
+    if state != "empty" or (email == identity.email and name == identity.name):
+        return
+    _ = _run(
+        [
+            "jj",
+            "--no-pager",
+            "--color=never",
+            "-R",
+            os.fspath(checkout.root),
+            "metaedit",
+            "--update-author",
+        ]
+    )
+
+
+def _stamp_identity(checkout: GitCheckout, *, fresh_init: bool) -> None:
+    """Mirror Git's identity into jj, realigning a freshly created author once."""
+    identity = _git_identity(checkout)
+    if identity is None:
+        return
+    _apply_identity(checkout, identity)
+    if fresh_init:
+        _align_working_copy_author(checkout, identity)
+
+
 def plan(start: Path | None = None) -> Plan:
     """Select the action :func:`ensure` would take without modifying the checkout.
 
@@ -490,12 +663,13 @@ def plan(start: Path | None = None) -> Plan:
     """
     checkout = discover(Path(".") if start is None else start)
     _reject_git_lfs(checkout)
+    identity = _git_identity(checkout)
     jj_dir = checkout.root / ".jj"
     try:
         mode = jj_dir.lstat().st_mode
     except FileNotFoundError:
         action = Action.INITIALIZE_PRIMARY if checkout.primary else Action.INITIALIZE_LINKED
-        return Plan(checkout, action)
+        return Plan(checkout, action, git_identity=identity)
     except OSError as error:
         raise EnsureError(f"could not inspect pre-existing .jj: {error}") from error
     if not stat.S_ISDIR(mode) or stat.S_ISLNK(mode):
@@ -505,10 +679,10 @@ def plan(start: Path | None = None) -> Plan:
     except EnsureError:
         stale = _read_stale_target(checkout)
         _validate_relocation(checkout, stale)
-        return Plan(checkout, Action.REPAIR, stale)
+        return Plan(checkout, Action.REPAIR, stale, git_identity=identity)
     if not checkout.primary and not _has_identity(checkout):
-        return Plan(checkout, Action.ENROLL)
-    return Plan(checkout, Action.NONE)
+        return Plan(checkout, Action.ENROLL, git_identity=identity)
+    return Plan(checkout, Action.NONE, git_identity=identity)
 
 
 def ensure(start: Path | None = None) -> Path:
@@ -541,24 +715,27 @@ def ensure(start: Path | None = None) -> Path:
             _repair(checkout)
         if not checkout.primary:
             _ensure_identity(checkout)
-        return checkout.root
-
-    command = ["jj", "git", "init"]
-    if checkout.primary:
-        command.append("--colocate")
+        fresh_init = False
     else:
-        command.append(f"--git-repo={checkout.git_dir}")
-    command.append(".")
-    try:
-        _ = _run(command, cwd=checkout.root)
-        _validate(checkout)
-        refreshed = discover(checkout.root)
-        _same_file(refreshed.git_dir, checkout.git_dir, "Git worktree identity changed during initialization")
-        if not checkout.primary:
-            _ensure_identity(checkout)
-    except EnsureError as error:
-        suffix = _remove_created_jj(jj_dir)
-        raise EnsureError(f"could not initialize jj repository: {error}{suffix}") from error
+        command = ["jj", "git", "init"]
+        if checkout.primary:
+            command.append("--colocate")
+        else:
+            command.append(f"--git-repo={checkout.git_dir}")
+        command.append(".")
+        try:
+            _ = _run(command, cwd=checkout.root)
+            _validate(checkout)
+            refreshed = discover(checkout.root)
+            _same_file(refreshed.git_dir, checkout.git_dir, "Git worktree identity changed during initialization")
+            if not checkout.primary:
+                _ensure_identity(checkout)
+        except EnsureError as error:
+            suffix = _remove_created_jj(jj_dir)
+            raise EnsureError(f"could not initialize jj repository: {error}{suffix}") from error
+        fresh_init = True
+
+    _stamp_identity(checkout, fresh_init=fresh_init)
     return checkout.root
 
 

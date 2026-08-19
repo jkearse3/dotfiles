@@ -30,6 +30,19 @@ class RepositoryFixture(unittest.TestCase):
         self.temporary_directory = TemporaryDirectory()
         self.addCleanup(self.temporary_directory.cleanup)
         self.root = Path(self.temporary_directory.name).resolve()
+        home = self.root / "home"
+        (home / ".config").mkdir(parents=True)
+        environment = patch.dict(
+            os.environ,
+            {
+                "HOME": str(home),
+                "XDG_CONFIG_HOME": str(home / ".config"),
+                "XDG_CACHE_HOME": str(home / ".cache"),
+                "XDG_STATE_HOME": str(home / ".state"),
+            },
+        )
+        environment.start()
+        self.addCleanup(environment.stop)
         self.primary = self.root / "primary"
         self.primary.mkdir()
         _ = run("git", "init", str(self.primary))
