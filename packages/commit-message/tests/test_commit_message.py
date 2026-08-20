@@ -98,6 +98,62 @@ class CommitMessageTests(unittest.TestCase):
         self.assertTrue(all(len(line) <= 72 for line in body))
         self.assertEqual(" ".join(body), expected)
 
+    def test_hand_wrapped_paragraph_formats_like_unbroken_paragraph(self) -> None:
+        paragraph_lines = (
+            "The formatter treats this hand-wrapped paragraph as one logical unit",
+            "because `collapsing` intra-paragraph newlines is what a case",
+            "statement",
+            "document view, once the,",
+            "(parenthetical aside) rewrap requires so that no fragment such as",
+            "detail lands.",
+        )
+        hand_wrapped = "feat: demo\n\n" + "\n".join(paragraph_lines)
+        unbroken = "feat: demo\n\n" + " ".join(paragraph_lines)
+
+        output = format_message(hand_wrapped).stdout
+        self.assertEqual(output, format_message(unbroken).stdout)
+        self.assertTrue(all(len(line) <= 72 for line in output.splitlines()))
+
+    def test_prose_paragraph_opening_with_word_colon_is_not_a_trailer(self) -> None:
+        message = (
+            "feat: demo\n\n"
+            "Records: hold the canonical state for each document and are "
+            "rewritten whenever the underlying case data changes in any way."
+        )
+        body = format_message(message).stdout.splitlines()[2:]
+        self.assertTrue(all(len(line) <= 72 for line in body))
+        self.assertFalse(any(line.startswith(" ") for line in body))
+        self.assertEqual(" ".join(body), message.splitlines()[2])
+
+    def test_patch_lines_directly_after_prose_are_not_absorbed(self) -> None:
+        for patch in (
+            "--- a/file\n+++ b/file",
+            "@@ -1,3 +1,3 @@\n-old_line = 1\n+new_line = 2",
+        ):
+            with self.subTest(patch=patch):
+                message = f"fix: apply patch\n\nApply this change to the loop\n{patch}"
+                self.assertEqual(format_message(message).stdout, message + "\n")
+
+    def test_lowercase_trailer_block_is_preserved(self) -> None:
+        message = (
+            "feat: demo\n\n"
+            "signed-off-by: Alpha <a@example.com>\n"
+            "co-authored-by: Beta <b@example.com>"
+        )
+        self.assertEqual(format_message(message).stdout, message + "\n")
+
+    def test_recognized_trailer_keys_keep_hanging_indent(self) -> None:
+        for trailer in (
+            "Signed-off-by: A reviewer identity long enough to need wrapping.",
+            "Fixes: This trailer value has enough words to wrap onto two lines.",
+        ):
+            with self.subTest(trailer=trailer):
+                lines = format_message(
+                    f"feat: demo\n\n{trailer}", "--body-width", "40"
+                ).stdout.splitlines()
+                self.assertEqual(lines[2].split(":")[0], trailer.split(":")[0])
+                self.assertTrue(lines[3].startswith("  "))
+
     def test_lists_and_trailers_use_continuation_indentation(self) -> None:
         message = (
             "feat: add formatter\n\n"

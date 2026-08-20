@@ -20,8 +20,16 @@ DEFAULT_BODY_WIDTH = 72
 DEFAULT_SUBJECT_WIDTH = 72
 
 LIST_RE = re.compile(r"^(?P<prefix>[ \t]*(?:[-+*]|\d+[.)])[ \t]+)(?P<text>\S.*)$")
+
+# Only recognized Conventional Commits / git trailer keys count: hyphenated
+# keys (Signed-off-by, Co-authored-by, BREAKING-CHANGE) or a known single-word
+# key, matched case-insensitively because git accepts lowercase trailer keys.
+# An arbitrary unhyphenated capitalized word before a colon ("Records: hold
+# the state...") is ordinary prose and must wrap without hanging indent.
 TRAILER_RE = re.compile(
-    r"^(?P<prefix>(?:BREAKING CHANGE|[A-Za-z0-9-]+):[ \t]+)(?P<text>\S.*)$"
+    r"^(?P<prefix>(?:BREAKING CHANGE"
+    + r"|(?i:[A-Z][A-Z0-9]*(?:-[A-Z0-9]+)+"
+    + r"|Closes|Fixes|Resolves|Refs|Reverts|Cc|Link)):[ \t]+)(?P<text>\S.*)$"
 )
 
 # Issue-reference footers stay on their own lines: never joined into a
@@ -32,6 +40,8 @@ DIFF_HEADER_RE = re.compile(
     + r"|(?:similarity|dissimilarity) index [0-9]+%"
     + r"|(?:rename|copy) (?:from|to) .+"
     + r"|index [0-9a-f]+\.\.[0-9a-f]+(?: [0-7]{6})?"
+    + r"|(?:-{3}|\+{3}) \S.*"
+    + r"|@@ -[0-9]+(?:,[0-9]+)? \+[0-9]+(?:,[0-9]+)? @@.*"
     + r"|Binary files .+ differ)$"
 )
 URL_RE = re.compile(r"https?://\S+")
@@ -169,16 +179,39 @@ def format_body_line(line: str, *, width: int) -> list[str]:
     return wrap_line(line, width=width)
 
 
-def is_prose_line(line: str) -> bool:
-    """Return whether ``line`` is ordinary prose that may join a paragraph.
+# Prose may also open with inline code, a parenthetical, or a quotation;
+# other punctuation openers (diff markers, markup) stay line-sensitive.
+PROSE_OPENER_PUNCTUATION = "`(\"'"
 
-    The ASCII-alnum first-character gate excludes markup, indented content,
-    and continuation lines, which must keep their existing line structure.
+
+def is_prose_line(line: str) -> bool:
+    """Return whether ``line`` may open a prose paragraph.
+
+    The first-character gate excludes markup, indented content, and
+    diff/patch lines, which must keep their existing line structure.
     """
     return bool(
         line
         and line[0].isascii()
-        and line[0].isalnum()
+        and (line[0].isalnum() or line[0] in PROSE_OPENER_PUNCTUATION)
+        and is_prose_continuation_line(line)
+    )
+
+
+def is_prose_continuation_line(line: str) -> bool:
+    """Return whether ``line`` may continue an open prose paragraph.
+
+    Continuations are judged more permissively than openers because an
+    author-inserted wrap point can land on any word: in-paragraph newlines
+    are soft, and only blank, indented, or structural lines (lists,
+    trailers, issue footers, diff lines, preformatted-looking content) end
+    a paragraph. The ``-``/``+`` gate keeps bare patch lines out of prose;
+    hunk and file headers before them are caught as preformatted.
+    """
+    return bool(
+        line
+        and not line[0].isspace()
+        and line[0] not in "-+"
         and LIST_RE.fullmatch(line) is None
         and TRAILER_RE.fullmatch(line) is None
         and ISSUE_REFERENCE_RE.fullmatch(line) is None
@@ -218,11 +251,13 @@ def format_message(message: str, *, body_width: int) -> str:
     """Mechanically format a commit description.
 
     The subject passes through unchanged. Body prose paragraphs reflow to
-    ``body_width``, and list items and trailers wrap with continuation
-    indentation. Fenced code, preformatted-looking lines, issue-reference
-    footers, and other indented content pass through verbatim, so the result
-    may still fail validation. Empty input stays empty; non-empty output ends
-    with exactly one newline.
+    ``body_width`` with in-paragraph newlines treated as soft: a paragraph
+    ends only at a blank, fence, or structural line, so hand-wrapped prose
+    collapses to one logical line before wrapping. List items and trailers
+    wrap with continuation indentation. Fenced code, preformatted-looking
+    lines, issue-reference footers, and other indented content pass through
+    verbatim, so the result may still fail validation. Empty input stays
+    empty; non-empty output ends with exactly one newline.
     """
     normalized = message.rstrip("\r\n")
     if not normalized:
@@ -255,7 +290,7 @@ def format_message(message: str, *, body_width: int) -> str:
             result.append(line)
             continue
 
-        if is_prose_line(line):
+        if is_prose_line(line) or (paragraph and is_prose_continuation_line(line)):
             paragraph.append(line)
             continue
 
