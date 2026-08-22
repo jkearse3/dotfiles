@@ -58,6 +58,10 @@
         jj-ensure = pkgs.callPackage ../packages/jj-ensure/package.nix {
           inherit (unstablePkgs) jujutsu;
         };
+        herdr-worktree-bootstrap = pkgs.callPackage ../packages/herdr-worktree-bootstrap/package.nix {
+          inherit (inputs.llm-agents.packages.${system}) herdr;
+          inherit jj-ensure;
+        };
         jj-bookmark-land = pkgs.callPackage ../packages/jj-bookmark-land/package.nix {
           inherit (unstablePkgs) jujutsu;
         };
