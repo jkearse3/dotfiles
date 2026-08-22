@@ -39,6 +39,15 @@ config so jj agrees with Git wherever the checkout lives. For a freshly
 initialized workspace whose empty working-copy commit still carries jj's default
 author, the author is realigned once; a pre-existing workspace's commits are
 never rewritten.
+
+``jj git init`` imports remote-tracking bookmarks without tracking them, so the
+default branch would otherwise need a manual ``jj bookmark track``. After a
+fresh initialization only, this module tracks the default remote bookmark it
+derives from the remote ``HEAD`` Git records locally, the same signal jj's own
+``trunk()`` detection uses, preferring ``origin`` when several remotes resolve
+one. This is a convenience: a missing or ambiguous remote HEAD tracks nothing,
+and a detection or tracking failure is reported as a warning rather than failing
+the ensure, leaving the validated workspace usable.
 """
 
 from __future__ import annotations
@@ -109,6 +118,7 @@ class Plan:
     action: Action
     stale: Path | None = None
     git_identity: GitIdentity | None = None
+    track: str | None = None
 
     def describe(self) -> str:
         """Render the plan for a human; wording is not a machine interface."""
@@ -121,6 +131,8 @@ class Plan:
         if self.git_identity is not None:
             signing = "enabled" if self.git_identity.signing_key is not None else "disabled"
             text += f"; would mirror jj commit identity {self.git_identity.email} (signing {signing})"
+        if self.track is not None:
+            text += f"; would track default remote bookmark {self.track}"
         return text
 
 
@@ -654,6 +666,108 @@ def _stamp_identity(checkout: GitCheckout, *, fresh_init: bool) -> None:
         _align_working_copy_author(checkout, identity)
 
 
+def _remote_head_branch(root: Path, remote: str) -> str | None:
+    """Return the branch a remote's locally recorded ``HEAD`` points at, or ``None``.
+
+    ``git symbolic-ref`` reads the ``refs/remotes/<remote>/HEAD`` ref that
+    ``git clone`` and ``git remote set-head`` record locally, so no network is
+    used. It exits 1 when that ref is absent or is not symbolic, which maps to
+    ``None``; any other nonzero status, or output not naming a branch under the
+    remote, is an unexpected condition and raises.
+    """
+    ref = f"refs/remotes/{remote}/HEAD"
+    result = subprocess.run(
+        ["git", "-C", os.fspath(root), "symbolic-ref", "--quiet", ref],
+        check=False,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+    )
+    if result.returncode == 1:
+        return None
+    if result.returncode != 0:
+        detail = os.fsdecode(result.stderr).strip()
+        suffix = f": {detail}" if detail else ""
+        raise EnsureError(f"could not read remote HEAD for {remote}{suffix}")
+    value = os.fsdecode(result.stdout).strip()
+    prefix = f"refs/remotes/{remote}/"
+    branch = value[len(prefix):]
+    if not value.startswith(prefix) or not branch:
+        raise EnsureError(f"git returned an unexpected remote HEAD for {remote}: {value}")
+    return branch
+
+
+def _default_remote_bookmark(checkout: GitCheckout) -> str | None:
+    """Return the default branch's remote-tracking bookmark symbol, or ``None``.
+
+    The default is taken from the remote ``HEAD`` Git records locally, exactly
+    the signal jj's own ``trunk()`` detection uses. When one remote resolves a
+    HEAD it is used; when several do, ``origin`` wins so a conventional clone is
+    unambiguous. Anything else, such as no remote HEAD or a multi-remote tie
+    without ``origin``, returns ``None`` so nothing is tracked by guess. The
+    result is the ``<branch>@<remote>`` symbol accepted by ``jj bookmark track``.
+    """
+    remotes = os.fsdecode(_run(["git", "-C", os.fspath(checkout.root), "remote"])).split()
+    heads = {remote: branch for remote in remotes if (branch := _remote_head_branch(checkout.root, remote))}
+    if not heads:
+        return None
+    remote = "origin" if "origin" in heads else next(iter(heads)) if len(heads) == 1 else None
+    if remote is None:
+        return None
+    return f"{heads[remote]}@{remote}"
+
+
+def _detect_default_bookmark(checkout: GitCheckout) -> str | None:
+    """Detect the default remote bookmark, warning and yielding ``None`` on failure.
+
+    Detection reads only local Git refs, but unexpected Git output raises
+    :class:`EnsureError`. Tracking is a convenience that must never fail an
+    ensure or a dry run, so a detection failure becomes a warning and no
+    predicted or performed tracking. Both :func:`plan` and
+    :func:`_track_default_bookmark` route detection through here so the dry-run
+    prediction and the executed action share one warn-and-continue policy.
+    """
+    try:
+        return _default_remote_bookmark(checkout)
+    except EnsureError as error:
+        print(f"warning: could not determine default remote bookmark: {error}", file=sys.stderr)
+        return None
+
+
+def _track_default_bookmark(checkout: GitCheckout) -> None:
+    """Track the default remote bookmark after a fresh init; never fatal.
+
+    ``jj git init`` imports remote-tracking bookmarks without tracking them, so
+    the default branch would otherwise need a manual ``jj bookmark track``. This
+    runs that command for the detected default so pulls keep the local bookmark
+    updated. Tracking is a convenience: detection problems and a failed track
+    are reported as a warning and swallowed, leaving the validated workspace
+    usable rather than failing the whole ensure over a fixable inconvenience.
+    """
+    symbol = _detect_default_bookmark(checkout)
+    if symbol is None:
+        return
+    result = subprocess.run(
+        [
+            "jj",
+            "--no-pager",
+            "--color=never",
+            "--ignore-working-copy",
+            "-R",
+            os.fspath(checkout.root),
+            "bookmark",
+            "track",
+            symbol,
+        ],
+        check=False,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+    )
+    if result.returncode != 0:
+        detail = os.fsdecode(result.stderr).strip()
+        suffix = f": {detail}" if detail else ""
+        print(f"warning: could not track default remote bookmark {symbol}{suffix}", file=sys.stderr)
+
+
 def plan(start: Path | None = None) -> Plan:
     """Select the action :func:`ensure` would take without modifying the checkout.
 
@@ -669,7 +783,7 @@ def plan(start: Path | None = None) -> Plan:
         mode = jj_dir.lstat().st_mode
     except FileNotFoundError:
         action = Action.INITIALIZE_PRIMARY if checkout.primary else Action.INITIALIZE_LINKED
-        return Plan(checkout, action, git_identity=identity)
+        return Plan(checkout, action, git_identity=identity, track=_detect_default_bookmark(checkout))
     except OSError as error:
         raise EnsureError(f"could not inspect pre-existing .jj: {error}") from error
     if not stat.S_ISDIR(mode) or stat.S_ISLNK(mode):
@@ -736,6 +850,8 @@ def ensure(start: Path | None = None) -> Path:
         fresh_init = True
 
     _stamp_identity(checkout, fresh_init=fresh_init)
+    if fresh_init:
+        _track_default_bookmark(checkout)
     return checkout.root
 
 

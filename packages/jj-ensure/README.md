@@ -34,7 +34,9 @@ Each run selects exactly one action:
   [Relocation repair](#relocation-repair).
 
 After any of these, Git's resolved commit identity for the checkout is mirrored
-into jj's repository-local configuration.
+into jj's repository-local configuration. After a **fresh initialization only**,
+the default branch's remote-tracking bookmark is also tracked — see
+[Tracking the default remote bookmark](#tracking-the-default-remote-bookmark).
 
 ## Linked worktrees
 
@@ -108,6 +110,28 @@ If Git resolves no complete identity, nothing is mirrored. For a freshly
 initialized workspace whose empty working-copy commit still carries jj's default
 author, the author is realigned once via `jj metaedit --update-author`; a
 pre-existing workspace's commits are never rewritten.
+
+## Tracking the default remote bookmark
+
+`jj git init` imports remote-tracking bookmarks but does not track them, so
+after initializing over a checkout with a remote, the default branch shows up as
+an untracked `name@origin` and pulls would not update a local bookmark until you
+ran `jj bookmark track` by hand. After a **fresh initialization only**,
+`jj-ensure` runs that command for you.
+
+The default branch is taken from the remote `HEAD` that Git records locally in
+`refs/remotes/<remote>/HEAD` — the same signal jj's own `trunk()` detection
+uses, set by `git clone` and `git remote set-head`, read without any network
+access. When exactly one remote has a recorded HEAD it is used; when several do,
+`origin` wins. Anything else — no recorded remote HEAD, or a multi-remote tie
+without an `origin` — tracks nothing rather than guessing.
+
+Tracking is a convenience, never a gate. It runs only on fresh initialization,
+so a bookmark you later `jj bookmark untrack` is not re-tracked on the next run.
+A missing or ambiguous default is a silent no-op, and a detection or
+`jj bookmark track` failure is reported as a `warning:` on stderr while the
+ensure still succeeds — the validated workspace stays usable and you can track
+manually.
 
 ## Safety properties
 

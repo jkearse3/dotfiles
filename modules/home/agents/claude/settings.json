@@ -165,5 +165,6 @@
   "theme": "dark-ansi",
   "editorMode": "vim",
   "verbose": true,
-  "skipAutoPermissionPrompt": true
+  "skipAutoPermissionPrompt": true,
+  "agentPushNotifEnabled": true
 }

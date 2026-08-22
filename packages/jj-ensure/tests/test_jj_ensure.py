@@ -74,6 +74,19 @@ class RepositoryFixture(unittest.TestCase):
             "jj", "-R", str(path), "log", "-r", "@", "--no-graph", "-T", "author.email()"
         ).stdout.decode().strip()
 
+    def cloned_with_remote(self, name: str) -> tuple[Path, str]:
+        bare = self.root / f"{name}.git"
+        _ = run("git", "clone", "--bare", str(self.primary), str(bare))
+        clone = self.root / name
+        _ = run("git", "clone", str(bare), str(clone))
+        _ = run("git", "-C", str(clone), "config", "user.name", "Test User")
+        _ = run("git", "-C", str(clone), "config", "user.email", "test@example.com")
+        head = run("git", "-C", str(clone), "symbolic-ref", "refs/remotes/origin/HEAD").stdout.decode().strip()
+        return clone, head.rsplit("/", 1)[-1]
+
+    def tracked(self, path: Path) -> str:
+        return run("jj", "-R", str(path), "bookmark", "list", "--tracked").stdout.decode()
+
 
 @final
 class EnsureBehaviorTests(RepositoryFixture):
@@ -280,6 +293,84 @@ class EnsureBehaviorTests(RepositoryFixture):
             self.assertEqual(cli.main(["--dry-run", str(self.primary)]), 0)
         self.assertIn("would mirror jj commit identity test@example.com (signing disabled)", output.getvalue())
         self.assertFalse((self.primary / ".jj").exists())
+
+    def test_tracks_default_remote_bookmark_on_fresh_init(self) -> None:
+        clone, branch = self.cloned_with_remote("clone")
+        self.assertEqual(cli.ensure(clone), clone)
+        tracked = self.tracked(clone)
+        self.assertIn(f"{branch}:", tracked)
+        self.assertIn("@origin:", tracked)
+
+    def test_dry_run_predicts_default_remote_bookmark_before_init(self) -> None:
+        clone, branch = self.cloned_with_remote("clone")
+        output = io.StringIO()
+        with patch("sys.stdout", output):
+            self.assertEqual(cli.main(["--dry-run", str(clone)]), 0)
+        self.assertIn(f"would track default remote bookmark {branch}@origin", output.getvalue())
+        self.assertFalse((clone / ".jj").exists())
+
+    def test_skips_tracking_without_remote_head(self) -> None:
+        output = io.StringIO()
+        with patch("sys.stdout", output):
+            self.assertEqual(cli.main(["--dry-run", str(self.primary)]), 0)
+        self.assertNotIn("would track", output.getvalue())
+        self.assertEqual(cli.ensure(self.primary), self.primary)
+        self.assertEqual(self.tracked(self.primary).strip(), "")
+
+    def test_dry_run_detection_failure_warns_and_predicts_no_tracking(self) -> None:
+        output = io.StringIO()
+        error = io.StringIO()
+        with (
+            patch.object(cli, "_default_remote_bookmark", side_effect=cli.EnsureError("broken remote")),
+            patch("sys.stdout", output),
+            patch("sys.stderr", error),
+        ):
+            self.assertEqual(cli.main(["--dry-run", str(self.primary)]), 0)
+        self.assertNotIn("would track", output.getvalue())
+        self.assertIn("warning: could not determine default remote bookmark: broken remote", error.getvalue())
+        self.assertFalse((self.primary / ".jj").exists())
+
+    def test_default_remote_bookmark_prefers_origin_across_remotes(self) -> None:
+        checkout = cli.discover(self.primary)
+        for name, branch in (("origin", "main"), ("upstream", "dev")):
+            _ = run("git", "-C", str(self.primary), "remote", "add", name, f"../{name}.git")
+            _ = run("git", "-C", str(self.primary), "symbolic-ref", f"refs/remotes/{name}/HEAD", f"refs/remotes/{name}/{branch}")
+        self.assertEqual(cli._default_remote_bookmark(checkout), "main@origin")
+
+    def test_default_remote_bookmark_none_on_multi_remote_tie_without_origin(self) -> None:
+        checkout = cli.discover(self.primary)
+        for name in ("alpha", "beta"):
+            _ = run("git", "-C", str(self.primary), "remote", "add", name, f"../{name}.git")
+            _ = run("git", "-C", str(self.primary), "symbolic-ref", f"refs/remotes/{name}/HEAD", f"refs/remotes/{name}/main")
+        self.assertIsNone(cli._default_remote_bookmark(checkout))
+
+    def test_tracking_detection_failure_warns_without_failing_ensure(self) -> None:
+        error = io.StringIO()
+        with (
+            patch.object(cli, "_default_remote_bookmark", side_effect=cli.EnsureError("broken remote")),
+            patch("sys.stderr", error),
+        ):
+            self.assertEqual(cli.ensure(self.primary), self.primary)
+        self.assertIn("warning: could not determine default remote bookmark: broken remote", error.getvalue())
+        self.assertTrue((self.primary / ".jj").is_dir())
+
+    def test_tracking_command_failure_warns_without_failing_ensure(self) -> None:
+        error = io.StringIO()
+        with (
+            patch.object(cli, "_default_remote_bookmark", return_value="main@"),
+            patch("sys.stderr", error),
+        ):
+            self.assertEqual(cli.ensure(self.primary), self.primary)
+        self.assertIn("warning: could not track default remote bookmark main@", error.getvalue())
+        self.assertTrue((self.primary / ".jj").is_dir())
+
+    def test_does_not_retrack_after_manual_untrack(self) -> None:
+        clone, branch = self.cloned_with_remote("clone")
+        _ = cli.ensure(clone)
+        _ = run("jj", "-R", str(clone), "bookmark", "untrack", f"{branch}@origin")
+        self.assertEqual(self.tracked(clone).strip(), "")
+        self.assertEqual(cli.ensure(clone), clone)
+        self.assertEqual(self.tracked(clone).strip(), "")
 
 
 @final
