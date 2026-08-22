@@ -30,8 +30,7 @@ prior state or constraints, the change made in response, and auxiliary details
 in separate paragraphs when more than one appears.
 
 Exclude review history, tool output, scratch work, agent actions, task state,
-workflow narration, alternatives weighed but not taken, and unsupported
-claims.
+workflow narration, alternatives weighed but not taken, and unsupported claims.
 
 Wrap body and footer lines at 72 characters except unbreakable URLs and inline
 code. Separate footers with a blank line; use `Closes #123`, `Fixes JIRA-456`,
