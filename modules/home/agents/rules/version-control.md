@@ -19,6 +19,14 @@ its agent-authored, unpublished history. Ask before modifying published,
 unrelated, user-authored, pre-existing non-task-owned, destructive, or
 uncertain-ownership history. Use non-interactive VCS commands.
 
+Perform commit and revision shaping (creating, splitting, squashing,
+reordering, and rewording) through the finalize-changes skill rather than ad
+hoc VCS mutation, so boundaries and descriptions follow one governed path.
+Treat a revision as unfinalized until its description passes
+`commit-message validate`; format it with `commit-message format` or
+`jj-description-format` and treat a nonzero exit as blocking. Never hand-write
+a description that skips this gate.
+
 Before mutating content or history, identify the change set with the current
 task-owned Git branch or a task-owned jj bookmark; a reference identifying only
 its base or another change set does not qualify. Default new work to the
