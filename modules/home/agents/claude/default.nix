@@ -13,6 +13,8 @@ let
     skills = config.agents.skills;
   };
   renderAgentsMarkdown = import ../renderAgentsMarkdown.nix { inherit lib; };
+  preventIdleSleep = lib.optionalString pkgs.stdenv.hostPlatform.isDarwin "/usr/bin/caffeinate -i ";
+
   claude-wrapped = pkgs.symlinkJoin {
     name = "claude-code-wrapped";
     paths = [
@@ -28,10 +30,33 @@ let
     '';
   };
 
-  nono-claude = mkNonoWrapper {
-    name = "claude";
+  # caffeinate stays outermost so its idle-sleep assertion covers the whole
+  # session, wrapping both the direct binary and the sandbox entrypoint.
+  mkClaude =
+    {
+      name,
+      command,
+    }:
+    pkgs.writeShellApplication {
+      inherit name;
+      text = ''
+        exec ${preventIdleSleep}${command} "$@"
+      '';
+    };
+
+  nono-claude-entrypoint = mkNonoWrapper {
+    name = "claude-entrypoint";
     profile = "coding-agents";
     command = "${claude-wrapped}/bin/claude";
+  };
+
+  claude = mkClaude {
+    name = "claude";
+    command = "${claude-wrapped}/bin/claude";
+  };
+  nono-claude = mkClaude {
+    name = "nono-claude";
+    command = "${nono-claude-entrypoint}/bin/nono-claude-entrypoint";
   };
 in
 {
@@ -42,7 +67,7 @@ in
   ];
 
   home.packages = [
-    claude-wrapped
+    claude
     nono-claude
     dotfilesPackages.ccusage
     (pkgs.writeShellScriptBin "claude-mcp-add-linear" ''
