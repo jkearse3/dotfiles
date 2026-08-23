@@ -225,12 +225,15 @@ def looks_preformatted(line: str) -> bool:
     This is a heuristic and false positives are intentional: misclassifying
     prose as preformatted merely leaves it untouched, while the reverse
     corrupts quoted commands, tables, and diffs. Unbreakable spans are
-    blanked out first so a URL or inline code containing ``|`` or ``--``
-    does not trigger the rules.
+    masked out first so a URL or inline code containing ``|`` or ``--``
+    does not trigger the rules. The mask is a word character rather than a
+    space so that masking cannot itself fabricate structure: prose ending
+    in a URL or inline code would otherwise read as a Markdown hard break
+    and never reflow.
     """
     plain = line
     for start, end in reversed(unbreakable_spans(line)):
-        plain = plain[:start] + " " * (end - start) + plain[end:]
+        plain = plain[:start] + "x" * (end - start) + plain[end:]
 
     return (
         plain.startswith(("```", "~~~", ">", "|", "#", "$ ", "./"))

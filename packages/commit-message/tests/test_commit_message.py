@@ -180,6 +180,10 @@ class CommitMessageTests(unittest.TestCase):
             "docs: preserve structured content\n\n"
             "Hard break.  \n"
             "Next line.\n\n"
+            "Hard break ends with `code`  \n"
+            "Next line.\n\n"
+            "Hard break ends with https://example.com/p  \n"
+            "Next line.\n\n"
             "Heading\n"
             "---\n\n"
             "--- a/file\n"
@@ -201,6 +205,21 @@ class CommitMessageTests(unittest.TestCase):
         self.assertIn(url, output)
         self.assertIn(code, output)
         self.assertEqual(validate_message(output).returncode, 0)
+
+    def test_prose_ending_in_an_unbreakable_span_still_reflows(self) -> None:
+        for tail in ("`some code`", "https://example.com/page"):
+            with self.subTest(tail=tail):
+                message = (
+                    "docs: reflow prose\n\n"
+                    f"This paragraph ends its first line with {tail}\n"
+                    "and joins the next line before wrapping."
+                )
+                unbroken = message.replace(f"{tail}\n", f"{tail} ")
+                output = format_message(message).stdout
+                self.assertEqual(output, format_message(unbroken).stdout)
+                body = output.splitlines()[2:]
+                self.assertIn(tail, " ".join(body))
+                self.assertTrue(all(len(line) <= 72 for line in body))
 
     def test_conservative_formatting_may_remain_invalid(self) -> None:
         samples = (
