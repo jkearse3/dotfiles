@@ -65,6 +65,7 @@
       "Bash(jj-bookmark-stacked:*)",
       "Bash(jj-description-format)",
       "Bash(jj-description-format:*)",
+      "Bash(jj-ensure)",
       "Bash(jq:*)",
       "Bash(less:*)",
       "Bash(ln:*)",
