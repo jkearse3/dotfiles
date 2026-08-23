@@ -1,0 +1,27 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "permissions": {
+    "allow": [
+      "Bash(./x.sh fmt)",
+      "Bash(./x.sh fmt-check)",
+      "Bash(./x.sh nix-build-home)",
+      "Bash(./x.sh nix-build-home:*)",
+      "Bash(./x.sh nix-build-home-locked)",
+      "Bash(./x.sh nix-build-home-locked:*)",
+      "Bash(./x.sh nix-build-system)",
+      "Bash(./x.sh nix-build-system:*)",
+      "Bash(./x.sh nix-diff-home)",
+      "Bash(./x.sh nix-diff-home:*)",
+      "Bash(./x.sh nix-diff-system)",
+      "Bash(./x.sh nix-diff-system:*)",
+      "Bash(./x.sh nix-eval-home)",
+      "Bash(./x.sh nix-eval-home:*)",
+      "Bash(./x.sh nix-eval-home-locked)",
+      "Bash(./x.sh nix-eval-home-locked:*)",
+      "Bash(./x.sh nix-eval-system)",
+      "Bash(./x.sh nix-eval-system:*)",
+      "Bash(./x.sh nix-eval-all)",
+      "Bash(./x.sh nix-blueprints)"
+    ]
+  }
+}
