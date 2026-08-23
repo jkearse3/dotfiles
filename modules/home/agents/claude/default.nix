@@ -160,8 +160,16 @@ let
   # stick still means editing `settings.json` and running a Home Manager switch.
   #
   # Precedence, per-leaf resolution, and array unioning are undocumented Claude
-  # Code internals, measured against 2.1.238 on 2026-08-23. Re-measure them
-  # whenever the `llm-agents` input bumps `claude-code`.
+  # Code internals, measured against 2.1.238 on 2026-08-23. The precedence chain
+  # and the `--settings` JSON-string capability are asserted offline against the
+  # packaged binary in `claude-wrapped` below. A later `--settings` occurrence
+  # displacing an earlier one has no assertion at all — see `mkClaude` below —
+  # but every probe exercises it implicitly by reaching Claude Code through the
+  # launch wrapper. The merge, union, and rule precedence behaviors are only
+  # observable from inside a running session, so they need network access and a
+  # logged-in Claude Code session and cannot be checked in the build;
+  # `./x.sh claude-verify-settings` measures them, and is worth running after
+  # every `llm-agents` bump of `claude-code`.
   pinnedSettingsPath =
     assert lib.assertMsg (missingEnforcedPaths == [ ])
       "claude settings.json is missing enforced paths: ${lib.concatStringsSep ", " missingEnforcedPaths}";
@@ -207,6 +215,29 @@ let
       pkgs.makeWrapper
     ];
     postBuild = ''
+      # The settings pin is a `--settings` payload, so it holds only while
+      # Claude Code still resolves that flag above the machine-local user layer
+      # and still accepts the payload inline. Both are literals in the packaged
+      # binary, so assert them where it costs nothing rather than discovering a
+      # precedence change as a silently unpinned session. `bin/claude` is a
+      # shell wrapper, so the Mach-O payload beside it is what has to be read.
+      binary=$out/bin/.claude-wrapped
+      if [ ! -f "$binary" ]; then
+        echo "claude-code no longer ships bin/.claude-wrapped; find the binary carrying the settings chain before trusting the pin" >&2
+        exit 1
+      fi
+
+      # `grep -a -F -q` rather than `strings`: no binutils dependency, and it
+      # stops at the first match instead of streaming ~320 MB to a pipe.
+      if ! grep -a -F -q '["userSettings","projectSettings","localSettings","flagSettings","policySettings"]' "$binary"; then
+        echo "claude-code no longer carries the settings precedence chain userSettings -> projectSettings -> localSettings -> flagSettings -> policySettings; re-measure with ./x.sh claude-verify-settings before trusting the pin" >&2
+        exit 1
+      fi
+      if ! grep -a -F -q 'Path to a settings JSON file or a JSON string' "$binary"; then
+        echo "claude-code --settings no longer documents accepting a JSON string, which is how the overlay hands over its payload; re-measure with ./x.sh claude-verify-settings" >&2
+        exit 1
+      fi
+
       wrapProgram $out/bin/claude \
         --set CLAUDE_CODE_DISABLE_BACKGROUND_TASKS 1 \
         --set CLAUDE_CONFIG_DIR ${config.home.homeDirectory}/.claude
