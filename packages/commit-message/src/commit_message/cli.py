@@ -3,10 +3,16 @@
 The formatter is deliberately conservative: it rewrites only ordinary prose
 paragraphs, list items, and trailers, and leaves line-sensitive content (code
 fences, tables, diffs, other indented lines, URLs, inline code) byte-for-byte
-intact, so formatted output may still fail validation. Line endings are
-normalized to LF and non-empty output ends with exactly one newline. The
-validator intentionally does not enforce Conventional Commit structure: any
-non-empty subject within the width limit is accepted.
+intact, so formatted output may still fail validation. The one place that
+conservatism yields is the line directly below a flush-left list item or
+trailer: it is indistinguishable from a hand-wrapped continuation, so it is
+absorbed into that value, and a blank line is what separates them. A `-` or
+`+` marker is excepted, reading equally as a diff line, and takes only
+indented continuations.
+
+Line endings are normalized to LF and non-empty output ends with exactly one
+newline. The validator intentionally does not enforce Conventional Commit
+structure: any non-empty subject within the width limit is accepted.
 """
 
 from __future__ import annotations
@@ -14,10 +20,16 @@ from __future__ import annotations
 import argparse
 import re
 import sys
+from dataclasses import dataclass
 from typing import cast
 
 DEFAULT_BODY_WIDTH = 72
 DEFAULT_SUBJECT_WIDTH = 72
+
+# git folds a trailer's continuation line into the trailer value only when the
+# line is indented; `git interpret-trailers --parse` drops an unindented one,
+# silently truncating the value.
+TRAILER_CONTINUATION_INDENT = "  "
 
 LIST_RE = re.compile(r"^(?P<prefix>[ \t]*(?:[-+*]|\d+[.)])[ \t]+)(?P<text>\S.*)$")
 
@@ -143,37 +155,126 @@ def wrap_line(
     return lines
 
 
-def format_body_line(line: str, *, width: int) -> list[str]:
-    """Return ``line`` reformatted to ``width`` as one or more lines.
+@dataclass
+class Paragraph:
+    """Lines that reflow together under one pair of line prefixes.
 
-    List items and trailers wrap with continuation indentation.
-    Issue-reference footers, other indented lines, and
-    preformatted-looking lines pass through verbatim; anything else wraps
-    as plain prose.
+    Prose carries empty prefixes and reflows flush left. A list item or
+    trailer keeps its marker as ``first_prefix`` and reflows its value
+    under ``continuation_prefix`` as a hanging indent.
     """
-    if not line or len(line) <= width or ISSUE_REFERENCE_RE.fullmatch(line) is not None:
-        return [line]
 
+    first_prefix: str
+    continuation_prefix: str
+    texts: list[str]
+
+
+def open_paragraph(line: str) -> Paragraph | None:
+    """Return the paragraph ``line`` opens, or ``None`` if it opens none.
+
+    Blank, issue-reference, diff-header, and preformatted-looking lines
+    open nothing, so they keep their existing line structure. A list item
+    or trailer is matched ahead of that gate, so it opens a paragraph even
+    when it looks preformatted. An indented line opens a paragraph only
+    when it is a list item.
+    """
     list_match = LIST_RE.fullmatch(line)
     if list_match is not None:
         prefix = list_match.group("prefix")
-        return wrap_line(
-            list_match.group("text"),
-            width=width,
+        return Paragraph(
             first_prefix=prefix,
             continuation_prefix=" " * len(prefix),
+            texts=[list_match.group("text")],
         )
 
     trailer_match = TRAILER_RE.fullmatch(line)
     if trailer_match is not None:
-        return wrap_line(
-            trailer_match.group("text"),
-            width=width,
+        return Paragraph(
             first_prefix=trailer_match.group("prefix"),
-            continuation_prefix="  ",
+            continuation_prefix=TRAILER_CONTINUATION_INDENT,
+            texts=[trailer_match.group("text")],
         )
 
-    if line[0].isspace() or looks_preformatted(line):
+    if is_prose_line(line):
+        return Paragraph(first_prefix="", continuation_prefix="", texts=[line])
+
+    return None
+
+
+def absorbs_flush_left_text(paragraph: Paragraph) -> bool:
+    """Return whether ``paragraph`` may absorb an unindented soft-wrapped line.
+
+    An indented paragraph takes only indented continuations, or a line
+    below an indented code block would fold into it. A ``-`` or ``+``
+    marker is ambiguous between a list bullet and a diff line, so it too
+    continues only through an indented line; ``is_prose_continuation_line``
+    gates prose on the same two characters.
+    """
+    marker = paragraph.first_prefix[:1]
+    if not marker:
+        return True
+
+    return not marker.isspace() and marker not in "-+"
+
+
+def paragraph_continuation_text(paragraph: Paragraph, line: str) -> str | None:
+    """Return the text ``line`` adds to ``paragraph``, or ``None`` to end it.
+
+    An unindented soft-wrapped line continues a flush-left paragraph, so a
+    hand-wrapped list item or trailer reflows as one value instead of
+    breaking into a fresh unindented paragraph. A line indented to
+    exactly the hanging indent continues a list item or trailer;
+    anything indented further is nested content that stays verbatim.
+    """
+    if absorbs_flush_left_text(paragraph) and is_prose_continuation_line(line):
+        return line
+
+    if not paragraph.continuation_prefix or not line.startswith(
+        paragraph.continuation_prefix
+    ):
+        return None
+
+    text = line[len(paragraph.continuation_prefix) :]
+    return text if is_prose_continuation_line(text) else None
+
+
+def render_paragraph(paragraph: Paragraph, *, width: int) -> list[str]:
+    """Return ``paragraph`` as output lines.
+
+    A paragraph the author already fit on one line passes through
+    verbatim, so reflowing never collapses the internal spacing of an
+    aligned list entry or a pasted diff line.
+    """
+    if len(paragraph.texts) == 1:
+        single_line = paragraph.first_prefix + paragraph.texts[0]
+        if len(single_line) <= width:
+            return [single_line]
+
+    return wrap_line(
+        " ".join(paragraph.texts),
+        width=width,
+        first_prefix=paragraph.first_prefix,
+        continuation_prefix=paragraph.continuation_prefix,
+    )
+
+
+def format_body_line(line: str, *, width: int) -> list[str]:
+    """Return ``line`` reformatted to ``width`` as one or more lines.
+
+    Only a line that opens no paragraph reaches this. Blank, indented,
+    issue-reference, and preformatted-looking lines pass through
+    verbatim. What remains is over-width prose that ``is_prose_line``
+    rejects as an opener, such as a line starting with ``*`` or ``-``,
+    and it wraps flush left.
+    """
+    if not line or len(line) <= width:
+        return [line]
+
+    if (
+        line[0].isspace()
+        or ISSUE_REFERENCE_RE.fullmatch(line) is not None
+        or looks_preformatted(line)
+    ):
         return [line]
 
     return wrap_line(line, width=width)
@@ -253,11 +354,13 @@ def looks_preformatted(line: str) -> bool:
 def format_message(message: str, *, body_width: int) -> str:
     """Mechanically format a commit description.
 
-    The subject passes through unchanged. Body prose paragraphs reflow to
+    The subject passes through unchanged. Body paragraphs reflow to
     ``body_width`` with in-paragraph newlines treated as soft: a paragraph
-    ends only at a blank, fence, or structural line, so hand-wrapped prose
-    collapses to one logical line before wrapping. List items and trailers
-    wrap with continuation indentation. Fenced code, preformatted-looking
+    ends only at a blank, fence, or structural line, so hand-wrapped text
+    collapses to one logical line before wrapping. Prose reflows flush
+    left; a list item or trailer reflows its value under a hanging indent,
+    taking an unindented continuation unless its marker is ``-`` or ``+``.
+    Fenced code, preformatted-looking
     lines, issue-reference footers, and other indented content pass through
     verbatim, so the result may still fail validation. Empty input stays
     empty; non-empty output ends with exactly one newline.
@@ -269,12 +372,15 @@ def format_message(message: str, *, body_width: int) -> str:
     lines = normalized.splitlines()
     result = [lines[0]]
     fence: str | None = None
-    paragraph: list[str] = []
+    paragraph: Paragraph | None = None
 
     def flush_paragraph() -> None:
-        if paragraph:
-            result.extend(wrap_line(" ".join(paragraph), width=body_width))
-            paragraph.clear()
+        nonlocal paragraph
+        if paragraph is None:
+            return
+
+        result.extend(render_paragraph(paragraph, width=body_width))
+        paragraph = None
 
     for line in lines[1:]:
         if fence is not None:
@@ -293,12 +399,17 @@ def format_message(message: str, *, body_width: int) -> str:
             result.append(line)
             continue
 
-        if is_prose_line(line) or (paragraph and is_prose_continuation_line(line)):
-            paragraph.append(line)
-            continue
+        if paragraph is not None:
+            continuation = paragraph_continuation_text(paragraph, line)
+            if continuation is not None:
+                paragraph.texts.append(continuation)
+                continue
 
         flush_paragraph()
-        result.extend(format_body_line(line, width=body_width))
+
+        paragraph = open_paragraph(line)
+        if paragraph is None:
+            result.extend(format_body_line(line, width=body_width))
 
     flush_paragraph()
 

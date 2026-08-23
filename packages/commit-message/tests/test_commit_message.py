@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import shutil
 import subprocess
 import unittest
 
@@ -220,6 +221,78 @@ class CommitMessageTests(unittest.TestCase):
                 body = output.splitlines()[2:]
                 self.assertIn(tail, " ".join(body))
                 self.assertTrue(all(len(line) <= 72 for line in body))
+
+    def test_trailer_reflows_the_same_however_the_author_wrapped_it(self) -> None:
+        value = "This trailer value has enough words that it must wrap onto a second line here."
+        for body in (
+            f"BREAKING CHANGE: {value}",
+            "BREAKING CHANGE: This trailer value has enough words that it\n"
+            + "must wrap onto a second line here.",
+            "BREAKING CHANGE: This trailer value has enough words that it must wrap\n"
+            + "onto a second line here.",
+        ):
+            with self.subTest(body=body):
+                lines = format_message(f"feat: demo\n\n{body}").stdout.splitlines()
+                self.assertEqual(lines[2:], [
+                    "BREAKING CHANGE: This trailer value has enough words that it must wrap",
+                    "  onto a second line here.",
+                ])
+
+    @unittest.skipIf(shutil.which("git") is None, "git is unavailable")
+    def test_wrapped_trailer_value_survives_git_trailer_parsing(self) -> None:
+        message = (
+            "feat: demo\n\nBody.\n\n"
+            "Fixes: first line of a value that the author hand wrapped across two\n"
+            "lines here\n"
+        )
+        parsed = subprocess.run(
+            ["git", "interpret-trailers", "--parse"],
+            input=format_message(message).stdout,
+            text=True,
+            capture_output=True,
+            check=True,
+        )
+        self.assertEqual(
+            parsed.stdout,
+            "Fixes: first line of a value that the author hand wrapped across two "
+            + "lines here\n",
+        )
+
+    def test_hand_wrapped_list_item_reflows_under_its_hanging_indent(self) -> None:
+        message = (
+            "feat: demo\n\n- this list item was hand wrapped by the author\n"
+            + "  onto a second line that is long enough to need rewrapping here"
+        )
+        lines = format_message(message).stdout.splitlines()
+        self.assertEqual(lines[2:], [
+            "- this list item was hand wrapped by the author onto a second line that",
+            "  is long enough to need rewrapping here",
+        ])
+
+    def test_ambiguous_marker_does_not_absorb_an_unindented_line(self) -> None:
+        for body in (
+            "- a bullet the author did not indent the rest of\nits continuation line",
+            "@@ -1,3 +1,3 @@\n-  old line\n+ new line\nThis fixes it.",
+            "Run:\n\n    - a\n    - b\nThen done.",
+        ):
+            with self.subTest(body=body):
+                message = f"fix: keep markers apart\n\n{body}"
+                self.assertEqual(format_message(message).stdout, message + "\n")
+
+    def test_a_line_the_author_already_fit_passes_through_verbatim(self) -> None:
+        for body in ("- name        value", "- foo\tbar", "Fixes: A  B"):
+            with self.subTest(body=body):
+                message = f"fix: keep spacing\n\n{body}"
+                self.assertEqual(format_message(message).stdout, message + "\n")
+
+    def test_content_indented_past_the_hanging_indent_stays_verbatim(self) -> None:
+        message = (
+            "feat: demo\n\n"
+            "- item with nested code\n"
+            "      nix build --no-link .#thing\n"
+            "- next item"
+        )
+        self.assertEqual(format_message(message).stdout, message + "\n")
 
     def test_conservative_formatting_may_remain_invalid(self) -> None:
         samples = (

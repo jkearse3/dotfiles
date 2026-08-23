@@ -13,6 +13,7 @@ pkgs.python3Packages.buildPythonApplication {
 
   nativeCheckInputs = [
     pkgs.fish
+    pkgs.git
     pkgs.zsh
   ];
 
