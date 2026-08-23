@@ -130,11 +130,7 @@
       "WebSearch",
       "mcp__ide__getDiagnostics"
     ],
-    "deny": [
-      "AskUserQuestion",
-      "EnterPlanMode",
-      "Agent(Plan)"
-    ],
+    "deny": ["AskUserQuestion", "EnterPlanMode", "Agent(Plan)"],
     "ask": [
       "Bash(git commit:*)",
       "Bash(git push:*)",
@@ -147,11 +143,7 @@
       "Bash(jj git push:*)"
     ],
     "defaultMode": "auto",
-    "additionalDirectories": [
-      ".objectives",
-      "~/.claude/skills",
-      "~/.agents"
-    ]
+    "additionalDirectories": [".objectives", "~/.claude/skills", "~/.agents"]
   },
   "model": "claude-opus-4-8",
   "disableAgentView": true,
