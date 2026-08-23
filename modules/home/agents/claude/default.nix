@@ -91,6 +91,7 @@ let
     "editorMode"
     "effortLevel"
     "model"
+    "outputStyle"
     "promptSuggestionEnabled"
     "skipAutoPermissionPrompt"
     "statusLine.type"
