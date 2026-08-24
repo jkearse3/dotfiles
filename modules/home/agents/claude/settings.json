@@ -117,8 +117,7 @@
       "Bash(git rm:*)",
       "Bash(jj git push:*)"
     ],
-    "defaultMode": "auto",
-    "additionalDirectories": ["~/.claude/skills", "~/.agents"]
+    "defaultMode": "auto"
   },
   "model": "claude-opus-4-8",
   "disableAgentView": true,
