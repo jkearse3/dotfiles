@@ -9,7 +9,6 @@
     "allow": [
       "Bash(awk:*)",
       "Bash(basename:*)",
-      "Bash(bash:*)",
       "Bash(cat:*)",
       "Bash(chmod:*)",
       "Bash(commit-message format)",
@@ -77,8 +76,6 @@
       "Bash(playwright-cli:*)",
       "Bash(printf:*)",
       "Bash(pwd)",
-      "Bash(python3:*)",
-      "Bash(read:*)",
       "Bash(readlink:*)",
       "Bash(realpath:*)",
       "Bash(rg:*)",
@@ -91,7 +88,6 @@
       "Bash(test:*)",
       "Bash(touch:*)",
       "Bash(tr:*)",
-      "Bash(tree:*)",
       "Bash(true)",
       "Bash(type:*)",
       "Bash(uname:*)",
@@ -100,9 +96,7 @@
       "Bash(which:*)",
       "Bash(whoami)",
       "Bash(xargs ls:*)",
-      "Bash(zsh:*)",
       "Read(//nix/store/**)",
-      "Read(.objectives/**)",
       "Read(~/.claude/skills/**)",
       "Read(~/.agents/**)",
       "Read(~/dotfiles/modules/home/agents/**)",
@@ -124,7 +118,7 @@
       "Bash(jj git push:*)"
     ],
     "defaultMode": "auto",
-    "additionalDirectories": [".objectives", "~/.claude/skills", "~/.agents"]
+    "additionalDirectories": ["~/.claude/skills", "~/.agents"]
   },
   "model": "claude-opus-4-8",
   "disableAgentView": true,
