@@ -7,7 +7,6 @@
   },
   "permissions": {
     "allow": [
-      "Bash(awk:*)",
       "Bash(basename:*)",
       "Bash(cat:*)",
       "Bash(chmod:*)",
@@ -45,9 +44,6 @@
       "Bash(gh workflow list:*)",
       "Bash(gh workflow view:*)",
       "Bash(git:*)",
-      "Bash(go:*)",
-      "Bash(gofumpt:*)",
-      "Bash(golangci-lint run:*)",
       "Bash(grep:*)",
       "Bash(groups:*)",
       "Bash(head:*)",
@@ -101,7 +97,6 @@
       "Read(~/.agents/**)",
       "Read(~/dotfiles/modules/home/agents/**)",
       "Skill",
-      "WebFetch",
       "WebSearch",
       "mcp__ide__getDiagnostics"
     ],
