@@ -492,10 +492,6 @@ cmd:python-check() {
 	lint-python
 }
 
-cmd:claude-verify-settings() {
-	bash modules/home/agents/claude/verify-settings.sh
-}
-
 validate_command_arguments() {
 	local command=$1
 	shift
@@ -520,8 +516,6 @@ usage: $0 <command> [arguments]
 Blueprint commands accept optional '--blueprint <blueprint-id>'.
 nix-package-update accepts optional '--dry-run'.
 nix-flake-update and fmt modify the working copy.
-claude-verify-settings needs network access and a logged-in Claude Code session,
-and spends a handful of small model calls.
 
 commands:
 EOF

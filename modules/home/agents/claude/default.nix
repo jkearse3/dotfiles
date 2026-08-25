@@ -169,16 +169,14 @@ let
   # stick still means editing `settings.json` and running a Home Manager switch.
   #
   # Precedence, per-leaf resolution, and array unioning are undocumented Claude
-  # Code internals, measured against 2.1.238 on 2026-08-23. The precedence chain
-  # and the `--settings` JSON-string capability are asserted offline against the
-  # packaged binary in `claude-wrapped` below. A later `--settings` occurrence
-  # displacing an earlier one has no assertion at all — see `mkClaude` below —
-  # but every probe exercises it implicitly by reaching Claude Code through the
-  # launch wrapper. The merge, union, and rule precedence behaviors are only
-  # observable from inside a running session, so they need network access and a
-  # logged-in Claude Code session and cannot be checked in the build;
-  # `./x.sh claude-verify-settings` measures them, and is worth running after
-  # every `llm-agents` bump of `claude-code`.
+  # Code internals, measured by hand against 2.1.238 on 2026-08-23. Only the
+  # coarse half of that is asserted: `claude-wrapped` below greps the packaged
+  # binary for the precedence chain and the `--settings` JSON-string capability,
+  # so a bump that drops either fails the build. The merge, union, and rule
+  # precedence behaviors themselves are observable only from inside a running
+  # session, so nothing here checks them; a bump that changes them shows up as a
+  # pinned value that quietly stops applying, or a machine-local write that
+  # quietly stops sticking.
   pinnedSettingsPath =
     assert lib.assertMsg (missingEnforcedPaths == [ ])
       "claude settings.json is missing enforced paths: ${lib.concatStringsSep ", " missingEnforcedPaths}";
@@ -239,11 +237,11 @@ let
       # `grep -a -F -q` rather than `strings`: no binutils dependency, and it
       # stops at the first match instead of streaming ~320 MB to a pipe.
       if ! grep -a -F -q '["userSettings","projectSettings","localSettings","flagSettings","policySettings"]' "$binary"; then
-        echo "claude-code no longer carries the settings precedence chain userSettings -> projectSettings -> localSettings -> flagSettings -> policySettings; re-measure with ./x.sh claude-verify-settings before trusting the pin" >&2
+        echo "claude-code no longer carries the settings precedence chain userSettings -> projectSettings -> localSettings -> flagSettings -> policySettings, so the --settings pin no longer outranks the machine-local layer; re-check how it resolves before trusting the pin" >&2
         exit 1
       fi
       if ! grep -a -F -q 'Path to a settings JSON file or a JSON string' "$binary"; then
-        echo "claude-code --settings no longer documents accepting a JSON string, which is how the overlay hands over its payload; re-measure with ./x.sh claude-verify-settings" >&2
+        echo "claude-code --settings no longer documents accepting a JSON string, which is how the overlay hands over its payload; re-check how it accepts settings before trusting the pin" >&2
         exit 1
       fi
 
