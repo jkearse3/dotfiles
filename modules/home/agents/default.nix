@@ -16,6 +16,7 @@ in
   imports = [
     ./registries.nix
     ./claude
+    ./codex
     ./opencode
     ./pi
   ];

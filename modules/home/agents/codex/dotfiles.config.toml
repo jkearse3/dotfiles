@@ -1,0 +1,16 @@
+# Tracked defaults selected by the `codex` wrapper. Machine-local preferences
+# belong in ~/.codex/config.toml; trusted repositories may override these in
+# .codex/config.toml, and one-off experiments can use `codex -c key=value`.
+
+approval_policy = "on-request"
+approvals_reviewer = "auto_review"
+sandbox_mode = "workspace-write"
+check_for_update_on_startup = false
+cli_auth_credentials_store = "keyring"
+
+[sandbox_workspace_write]
+network_access = false
+
+[shell_environment_policy]
+# Apply Codex's automatic KEY/SECRET/TOKEN filtering to spawned commands.
+ignore_default_excludes = false
