@@ -40,7 +40,7 @@ let
   # only when it is unset or the changelog holds newer entries, so a version
   # above every release is written once and never rewritten.
   seedSettings = {
-    theme = "dark";
+    theme = "tokyonight";
     defaultProvider = "openai-codex";
     defaultModel = "gpt-5.6-sol";
     defaultThinkingLevel = "medium";
@@ -272,6 +272,7 @@ in
         # editable checkouts live-editable and writes no path into settings.json.
         ".pi/agent/extensions" = lib.mkIf hasPiExtensions { source = mkSource ./extensions; };
         ".pi/agent/skills" = renderPiSkillsDir { };
+        ".pi/agent/themes/tokyonight.json".source = mkSource ./themes/tokyonight.json;
 
         # Agent definitions and the policy around them. Settings are safe to own
         # from here because pi-subagents only ever writes the project copy under

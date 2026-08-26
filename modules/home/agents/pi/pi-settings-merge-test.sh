@@ -114,6 +114,10 @@ check "in-app model and TUI mode choices survive the seed" \
 	'{"defaultModel":"claude-opus-5","theme":"light","tuiMode":"regular"}' '[]' '[]' \
 	'.defaultModel == "claude-opus-5" and .theme == "light" and .tuiMode == "regular" and .lastChangelogVersion == "999.999.999"'
 
+check "the retired Tokyo Night theme name is migrated" \
+	'{"theme":"tokyonight-night"}' '[]' '[]' \
+	'.theme == "tokyonight"'
+
 # Pi matches an npm source by bare name and rewrites the stored entry in place,
 # so a re-install at another version must stay one package rather than becoming
 # a second entry beside the declared spec.

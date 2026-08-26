@@ -14,7 +14,9 @@
 #   Seed keys are fallback defaults for values absent from the live file. They
 #   merge as `seed * live`, so a value pi wrote always wins and is never
 #   re-asserted. A key retired from the seed therefore stays in the live file; a
-#   merge cannot delete.
+#   merge cannot delete. The retired `tokyonight-night` theme is migrated to its
+#   generalized `tokyonight` replacement so the live setting continues to name
+#   an installed theme.
 #
 #   `packages` is reconciled instead, because pi replaces arrays wholesale on
 #   merge and a Nix-declared array would discard everything `pi install` added.
@@ -173,6 +175,7 @@ def identity($base):
             | select(identity($base) as $id | ($keptIds | index($id)) == null)])
   as $mergedPackages
 | ($seedSettings * $liveSettings)
+| if .theme == "tokyonight-night" then .theme = "tokyonight" else . end
 | if ($mergedPackages | length) > 0 or ($liveSettings | has("packages"))
   then .packages = $mergedPackages
   else .
