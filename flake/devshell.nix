@@ -32,10 +32,10 @@
 
         # Pi extension declarations are dev-only and per-checkout: work happens in
         # worktrees under ~/.herdr/worktrees, so a `home.file` entry would serve
-        # the main checkout alone. `git rev-parse --show-toplevel` resolves the
-        # worktree being edited, unlike $PWD, which is the repository root only
-        # under direnv. The link is replaced every time so a pi version bump is
-        # picked up rather than pinned by a stale symlink.
+        # the main checkout alone. Runtime npm dependencies remain an ordinary,
+        # gitignored `node_modules`; this separate link cannot be confused with
+        # packages npm owns. The link is replaced whenever the shell starts so a
+        # Pi version bump cannot leave editor tooling pinned to stale declarations.
         shellHook = ''
           piRepoRoot="$(${unstablePkgs.git}/bin/git rev-parse --show-toplevel 2>/dev/null || true)"
           if [ -z "$piRepoRoot" ]; then
@@ -43,15 +43,12 @@
           elif [ ! -d "$piRepoRoot/modules/home/agents/pi/extensions" ]; then
             echo "devshell: pi extension types not linked; $piRepoRoot/modules/home/agents/pi/extensions is missing" >&2
           else
-            # `ln -sfn` cannot replace a real directory, so clear one out of the
-            # way first. Only a link belongs here; the tree is never installed
-            # into the checkout.
-            piExtensionDeps="$piRepoRoot/modules/home/agents/pi/extensions/node_modules"
-            if [ -d "$piExtensionDeps" ] && [ ! -L "$piExtensionDeps" ]; then
-              rm -rf "$piExtensionDeps"
+            piExtensionTypes="$piRepoRoot/modules/home/agents/pi/extensions/.pi-types"
+            if [ -d "$piExtensionTypes" ] && [ ! -L "$piExtensionTypes" ]; then
+              rm -rf "$piExtensionTypes"
             fi
-            ln -sfn ${config.packages.pi-extension-types}/node_modules "$piExtensionDeps"
-            unset piExtensionDeps
+            ln -sfn ${config.packages.pi-extension-types}/node_modules "$piExtensionTypes"
+            unset piExtensionTypes
           fi
           unset piRepoRoot
         '';

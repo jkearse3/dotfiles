@@ -12,9 +12,9 @@
 // cleanly and then fail at load with a module-resolution error, which reads
 // like a broken install rather than a missing dependency.
 //
-// So the allowlist is the contract: extensions import node builtins, the
-// modules pi bundles, and each other. Adding a real dependency means giving the
-// extensions a runtime `node_modules`, not editing this list.
+// So the manifest is the contract: extensions import node builtins, the
+// modules pi bundles, each other, and packages declared in the shared root
+// `dependencies`. Development-only packages never become runtime imports.
 //
 // Specifiers come from TypeScript's own parser rather than a pattern match,
 // because a pattern match reads one line at a time and prettier wraps a long
@@ -84,7 +84,7 @@ const REJECTED_EXTENSIONS = [
 
 function collect(dir, found = []) {
   for (const entry of readdirSync(dir, { withFileTypes: true })) {
-    if (entry.name === "node_modules") continue;
+    if (entry.name === "node_modules" || entry.name === ".pi-types") continue;
     const full = path.join(dir, entry.name);
     if (entry.isDirectory()) {
       collect(full, found);
@@ -100,6 +100,24 @@ if (!extensionsDir) {
   console.error("usage: extension-imports-check.mjs <extensions-dir>");
   process.exit(2);
 }
+
+let manifest;
+try {
+  manifest = JSON.parse(
+    readFileSync(path.join(extensionsDir, "package.json"), "utf8"),
+  );
+} catch (error) {
+  console.error(
+    `extension-imports-check: cannot read ${extensionsDir}/package.json: ${error}`,
+  );
+  process.exit(2);
+}
+
+const runtimePackageNames = new Set(Object.keys(manifest.dependencies ?? {}));
+const runtimePackageName = (specifier) => {
+  const parts = specifier.split("/");
+  return specifier.startsWith("@") ? parts.slice(0, 2).join("/") : parts[0];
+};
 
 const files = collect(extensionsDir);
 const sources = files.filter((file) => file.endsWith(SOURCE_EXTENSION));
@@ -167,6 +185,7 @@ for (const file of sources) {
     // Relative imports resolve against the extension itself.
     if (specifier.startsWith(".")) continue;
     if (allowed.has(specifier)) continue;
+    if (runtimePackageNames.has(runtimePackageName(specifier))) continue;
     problems.push(
       `${file}: import "${specifier}" is not resolvable by pi at runtime`,
     );
@@ -177,7 +196,7 @@ if (problems.length > 0) {
   for (const problem of problems) console.error(problem);
   console.error("");
   console.error(
-    "Extensions may import node builtins, the modules pi bundles, and each other.",
+    "Extensions may import node builtins, the modules pi bundles, each other, and declared runtime dependencies.",
   );
   console.error(
     "See the header of extension-imports-check.mjs before changing the allowlist.",

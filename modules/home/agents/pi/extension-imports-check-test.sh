@@ -22,9 +22,10 @@ trap 'rm -rf -- "$work"' EXIT
 # Each case writes one extension tree and asserts the checker's exit status,
 # plus the specifier it is expected to name.
 check() {
-	local name=$1 expected=$2 wanted=${3-}
+	local name=$1 expected=$2 wanted=${3-} manifest=${4-'{"dependencies":{}}'}
 	local root="$work/case-$((++case_number))"
 	mkdir -p "$root/an-extension"
+	printf '%s\n' "$manifest" >"$root/package.json"
 	cat >"$root/an-extension/index.ts"
 	local output status=0
 	output=$(node "$checker" "$root" 2>&1) || status=$?
@@ -60,6 +61,22 @@ import * as path from "path";
 EOF
 
 check "a bare dependency is rejected" 1 "zod" <<'EOF'
+import { z } from "zod";
+EOF
+
+check "a declared dependency is allowed" 0 "" '{"dependencies":{"zod":"1.2.3"}}' <<'EOF'
+import { z } from "zod";
+EOF
+
+check "a declared dependency subpath is allowed" 0 "" '{"dependencies":{"yaml":"1.2.3"}}' <<'EOF'
+import { parse } from "yaml/parse-cst";
+EOF
+
+check "a declared scoped dependency is allowed" 0 "" '{"dependencies":{"@example/tools":"1.2.3"}}' <<'EOF'
+import { tool } from "@example/tools/runtime";
+EOF
+
+check "a development-only dependency is rejected" 1 "zod" '{"dependencies":{},"devDependencies":{"zod":"1.2.3"}}' <<'EOF'
 import { z } from "zod";
 EOF
 
@@ -137,6 +154,7 @@ EOF
 for rejected in js mjs cjs mts cts tsx; do
 	rejected_root="$work/rejected-$rejected"
 	mkdir -p "$rejected_root/an-extension"
+	printf '{"dependencies":{}}\n' >"$rejected_root/package.json"
 	echo 'import { defineTool } from "@earendil-works/pi-coding-agent";' \
 		>"$rejected_root/an-extension/index.ts"
 	echo 'export * from "zod";' >"$rejected_root/an-extension/helper.$rejected"
@@ -153,6 +171,7 @@ done
 # A nested helper is as loadable as the entry point.
 nested_root="$work/nested"
 mkdir -p "$nested_root/an-extension/helpers"
+printf '{"dependencies":{}}\n' >"$nested_root/package.json"
 echo 'import { helper } from "./helpers/helper.ts";' \
 	>"$nested_root/an-extension/index.ts"
 echo 'export * as YAML from "yaml";' \
@@ -169,6 +188,7 @@ fi
 # A tree the checker cannot see into would otherwise report success.
 empty_root="$work/empty"
 mkdir -p "$empty_root/an-extension"
+printf '{"dependencies":{}}\n' >"$empty_root/package.json"
 if node "$checker" "$empty_root" >/dev/null 2>&1; then
 	echo "FAIL a tree with no sources is rejected: expected failure" >&2
 	failures=1
@@ -177,6 +197,7 @@ fi
 # The devshell links a declaration-only tree in beside the sources.
 vendored_root="$work/vendored"
 mkdir -p "$vendored_root/an-extension" "$vendored_root/node_modules/zod"
+printf '{"dependencies":{}}\n' >"$vendored_root/package.json"
 echo 'import { spawn } from "node:child_process";' \
 	>"$vendored_root/an-extension/index.ts"
 echo 'export declare const z: unknown;' >"$vendored_root/node_modules/zod/index.d.ts"

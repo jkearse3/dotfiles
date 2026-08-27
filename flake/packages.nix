@@ -74,6 +74,9 @@
         };
         nix-cleanup = pkgs.callPackage ../packages/nix-cleanup/package.nix { };
         nvim-pack-prune = pkgs.callPackage ../packages/nvim-pack-prune/package.nix { };
+        pi-extension-deps = pkgs.callPackage ../packages/pi-extension-deps/package.nix {
+          inherit (unstablePkgs) nodejs;
+        };
         # The types must come from the same pi the home modules install, so this
         # takes the llm-agents package rather than the nixpkgs pi-coding-agent.
         pi-extension-types = pkgs.callPackage ../packages/pi-extension-types/package.nix {

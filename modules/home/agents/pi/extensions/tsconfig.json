@@ -6,6 +6,29 @@
     "strict": true,
     "noEmit": true,
     "allowImportingTsExtensions": true,
+    "baseUrl": ".",
+    "paths": {
+      "@earendil-works/pi-agent-core": [
+        ".pi-types/@earendil-works/pi-agent-core/dist/index.d.ts"
+      ],
+      "@earendil-works/pi-ai": [
+        ".pi-types/@earendil-works/pi-ai/dist/index.d.ts"
+      ],
+      "@earendil-works/pi-ai/*": [
+        ".pi-types/@earendil-works/pi-ai/dist/*.d.ts"
+      ],
+      "@earendil-works/pi-coding-agent": [
+        ".pi-types/@earendil-works/pi-coding-agent/dist/index.d.ts"
+      ],
+      "@earendil-works/pi-tui": [
+        ".pi-types/@earendil-works/pi-tui/dist/index.d.ts"
+      ],
+      "@sinclair/typebox": [".pi-types/typebox/build/index.d.mts"],
+      "@sinclair/typebox/*": [".pi-types/typebox/build/*/index.d.mts"],
+      "typebox": [".pi-types/typebox/build/index.d.mts"],
+      "typebox/*": [".pi-types/typebox/build/*/index.d.mts"]
+    },
+    "typeRoots": ["./node_modules/@types", "./.pi-types/@types"],
     "types": ["node"],
     "skipLibCheck": true
   },

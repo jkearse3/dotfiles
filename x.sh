@@ -502,10 +502,16 @@ lint-typescript() {
 		echo "No pi extensions declared"
 		return 0
 	fi
-	# The declarations come from the devshell, which links them per checkout.
-	# Without them tsc resolves nothing and reports success on every file.
-	if [[ ! -e $root/node_modules ]]; then
-		echo "error: $root/node_modules is missing; enter the devshell first" >&2
+	# Pi declarations come from the devshell, separately from npm-owned runtime
+	# packages. Without them tsc cannot check extension API usage.
+	if [[ ! -e $root/.pi-types ]]; then
+		echo "error: $root/.pi-types is missing; enter the devshell first" >&2
+		return 1
+	fi
+	local runtime_dependency_count
+	runtime_dependency_count="$(node -p "Object.keys(require('./$root/package.json').dependencies ?? {}).length")"
+	if [[ $runtime_dependency_count -gt 0 && ! -d $root/node_modules ]]; then
+		echo "error: $root/node_modules is missing; run npm ci --prefix $root" >&2
 		return 1
 	fi
 	# The same three checks the pi-extensions-checked derivation runs, against

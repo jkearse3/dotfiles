@@ -1,6 +1,7 @@
 {
   config,
   dotfilesPackages,
+  dotfilesSource,
   pkgs,
   lib,
   mkNonoWrapper,
@@ -83,9 +84,8 @@ let
       '';
 
   # An extension is a directory holding an `index.ts`, so this is empty whenever
-  # none are declared. Pi discovers whatever is delivered, and a tree carrying
-  # only build scaffolding is worth neither delivering nor checking, so both the
-  # `home.file` entry and the gate below hang off this.
+  # none are declared. Pi's standard extension directory is still delivered when
+  # empty; this flag gates only checks that require real source and fixtures.
   piExtensionNames = lib.attrNames (
     lib.filterAttrs (_: type: type == "directory") (builtins.readDir ./extensions)
   );
@@ -115,13 +115,14 @@ let
         bash ${./extension-imports-check-test.sh} ${./extension-imports-check.mjs}
         node ${./extension-imports-check.mjs} ${./extensions}
 
-        # Both tools resolve declarations through a `node_modules` that has to
-        # sit inside the project, and the store copy is read-only. The link is
-        # forced because a `path:` flake reference copies the gitignored one the
-        # devshell leaves in the checkout, while a git reference does not.
+        # Runtime dependencies and Pi's declaration-only module tree have
+        # separate owners. Keeping them separate prevents npm from replacing Pi
+        # types and prevents declarations from masquerading as runtime packages.
         cp -R ${./extensions} ./extensions
         chmod -R u+w ./extensions
-        ln -sfn ${dotfilesPackages.pi-extension-types}/node_modules ./extensions/node_modules
+        rm -rf ./extensions/node_modules ./extensions/.pi-types
+        ln -s ${dotfilesPackages.pi-extension-deps}/node_modules ./extensions/node_modules
+        ln -s ${dotfilesPackages.pi-extension-types}/node_modules ./extensions/.pi-types
 
         tsc -p ./extensions
 
@@ -139,6 +140,18 @@ let
 
         touch $out
       '';
+
+  # Locked mode cannot use the editable checkout's gitignored `node_modules`.
+  # Build a complete immutable extension root from the same lockfile used by
+  # editable npm installs. In normal mode mkSource points Pi directly at the
+  # checkout, where npm owns runtime dependencies.
+  piExtensionsLocked = pkgs.runCommandLocal "pi-extensions-locked" { } ''
+    mkdir -p $out
+    cp -R ${./extensions}/. $out/
+    rm -rf $out/node_modules $out/.pi-types
+    ln -s ${dotfilesPackages.pi-extension-deps}/node_modules $out/node_modules
+  '';
+  piExtensionsSource = if dotfilesSource.editable then mkSource ./extensions else piExtensionsLocked;
 
   # Pi's subagents run in-process, so anything exported here reaches them and
   # every command they shell out to. `JJ_EDITOR=false` turns a jj command that
@@ -267,10 +280,11 @@ in
           order = config.agents.sharedRuleOrder;
         };
 
-        # Pi auto-discovers `<dir>/index.ts` under this directory, so a new
-        # extension needs no registration. Delivering through `mkSource` keeps
-        # editable checkouts live-editable and writes no path into settings.json.
-        ".pi/agent/extensions" = lib.mkIf hasPiExtensions { source = mkSource ./extensions; };
+        # Pi auto-discovers `<dir>/index.ts` under its standard global directory,
+        # so a new extension needs no registration or Home Manager activation.
+        # Editable mode points into the checkout; locked mode supplies an
+        # immutable tree with the same lockfile-derived runtime dependencies.
+        ".pi/agent/extensions".source = piExtensionsSource;
         ".pi/agent/skills" = renderPiSkillsDir { };
         ".pi/agent/themes/tokyonight.json".source = mkSource ./themes/tokyonight.json;
 
