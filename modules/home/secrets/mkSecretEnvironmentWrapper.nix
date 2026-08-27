@@ -15,6 +15,7 @@
   name,
   environmentName,
   command,
+  allowMissingProvider ? false,
 }:
 assert lib.assertMsg (name != "") "mkSecretEnvironmentWrapper: name must not be empty";
 assert lib.assertMsg (command != "") "mkSecretEnvironmentWrapper: command must not be empty";
@@ -42,26 +43,37 @@ pkgs.writeShellApplication {
     manifest=${lib.escapeShellArg "${manifestPath}"}
 
     # SECRETSPEC_PROVIDER is the intentional per-invocation override. Without it,
-    # resolve through the machine-local `dotfiles` alias. That alias must be
-    # registered first; an unregistered alias means an uncommissioned machine, so
-    # fail with actionable guidance rather than launch without declared secrets.
-    # Only the fallback route is preflighted: an explicit provider, and any
-    # malformed or failing registered provider, remain SecretSpec's concern.
+    # resolve through the machine-local `dotfiles` alias. Most consumers require
+    # that alias; callers whose complete secret scope is optional may instead run
+    # unchanged on an uncommissioned machine. A malformed or failing registered
+    # provider remains SecretSpec's concern and never silently loses credentials.
     provider="''${SECRETSPEC_PROVIDER:-dotfiles}"
     if [ -z "''${SECRETSPEC_PROVIDER:-}" ]; then
-      if ! secretspec config global provider list 2>/dev/null \
-        | grep -qE '^[[:space:]]*dotfiles[[:space:]]*='; then
-        {
-          echo "secretspec: this machine is not commissioned for the \"dotfiles\" secret provider."
-          echo "Map the dotfiles alias to a provider on this machine, then retry:"
-          echo
-          echo "  secretspec config global provider add dotfiles <provider>   # e.g. keyring://, pass://, gopass://"
-          echo "  secretspec config global provider list"
-          echo
-          echo "See ~/dotfiles/docs/secrets.md for provider choices and setup."
-        } >&2
+      if ! providerList="$(secretspec config global provider list)"; then
+        echo "secretspec: failed to inspect configured secret providers." >&2
         exit 1
       fi
+
+      if ! grep -qE '^[[:space:]]*dotfiles[[:space:]]*=' <<< "$providerList"; then
+        ${
+          if allowMissingProvider then
+            ''exec ${escapedCommand} "$@"''
+          else
+            ''
+              {
+                echo "secretspec: this machine is not commissioned for the \"dotfiles\" secret provider."
+                echo "Map the dotfiles alias to a provider on this machine, then retry:"
+                echo
+                echo "  secretspec config global provider add dotfiles <provider>   # e.g. keyring://, pass://, gopass://"
+                echo "  secretspec config global provider list"
+                echo
+                echo "See ~/dotfiles/docs/secrets.md for provider choices and setup."
+              } >&2
+              exit 1
+            ''
+        }
+      fi
+      unset providerList
     fi
 
     # Explicit --file/--profile/--scope override any ambient SECRETSPEC_* env, so

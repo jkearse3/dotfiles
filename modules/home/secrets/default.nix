@@ -11,7 +11,10 @@
   # `[scopes.<name>]` in the repository-root secretspec.toml registry.
   options.secrets.environments = lib.mkOption {
     type = lib.types.listOf lib.types.str;
-    default = [ "opencode" ];
+    default = [
+      "opencode"
+      "pi"
+    ];
     description = ''
       Logical secret environment names available to
       `mkSecretEnvironmentWrapper`. Each corresponds to a `[scopes.<name>]`

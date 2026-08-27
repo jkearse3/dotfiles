@@ -5,6 +5,7 @@
   pkgs,
   lib,
   mkNonoWrapper,
+  mkSecretEnvironmentWrapper,
   mkSource,
   ...
 }:
@@ -167,14 +168,33 @@ let
     '';
   };
 
-  nono-pi = mkNonoWrapper {
-    name = "pi";
+  nono-pi-entrypoint = mkNonoWrapper {
+    name = "nono-pi-entrypoint";
     profile = "coding-agents";
     command = "${pi-wrapped}/bin/pi";
   };
+
+  # Secret resolution stays outside nono so the sandbox never needs access to
+  # the machine's provider. EXA_API_KEY is optional: when absent, the adapter's
+  # interpolated header is empty and Exa continues on its anonymous free tier.
+  pi = mkSecretEnvironmentWrapper {
+    name = "pi";
+    environmentName = "pi";
+    command = "${pi-wrapped}/bin/pi";
+    allowMissingProvider = true;
+  };
+  nono-pi = mkSecretEnvironmentWrapper {
+    name = "nono-pi";
+    environmentName = "pi";
+    command = "${nono-pi-entrypoint}/bin/nono-pi-entrypoint";
+    allowMissingProvider = true;
+  };
 in
 {
-  imports = [ ../../lib/source.nix ];
+  imports = [
+    ../../lib/source.nix
+    ../../secrets
+  ];
 
   options.agents.pi.packages = lib.mkOption {
     type = lib.types.listOf (lib.types.either lib.types.str (lib.types.attrsOf lib.types.anything));
@@ -234,7 +254,7 @@ in
 
     home = {
       packages = [
-        pi-wrapped
+        pi
         nono-pi
       ];
 

@@ -14,7 +14,8 @@ are not enough to answer the user's request.
 ## Requirements
 
 - The `exa` server must be available through `pi-mcp-adapter`.
-- The repository-managed server uses Exa's keyless endpoint.
+- The repository-managed server uses `EXA_API_KEY` when available and otherwise
+  falls back to Exa's keyless free tier.
 
 ## When To Use
 
