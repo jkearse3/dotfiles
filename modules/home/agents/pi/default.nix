@@ -12,6 +12,7 @@
 }:
 let
   cfg = config.agents.pi;
+  preventIdleSleep = lib.optionalString pkgs.stdenv.hostPlatform.isDarwin "/usr/bin/caffeinate -i ";
 
   renderAgentsMarkdown = import ../renderAgentsMarkdown.nix { inherit lib; };
 
@@ -178,20 +179,38 @@ let
     ln -s ${nono-pi-entrypoint} $out
   '';
 
-  # Secret resolution stays outside nono so the sandbox never needs access to
-  # the machine's provider. EXA_API_KEY is optional: when absent, the adapter's
-  # interpolated header is empty and Exa continues on its anonymous free tier.
-  pi = mkSecretEnvironmentWrapper {
+  # Caffeinate stays outermost so its idle-sleep assertion covers the whole
+  # session. Secret resolution stays inside it but outside nono so the sandbox
+  # never needs access to the machine's provider. EXA_API_KEY is optional: when
+  # absent, the adapter's interpolated header is empty and Exa continues on its
+  # anonymous free tier.
+  mkPi =
+    {
+      name,
+      command,
+    }:
+    let
+      secretEnvironment = mkSecretEnvironmentWrapper {
+        name = "${name}-secret-environment";
+        environmentName = "pi";
+        inherit command;
+        allowMissingProvider = true;
+      };
+    in
+    pkgs.writeShellApplication {
+      inherit name;
+      text = ''
+        exec ${preventIdleSleep}${lib.getExe secretEnvironment} "$@"
+      '';
+    };
+
+  pi = mkPi {
     name = "pi";
-    environmentName = "pi";
     command = "${pi-wrapped}/bin/pi";
-    allowMissingProvider = true;
   };
-  nono-pi = mkSecretEnvironmentWrapper {
+  nono-pi = mkPi {
     name = "nono-pi";
-    environmentName = "pi";
     command = "${nono-pi-entrypoint-checked}/bin/nono-pi-entrypoint";
-    allowMissingProvider = true;
   };
 in
 {
