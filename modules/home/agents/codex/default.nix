@@ -1,4 +1,5 @@
 {
+  agentInteractivePolicy,
   dotfilesPackages,
   lib,
   mkSource,
@@ -12,6 +13,7 @@ let
   codex = pkgs.writeShellApplication {
     name = "codex";
     text = ''
+      ${agentInteractivePolicy.shellExports}
       exec ${preventIdleSleep}${lib.getExe dotfilesPackages.codex} --profile dotfiles "$@"
     '';
   };

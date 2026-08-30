@@ -3,6 +3,7 @@
 # Claude Code as a flag rather than as a file in the home directory, and
 # `settings-overlay.sh` for how the machine-local file overrides the pin.
 {
+  agentInteractivePolicy,
   config,
   dotfilesPackages,
   pkgs,
@@ -274,6 +275,7 @@ let
           ${lib.escapeShellArg machineSettingsPath} \
           ${lib.escapeShellArgs machineOverridablePaths}) || settings=${pinnedSettingsPath}
 
+        ${agentInteractivePolicy.shellExports}
         exec ${preventIdleSleep}${command} --settings "$settings" "$@"
       '';
     };

@@ -1,4 +1,5 @@
 {
+  agentInteractivePolicy,
   config,
   dotfilesPackages,
   pkgs,
@@ -33,6 +34,7 @@ let
     pkgs.writeShellApplication {
       inherit name;
       text = ''
+        ${agentInteractivePolicy.shellExports}
         exec ${preventIdleSleep}${lib.getExe secretEnvironment} "$@"
       '';
     };

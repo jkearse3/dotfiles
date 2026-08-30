@@ -1,4 +1,5 @@
 {
+  agentInteractivePolicy,
   config,
   dotfilesPackages,
   dotfilesSource,
@@ -154,25 +155,28 @@ let
   '';
   piExtensionsSource = if dotfilesSource.editable then mkSource ./extensions else piExtensionsLocked;
 
-  # Pi's subagents run in-process, so anything exported here reaches them and
-  # every command they shell out to. `JJ_EDITOR=false` turns a jj command that
-  # wants an editor into an immediate failure the agent can read and correct;
-  # unset, it opens one and the session hangs on a prompt nobody will answer.
-  # Setting it in the shell environment instead would take the user's own
-  # interactive `jj describe` with it, so it is scoped to pi here.
+  # Pi's subagents run in-process, so the scoped non-interactive policy reaches
+  # them and every command they shell out to without changing the user's shell.
   pi-wrapped = pkgs.writeShellApplication {
     name = "pi";
     text = ''
-      export JJ_EDITOR=false
+      ${agentInteractivePolicy.shellExports}
       exec ${dotfilesPackages.pi}/bin/pi "$@"
     '';
   };
 
   nono-pi-entrypoint = mkNonoWrapper {
-    name = "nono-pi-entrypoint";
+    name = "pi-entrypoint";
     profile = "coding-agents";
     command = "${pi-wrapped}/bin/pi";
   };
+
+  # Gate the secret wrapper on the concrete sandbox entrypoint without running
+  # nono or resolving machine-local secrets during the build.
+  nono-pi-entrypoint-checked = pkgs.runCommandLocal "nono-pi-entrypoint-checked" { } ''
+    test -x ${nono-pi-entrypoint}/bin/nono-pi-entrypoint
+    ln -s ${nono-pi-entrypoint} $out
+  '';
 
   # Secret resolution stays outside nono so the sandbox never needs access to
   # the machine's provider. EXA_API_KEY is optional: when absent, the adapter's
@@ -186,7 +190,7 @@ let
   nono-pi = mkSecretEnvironmentWrapper {
     name = "nono-pi";
     environmentName = "pi";
-    command = "${nono-pi-entrypoint}/bin/nono-pi-entrypoint";
+    command = "${nono-pi-entrypoint-checked}/bin/nono-pi-entrypoint";
     allowMissingProvider = true;
   };
 in
