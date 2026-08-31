@@ -4,6 +4,7 @@ description: >-
   Strong general-purpose agent in a fresh context. Use for tasks that require
   judgment, synthesis, multi-step reasoning, implementation, diff/code review,
   design assessment, correctness analysis, or cross-file consistency checks.
+thinking: high
 allowed_subagents: none
 prompt_mode: append
 ---

@@ -8,6 +8,7 @@ description: >-
   synthesizing a recommendation.
 tools: read, grep, find, ls
 model: openai-codex/gpt-5.6-luna
+thinking: high
 extensions: false
 skills: false
 allowed_subagents: none
