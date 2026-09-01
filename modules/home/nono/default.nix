@@ -34,7 +34,7 @@ let
   profile = {
     meta = {
       name = "coding-agents";
-      description = "Shared sandbox profile for all coding agents on this machine — opencode, claude, and any future tools";
+      description = "Shared sandbox profile for all coding agents on this machine — opencode, OMP, Pi, Claude, and future tools";
     };
     extends = "default";
     groups.include = [
@@ -102,7 +102,13 @@ let
         # Claude writes conversations, projects, backups, and relocated global config here.
         "${config.home.homeDirectory}/.claude"
 
-        # pi reads config/extensions from ~/.pi/agent and writes session state under ~/.pi.
+        # OMP and Pi read agent configuration and write authentication, session,
+        # plugin, and cache state under their respective home directories. OMP's
+        # supported XDG layout relocates its corresponding runtime state.
+        "${config.home.homeDirectory}/.omp"
+        "${config.xdg.dataHome}/omp"
+        "${config.xdg.stateHome}/omp"
+        "${config.xdg.cacheHome}/omp"
         "${config.home.homeDirectory}/.pi"
 
         # Tools need the per-session temp directory for sockets, scratch files, and caches.
