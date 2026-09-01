@@ -38,6 +38,7 @@ withSystem blueprint.system (
           herdr
           hunk
           opencode
+          omp
           pi
           ;
       };
