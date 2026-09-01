@@ -13,6 +13,7 @@
     type = lib.types.listOf lib.types.str;
     default = [
       "opencode"
+      "omp"
       "pi"
     ];
     description = ''
