@@ -26,6 +26,19 @@ extensions/
 All extension sources must be TypeScript. The repository checks imports, runs
 `tsc`, and executes every `*.test.ts` fixture.
 
+## Herdr lifecycle integration
+
+`herdr-agent-state.ts` is intentionally a relative symlink to the official Pi
+integration in the active Nix profile. This gives Herdr its canonical installed
+filename, so `herdr integration status` verifies the same artifact shipped by
+the installed Herdr package instead of a copied extension.
+
+Editable delivery preserves that profile-relative link. Locked delivery replaces
+it with a direct link to the selected `dotfilesPackages.herdr` artifact, and the
+Home Manager build checks the integration identity, version marker, and source
+link target. Do not run `herdr integration install pi`; Home Manager owns the
+canonical path.
+
 ## Add a runtime dependency
 
 All global extensions share this directory's npm dependency set. From any

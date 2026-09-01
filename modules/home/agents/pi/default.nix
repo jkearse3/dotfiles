@@ -86,9 +86,36 @@ let
         ln -s ${piSettingsMerge} $out
       '';
 
-  # An extension is a directory holding an `index.ts`, so this is empty whenever
-  # none are declared. Pi's standard extension directory is still delivered when
-  # empty; this flag gates only checks that require real source and fixtures.
+  # Herdr ships the authoritative Pi lifecycle and session integration beside
+  # its binary. Editable delivery reaches it through the stable user-profile
+  # link tracked in `extensions/herdr-agent-state.ts`; locked delivery replaces
+  # that relative link with this exact package artifact.
+  herdrPiIntegration = "${dotfilesPackages.herdr}/share/herdr/integrations/pi/herdr-agent-state.ts";
+  herdrPiIntegrationChecked =
+    pkgs.runCommandLocal "pi-herdr-integration-checked"
+      {
+        nativeBuildInputs = [
+          pkgs.coreutils
+          pkgs.gnugrep
+        ];
+      }
+      ''
+        expectedTarget='../../../../../../.nix-profile/share/herdr/integrations/pi/herdr-agent-state.ts'
+        actualTarget="$(readlink ${./extensions}/herdr-agent-state.ts)"
+        if [[ "$actualTarget" != "$expectedTarget" ]]; then
+          echo "pi Herdr integration link target mismatch: $actualTarget" >&2
+          exit 1
+        fi
+
+        test -s ${herdrPiIntegration}
+        grep -Fxq '// HERDR_INTEGRATION_ID=pi' ${herdrPiIntegration}
+        grep -Eq '^// HERDR_INTEGRATION_VERSION=[0-9]+$' ${herdrPiIntegration}
+        ln -s ${herdrPiIntegration} $out
+      '';
+
+  # A repository-authored extension is a directory holding an `index.ts`, so
+  # this is empty whenever none are declared. Herdr's release-owned root file is
+  # checked separately above; this flag gates checks requiring local fixtures.
   piExtensionNames = lib.attrNames (
     lib.filterAttrs (_: type: type == "directory") (builtins.readDir ./extensions)
   );
@@ -151,8 +178,9 @@ let
   piExtensionsLocked = pkgs.runCommandLocal "pi-extensions-locked" { } ''
     mkdir -p $out
     cp -R ${./extensions}/. $out/
-    rm -rf $out/node_modules $out/.pi-types
+    rm -rf $out/node_modules $out/.pi-types $out/herdr-agent-state.ts
     ln -s ${dotfilesPackages.pi-extension-deps}/node_modules $out/node_modules
+    ln -s ${herdrPiIntegrationChecked} $out/herdr-agent-state.ts
   '';
   piExtensionsSource = if dotfilesSource.editable then mkSource ./extensions else piExtensionsLocked;
 
@@ -284,6 +312,7 @@ in
       extraBuilderCommands = ''
         mkdir -p $out/state
         ln -s ${packagesFile} $out/${packagesStatePath}
+        ln -s ${herdrPiIntegrationChecked} $out/state/pi-herdr-integration-checked
 
         ${lib.optionalString hasPiExtensions ''
           # The extensions themselves are delivered by symlink, so the generation
