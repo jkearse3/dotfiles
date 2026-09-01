@@ -22,6 +22,7 @@ in
     ./claude
     ./codex
     ./opencode
+    ./omp
     ./pi
   ];
 

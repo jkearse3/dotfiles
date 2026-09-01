@@ -57,11 +57,11 @@ is lost, re-run commissioning and re-store each consumer's secrets.
 Each consumer resolves one SecretSpec scope. The mechanism above is identical
 for all of them; only the scope, its secrets, and their handling differ.
 
-### OpenCode and Pi (`EXA_API_KEY`)
+### OpenCode, OMP, and Pi (`EXA_API_KEY`)
 
-OpenCode and Pi resolve their respective `opencode` and `pi` scopes, whose only
-secret is the optional `EXA_API_KEY` — an [Exa](https://exa.ai) search key.
-Store, inspect, rotate, or remove it:
+OpenCode, OMP, and Pi resolve their respective `opencode`, `omp`, and `pi`
+scopes, whose only secret is the optional `EXA_API_KEY` — an
+[Exa](https://exa.ai) search key. Store, inspect, rotate, or remove it:
 
 ```sh
 # Store or replace (hidden prompt; never on the command line).
@@ -72,6 +72,8 @@ secretspec set --file ~/dotfiles/secretspec.toml \
 secretspec check --file ~/dotfiles/secretspec.toml \
   --provider dotfiles --profile default --scope opencode --explain
 secretspec check --file ~/dotfiles/secretspec.toml \
+  --provider dotfiles --profile default --scope omp --explain
+secretspec check --file ~/dotfiles/secretspec.toml \
   --provider dotfiles --profile default --scope pi --explain
 
 # Remove it (free tier resumes).
@@ -80,17 +82,19 @@ secretspec delete --file ~/dotfiles/secretspec.toml \
 ```
 
 `EXA_API_KEY` is `required = false`, so it is not needed to commission a
-machine. With no stored value, both clients still start on Exa's free tier:
-`OPENCODE_ENABLE_EXA=1` remains unconditional, and Pi sends an empty `x-api-key`
-header that Exa treats as anonymous access. The key raises quota; it does not
-gate search. A stored provider value wins over an ambient `EXA_API_KEY`; with no
-stored value, an ambient one survives into either client. Unset it in your shell
-to force free-tier behavior despite a stale ambient value.
+machine. With no stored value, all three clients still start on Exa's free tier:
+`OPENCODE_ENABLE_EXA=1` remains unconditional, OMP uses its built-in Exa
+integration, and Pi sends an empty `x-api-key` header that Exa treats as
+anonymous access. The key raises quota; it does not gate search. A stored
+provider value wins over an ambient `EXA_API_KEY`; with no stored value, an
+ambient one survives into any client. Unset it in your shell to force free-tier
+behavior despite a stale ambient value.
 
 For one-off testing, override the provider for a single launch (this skips the
 alias preflight):
 
 ```sh
 SECRETSPEC_PROVIDER="dotenv://.env.local" opencode
+SECRETSPEC_PROVIDER="dotenv://.env.local" omp
 SECRETSPEC_PROVIDER="dotenv://.env.local" pi
 ```
