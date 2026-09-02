@@ -7,7 +7,7 @@
   ...
 }:
 let
-  codexProfile = builtins.fromTOML (builtins.readFile ./dotfiles.config.toml);
+  codexDefaults = builtins.fromTOML (builtins.readFile ./config.toml);
   preventIdleSleep = lib.optionalString pkgs.stdenv.hostPlatform.isDarwin "/usr/bin/caffeinate -i ";
 
   codex = pkgs.writeShellApplication {
@@ -29,22 +29,26 @@ in
   config = {
     assertions = [
       {
-        assertion = codexProfile.check_for_update_on_startup == false;
+        assertion = codexDefaults.check_for_update_on_startup == false;
         message = "Codex must leave updates to the pinned Nix package";
       }
       {
-        assertion = codexProfile.cli_auth_credentials_store == "keyring";
+        assertion = codexDefaults.cli_auth_credentials_store == "keyring";
         message = "Codex credentials must stay in the OS keyring";
+      }
+      {
+        assertion = !(codexDefaults ? projects);
+        message = "Codex project trust must stay in the machine-local profile";
       }
     ];
 
     home.packages = [ codex ];
 
     home.file = {
-      # The wrapper selects this tracked profile over Codex's unmanaged,
-      # machine-local ~/.codex/config.toml. Trusted project config and explicit
-      # CLI overrides still take precedence over the profile.
-      ".codex/dotfiles.config.toml".source = mkSource ./dotfiles.config.toml;
+      # Codex layers the writable, machine-local dotfiles profile over these
+      # tracked defaults. Trusted project config and explicit CLI overrides
+      # still take precedence over the profile.
+      ".codex/config.toml".source = ./config.toml;
       ".codex/rules/dotfiles.rules".source = mkSource ./dotfiles.rules;
       ".config/fish/completions/codex.fish".source = codexFishCompletion;
     };

@@ -1,5 +1,6 @@
-# Tracked defaults selected by the `codex` wrapper. Machine-local preferences
-# belong in ~/.codex/config.toml; trusted repositories may override these in
+# Tracked defaults loaded before the `dotfiles` profile selected by the wrapper.
+# Machine-local preferences and project trust belong in
+# ~/.codex/dotfiles.config.toml; trusted repositories may override these in
 # .codex/config.toml, and one-off experiments can use `codex -c key=value`.
 
 approval_policy = "on-request"
@@ -7,6 +8,9 @@ approvals_reviewer = "auto_review"
 sandbox_mode = "workspace-write"
 check_for_update_on_startup = false
 cli_auth_credentials_store = "keyring"
+model = "gpt-5.6-sol"
+model_reasoning_effort = "low"
+service_tier = "default"
 
 [sandbox_workspace_write]
 network_access = false
