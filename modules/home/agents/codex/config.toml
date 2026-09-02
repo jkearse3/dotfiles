@@ -12,6 +12,26 @@ model = "gpt-5.6-sol"
 model_reasoning_effort = "low"
 service_tier = "default"
 
+[tui]
+alternate_screen = "always"
+raw_output_mode = false
+notifications = false
+status_line = [
+  "model-with-reasoning",
+  "context-remaining",
+  "git-branch",
+  "current-dir",
+]
+terminal_title = [
+  "spinner",
+  "project",
+  "git-branch",
+  "model",
+  "task-progress",
+]
+animations = true
+show_tooltips = false
+
 [sandbox_workspace_write]
 network_access = false
 
