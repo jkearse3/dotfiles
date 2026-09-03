@@ -54,6 +54,9 @@
         jj-bookmark-previous = pkgs.callPackage ../packages/jj-bookmark-previous/package.nix {
           inherit jj-bookmark-stacked;
         };
+        jj-bookmark-push = pkgs.callPackage ../packages/jj-bookmark-push/package.nix {
+          inherit (unstablePkgs) jujutsu;
+        };
         jj-bookmark-select = pkgs.callPackage ../packages/jj-bookmark-select/package.nix { };
         jj-ensure = pkgs.callPackage ../packages/jj-ensure/package.nix {
           inherit (unstablePkgs) jujutsu;

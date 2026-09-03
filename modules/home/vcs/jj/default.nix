@@ -9,6 +9,7 @@
     dotfilesPackages.jj-bookmark-default
     dotfilesPackages.jj-bookmark-stacked
     dotfilesPackages.jj-bookmark-previous
+    dotfilesPackages.jj-bookmark-push
     dotfilesPackages.jj-bookmark-select
     dotfilesPackages.jj-change-select
     dotfilesPackages.jj-ensure
@@ -70,7 +71,13 @@
       };
     };
 
-    fish.shellAliases.jjbl = "jj-bookmark-land";
-    zsh.shellAliases.jjbl = "jj-bookmark-land";
+    fish.shellAliases = {
+      jjbl = "jj-bookmark-land";
+      jjbp = "jj-bookmark-push";
+    };
+    zsh.shellAliases = {
+      jjbl = "jj-bookmark-land";
+      jjbp = "jj-bookmark-push";
+    };
   };
 }
