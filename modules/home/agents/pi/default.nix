@@ -16,24 +16,9 @@ let
 
   renderAgentsMarkdown = import ../renderAgentsMarkdown.nix { inherit lib; };
 
-  # Pi-only skills sit beside the shared registry rather than in it:
-  # `exa-web-search` targets the Exa MCP server delivered for pi, while claude
-  # has its own web search and opencode reaches Exa through its own integration.
-  #
-  # The shared registry has to come too. `.pi/agent/AGENTS.md` below is stitched
-  # from `agents.sharedRules`, which route revision shaping through the
-  # finalize-changes skill; without the registry pi is instructed to use skills
-  # it cannot see. Claude and opencode both compose `config.agents.skills` the
-  # same way.
-  piLocalSkills = lib.mapAttrs (name: _: ./skills/${name}) (
-    lib.filterAttrs (_: type: type == "directory") (builtins.readDir ./skills)
-  );
-  duplicatePiSkillNames = lib.intersectLists (lib.attrNames piLocalSkills) (
-    lib.attrNames config.agents.skills
-  );
   renderPiSkillsDir = import ../renderSkillsDir.nix {
     inherit lib pkgs;
-    skills = config.agents.skills // piLocalSkills;
+    skills = config.agents.skills;
   };
 
   # Fallback defaults for keys pi rewrites as the user changes theme, provider,
@@ -294,13 +279,6 @@ in
       # read-only input while keeping pi-specific overrides writable under
       # `~/.pi/agent/mcp.json` and project `.pi/mcp.json` files.
       "npm:pi-mcp-adapter@2.27.0"
-    ];
-
-    assertions = [
-      {
-        assertion = duplicatePiSkillNames == [ ];
-        message = "pi-local skill(s) shadow the shared registry: ${lib.concatStringsSep ", " duplicatePiSkillNames}";
-      }
     ];
 
     home = {
