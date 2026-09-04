@@ -10,6 +10,7 @@
     dotfilesPackages.jj-bookmark-stacked
     dotfilesPackages.jj-bookmark-previous
     dotfilesPackages.jj-bookmark-push
+    dotfilesPackages.jj-bookmark-rebase
     dotfilesPackages.jj-bookmark-select
     dotfilesPackages.jj-change-select
     dotfilesPackages.jj-ensure
@@ -74,10 +75,12 @@
     fish.shellAliases = {
       jjbl = "jj-bookmark-land";
       jjbp = "jj-bookmark-push";
+      jjbr = "jj-bookmark-rebase";
     };
     zsh.shellAliases = {
       jjbl = "jj-bookmark-land";
       jjbp = "jj-bookmark-push";
+      jjbr = "jj-bookmark-rebase";
     };
   };
 }
