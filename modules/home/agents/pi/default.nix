@@ -15,6 +15,9 @@ let
   preventIdleSleep = lib.optionalString pkgs.stdenv.hostPlatform.isDarwin "/usr/bin/caffeinate -i ";
 
   renderAgentsMarkdown = import ../renderAgentsMarkdown.nix { inherit lib; };
+  piRules = {
+    herdr-delegation = ./rules/herdr-delegation.md;
+  };
 
   renderPiSkillsDir = import ../renderSkillsDir.nix {
     inherit lib pkgs;
@@ -321,8 +324,12 @@ in
               name = "shared";
               sources = config.agents.sharedRules;
             }
+            {
+              name = "pi";
+              sources = piRules;
+            }
           ];
-          order = config.agents.sharedRuleOrder;
+          order = config.agents.sharedRuleOrder ++ [ "pi/herdr-delegation" ];
         };
 
         # Pi auto-discovers `<dir>/index.ts` under its standard global directory,
