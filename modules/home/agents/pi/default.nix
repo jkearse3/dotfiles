@@ -169,8 +169,8 @@ let
   '';
   piExtensionsSource = if dotfilesSource.editable then mkSource ./extensions else piExtensionsLocked;
 
-  # Pi's subagents run in-process, so the scoped non-interactive policy reaches
-  # them and every command they shell out to without changing the user's shell.
+  # Scope the non-interactive policy to Pi and every command it shells out to
+  # without changing the user's interactive shell.
   pi-wrapped = pkgs.writeShellApplication {
     name = "pi";
     text = ''
@@ -269,11 +269,6 @@ in
 
   config = {
     agents.pi.packages = [
-      # Subagents as a first-class pi feature: agent definitions in
-      # `agents/*.md`, an `Agent` tool to dispatch them, and a `/agents` menu.
-      # Replaces a local extension that spawned a child pi over its JSON stream.
-      "npm:@tintinweb/pi-subagents@0.18.2"
-
       # Pi has no MCP support of its own; this adds it. The shared agent module
       # delivers Exa through `~/.agents/mcp.json`, which the adapter treats as a
       # read-only input while keeping pi-specific overrides writable under
@@ -337,15 +332,6 @@ in
         ".pi/agent/extensions".source = piExtensionsSource;
         ".pi/agent/skills" = renderPiSkillsDir { };
         ".pi/agent/themes/tokyonight.json".source = mkSource ./themes/tokyonight.json;
-
-        # Agent definitions and the policy around them. Settings are safe to own
-        # from here because pi-subagents only ever writes the project copy under
-        # `.pi/`. Definitions are Nix-owned in the stronger sense that they are
-        # store files: `/agents` edits, disables, and deletes the file it loaded
-        # an agent from, so those actions fail on these. Overriding one means a
-        # project definition of the same name under `.pi/agents/`.
-        ".pi/agent/agents".source = ./agents;
-        ".pi/agent/subagents.json".source = ./subagents.json;
       };
     };
   };
