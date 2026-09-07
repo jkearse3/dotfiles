@@ -144,6 +144,22 @@ class CommitMessageTests(unittest.TestCase):
         self.assertFalse(any(line.startswith(" ") for line in body))
         self.assertEqual(" ".join(body), " ".join(paragraph_lines))
 
+    def test_prose_quoting_code_operators_reflows_as_one_paragraph(self) -> None:
+        paragraph_lines = (
+            "Intake persists file.type || 'application/octet-stream', so a file",
+            "that arrived without a declared type was stored generic and then",
+            "failed when the guard required exact === matches and a && b held.",
+        )
+        hand_wrapped = "fix: demo\n\n" + "\n".join(paragraph_lines)
+        unbroken = "fix: demo\n\n" + " ".join(paragraph_lines)
+
+        output = format_message(hand_wrapped).stdout
+        self.assertEqual(output, format_message(unbroken).stdout)
+        body = output.splitlines()[2:]
+        self.assertTrue(all(len(line) <= 72 for line in body))
+        self.assertFalse(any(line.startswith(" ") for line in body))
+        self.assertEqual(" ".join(body), " ".join(paragraph_lines))
+
     def test_patch_lines_directly_after_prose_are_not_absorbed(self) -> None:
         for patch in (
             "--- a/file\n+++ b/file",

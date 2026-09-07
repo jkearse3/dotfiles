@@ -344,11 +344,12 @@ def looks_preformatted(line: str) -> bool:
     or inline code would otherwise read as a Markdown hard break and never
     reflow.
 
-    A bare ``--`` long option is deliberately not treated as preformatted:
-    commit prose routinely names CLI flags (``--mime``, ``--input``), and
-    letting each one end a paragraph fragmented reflowed text. Genuine
-    command lines stay verbatim when fenced, indented, or ``$ ``/``./``
-    prefixed, which the remaining rules still catch.
+    Inline command and code operators are deliberately not treated as
+    preformatted: commit prose routinely names CLI flags (``--mime``) and
+    quotes code (``file.type || 'default'``, ``a && b``) without fencing,
+    and letting a ``--``, ``&&``, or ``||`` end a paragraph fragmented
+    reflowed text. Genuine command lines stay verbatim when fenced,
+    indented, or ``$ ``/``./`` prefixed, which the remaining rules catch.
     """
     plain = line
     for start, end in reversed(unbreakable_spans(line)):
@@ -358,8 +359,6 @@ def looks_preformatted(line: str) -> bool:
         plain.startswith(("```", "~~~", ">", "|", "#", "$ ", "./"))
         or "\t" in plain
         or " | " in plain
-        or " && " in plain
-        or " || " in plain
         or plain.endswith(" \\")
         or plain.endswith("  ")
         or plain[0] in "{["
