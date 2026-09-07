@@ -45,8 +45,16 @@ TRAILER_RE = re.compile(
 )
 
 # Issue-reference footers stay on their own lines: never joined into a
-# paragraph and never wrapped.
-ISSUE_REFERENCE_RE = re.compile(r"^(?:Closes #[0-9]+|Fixes [A-Z][A-Z0-9]*-[0-9]+)$")
+# paragraph and never wrapped. Any recognized keyword pairs with either a
+# GitHub-style numeric id (`#123`) or a tracker key (`ENG-45`, `JIRA-456`),
+# and one keyword may cite several comma-separated ids (`Closes #12, #15`).
+# The keyword is intentionally colon-free: `Closes: #1` is a plain trailer
+# TRAILER_RE already recognizes and hang-indents.
+ISSUE_REFERENCE_KEYWORD = r"(?:Closes|Fixes|Resolves|Refs)"
+ISSUE_REFERENCE_ID = r"(?:#[0-9]+|[A-Z][A-Z0-9]*-[0-9]+)"
+ISSUE_REFERENCE_RE = re.compile(
+    rf"^{ISSUE_REFERENCE_KEYWORD} {ISSUE_REFERENCE_ID}(?:, {ISSUE_REFERENCE_ID})*$"
+)
 DIFF_HEADER_RE = re.compile(
     r"^(?:(?:old|new|deleted file|new file) mode [0-7]{6}"
     + r"|(?:similarity|dissimilarity) index [0-9]+%"

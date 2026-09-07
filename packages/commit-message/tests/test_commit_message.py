@@ -210,6 +210,26 @@ class CommitMessageTests(unittest.TestCase):
             message + "\n",
         )
 
+    def test_broadened_issue_footers_stay_on_separate_lines(self) -> None:
+        footers = (
+            "Closes ENG-123",
+            "Fixes #123",
+            "Resolves #99",
+            "Refs PROJ-4",
+            "Closes #12, #15",
+        )
+        message = "fix: preserve footers\n\n" + "\n".join(footers)
+        self.assertEqual(format_message(message).stdout, message + "\n")
+        self.assertEqual(
+            format_message(message, "--body-width", "10").stdout,
+            message + "\n",
+        )
+
+    def test_issue_footer_is_not_absorbed_into_a_prose_paragraph(self) -> None:
+        message = "fix: close it\n\nThis paragraph explains the change.\nResolves #99"
+        output = format_message(message).stdout
+        self.assertIn("\nResolves #99\n", output)
+
     def test_line_sensitive_content_is_preserved(self) -> None:
         message = (
             "docs: preserve structured content\n\n"
