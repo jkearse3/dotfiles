@@ -33,8 +33,18 @@ Exclude review history, tool output, scratch work, agent actions, task state,
 workflow narration, alternatives weighed but not taken, and unsupported claims.
 
 Wrap body and footer lines at 72 characters except unbreakable URLs and inline
-code. Separate footers with a blank line; use `Closes #123`, `Fixes JIRA-456`,
-and `BREAKING CHANGE:` as applicable.
+code. Separate footers from the body with a blank line, keeping each footer on
+its own line.
+
+When the change set has a governing issue or ticket, record it as a footer
+trailer: a closing keyword (`Closes`, `Fixes`, `Resolves`) when the change
+resolves it, `Refs` when it only relates, in the tracker's own reference syntax
+(`Closes #123` for GitHub, `Fixes PROJ-123` for Jira or Linear). Source the
+identifier from the task-owned branch or bookmark name, the plan or contract in
+scope, or the issue description driving the work, and omit the trailer only when
+no such issue exists. The trailer is a cross-reference and automation aid, not a
+substitute for a self-resolvable description. Use `BREAKING CHANGE:` as
+applicable.
 
 Format each complete agent-authored message into `desc`, validate that exact
 value, and pass it unchanged to the mutation:
