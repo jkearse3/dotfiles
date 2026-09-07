@@ -91,6 +91,20 @@ where delegated behavior lives.
 Do not duplicate authoritative constants or weaken a sound data model merely to
 repeat strings. Prefer one source of truth when drift is the greater risk.
 
+### Keep Comments And Docs Self-Contained
+
+Write every comment, docstring, and in-repository document to be resolvable by a
+reader who has only the repository, never the plan, ticket, or session that
+produced the change. Do not reference internal planning structure — plan or
+phase names, stage or step numbers, task or milestone labels, or agent workflow
+state — in code, comments, documentation, or fixtures. Phrasing like "Stage 1",
+"Step 3", or "Phase 2 cleanup" carries no meaning to a later reader and must not
+appear.
+
+Describe what the code does and why in durable terms. When an external reference
+genuinely adds value, cite a resolvable artifact such as an issue ID or a stable
+design document rather than ephemeral planning shorthand.
+
 ## Structure Code Paragraphs
 
 Use blank lines as semantic delimiters. Each paragraph should perform one
@@ -246,6 +260,10 @@ For each materially changed concept:
 9. Run the project's formatter and focused type, lint, and test checks.
 10. Inspect the diff for unnecessary renaming, comments, modules, API changes,
     or whitespace-only changes.
+11. Confirm no comment, docstring, doc, or fixture references internal planning
+    structure — plan or phase names, stage or step numbers, task or milestone
+    labels, or agent workflow state — that a reader cannot resolve from the
+    repository alone.
 
 Optimize ambiguity, navigation cost, and semantic scanability, not identifier
 length, file count, or the number of blank lines.

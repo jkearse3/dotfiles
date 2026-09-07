@@ -31,6 +31,9 @@ in separate paragraphs when more than one appears.
 
 Exclude review history, tool output, scratch work, agent actions, task state,
 workflow narration, alternatives weighed but not taken, and unsupported claims.
+Never reference internal planning structure — plan or phase names, stage or step
+numbers, or milestone labels such as "Stage 1" or "Step 3"; describe the change
+in durable terms instead.
 
 Wrap body and footer lines at 72 characters except unbreakable URLs and inline
 code. Separate footers from the body with a blank line, keeping each footer on
