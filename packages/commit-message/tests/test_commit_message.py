@@ -126,6 +126,24 @@ class CommitMessageTests(unittest.TestCase):
         self.assertFalse(any(line.startswith(" ") for line in body))
         self.assertEqual(" ".join(body), message.splitlines()[2])
 
+    def test_prose_naming_cli_flags_reflows_as_one_paragraph(self) -> None:
+        paragraph_lines = (
+            "Add --mime <type> to override the declared MIME for every file, so",
+            "--mime application/octet-stream drives a real file through the",
+            "dispatcher under a generic Content-Type and",
+            "confirms",
+            "the routing accepts it. A bare --mime flag with no value is rejected.",
+        )
+        hand_wrapped = "feat: demo\n\n" + "\n".join(paragraph_lines)
+        unbroken = "feat: demo\n\n" + " ".join(paragraph_lines)
+
+        output = format_message(hand_wrapped).stdout
+        self.assertEqual(output, format_message(unbroken).stdout)
+        body = output.splitlines()[2:]
+        self.assertTrue(all(len(line) <= 72 for line in body))
+        self.assertFalse(any(line.startswith(" ") for line in body))
+        self.assertEqual(" ".join(body), " ".join(paragraph_lines))
+
     def test_patch_lines_directly_after_prose_are_not_absorbed(self) -> None:
         for patch in (
             "--- a/file\n+++ b/file",
@@ -294,10 +312,22 @@ class CommitMessageTests(unittest.TestCase):
         )
         self.assertEqual(format_message(message).stdout, message + "\n")
 
+    def test_bare_unindented_command_line_now_reflows(self) -> None:
+        command = (
+            "run nix build --no-link .#thing and then check that the resulting "
+            "output path is what the release step later publishes downstream."
+        )
+        body = format_message(f"chore: note command\n\n{command}").stdout.splitlines()[
+            2:
+        ]
+        self.assertTrue(all(len(line) <= 72 for line in body))
+        self.assertFalse(any(line.startswith(" ") for line in body))
+        self.assertEqual(" ".join(body), command)
+
     def test_conservative_formatting_may_remain_invalid(self) -> None:
         samples = (
             "    " + "x" * 80,
-            "nix build --no-link .#a-very-long-package-name-" + "x" * 50,
+            "    nix build --no-link .#a-very-long-package-name-" + "x" * 50,
             "```python\nprint('" + "x" * 80 + "')\n```",
         )
         for sample in samples:

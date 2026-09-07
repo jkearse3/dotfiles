@@ -299,6 +299,18 @@ def is_prose_line(line: str) -> bool:
     )
 
 
+def is_diff_marker_line(line: str) -> bool:
+    """Return whether ``line`` begins with a single unified-diff +/- marker.
+
+    A diff added or removed line starts with exactly one ``+`` or ``-``; a
+    ``--``/``++`` prefix is a long-option token in prose (``--mime``), not a
+    marker, and diff file headers (``--- ``/``+++ ``) are recognized as
+    preformatted instead. Keeping long-option lines out of this gate lets
+    prose about CLI flags reflow rather than fragmenting at each flag.
+    """
+    return bool(line) and line[0] in "-+" and (len(line) < 2 or line[1] not in "-+")
+
+
 def is_prose_continuation_line(line: str) -> bool:
     """Return whether ``line`` may continue an open prose paragraph.
 
@@ -306,13 +318,13 @@ def is_prose_continuation_line(line: str) -> bool:
     author-inserted wrap point can land on any word: in-paragraph newlines
     are soft, and only blank, indented, or structural lines (lists,
     trailers, issue footers, diff lines, preformatted-looking content) end
-    a paragraph. The ``-``/``+`` gate keeps bare patch lines out of prose;
-    hunk and file headers before them are caught as preformatted.
+    a paragraph. The single-``-``/``+`` gate keeps bare patch lines out of
+    prose; hunk and file headers before them are caught as preformatted.
     """
     return bool(
         line
         and not line[0].isspace()
-        and line[0] not in "-+"
+        and not is_diff_marker_line(line)
         and LIST_RE.fullmatch(line) is None
         and TRAILER_RE.fullmatch(line) is None
         and ISSUE_REFERENCE_RE.fullmatch(line) is None
@@ -326,11 +338,17 @@ def looks_preformatted(line: str) -> bool:
     This is a heuristic and false positives are intentional: misclassifying
     prose as preformatted merely leaves it untouched, while the reverse
     corrupts quoted commands, tables, and diffs. Unbreakable spans are
-    masked out first so a URL or inline code containing ``|`` or ``--``
-    does not trigger the rules. The mask is a word character rather than a
-    space so that masking cannot itself fabricate structure: prose ending
-    in a URL or inline code would otherwise read as a Markdown hard break
-    and never reflow.
+    masked out first so a URL or inline code containing ``|`` does not
+    trigger the rules. The mask is a word character rather than a space so
+    that masking cannot itself fabricate structure: prose ending in a URL
+    or inline code would otherwise read as a Markdown hard break and never
+    reflow.
+
+    A bare ``--`` long option is deliberately not treated as preformatted:
+    commit prose routinely names CLI flags (``--mime``, ``--input``), and
+    letting each one end a paragraph fragmented reflowed text. Genuine
+    command lines stay verbatim when fenced, indented, or ``$ ``/``./``
+    prefixed, which the remaining rules still catch.
     """
     plain = line
     for start, end in reversed(unbreakable_spans(line)):
@@ -339,7 +357,6 @@ def looks_preformatted(line: str) -> bool:
     return (
         plain.startswith(("```", "~~~", ">", "|", "#", "$ ", "./"))
         or "\t" in plain
-        or " --" in plain
         or " | " in plain
         or " && " in plain
         or " || " in plain
