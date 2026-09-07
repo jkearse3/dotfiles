@@ -131,7 +131,11 @@ Apply only lenses reachable from changed behavior or promises:
   precedence, permissions, stops, routing, results, and parser strings; UI and
   asset semantics, accessibility, integrity, responsive and theme behavior; and
   naming, structure, or dead material under governing style. Without one, report
-  clarity only when a natural reading leads to the wrong action.
+  clarity only when a natural reading leads to the wrong action or when a
+  comment, doc, fixture, or revision description references internal planning or
+  session context — plan or phase names, stage or step numbers, task or
+  milestone labels, or agent workflow state — that a repository reader cannot
+  resolve.
 
 **Then read the changeset whole**: inconsistent patterns, incomplete refactors,
 partial migrations, integration gaps, stale generated artifacts, and criterion

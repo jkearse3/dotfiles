@@ -4,7 +4,9 @@
 
 Before finalizing each task revision, inspect its full diff, confirm its
 description matches, and run focused checks proportionate to its claims and
-risks.
+risks. Confirm the description and any touched comments, docs, or fixtures are
+resolvable from the repository alone, free of internal planning references such
+as plan or phase names, stage or step numbers, or task or milestone labels.
 
 A delegated implementer performs this verification for its revisions, but the
 context owning the complete task remains responsible for aggregate review. If
