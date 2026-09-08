@@ -49,3 +49,12 @@ present them as coordinator-requested results unless the human asks the teammate
 to report them. Never terminate an agent or close a tab, pane, workspace, or
 session that the coordinator did not create unless the user explicitly requests
 it.
+
+Treat every teammate tab created by the coordinator as temporary unless the user
+explicitly asks to retain it, and record its tab ID when creating it. After
+collecting the teammate's response, close the tab with
+`herdr tab close <tab-id>` unless its work is unresolved, it is blocked awaiting
+human input, or the human has interacted with or asked to retain it. Before
+completing the task, verify that every coordinator-created teammate tab is
+closed or retained under one of those exceptions; report each retained tab and
+the reason it remains open.
