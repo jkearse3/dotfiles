@@ -105,6 +105,11 @@ let
         # pi reads config/extensions from ~/.pi/agent and writes session state under ~/.pi.
         "${config.home.homeDirectory}/.pi"
 
+        # Private cooperative inbox and bounded same-user teammate locks.
+        "$XDG_STATE_HOME/pi-shepherd"
+        "$XDG_RUNTIME_DIR/pi-shepherd"
+        "/tmp/pi-shepherd-$UID"
+
         # Tools need the per-session temp directory for sockets, scratch files, and caches.
         "$TMPDIR"
       ];

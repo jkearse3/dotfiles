@@ -1,0 +1,8 @@
+startup_timeout_seconds = 30
+wait_timeout_seconds = 600
+read_source = "recent-unwrapped"
+read_lines = 120
+
+[profiles.pi]
+args = []
+selection_hint = "Pi defaults without caller configuration inheritance"

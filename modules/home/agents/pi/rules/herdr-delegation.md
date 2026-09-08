@@ -1,61 +1,80 @@
 # Herdr Delegation
 
-Treat the standing delegation authorization as including Herdr for a Pi session
-that was not itself delegated by another Pi session. Apply the shared delegation
-rules to decide when to delegate, and follow the installed Herdr skill for the
-current CLI contract and safety rules. Use Herdr rather than an `Agent` tool or
-an in-process subagent extension.
+For a Pi session that was not itself delegated by another Pi session, standing
+delegation authorization includes managed Herdr teammates. When the shared
+policy calls for delegation, load and follow the installed `pi-shepherd` skill.
+Use `pi-shepherd`, not an `Agent` tool or an in-process subagent extension. If
+the managed path is unavailable or fails, stop rather than falling back to raw
+Herdr.
 
-Call the initiating Pi the coordinator and a Pi it starts a teammate; these are
-policy roles, not Herdr metadata. A teammate must not create or prompt another
-agent unless the human explicitly authorizes that in the teammate's
-conversation. This restriction overrides the shared permission to split
-delegated work further.
+A managed teammate must not create or prompt another agent unless the human
+explicitly authorizes that in the teammate's own conversation. This restriction
+overrides the shared permission to split delegated work further. Keep at most
+four live teammates created by the initiating session unless the user requests
+more. A skill or profile grants no additional task, mutation, publication,
+destructive, or sandbox authority.
 
-Create each new teammate as a fresh Pi conversation in its own tab. Give the tab
-a concise, task-derived label and create it with
-`herdr tab create --workspace "$HERDR_WORKSPACE_ID" --cwd "$PWD" --label "<task-label>" --no-focus`.
-This topology overrides the Herdr skill's default sibling pane. Parse the root
-pane ID from the response, start a uniquely named `--kind pi` agent there, and
-pass Pi arguments after `--`. Keep at most four live teammates created by the
-coordinator unless the user requests more. Reuse an existing teammate only when
-its conversation is relevant to the follow-up.
+Keep source writes in the initiating session by default. Delegate mutation only
+through an explicit, nonoverlapping assignment. Give each teammate its scope,
+necessary context, expected result, verification, and authority. Create all
+parallel teammates first, then submit their assignments concurrently. Preserve
+cwd and use the managed no-focus tab topology. Choose a concise, task-derived
+logical name; the CLI includes it in the tab label alongside the stable identity
+marker. Record the returned teammate and tab IDs. Default creation twins the
+calling Pi provider, model, and thinking level; use `--profile` only for an
+explicit task-specific override.
 
-Choose each teammate's tools and authority according to its task and owning
-skill. Prefer the least capability that can complete the assignment; tool
-allowlists reduce model-callable capabilities but are not a sandbox. Keep source
-writes in the coordinator by default, and delegate mutation only through an
-explicit, non-overlapping assignment.
+Names resolve only in the caller's workspace; full teammate IDs deliberately
+cross workspace boundaries. Workspace affinity is same-user accident prevention,
+not authentication or task authority. The caller's ability to manage a teammate
+does not authorize changing unrelated work or closing another session's
+resources.
 
-Apply the shared prompt requirements and always tell each teammate not to
-delegate further. For parallel work, start all teammates first, then launch
-their `herdr agent prompt <target> <prompt> --wait --timeout <ms>` calls
-concurrently. Do not use a later bare `agent wait` as the sole completion check,
-because it can match the pre-prompt `idle` state.
+Use `request --wait --allow-focused` and retain its exact request ID. There is
+one request/result slot per teammate, with no queue or automatic replay. A
+teammate must submit its final response with `reply REQUEST_ID --stdin` or
+`--file`, not response text in command arguments. Use private file-writing tools
+or a producer's stdout rather than embedding the body in shell command strings.
+The result is `cooperative_unverified`, not proof of semantic success. Inspect
+the result and explicitly acknowledge it with `result REQUEST_ID --ack` when no
+longer needed.
 
-Treat `idle` and `done` as settled states, not proof that the task succeeded.
-After either state, inspect the response with
-`herdr agent read <target> --source recent-unwrapped --lines <n>`. Treat
-`blocked`, `unknown`, and timeouts as unresolved: inspect the agent and terminal
-rather than assuming completion, and ask the human before answering a blocked
-prompt.
+A blocked, missing-reply, timeout, or uncertain delivery remains unresolved and
+retains its slot. Use `show`, `result`, and explicit unverified `read`
+inspection; never derive a semantic result from a terminal or native session.
+`cancel` removes only pending work and does not interrupt the teammate. Ask the
+human before answering an approval or question. If human terminal input is known
+or suspected, wait for confirmation that the composer is clear before prompting
+again.
 
-If increasing `--lines` cannot recover the response, ask a teammate without
-write authority to repeat it in bounded chunks and read each chunk promptly.
-After that failed read, a teammate with write authority may instead save the
-complete response to a temporary Markdown file and return only its path.
+Use `repair` to inspect a proposal and `repair --apply` only for a named,
+proof-backed action within the host's authority. Missing agents require explicit
+close/create; repair never restarts them or alters their inbox. Fresh creation
+uses a new ID and conversation, while old completed results remain retrievable.
+Never choose among ambiguous resources, replay an unconfirmed launch, or
+silently accept relocation. Full teammate IDs are required for relocation
+repair. Human turns entered directly in a teammate tab remain part of that
+conversation, not requested coordinator output.
 
-Human turns entered directly in a teammate tab stay in that conversation. Do not
-present them as coordinator-requested results unless the human asks the teammate
-to report them. Never terminate an agent or close a tab, pane, workspace, or
-session that the coordinator did not create unless the user explicitly requests
-it.
+Treat every teammate tab created by the initiating session as temporary unless
+the user explicitly asks to retain it. After collecting its response, close the
+teammate with `pi-shepherd close TEAMMATE_ID` unless its work is unresolved, it
+is blocked awaiting human input, or the human has interacted with or asked to
+retain it. Before completing the task, verify that every session-created
+teammate tab is closed or retained under one of those exceptions; report each
+retained tab ID and the reason it remains open.
 
-Treat every teammate tab created by the coordinator as temporary unless the user
-explicitly asks to retain it, and record its tab ID when creating it. After
-collecting the teammate's response, close the tab with
-`herdr tab close <tab-id>` unless its work is unresolved, it is blocked awaiting
-human input, or the human has interacted with or asked to retain it. Before
-completing the task, verify that every coordinator-created teammate tab is
-closed or retained under one of those exceptions; report each retained tab and
-the reason it remains open.
+Before cleanup, freshly confirm task ownership and exact identity using `show`.
+Never terminate an agent or close a pane, tab, workspace, or session without
+that confirmation unless the human explicitly authorizes bypassing those
+safeguards. Normal close requires settled work and no pending request; completed
+results remain retrievable. Force never bypasses exact identity, contamination,
+unaccepted relocation, or final-workspace-tab protection. Forced forget can
+orphan resources or discard results and requires explicit destructive-action
+authorization. If safe cleanup cannot be confirmed, retain the tab as unresolved
+and report why rather than bypassing a protection.
+
+Managed coordination never falls back to raw Herdr. This does not restrict
+separately authorized raw terminal control: load and follow the separate `herdr`
+skill for that work. During managed recovery, raw Herdr remains limited to
+bounded diagnostic cases permitted by the `pi-shepherd` skill and host policy.

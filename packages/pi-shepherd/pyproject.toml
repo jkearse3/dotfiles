@@ -1,0 +1,18 @@
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pi-shepherd"
+version = "0.1.0"
+description = "Persistent Pi teammates in Herdr workspaces"
+requires-python = ">=3.11"
+
+[project.scripts]
+pi-shepherd = "pi_shepherd.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+pi_shepherd = ["SKILL.md"]

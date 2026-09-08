@@ -28,10 +28,12 @@ in
   home = {
     packages = [
       dotfilesPackages.herdr
+      dotfilesPackages.pi-shepherd
       completions
       worktreeBootstrapPlugin
     ];
     file.".config/herdr/config.toml".source = mkSource ./config.toml;
+    file.".config/pi-shepherd/config.toml".source = mkSource ./pi-shepherd.toml;
 
     activation.herdrWorktreeBootstrapPlugin =
       lib.hm.dag.entryAfter [ "writeBoundary" ] # bash
@@ -56,5 +58,8 @@ in
           fi
         '';
   };
-  agents.extraSkills.herdr = skill;
+  agents.extraSkills = {
+    herdr = skill;
+    pi-shepherd = "${dotfilesPackages.pi-shepherd}/share/pi-shepherd";
+  };
 }
