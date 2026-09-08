@@ -12,8 +12,9 @@ agent unless the human explicitly authorizes that in the teammate's
 conversation. This restriction overrides the shared permission to split
 delegated work further.
 
-Create each new teammate as a fresh Pi conversation in its own tab, using
-`herdr tab create --workspace "$HERDR_WORKSPACE_ID" --cwd "$PWD" --no-focus`.
+Create each new teammate as a fresh Pi conversation in its own tab. Give the tab
+a concise, task-derived label and create it with
+`herdr tab create --workspace "$HERDR_WORKSPACE_ID" --cwd "$PWD" --label "<task-label>" --no-focus`.
 This topology overrides the Herdr skill's default sibling pane. Parse the root
 pane ID from the response, start a uniquely named `--kind pi` agent there, and
 pass Pi arguments after `--`. Keep at most four live teammates created by the
