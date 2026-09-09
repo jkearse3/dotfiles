@@ -12,6 +12,11 @@
       "requestTimeoutMs": 60000,
       "includeTools": ["web_search_exa"],
       "directTools": ["web_search_exa"]
+    },
+    "linear": {
+      "url": "https://mcp.linear.app/mcp",
+      "auth": "oauth",
+      "lifecycle": "lazy"
     }
   }
 }
