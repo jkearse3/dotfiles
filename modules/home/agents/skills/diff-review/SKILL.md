@@ -63,7 +63,9 @@ blocks only when every included revision diff is also empty.
 - Investigate plausible change-reachable defects to evidence-backed verdicts,
   with scrutiny proportional to their production, data, security, and
   compatibility impact. Stop gathering evidence once more could not alter a
-  finding, criterion, or status; report unavailable evidence that still could.
+  finding's existence, causal scope, priority, or smallest sufficient
+  correction, a criterion, or status; report unavailable evidence that still
+  could.
 - Apply governing repository patterns when they exist. Otherwise require
   concrete present-day harm rather than general best practice, and prefer the
   smallest sufficient correction.
@@ -103,8 +105,17 @@ reading only enough enclosing or related context to settle the verdict. For
 generated, vendored, minified, or pure-data files, inspect each changed hunk in
 its relevant block rather than reading the full file. For generated deltas,
 confirm each hunk is explained by reviewed source and inspect unexplained deltas
-in depth. When a changed contract has many consumers, locate its uses, inspect
-every distinct or high-risk pattern, and group mechanical repetition.
+in depth. For every changed contract, locate its consumers; when there are many,
+inspect every distinct or high-risk pattern and group repetition only after
+establishing equivalent behavior and risk.
+
+After establishing a defect, identify the violated invariant or changed
+mechanism and inspect the closed set of change-reachable outputs, branches,
+representations, and consumers governed by it for the same failure class. For
+validation or transformation logic, distinguish materially different input,
+state, and representation paths and inspect each change-reachable partition
+controlled by the changed behavior. Do not expand either investigation into
+unsupported inputs or imagined requirements.
 
 Use the cheapest authoritative evidence that settles each question; corroborate
 only when behavior remains unestablished or sources conflict. Do not disassemble
@@ -114,6 +125,11 @@ same pass, including material unchanged behavior, and run checks only when they
 leave no persistent repository or external state. Author claims are context, not
 proof; author reasoning and verification results are out of bounds in an
 independent review. Carried evidence is defined under Input.
+
+When introduction, impact, or sufficient correction scope is unclear, compare
+the base and target behavior and trace the relevant value, state, or invariant
+from a reachable trigger to its externally visible effect. Distinguish the
+causal changed hunk from downstream manifestations.
 
 Apply only lenses reachable from changed behavior or promises:
 
@@ -125,8 +141,10 @@ Apply only lenses reachable from changed behavior or promises:
   rollout and rollback, integrity, migrations, locking, dependencies, licenses,
   lockfiles, supply-chain risk, and generated consistency.
 - _Validation and claims_ — important success, failure, and edge coverage,
-  meaningful assertions and fixtures, and accuracy of user claims, docs,
-  comments, runbooks, migration notes, examples, and references.
+  meaningful assertions and fixtures, whether changed tests or claimed
+  validation would fail if the claimed invariant were absent or an inspected
+  sibling partition regressed, and accuracy of user claims, docs, comments,
+  runbooks, migration notes, examples, and references.
 - _Artifact-specific concerns_ — design, coupling, and visibility; prompt
   precedence, permissions, stops, routing, results, and parser strings; UI and
   asset semantics, accessibility, integrity, responsive and theme behavior; and
@@ -154,9 +172,10 @@ decision the reader must make. A fix that requires supporting a new use case,
 consumer, platform, failure model, or compatibility promise is out of scope
 unless explicitly required: investigation may be broad, but findings stay inside
 what the change can reach. Skip renames that are not meaningfully clearer, and
-dedupe repeated findings by file and concern, not exact line. Suppress a known
-issue from Findings only when the target neither introduces nor worsens it, and
-identify the existing issue in Coverage.
+group manifestations by causal mechanism and sufficient correction rather than
+file or line. Do not combine independent corrections merely because they share a
+category. Suppress a known issue from Findings only when the target neither
+introduces nor worsens it, and identify the existing issue in Coverage.
 
 Report the applicable elements below, combining sections and omitting empty ones
 when that makes the result shorter:
