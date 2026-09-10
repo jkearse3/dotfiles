@@ -87,15 +87,3 @@ require("lib.config").run({
 		)
 	end,
 })
-
--- Claude Code
-require("lib.config").run({
-	plugins = { "https://github.com/coder/claudecode.nvim" },
-	setup = function()
-		require("claudecode").setup({
-			terminal = {
-				provider = "native",
-			},
-		})
-	end,
-})
