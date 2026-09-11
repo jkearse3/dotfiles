@@ -8,10 +8,9 @@ the managed path is unavailable or fails, stop rather than falling back to raw
 Herdr.
 
 A managed teammate must not create or prompt another agent unless the human
-explicitly authorizes that in the teammate's own conversation. This restriction
-overrides the shared permission to split delegated work further. Keep at most
-four live teammates created by the initiating session unless the user requests
-more. A skill or profile grants no additional task, mutation, publication,
+explicitly authorizes that in the teammate's own conversation. Keep at most four
+live teammates created by the initiating session unless the user requests more.
+A skill or profile grants no additional task, mutation, publication,
 destructive, or sandbox authority.
 
 Keep source writes in the initiating session by default. Delegate mutation only
