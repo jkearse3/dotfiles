@@ -1,215 +1,139 @@
 ---
 name: diff-review
 description: >-
-  Independently reviews stable, described finalized revisions, commit ranges,
-  PRs, or branches for bugs, regressions, safety and compatibility risks,
-  missing validation, stale artifacts, and maintainability issues across any
-  changed artifact, and assesses explicitly declared criteria. Use when a
-  finalized target is ready; not for working changes, implementation, fixes, or
-  history mutation.
-argument-hint:
-  "review my branch | review jj diff --from main | review PR #42 against
-  criteria.md"
+  Independently reviews stable finalized revisions, ranges, or branches already
+  available in the local repository for actionable defects and declared
+  criteria. Use when a described local target is ready for read-only review; not
+  for working changes, remote-only targets, implementation, fixes, or history
+  mutation.
 ---
 
 # Diff Review
 
-## Input
+Review the complete local target for change-reachable defects and assess any
+explicitly declared criteria. Review is read-only.
 
-```
-$ARGUMENTS
-```
+## Establish the target
 
-Free-form natural language. Interpret it as four distinct things:
+Infer from the request and context:
 
-1. **What to diff** — a runnable command, or a description to derive one from.
-   Ask when the intent is clear but the target is not.
-2. **Declared criteria** — stated in the request, in an artifact it references,
-   or in a revision description that explicitly declares them; never inferred
-   from context. Preserve exact wording and any supplied proof method. Apply
-   criteria to the aggregate review target unless the request scopes them
-   narrower. Criteria add to the quality review; they never replace it or end it
-   early.
-3. **Review context** — non-goals, known issues, and focus areas. Known issues
-   never narrow investigation; focus areas raise scrutiny without narrowing it;
-   a non-goal makes an absence a non-finding without excusing a defect in what
-   did change. Review context never becomes criteria.
-4. **Evidence constraints** — criteria or evidence questions earlier independent
-   reviews settled, primary-source material the request quotes with its
-   location, and evidence placed out of bounds. Do not gather excluded evidence,
-   reopen located quoted material the target does not change, or re-derive a
-   conclusion the request states has rested on unmoved evidence since the round
-   that settled it. Evidence constraints relieve evidence-gathering, never
-   scrutiny of the diff.
+- **Target:** what locally available revisions to diff. Ask rather than guess an
+  ambiguous target or base. Do not fetch or query hosting services; a PR, URL,
+  or remote-only ref must first be materialized as immutable local revisions by
+  a separate workflow.
+- **Criteria:** only outcomes explicitly declared in the request, a referenced
+  artifact, or a revision description. Preserve their wording and proof methods,
+  and apply them to the aggregate target unless scoped narrower. They supplement
+  rather than replace quality review.
+- **Context:** focus areas, non-goals, and known issues. Focus and known issues
+  never narrow review; a non-goal excuses an absence, not a defect in changed
+  behavior.
+- **Evidence constraints:** explicit exclusions, located primary-source
+  quotations, and prior independent conclusions. Do not reopen quoted material
+  the target leaves unchanged. Treat a prior conclusion as settled only when the
+  request identifies its evidence and states that evidence has not moved.
 
-If excluded or unavailable evidence prevents a verdict, a criterion is
-materially ambiguous or its source cannot be resolved, or a claimed settled
-conclusion lacks the unmoved-evidence statement, mark only the affected item
-`blocked`, name what it needs, and continue. If evidence placed out of bounds
-covers changed material, do not inspect it; mark that coverage blocked and
-continue only reachable review work.
+Resolve mutable endpoints once to immutable revision IDs without moving refs.
+Every included revision must have a non-empty description. An unpublished
+checked-out target requires an empty jj working-copy revision above it or a
+clean Git worktree. Missing, ambiguous, unresolvable, undescribed, unfinalized,
+or undiffable targets block review. If evidence is unavailable or excluded,
+block only the verdict or coverage it prevents and continue reachable work.
 
-The target must resolve once to immutable revision IDs, and every included
-revision must have a non-empty description. Resolve every mutable diff endpoint,
-including the head and comparison base, without creating or moving refs. For an
-unpublished checked-out target, require an empty jj working-copy revision on top
-or a clean Git worktree. If the input does not identify a target, ask for one
-and stop. An unresolvable target, unfinalized work, an empty required
-description, or a failed diff blocks substantive review. An empty aggregate diff
-blocks only when every included revision diff is also empty.
+For one revision, review its diff. For a stack, review the aggregate delta and
+also compare each revision's diff with its description, including changes later
+removed by the stack. Derive a stacked target's base from its ancestry, not a
+default bookmark. A fresh empty undescribed jj `@` means `@-`. An aggregate
+empty diff is valid only when at least one included revision diff is non-empty.
 
-## Principles
+Read full revision descriptions as intent, never proof. Each must accurately
+account for its own diff; report a material mismatch. Run the resolved diff
+before substantive review.
 
-- Investigate plausible change-reachable defects to evidence-backed verdicts,
-  with scrutiny proportional to their production, data, security, and
-  compatibility impact. Stop gathering evidence once more could not alter a
-  finding's existence, causal scope, priority, or smallest sufficient
-  correction, a criterion, or status; report unavailable evidence that still
-  could.
-- Apply governing repository patterns when they exist. Otherwise require
-  concrete present-day harm rather than general best practice, and prefer the
-  smallest sufficient correction.
-- Review is read-only.
+## Review
 
-## Execution
+1. Inspect every changed hunk under each concern reachable from its behavior or
+   promises. Read only enough enclosing and related context to settle the
+   verdict. For generated, vendored, minified, binary, or pure-data artifacts,
+   inspect each changed block and relevant metadata; confirm generated changes
+   follow reviewed source. Do not decompile binaries.
+2. Locate consumers of every changed contract. When numerous, inspect every
+   distinct or high-risk usage pattern and group repetition only after proving
+   equivalent behavior and risk.
+3. Use the lowest-cost authoritative evidence. Corroborate only when behavior is
+   unresolved or sources conflict. Trace uncertain behavior from a reachable
+   trigger through the changed value, state, or invariant to an externally
+   visible effect, comparing base and target when needed.
+4. Once a defect is established, inspect the closed set of change-reachable
+   branches, representations, outputs, and consumers governed by the same
+   mechanism. Distinguish materially different input and state partitions; do
+   not expand into unsupported requirements.
+5. Gather criterion evidence in the same pass, including material unchanged
+   behavior. Run only checks that leave no persistent repository or external
+   state. Author claims, reasoning, and prior verification are not proof except
+   for admissible settled evidence established above.
+6. Read the changeset as a whole for incomplete refactors or migrations,
+   inconsistent patterns, integration gaps, and stale generated or documented
+   artifacts.
 
-**Resolve the target**, then run the diff before reviewing it:
+Apply only relevant lenses:
 
-- One revision: review it directly.
-- A stack: review the aggregate delta, and check each revision's own diff
-  against its description for accuracy, boundary coherence, and content the
-  stack adds and later removes. Do not run every lens over each revision in
-  turn: the assembled result is what the change delivers, and per-revision
-  sweeps cost more than they catch.
-- A fresh empty undescribed `@`: treat `@-` as the target.
-- A stacked bookmark: take the aggregate base from the target's own ancestry,
-  not the repository's default bookmark. `jj-bookmark-previous` resolves
-  relative to `@`, so use it only after confirming the target is the current
-  bookmark.
-- An ambiguous merge, parent, or base: ask rather than guess.
-
-Read every target revision's full description and treat it as author intent, not
-proof:
-
-```bash
-jj log -r '<revset>' --no-graph --no-pager --template 'change_id.short() ++ " " ++ commit_id.short() ++ "\n" ++ description ++ "\n\n"'
-git log --format=fuller --no-patch <range>
-```
-
-Require each description to account accurately for its revision's diff; report a
-vague or mismatched one as a finding. Use what a description does say to check
-the diff against the problem, constraints, excluded scope, and risks it claims.
-
-**Inspect every changed hunk** under every concern its behavior could affect,
-reading only enough enclosing or related context to settle the verdict. For
-generated, vendored, minified, or pure-data files, inspect each changed hunk in
-its relevant block rather than reading the full file. For generated deltas,
-confirm each hunk is explained by reviewed source and inspect unexplained deltas
-in depth. For every changed contract, locate its consumers; when there are many,
-inspect every distinct or high-risk pattern and group repetition only after
-establishing equivalent behavior and risk.
-
-After establishing a defect, identify the violated invariant or changed
-mechanism and inspect the closed set of change-reachable outputs, branches,
-representations, and consumers governed by it for the same failure class. For
-validation or transformation logic, distinguish materially different input,
-state, and representation paths and inspect each change-reachable partition
-controlled by the changed behavior. Do not expand either investigation into
-unsupported inputs or imagined requirements.
-
-Use the cheapest authoritative evidence that settles each question; corroborate
-only when behavior remains unestablished or sources conflict. Do not disassemble
-or decompile binaries; use reviewed source and relevant metadata, blocking only
-affected items when those cannot settle them. Gather criterion evidence in the
-same pass, including material unchanged behavior, and run checks only when they
-leave no persistent repository or external state. Author claims are context, not
-proof; author reasoning and verification results are out of bounds in an
-independent review. Carried evidence is defined under Input.
-
-When introduction, impact, or sufficient correction scope is unclear, compare
-the base and target behavior and trace the relevant value, state, or invariant
-from a reachable trigger to its externally visible effect. Distinguish the
-causal changed hunk from downstream manifestations.
-
-Apply only lenses reachable from changed behavior or promises:
-
-- _Behavior and contracts_ — correctness, edge cases, ordering, concurrency,
-  cleanup, trust boundaries, secrets, validation, and API, schema, config,
+- **Behavior and contracts:** correctness, edge cases, ordering, concurrency,
+  cleanup, validation, secrets, trust boundaries, and API, schema, config,
   workflow, platform, client, and persisted-data compatibility.
-- _Operations, data, dependencies_ — complexity and resource cost, I/O, caching,
-  rendering, observability, defaults, permissions, CI, deployment, portability,
-  rollout and rollback, integrity, migrations, locking, dependencies, licenses,
-  lockfiles, supply-chain risk, and generated consistency.
-- _Validation and claims_ — important success, failure, and edge coverage,
-  meaningful assertions and fixtures, whether changed tests or claimed
-  validation would fail if the claimed invariant were absent or an inspected
-  sibling partition regressed, and accuracy of user claims, docs, comments,
-  runbooks, migration notes, examples, and references.
-- _Artifact-specific concerns_ — design, coupling, and visibility; prompt
-  precedence, permissions, stops, routing, results, and parser strings; UI and
-  asset semantics, accessibility, integrity, responsive and theme behavior; and
-  naming, structure, or dead material under governing style. Without one, report
-  clarity only when a natural reading leads to the wrong action or when a
-  comment, doc, fixture, or revision description references internal planning or
-  session context — plan or phase names, stage or step numbers, task or
-  milestone labels, or agent workflow state — that a repository reader cannot
-  resolve.
+- **Operations and data:** complexity, resources, I/O, caching, rendering,
+  observability, defaults, permissions, CI, deployment, rollout, rollback,
+  migrations, locking, integrity, dependencies, licenses, lockfiles, supply
+  chain, portability, and generated consistency.
+- **Validation and claims:** meaningful success, failure, and edge checks;
+  assertions that fail without the claimed invariant; sibling behavior exposed
+  to the same regression; and accurate docs, comments, prompts, examples,
+  runbooks, and references.
+- **Artifact concerns:** design, coupling, visibility, accessibility, assets,
+  responsive and theme behavior, prompt precedence and stops, parser contracts,
+  naming, structure, and dead material under governing repository patterns.
+  Without a governing pattern, report clarity only when a natural reading causes
+  a wrong action or repository prose relies on unresolved session or planning
+  context.
 
-**Then read the changeset whole**: inconsistent patterns, incomplete refactors,
-partial migrations, integration gaps, stale generated artifacts, and criterion
-evidence spanning files or revisions.
+Use scrutiny proportional to production, data, security, and compatibility
+impact. Require concrete present-day harm rather than general best practice, and
+prefer the smallest sufficient correction. Stop when more evidence cannot change
+a finding's existence, causal scope, priority, correction, a criterion verdict,
+or overall status.
 
-**Before reporting**, recheck that each finding and criterion verdict follows
-from decisive evidence, each blocker names what is missing, and coverage
-accounts for the target. Do not repeat the main review.
+## Report
 
-## Result
+Recheck decisive evidence, blockers, and target coverage. Group manifestations
+by causal mechanism and sufficient correction, not file or category. Suppress a
+known issue only when the target neither introduces nor worsens it, and mention
+it in coverage.
 
-**Filter every finding by one test: what must change?** If nothing, drop it; if
-"maybe consider", investigate and make a concrete call. Report only findings
-carrying a clear, actionable fix — or, for `question` and `design`, a specific
-decision the reader must make. A fix that requires supporting a new use case,
-consumer, platform, failure model, or compatibility promise is out of scope
-unless explicitly required: investigation may be broad, but findings stay inside
-what the change can reach. Skip renames that are not meaningfully clearer, and
-group manifestations by causal mechanism and sufficient correction rather than
-file or line. Do not combine independent corrections merely because they share a
-category. Suppress a known issue from Findings only when the target neither
-introduces nor worsens it, and identify the existing issue in Coverage.
+Report only findings for which something specific must change, or `question` and
+`design` findings requiring a specific decision. Omit speculative future use
+cases, unsupported consumers or platforms, optional extensibility,
+inconsequential renames, and "maybe consider" advice.
 
-Report the applicable elements below, combining sections and omitting empty ones
-when that makes the result shorter:
+Lead with **Status**:
 
-- **Status:** `pass` when the review covered the target, every declared
-  criterion is satisfied, every required revision is accurately described, and
-  there are no findings; `blocked` when target preflight ended the review;
-  otherwise `non-pass`.
-- **Coverage:** when the review reached the diff, compactly name the inspected
-  paths or groups, applicable lenses, revisions checked for a stack, and
-  anything unreachable or locally blocked with the missing evidence. Do not
-  summarize every changed file; add an overview only when findings need it for
-  orientation.
-- **Criteria:** only when declared, identify each criterion unambiguously and
-  mark it `satisfied`, `not satisfied`, or `blocked` with concise admissible
-  evidence or a precise blocker. Use a stable ID, heading, or source location
-  instead of repeating long criteria when that reference is unique. Assessment
-  states whether declared outcomes hold; findings state what must change. A
-  `not satisfied` criterion produces a finding only when there is a concrete
-  corrective action; a `blocked` one does not unless required validation is
-  absent or the change improperly claims completion.
+- `pass`: the target was covered, every revision is accurately described, every
+  criterion is satisfied, and there are no findings.
+- `blocked`: target preflight prevented substantive review.
+- `non-pass`: all other outcomes.
+
+Then include only applicable sections:
+
+- **Coverage:** compactly identify reviewed path groups, lenses, stack
+  revisions, known existing issues, and unreachable areas with what evidence is
+  missing.
+- **Criteria:** mark each declared criterion `satisfied`, `not satisfied`, or
+  `blocked`, citing decisive admissible evidence or the precise blocker. A
+  failed criterion becomes a finding only when the target has a concrete
+  correction; a blocked criterion does so only when required validation is
+  absent or completion is improperly claimed.
 - **Findings:** highest priority first as
-  `- location (category, priority): description`, where location may be a path,
-  line, range, revision, or the whole target.
+  `- location (category, priority): defect and smallest sufficient correction`.
 
-**Categories:** `bug` (incorrect behavior, including unintended divergence from
-its description), `safety` (security, data loss, trust boundary, operational, or
-destructive-action risk), `compatibility` (broken consumer, API, schema, config,
-docs, workflow, platform, or migration contract), `accuracy` (docs, comments,
-prompts, generated artifacts, or examples that mislead, including stale material
-after an intended behavior change), `coverage` (missing or weak tests,
-validation, fixtures, or rollout checks), `design` (architectural concern or
-trade-off), `clarity` (readability, naming, structure, or instruction
-ambiguity), `question` (authority or intent needs a decision).
-
-**Priority:** `high` — fix before merge. `medium` — worth addressing. `low` — a
-concrete minor defect that does not block merge.
+Categories are `bug`, `safety`, `compatibility`, `accuracy`, `coverage`,
+`design`, `clarity`, and `question`. Priorities are `high` (fix before merge),
+`medium` (worth addressing), and `low` (concrete minor defect).
