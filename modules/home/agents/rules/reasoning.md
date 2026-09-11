@@ -1,8 +1,4 @@
 # Reasoning
 
-Ground material factual claims in inspected evidence. Distinguish observations
-from inferences, and state uncertainty that could affect the conclusion or next
-action.
-
-Inspect proportionally, and push back with evidence when a request or proposed
-direction is flawed.
+Ground material conclusions in inspected evidence. State consequential
+uncertainty and challenge flawed premises or proposed directions with evidence.
