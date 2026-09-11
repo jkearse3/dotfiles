@@ -13,8 +13,8 @@ compatibility:
 
 Use this managed surface, not raw Herdr, for authorized teammate work. A twin or
 profile grants no task, mutation, publication, or cleanup authority. Follow the
-host's delegation rules, teammate limit, and human-approval policy. Never start
-nested delegation without explicit human authorization in that conversation.
+host's delegation and human-approval rules. Never start nested delegation
+without explicit human authorization in that conversation.
 
 ## Scope and discovery
 
@@ -75,6 +75,9 @@ file ownership, and the restriction on further delegation.
 PROMPT_PRODUCER | pi-shepherd --json request REF --stdin --wait --allow-focused
 ```
 
+Retain the exact request ID returned by `request`; durable recovery,
+acknowledgement, and cancellation use it.
+
 Supply the prompt through standard input, preferably by piping a private
 producer's stdout directly. Do not save it solely for submission or put prompt
 text in CLI arguments, shell command strings, or heredoc command strings.
@@ -124,7 +127,8 @@ matching pending request and does not interrupt the agent.
 
 Results are `cooperative_unverified`: exact request correlation is not
 cryptographic authentication or semantic proof. A successful CLI exit means the
-reported state was returned, not that the delegated task succeeded.
+reported state was returned, not that the delegated task succeeded. Acknowledge
+a completed request result when it is no longer needed.
 
 ## Observe unresolved work
 
