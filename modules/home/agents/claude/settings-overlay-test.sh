@@ -19,6 +19,7 @@ cat >"$pinned" <<'JSON'
   "statusLine": { "type": "command", "command": "~/.claude/statusline.sh" },
   "attribution": { "commit": "", "pr": "", "sessionUrl": false },
   "model": "pinned-model",
+  "modelSettings": { "pinned-model": { "effortLevel": "high", "keep": "kept" } },
   "theme": "dark-ansi"
 }
 JSON
@@ -35,6 +36,7 @@ overridable=(
 	statusLine.command
 	attribution.commit
 	attribution.sessionUrl
+	modelSettings.pinned-model.effortLevel
 )
 
 fail() {
@@ -69,6 +71,18 @@ nested=$("$overlay" "$pinned" "$work/nested.json" "${overridable[@]}")
 	fail "overridden statusLine.command survived"
 [ "$(jq -r '.statusLine.type' <<<"$nested")" = command ] ||
 	fail "undeclared statusLine.type was deleted alongside its sibling"
+
+# A declared three-level path (as Claude Code stores per-model effort under
+# `modelSettings.<model>.effortLevel`) is handed over at its leaf, its sibling
+# default survives, and the emptied parent object is left behind for Claude Code
+# to merge the machine-local per-model object into. This is the property the
+# per-machine effort override rests on.
+echo '{"modelSettings": {"pinned-model": {"effortLevel": "xhigh"}}}' >"$work/effort.json"
+effort=$("$overlay" "$pinned" "$work/effort.json" "${overridable[@]}")
+[ "$(jq -r '.modelSettings."pinned-model" | has("effortLevel")' <<<"$effort")" = false ] ||
+	fail "overridden modelSettings.<model>.effortLevel survived"
+[ "$(jq -r '.modelSettings."pinned-model".keep' <<<"$effort")" = kept ] ||
+	fail "undeclared modelSettings.<model>.keep was deleted alongside its sibling"
 
 # A declared leaf whose pinned and machine values are both `false` still hands
 # over. Nothing here may test definedness by truthiness or by comparing against

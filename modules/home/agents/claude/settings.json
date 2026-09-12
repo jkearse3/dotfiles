@@ -120,7 +120,11 @@
     "type": "command",
     "command": "~/.claude/statusline.sh"
   },
-  "effortLevel": "high",
+  "modelSettings": {
+    "claude-opus-4-8": {
+      "effortLevel": "high"
+    }
+  },
   "promptSuggestionEnabled": false,
   "tui": "fullscreen",
   "autoMemoryEnabled": false,
