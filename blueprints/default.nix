@@ -40,6 +40,7 @@ let
       ../modules/home/toml
       ../modules/home/vcs
       ../modules/home/yaml
+      ../modules/home/zk
     ];
 
     # Applications are managed outside Home Manager.
