@@ -22,13 +22,7 @@ status_line = [
   "git-branch",
   "current-dir",
 ]
-terminal_title = [
-  "spinner",
-  "project",
-  "git-branch",
-  "model",
-  "task-progress",
-]
+terminal_title = ["spinner", "project", "git-branch", "model", "task-progress"]
 animations = true
 show_tooltips = false
 
