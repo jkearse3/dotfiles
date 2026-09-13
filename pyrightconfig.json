@@ -5,6 +5,7 @@
     "packages/commit-message",
     "packages/direnv-worktree",
     "packages/nix-cleanup",
+    "packages/nvim-pack",
     "packages/jj-ensure",
     "packages/pi-shepherd",
     "packages/jj-bookmark-land",

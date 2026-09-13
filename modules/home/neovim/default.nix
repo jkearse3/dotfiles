@@ -36,7 +36,7 @@ in
     packages = [
       pkgs.copilot-language-server
       pkgs.tree-sitter
-      dotfilesPackages.nvim-pack-prune
+      dotfilesPackages.nvim-pack
     ];
     sessionVariables = {
       EDITOR = "nvim";

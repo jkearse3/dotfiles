@@ -83,7 +83,9 @@
           inherit (unstablePkgs) jujutsu;
         };
         nix-cleanup = pkgs.callPackage ../packages/nix-cleanup/package.nix { };
-        nvim-pack-prune = pkgs.callPackage ../packages/nvim-pack-prune/package.nix { };
+        nvim-pack = pkgs.callPackage ../packages/nvim-pack/package.nix {
+          inherit (unstablePkgs) neovim;
+        };
         pi-extension-deps = pkgs.callPackage ../packages/pi-extension-deps/package.nix {
           inherit (unstablePkgs) nodejs;
         };

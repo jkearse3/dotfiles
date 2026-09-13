@@ -1,0 +1,42 @@
+#compdef nvim-pack
+
+_nvim_pack_plugins() {
+  local -a plugins
+  plugins=("${(@f)$(nvim-pack list 2>/dev/null)}")
+  _describe 'active plugin' plugins
+}
+
+_arguments -C \
+  '(-h --help)'{-h,--help}'[show help]' \
+  '1:command:((list\:list\ active\ plugin\ names check\:show\ available\ updates update\:apply\ available\ updates prune\:remove\ orphaned\ plugins))' \
+  '*::argument:->arguments'
+
+if [[ $state == arguments ]]; then
+  case $words[1] in
+    list)
+      _arguments '(-h --help)'{-h,--help}'[show help]'
+      ;;
+    check)
+      _arguments \
+        '(-h --help)'{-h,--help}'[show help]' \
+        '*:active plugin:_nvim_pack_plugins'
+      ;;
+    update)
+      if (( ${words[(I)--select]} )); then
+        _arguments \
+          '(-h --help)'{-h,--help}'[show help]' \
+          '--select[choose from updatable plugins with fzf]'
+      else
+        _arguments \
+          '(-h --help)'{-h,--help}'[show help]' \
+          '--select[choose from updatable plugins with fzf]' \
+          '*:active plugin:_nvim_pack_plugins'
+      fi
+      ;;
+    prune)
+      _arguments \
+        '(-h --help)'{-h,--help}'[show help]' \
+        '--dry-run[list orphaned plugins without deleting them]'
+      ;;
+  esac
+fi
