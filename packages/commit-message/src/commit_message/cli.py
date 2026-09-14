@@ -26,10 +26,12 @@ from typing import cast
 DEFAULT_BODY_WIDTH = 72
 DEFAULT_SUBJECT_WIDTH = 72
 
-# git folds a trailer's continuation line into the trailer value only when the
+# Git folds a trailer's continuation line into the trailer value only when the
 # line is indented; `git interpret-trailers --parse` drops an unindented one,
-# silently truncating the value.
+# silently truncating the value. Conventional Commits' space-containing
+# `BREAKING CHANGE` token is not a Git trailer and therefore wraps as prose.
 TRAILER_CONTINUATION_INDENT = "  "
+BREAKING_CHANGE_PREFIX = "BREAKING CHANGE:"
 
 LIST_RE = re.compile(r"^(?P<prefix>[ \t]*(?:[-+*]|\d+[.)])[ \t]+)(?P<text>\S.*)$")
 
@@ -197,9 +199,13 @@ def open_paragraph(line: str) -> Paragraph | None:
 
     trailer_match = TRAILER_RE.fullmatch(line)
     if trailer_match is not None:
+        prefix = trailer_match.group("prefix")
+        continuation_prefix = (
+            "" if prefix.startswith(BREAKING_CHANGE_PREFIX) else TRAILER_CONTINUATION_INDENT
+        )
         return Paragraph(
-            first_prefix=trailer_match.group("prefix"),
-            continuation_prefix=TRAILER_CONTINUATION_INDENT,
+            first_prefix=prefix,
+            continuation_prefix=continuation_prefix,
             texts=[trailer_match.group("text")],
         )
 
@@ -381,11 +387,11 @@ def format_message(message: str, *, body_width: int) -> str:
     The subject passes through unchanged. Body paragraphs reflow to
     ``body_width`` with in-paragraph newlines treated as soft: a paragraph
     ends only at a blank, fence, or structural line, so hand-wrapped text
-    collapses to one logical line before wrapping. Prose reflows flush
-    left; a list item or trailer reflows its value under a hanging indent,
-    taking an unindented continuation unless its marker is ``-`` or ``+``.
-    Fenced code, preformatted-looking
-    lines, issue-reference footers, and other indented content pass through
+    collapses to one logical line before wrapping. Prose and ``BREAKING
+    CHANGE`` values reflow flush left; a list item or Git trailer reflows its
+    value under a hanging indent, taking an unindented continuation unless its
+    marker is ``-`` or ``+``. Fenced code, preformatted-looking lines,
+    issue-reference footers, and other indented content pass through
     verbatim, so the result may still fail validation. Empty input stays
     empty; non-empty output ends with exactly one newline.
     """

@@ -193,12 +193,12 @@ class CommitMessageTests(unittest.TestCase):
         message = (
             "feat: add formatter\n\n"
             "  - This list entry has enough words to wrap with a hanging indentation.\n\n"
-            "BREAKING CHANGE: This trailer value has enough words to wrap safely."
+            "BREAKING-CHANGE: This trailer value has enough words to wrap safely."
         )
         lines = format_message(message, "--body-width", "40").stdout.splitlines()
         self.assertTrue(lines[2].startswith("  - "))
         self.assertTrue(lines[3].startswith("    "))
-        self.assertTrue(lines[5].startswith("BREAKING CHANGE: "))
+        self.assertTrue(lines[5].startswith("BREAKING-CHANGE: "))
         self.assertTrue(lines[6].startswith("  "))
         self.assertTrue(all(len(line) <= 40 for line in lines[2:]))
 
@@ -289,7 +289,7 @@ class CommitMessageTests(unittest.TestCase):
                 lines = format_message(f"feat: demo\n\n{body}").stdout.splitlines()
                 self.assertEqual(lines[2:], [
                     "BREAKING CHANGE: This trailer value has enough words that it must wrap",
-                    "  onto a second line here.",
+                    "onto a second line here.",
                 ])
 
     @unittest.skipIf(shutil.which("git") is None, "git is unavailable")
