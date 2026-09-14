@@ -8,7 +8,7 @@ import subprocess
 import unittest
 from pathlib import Path
 from tempfile import TemporaryDirectory
-from typing import override
+from typing import cast, override
 from unittest import mock
 
 from jj_bookmark_land import cli
@@ -175,6 +175,16 @@ class LandTests(RepositoryFixture):
 
         with self.assertRaisesRegex(cli.LandError, "destination must be a local bookmark: @-"):
             _ = cli.land("one", "@-", cwd=self.repository)
+
+    def test_accepts_jj_style_destination_options(self) -> None:
+        """The CLI accepts jj's short and long destination option names."""
+        parser = cli.create_parser()
+
+        short_options = parser.parse_args(["feature", "-d", "main"])
+        long_options = parser.parse_args(["feature", "--destination", "main"])
+
+        self.assertEqual(cast(str, short_options.destination), "main")
+        self.assertEqual(cast(str, long_options.destination), "main")
 
     def test_requires_explicit_tip_and_destination_arguments(self) -> None:
         """The CLI does not infer either bookmark from repository state."""

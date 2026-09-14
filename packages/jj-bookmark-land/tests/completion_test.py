@@ -32,19 +32,20 @@ class CompletionTests(unittest.TestCase):
         options = run(
             "fish", "--no-config", "-c", script, str(FISH_COMPLETION), "jj-bookmark-land --"
         ).stdout
-        into_bookmarks = run(
-            "fish", "--no-config", "-c", script, str(FISH_COMPLETION), "jj-bookmark-land --into "
+        destination_bookmarks = run(
+            "fish", "--no-config", "-c", script, str(FISH_COMPLETION), "jj-bookmark-land -d "
         ).stdout
         bookmarks = run(
             "fish", "--no-config", "-c", script, str(FISH_COMPLETION), "jj-bookmark-land "
         ).stdout
-        bookmarks_after_into = run(
-            "fish", "--no-config", "-c", script, str(FISH_COMPLETION), "jj-bookmark-land --into main "
+        bookmarks_after_destination = run(
+            "fish", "--no-config", "-c", script, str(FISH_COMPLETION), "jj-bookmark-land -d main "
         ).stdout
-        self.assertIn("--into", {line.partition("\t")[0] for line in options.splitlines()})
+        option_names = {line.partition("\t")[0] for line in options.splitlines()}
+        self.assertIn("--destination", option_names)
         self.assertEqual(
             {"feature", "main"},
-            {line.partition("\t")[0] for line in into_bookmarks.splitlines()},
+            {line.partition("\t")[0] for line in destination_bookmarks.splitlines()},
         )
         self.assertEqual(
             {"feature", "main"},
@@ -52,7 +53,7 @@ class CompletionTests(unittest.TestCase):
         )
         self.assertEqual(
             {"feature", "main"},
-            {line.partition("\t")[0] for line in bookmarks_after_into.splitlines()},
+            {line.partition("\t")[0] for line in bookmarks_after_destination.splitlines()},
         )
 
     def test_zsh_defines_options_and_bookmark_arguments(self) -> None:
@@ -66,7 +67,14 @@ class CompletionTests(unittest.TestCase):
             str(ZSH_COMPLETION),
         )
         lines = result.stdout.splitlines()
-        self.assertIn("--into[destination bookmark]:bookmark:_jj_bookmark_land_bookmarks", lines)
+        self.assertIn(
+            "(-d --destination)-d[destination bookmark]:bookmark:_jj_bookmark_land_bookmarks",
+            lines,
+        )
+        self.assertIn(
+            "(-d --destination)--destination[destination bookmark]:bookmark:_jj_bookmark_land_bookmarks",
+            lines,
+        )
         self.assertIn("--forget[forget landed bookmarks]", lines)
         self.assertIn("1:stack-tip bookmark:_jj_bookmark_land_bookmarks", lines)
 

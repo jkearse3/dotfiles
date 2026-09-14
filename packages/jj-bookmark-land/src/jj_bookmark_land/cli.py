@@ -153,7 +153,13 @@ def create_parser() -> argparse.ArgumentParser:
         ),
     )
     _ = parser.add_argument("tip", metavar="TIP", help="stack-tip bookmark")
-    _ = parser.add_argument("--into", required=True, metavar="BOOKMARK", help="destination bookmark")
+    _ = parser.add_argument(
+        "-d",
+        "--destination",
+        required=True,
+        metavar="BOOKMARK",
+        help="destination bookmark",
+    )
     _ = parser.add_argument(
         "--forget",
         action="store_true",
@@ -167,7 +173,7 @@ def main(arguments: Sequence[str] | None = None) -> int:
     """Run the command-line interface and return its exit status."""
     args = create_parser().parse_args(arguments)
     try:
-        into = cast(str, args.into)
+        into = cast(str, args.destination)
         tip = cast(str, args.tip)
         forget = cast(bool, args.forget)
         dry_run = cast(bool, args.dry_run)

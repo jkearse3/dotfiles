@@ -8,7 +8,7 @@ function _jj_bookmark_land_bookmarks() {
 
 _arguments \
   '(-h --help)'{-h,--help}'[show help]' \
-  '--into[destination bookmark]:bookmark:_jj_bookmark_land_bookmarks' \
+  '(-d --destination)'{-d,--destination}'[destination bookmark]:bookmark:_jj_bookmark_land_bookmarks' \
   '--forget[forget landed bookmarks]' \
   '--dry-run[show the landing plan]' \
   '1:stack-tip bookmark:_jj_bookmark_land_bookmarks'
