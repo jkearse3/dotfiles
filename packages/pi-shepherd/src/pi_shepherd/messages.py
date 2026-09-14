@@ -1,11 +1,12 @@
 """One cooperative request/result slot. Bodies never travel through command arguments."""
 
 import time
-from typing import BinaryIO
+from collections.abc import Mapping
+from typing import BinaryIO, cast
 
 from .errors import TeamError, present, require
 from .herdr import same_binding
-from .models import MAX_REPLY_BYTES, SETTLED, Request
+from .models import MAX_REPLY_BYTES, SETTLED, STATUSES, Delivery, Health, Pane, Request
 from .registry import Registry
 from .teammates import Team
 
@@ -32,6 +33,37 @@ def result_view(request: Request) -> dict[str, object]:
     }
 
 
+def acknowledgement_candidate(view: Mapping[str, object]) -> Request | None:
+    """Reconstruct the exact completed row token carried by an internal result view."""
+    content = view.get("content")
+    if content is None:
+        return None
+    values = {
+        key: view.get(key)
+        for key in (
+            "request_id",
+            "teammate_id",
+            "delivery",
+            "created_at",
+            "replied_at",
+        )
+    }
+    require(
+        isinstance(content, str)
+        and all(isinstance(value, str) for value in values.values()),
+        "local_error",
+        "Completed request output is internally inconsistent",
+    )
+    return Request(
+        request_id=cast(str, values["request_id"]),
+        teammate_id=cast(str, values["teammate_id"]),
+        delivery=cast(Delivery, values["delivery"]),
+        reply=cast(str, content),
+        created_at=cast(str, values["created_at"]),
+        replied_at=cast(str, values["replied_at"]),
+    )
+
+
 def request_view(
     request: Request,
     wait_outcome: str,
@@ -53,7 +85,7 @@ def result(registry: Registry, request_id: str, wait: bool, timeout: int) -> Req
         request = registry.request(request_id)
         if request.reply is not None or not wait or time.monotonic() >= deadline:
             return request
-        time.sleep(min(0.1, max(0, deadline - time.monotonic())))
+        time.sleep(min(0.25, max(0, deadline - time.monotonic())))
 
 
 def request(
@@ -65,7 +97,11 @@ def request(
         "Prompt must be nonempty text without NUL",
     )
     with team.locked(reference) as record:
-        record, health, snapshot = team.healthy(record, settled=True)
+        record, health, snapshot = team.healthy(
+            record,
+            settled=True,
+            initial_snapshot=team.context.snapshot,
+        )
         pane = present(health.pane)
         require(
             allow_focused
@@ -103,23 +139,33 @@ def request(
     return wait_request(team, request_record.request_id, timeout)
 
 
+def request_runtime(team: Team, teammate_id: str) -> tuple[Health, Pane | None]:
+    """Return freshly fenced health and its exact managed pane when available."""
+    with team.locked(teammate_id) as record:
+        _, health, _ = team.observe(record, team.context.snapshot)
+    return health, health.pane
+
+
 def wait_request(team: Team, request_id: str, timeout: int) -> dict[str, object]:
     start = time.monotonic()
     deadline = start + timeout
     saw_working = False
+    request_record = team.registry.request(request_id)
+    if request_record.reply is not None:
+        return request_view(request_record, "completed")
+    if request_record.delivery != "submitted":
+        return request_view(request_record, "delivery_uncertain")
+    health, pane = request_runtime(team, request_record.teammate_id)
+
     while True:
+        # Durable completion wins over a simultaneous runtime transition.
         request_record = team.registry.request(request_id)
         if request_record.reply is not None:
             return request_view(request_record, "completed")
         if request_record.delivery != "submitted":
             return request_view(request_record, "delivery_uncertain")
-        with team.locked(request_record.teammate_id) as record:
-            _, health, _ = team.observe(record)
-        # Recheck after observation: a final reply can race a settled status.
-        request_record = team.registry.request(request_id)
-        if request_record.reply is not None:
-            return request_view(request_record, "completed")
-        runtime_status = health.pane.status if health.pane is not None else "unknown"
+
+        runtime_status = pane.status if pane is not None else "unknown"
         if health.status != "healthy" or runtime_status == "blocked":
             return request_view(
                 request_record,
@@ -132,23 +178,45 @@ def wait_request(team: Team, request_id: str, timeout: int) -> dict[str, object]
                 runtime_health=health.status,
             )
         saw_working = saw_working or runtime_status == "working"
+
+        now = time.monotonic()
         # Allow the initial terminal submission to leave its pre-prompt settled state.
         # This is an observation, never turn attribution or evidence of semantic success.
-        if runtime_status in SETTLED and (saw_working or time.monotonic() - start >= 5):
+        if runtime_status in SETTLED and (saw_working or now - start >= 5):
             return request_view(
                 request_record,
                 "reply_missing",
                 runtime_status=runtime_status,
                 runtime_health=health.status,
             )
-        if time.monotonic() >= deadline:
+        if now >= deadline:
             return request_view(
                 request_record,
                 "timeout",
                 runtime_status=runtime_status,
                 runtime_health=health.status,
             )
-        time.sleep(min(0.1, max(0, deadline - time.monotonic())))
+
+        wait_seconds = min(0.5, deadline - now)
+        transitions = tuple(value for value in STATUSES if value != runtime_status)
+        try:
+            matched = team.runtime.wait_agent(
+                present(pane), transitions, wait_seconds
+            )
+        except TeamError as wait_error:
+            health, pane = request_runtime(team, request_record.teammate_id)
+            if health.status == "healthy":
+                raise wait_error
+        else:
+            # A status event or timeout is only an observation; refresh exact binding
+            # and topology before using it for a terminal outcome.
+            health, pane = request_runtime(team, request_record.teammate_id)
+            saw_working = saw_working or (
+                matched is not None
+                and pane is not None
+                and same_binding(matched, pane)
+                and matched.status == "working"
+            )
 
 
 def reply(team: Team, request_id: str, body: str) -> dict[str, object]:
@@ -160,8 +228,11 @@ def reply(team: Team, request_id: str, body: str) -> dict[str, object]:
         "Caller is not the request's teammate",
     )
     with team.locked(request.teammate_id) as record:
-        record, health, snapshot = team.healthy(record)
-        current = team.runtime.current()
+        record, health, snapshot = team.healthy(
+            record,
+            initial_snapshot=team.context.snapshot,
+        )
+        current = team.context.caller
         caller = [
             agent
             for agent in snapshot.agents

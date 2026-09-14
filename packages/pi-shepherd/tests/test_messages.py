@@ -46,6 +46,121 @@ class MessageTests(TeamCase):
         with self.assertRaises(TeamError):
             _ = messages.reply(self.team, request_id, "late")
 
+    def test_request_wait_ack_flushes_output_before_deleting_result(self) -> None:
+        record = self.create()
+
+        def reply_early(_text: str) -> None:
+            request = self.pending_request(record.teammate_id)
+            self.registry.reply(request.request_id, record.teammate_id, "response")
+
+        self.runtime.after_prompt = reply_early
+        output = io.StringIO()
+        environment = {
+            "XDG_STATE_HOME": str(self.root),
+            "XDG_CONFIG_HOME": str(self.root / "config"),
+        }
+        with (
+            patch.dict(os.environ, environment),
+            patch("pi_shepherd.cli.registry_path", return_value=self.registry.path),
+            patch("pi_shepherd.cli.Herdr", return_value=self.runtime),
+            patch("pi_shepherd.cli.Team", return_value=self.team),
+            patch("pi_shepherd.cli.sys.stdin", io.StringIO("task")),
+            contextlib.redirect_stdout(output),
+        ):
+            self.assertEqual(
+                cli.main(
+                    [
+                        "request",
+                        record.teammate_id,
+                        "--stdin",
+                        "--wait",
+                        "--ack",
+                        "--json",
+                    ]
+                ),
+                0,
+            )
+
+        payload = cast(dict[str, object], json.loads(output.getvalue()))
+        result = cast(dict[str, object], payload["result"])
+        self.assertEqual(result["content"], "response")
+        self.assertEqual(result["ack_outcome"], "on_successful_output")
+        self.assertIsNone(self.registry.slot(record.teammate_id))
+
+    def test_request_wait_ack_preserves_result_on_output_failure(self) -> None:
+        record = self.create()
+
+        def reply_early(_text: str) -> None:
+            request = self.pending_request(record.teammate_id)
+            self.registry.reply(request.request_id, record.teammate_id, "response")
+
+        self.runtime.after_prompt = reply_early
+        environment = {
+            "XDG_STATE_HOME": str(self.root),
+            "XDG_CONFIG_HOME": str(self.root / "config"),
+        }
+        with (
+            patch.dict(os.environ, environment),
+            patch("pi_shepherd.cli.registry_path", return_value=self.registry.path),
+            patch("pi_shepherd.cli.Herdr", return_value=self.runtime),
+            patch("pi_shepherd.cli.Team", return_value=self.team),
+            patch("pi_shepherd.cli.sys.stdin", io.StringIO("task")),
+            patch("pi_shepherd.cli.emit", side_effect=BrokenPipeError),
+            contextlib.redirect_stderr(io.StringIO()),
+        ):
+            self.assertEqual(
+                cli.main(
+                    [
+                        "request",
+                        record.teammate_id,
+                        "--stdin",
+                        "--wait",
+                        "--ack",
+                    ]
+                ),
+                1,
+            )
+
+        request = self.pending_request(record.teammate_id)
+        self.assertEqual(request.reply, "response")
+
+    def test_request_wait_ack_retains_pending_outcome(self) -> None:
+        record = self.create()
+        output = io.StringIO()
+        environment = {
+            "XDG_STATE_HOME": str(self.root),
+            "XDG_CONFIG_HOME": str(self.root / "config"),
+        }
+        with (
+            patch.dict(os.environ, environment),
+            patch("pi_shepherd.cli.registry_path", return_value=self.registry.path),
+            patch("pi_shepherd.cli.Herdr", return_value=self.runtime),
+            patch("pi_shepherd.cli.Team", return_value=self.team),
+            patch("pi_shepherd.cli.sys.stdin", io.StringIO("task")),
+            contextlib.redirect_stdout(output),
+        ):
+            self.assertEqual(
+                cli.main(
+                    [
+                        "request",
+                        record.teammate_id,
+                        "--stdin",
+                        "--wait",
+                        "--timeout",
+                        "0",
+                        "--ack",
+                        "--json",
+                    ]
+                ),
+                0,
+            )
+
+        payload = cast(dict[str, object], json.loads(output.getvalue()))
+        result = cast(dict[str, object], payload["result"])
+        self.assertEqual(result["ack_outcome"], "not_completed")
+        self.assertEqual(result["request_status"], "pending")
+        self.assertIsNotNone(self.registry.slot(record.teammate_id))
+
     def test_reply_during_request_submission_survives_delivery_update(self) -> None:
         record = self.create()
 
@@ -138,6 +253,43 @@ class MessageTests(TeamCase):
         self.assertIsNotNone(self.registry.slot(record.teammate_id))
         self.assertNotIn("read", self.runtime.calls)
 
+    def test_completed_reply_wins_without_live_runtime_observation(self) -> None:
+        record = self.create()
+        request = self.registry.prepare(record)
+        self.registry.delivered(request.request_id, False)
+        self.registry.reply(request.request_id, record.teammate_id, "complete")
+        self.runtime.missing_agent()
+        current_calls = self.runtime.current_calls
+        snapshot_calls = self.runtime.snapshot_calls
+
+        result = messages.wait_request(self.team, request.request_id, 10)
+
+        self.assertEqual(result["wait_outcome"], "completed")
+        self.assertEqual(result["content"], "complete")
+        self.assertEqual(self.runtime.current_calls, current_calls)
+        self.assertEqual(self.runtime.snapshot_calls, snapshot_calls)
+
+    def test_transient_working_event_ends_settled_reply_grace(self) -> None:
+        record = self.create()
+        request = self.registry.prepare(record)
+        self.registry.delivered(request.request_id, False)
+        agent = self.runtime.agents[0]
+        monotonic = Mock(side_effect=[0, 0, 0])
+        clock = SimpleNamespace(monotonic=monotonic, sleep=Mock())
+        with (
+            patch("pi_shepherd.messages.time", new=clock),
+            patch.object(
+                self.runtime,
+                "wait_agent",
+                return_value=replace(agent, status="working"),
+            ) as wait_agent,
+        ):
+            result = messages.wait_request(self.team, request.request_id, 10)
+
+        self.assertEqual(result["wait_outcome"], "reply_missing")
+        self.assertEqual(result["runtime_status"], "idle")
+        wait_agent.assert_called_once()
+
     def test_unhealthy_runtime_is_diagnostic_for_pending_request(self) -> None:
         record = self.create()
         submitted = messages.request(self.team, "worker", "text", False, 0, False)
@@ -213,6 +365,29 @@ class MessageTests(TeamCase):
         self.assertEqual(result["wait_outcome"], "timeout")
         self.assertNotIn("runtime_status", result)
         self.assertNotIn("runtime_health", result)
+        self.assertIsNotNone(self.registry.slot(record.teammate_id))
+
+    def test_result_ack_rejects_pending_request(self) -> None:
+        record = self.create()
+        request = self.registry.prepare(record)
+        environment = {
+            "XDG_STATE_HOME": str(self.root),
+            "XDG_CONFIG_HOME": str(self.root / "config"),
+        }
+        output = io.StringIO()
+        with (
+            patch.dict(os.environ, environment),
+            patch("pi_shepherd.cli.registry_path", return_value=self.registry.path),
+            contextlib.redirect_stdout(output),
+        ):
+            self.assertEqual(
+                cli.main(["result", request.request_id, "--ack", "--json"]),
+                1,
+            )
+
+        payload = cast(dict[str, object], json.loads(output.getvalue()))
+        error = cast(dict[str, object], payload["error"])
+        self.assertEqual(error["code"], "pending")
         self.assertIsNotNone(self.registry.slot(record.teammate_id))
 
     def test_request_stdin_reaches_message_dispatch(self) -> None:

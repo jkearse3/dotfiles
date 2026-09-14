@@ -4,6 +4,7 @@
 # pyright: reportUnusedCallResult=false
 
 import json
+import math
 import os
 import subprocess
 from collections.abc import Mapping, Sequence
@@ -24,6 +25,7 @@ REQUIRED_METHODS = {
     "tab.close",
     "agent.start",
     "agent.prompt",
+    "agent.wait",
     "agent.read",
     "agent.focus",
 }
@@ -250,7 +252,12 @@ class Herdr:
         )
 
     def run(
-        self, args: Sequence[str], *, mutation: bool = False, timeout: float = 30
+        self,
+        args: Sequence[str],
+        *,
+        mutation: bool = False,
+        timeout: float = 30,
+        accepted_error_code: str | None = None,
     ) -> str:
         try:
             result = subprocess.run(
@@ -271,6 +278,18 @@ class Herdr:
                 uncertain=mutation,
             ) from error
         if result.returncode:
+            try:
+                failure_text = (result.stdout or result.stderr).decode("utf-8")
+                failure = obj(cast(object, json.loads(failure_text)))
+                string(failure.get("id"))
+                error_code = string(obj(failure.get("error")).get("code"))
+            except (UnicodeError, ValueError, TeamError):
+                error_code = None
+            if accepted_error_code is not None and error_code == accepted_error_code:
+                raise TeamError(
+                    "accepted_herdr_error",
+                    "Herdr returned an expected command outcome",
+                )
             raise TeamError(
                 "herdr_rejected" if result.returncode == 2 else "herdr_error",
                 "Herdr command failed; inspect current state",
@@ -290,8 +309,14 @@ class Herdr:
         *,
         mutation: bool = False,
         timeout: float = 30,
+        accepted_error_code: str | None = None,
     ) -> Mapping[str, object]:
-        text = self.run(args, mutation=mutation, timeout=timeout)
+        text = self.run(
+            args,
+            mutation=mutation,
+            timeout=timeout,
+            accepted_error_code=accepted_error_code,
+        )
         try:
             payload = obj(cast(object, json.loads(text)))
             string(payload.get("id"))
@@ -417,6 +442,37 @@ class Herdr:
             ("agent", "prompt", pane.pane_id, text), "agent_prompted", mutation=True
         )
         self.check_agent_response(result, pane)
+
+    def wait_agent(
+        self, pane: Pane, until: Sequence[str], timeout: float
+    ) -> Pane | None:
+        """Wait for an exact agent to enter one of ``until``; return None on timeout."""
+        if timeout <= 0:
+            return None
+        milliseconds = max(1, math.ceil(timeout * 1000))
+        args = ["agent", "wait", pane.pane_id]
+        for status_value in until:
+            args.extend(("--until", status_value))
+        args.extend(("--timeout", str(milliseconds)))
+        try:
+            result = self.call(
+                args,
+                "agent_info",
+                timeout=timeout + 5,
+                accepted_error_code="timeout",
+            )
+        except TeamError as error:
+            if error.code == "accepted_herdr_error":
+                return None
+            raise
+
+        matched = decode_pane(result.get("agent"))
+        require(
+            same_binding(matched, pane) and matched.status in until,
+            "protocol",
+            "Wrong waited agent binding",
+        )
+        return matched
 
     def check_agent_response(self, result: Mapping[str, object], pane: Pane) -> None:
         try:

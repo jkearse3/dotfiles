@@ -11,143 +11,102 @@ compatibility:
 
 # Pi Shepherd
 
-Use this managed surface, not raw Herdr, for authorized teammate work. A twin or
-profile grants no task, mutation, publication, or cleanup authority. Follow the
-host's delegation and human-approval rules. Never start nested delegation
-without explicit human authorization in that conversation.
+Use this managed surface, not raw Herdr, for authorized teammate work. A launch
+grants no task, mutation, publication, or cleanup authority. Follow the host's
+delegation and approval rules. Never start nested delegation without explicit
+human authorization in that conversation. If the managed path fails, stop.
 
-## Scope and discovery
+## Normal workflow
 
-`profiles`, `--skill`, `result`, and `cancel` work without a live Herdr caller.
-Other commands require `HERDR_ENV=1`, a local endpoint, and a resolvable current
-pane. Inspect `pi-shepherd --help` for syntax. Place `--json` before the
-command; JSON uses schema version 2.
+Names are immutable within the current endpoint/workspace. Use full `tm_…` IDs
+for deliberate cross-workspace access and ambiguous closed names. Request IDs
+are global references. JSON schema version 2 is stable; `--json` may appear
+before or after the command.
 
-Names are immutable, exact, and local to the caller's current workspace. Any
-same-user caller in that workspace can manage its teammates. This prevents
-accidents; it is not authentication. Use full `tm_…` IDs for deliberate
-cross-workspace access and ambiguous closed names. Request IDs are global
-references.
+Inspect state and configured profiles:
 
 ```sh
 pi-shepherd --json profiles
 pi-shepherd --json list
-pi-shepherd --json list --all --include-closed
 pi-shepherd --json show REF
 ```
 
-## Choose a launch
-
-Default creation twins the calling Pi's current provider, model, and effective
-thinking level. It starts a fresh conversation and otherwise uses normal Pi
-resource discovery in the selected working directory. It does not copy messages,
-active tools, scoped models, runtime prompt changes, extension memory,
-permissions, or sandbox policy.
+Default creation starts a fresh conversation with the calling Pi's provider,
+model, and effective thinking level. It requires authoritative Pi shell-tool
+context and otherwise fails before mutation. It does not copy messages, tools,
+permissions, extension memory, runtime prompt changes, or sandbox policy. An
+explicit profile is a static preset and does not inherit caller settings;
+inspect it and state the task-specific reason before overriding the default.
 
 ```sh
 pi-shepherd --json create NAME --cwd "$PWD"
-```
-
-Default creation requires authoritative `PI_PROVIDER`, `PI_MODEL`, and
-`PI_REASONING_LEVEL` values from a Pi shell-tool call and fails before mutation
-when the caller is not Pi or any value is invalid. There is no fallback profile.
-
-An explicit profile is a static Pi launch preset and does not inherit caller
-model settings. Inspect profiles before selecting one, then state the override
-and its task-specific reason.
-
-```sh
 pi-shepherd --json create NAME --profile PROFILE --cwd "$PWD"
 ```
 
-## Create and submit
+Record the returned teammate and tab IDs. For parallel work, create all
+teammates first and then submit independent requests concurrently. Give each
+teammate bounded scope, relevant context, expected result and verification,
+explicit write or read-only authority, nonoverlapping ownership, and the rule
+against further delegation.
 
-Creation uses one dedicated no-focus tab. Choose a concise task-derived logical
-name; its tab label is `NAME [pi-shepherd:TEAMMATE_ID]`. Record the returned
-teammate and tab IDs. For parallel assignments create all teammates first, then
-submit requests concurrently.
-
-Give each teammate a bounded scope, relevant context, expected result and
-verification, explicit write authority or read-only restriction, nonoverlapping
-file ownership, and the restriction on further delegation.
+Submit prompts through stdin, preferably from a private producer; do not put
+prompt text in arguments, shell strings, or heredocs. Pass `--allow-focused`
+only after ensuring the human composer is clear. It bypasses only the focus
+check.
 
 ```sh
-PROMPT_PRODUCER | pi-shepherd --json request REF --stdin --wait --allow-focused
+PROMPT_PRODUCER | pi-shepherd --json request REF --stdin --wait --ack --allow-focused
 ```
 
-Retain the exact request ID returned by `request`; durable recovery,
-acknowledgement, and cancellation use it.
+`--ack` requires `--wait`. A completed reply is emitted and flushed before its
+slot is deleted. Timeout, blocked, unhealthy, uncertain-delivery, and
+settled-without-reply outcomes remain pending and report
+`ack_outcome=not_completed`. Without `--ack`, completed results remain stored.
+There is one request slot, no queue, and no automatic retry or replay.
 
-Supply the prompt through standard input, preferably by piping a private
-producer's stdout directly. Do not save it solely for submission or put prompt
-text in CLI arguments, shell command strings, or heredoc command strings.
-
-Pass `--allow-focused` so the human may observe the teammate; it bypasses only
-the focus check. If human terminal input is known or suspected, wait for the
-human to confirm the composer is clear before submitting a request.
-
-A request reserves one random `rq_…` slot before one terminal submission and
-appends an exact reply instruction. Pending work and completed unacknowledged
-results block further requests. There is no queue or automatic retry.
-
-## Reply and collect
-
-The teammate must use the exact request ID in the submitted instruction:
+A teammate normally follows the exact reply instruction appended to its prompt:
 
 ```sh
 pi-shepherd reply REQUEST_ID --stdin < RESPONSE_FILE
-# Alternatively:
-pi-shepherd reply REQUEST_ID --file RESPONSE_FILE
 ```
 
-Use a private temporary response file, prepared with `mktemp` and written with a
-file-writing tool, or pipe a producer's stdout directly. Do not put response
-text in CLI arguments, `echo`/`printf` arguments, shell command strings, or
-heredoc command strings. Limit the UTF-8 body to 256 KiB. Remove only your own
-temporary file after confirmed submission.
+Use a private temporary file or direct pipe, never a response argument or shell
+string. Limit replies to 256 KiB of UTF-8 and remove only your own temporary
+file after confirmed submission. Reply checks the teammate environment, exact
+request ID, current managed binding, alias, kind, workspace, tab, and pane.
 
-The CLI checks `PI_SHEPHERD_TEAMMATE_ID`, current managed binding, alias, kind,
-workspace, tab, pane, and exact pending request ID. A cancelled or old ID cannot
-fill a subsequent request.
+Recover or acknowledge independently of the original caller:
 
 ```sh
 pi-shepherd --json result REQUEST_ID --wait --timeout 600
-pi-shepherd result REQUEST_ID
 pi-shepherd result REQUEST_ID --ack
 pi-shepherd --json cancel REQUEST_ID
 ```
 
-`request --wait` returns a cooperative reply without acknowledgement. Treat
-`request_status` as durable `pending` or `completed` state. `wait_outcome`,
-`runtime_status`, and `runtime_health` are diagnostics and never complete or
-remove a request. `result` remains usable after caller restart or teammate
-closure. `result --ack` outputs and flushes the completed body before deleting
-its exact slot; output failure preserves retrieval. `cancel` removes only a
-matching pending request and does not interrupt the agent.
+`result` and `cancel` do not require live Herdr. Pending `result --ack` fails;
+completed acknowledgement occurs only after successful output. Cancel removes
+only a pending slot and does not stop the agent. Replies are
+`cooperative_unverified`: correlation is not authentication or proof that the
+task succeeded.
 
-Results are `cooperative_unverified`: exact request correlation is not
-cryptographic authentication or semantic proof. A successful CLI exit means the
-reported state was returned, not that the delegated task succeeded. Acknowledge
-a completed request result when it is no longer needed.
+## Unresolved work
 
-## Observe unresolved work
-
-Idle and done are settled observations, not semantic results. A blocked,
-`reply_missing`, timeout, prepared, or uncertain request remains in the inbox.
-Never replay it automatically. After uncertain dispatch, a late exact-ID reply
-may still arrive.
+Durable `request_status` is only `pending` or `completed`. Treat `wait_outcome`,
+`runtime_status`, and `runtime_health` as separate diagnostics. Idle and done
+are settled observations, not semantic results. Never replay prepared,
+uncertain, timed-out, blocked, unhealthy, or reply-missing work automatically; a
+late exact-ID reply may still arrive.
 
 ```sh
 pi-shepherd --json wait REF --timeout 60
-pi-shepherd --json wait REF --until blocked --timeout 60
 pi-shepherd --json show REF
 pi-shepherd read REF --source recent-unwrapped --lines 120
 ```
 
-`read` is unverified terminal recovery, never a result fallback. It can expose
-prompts, secrets, tool traces, and human turns; scrollback may be incomplete.
-Ask the human before answering any approval or question. Do not interpret a
-human's direct teammate turn as a requested coordinator result.
+Terminal reads are unverified recovery, never a result fallback. They can expose
+prompts, secrets, tool traces, incomplete scrollback, and human turns. Ask the
+human before answering any approval or question, and do not reinterpret a direct
+human turn as a coordinator result.
 
 ## Repair and cleanup
 
@@ -160,53 +119,36 @@ pi-shepherd --json close REF
 pi-shepherd --json forget REF
 ```
 
-Inspection derives fresh health and automatically applies only exact
-provisioning binding, promotion, within-tab pane movement, and positive closure
-transitions. `repair` reports one action and evidence. `--apply` refreshes that
-evidence before accepting an exact relocation (full teammate ID required),
-restoring a marker, or resuming an interrupted close.
+Inspection automatically accepts only exact provisioning binding, unique
+alias/kind promotion, within-tab pane movement, and positively proven closure.
+`repair --apply` refreshes evidence before exact relocation, marker restoration,
+or interrupted-close resumption and returns fresh post-repair state. Relocation
+requires a full teammate ID.
 
-There is no in-place restart. Missing agents require explicit close/create;
-repair does not start a process or alter the inbox. Fresh creation gives the
-teammate a new ID and conversation. Closed logical names can be reused;
-completed results remain retrievable by their original request IDs.
-
-An unconfirmed launch remains provisioning and is never restarted. A late exact
-alias can be confirmed automatically. Otherwise inspect, close its exact
-uncontaminated tab, and create a fresh teammate. Never infer from alias absence
-that a delayed start cannot still occur. Unbound uncertain creation cannot be
-closed by guessing.
-
+There is no in-place restart. Missing or uncertain agents require explicit
+close/create; never infer from alias absence that a delayed start cannot occur.
 Ambiguous identities, changed conflicting markers, foreign occupants, extra
-panes, and unaccepted relocation fail closed. Never choose candidates by cwd or
-kind. Local locks cannot prevent human/raw-Herdr races between snapshot and
-mutation.
+panes, and unaccepted relocation fail closed. Never rank candidates by cwd or
+kind. Local locks do not prevent human or raw-Herdr races.
 
-Treat session-created teammate tabs as temporary unless the human asks to retain
-them. After collecting a response, use managed close unless work is unresolved,
-the teammate is blocked awaiting human input, or the human interacted with or
-asked to retain it. Before completion, verify each created tab is closed or
-report its exact ID and retention reason.
-
+Treat session-created tabs as temporary unless the human asks to retain them.
 Before closing, freshly confirm exact task ownership and identity with `show`.
-Normal close requires settled work and no pending request. A missing agent also
-requires positive foreground-shell evidence. Completed results survive closure.
-`close --force` bypasses only pending-work and runtime-status checks, never
-exact identity, contamination, relocation, or final-workspace-tab protection.
+Normal close requires an uncontaminated exact tab, settled runtime, no pending
+request, and more than one workspace tab. A missing agent also requires positive
+foreground-shell evidence. `close --force` bypasses only pending-work and
+runtime-status checks, never identity, contamination, relocation, shell proof,
+or final-tab protection. Completed results survive closure.
 
-`forget` normally requires closed intent and an empty inbox. `forget --force`
-can orphan a tab or discard a result and requires explicit destructive-action
-authorization. It never closes a resource.
-
-If the managed path fails, stop; do not substitute raw Herdr. Never close a
-resource whose exact identity and task ownership are unknown.
+Normal forget requires closed intent and an empty inbox. `forget --force` may
+orphan a tab or discard a result, requires explicit destructive-action
+authorization, and never closes a resource. Never close or forget a resource
+whose exact identity and task ownership are unknown. Before completion, close
+each task-owned temporary tab or report its exact ID and retention reason.
 
 ## Privacy
 
-The private database stores plaintext reply bodies, not prompts, terminal
-captures, Pi sessions, launch arguments, unrestricted environment, or runtime
-observation history. Acknowledgement and cancellation are logical deletion, not
-secure erasure from WAL files, backups, or filesystem snapshots.
-
-pi-shepherd has a clean namespace. It does not inspect, migrate, adopt, or
-remove state, tabs, aliases, markers, or configuration created by other tools.
+The private database stores plaintext replies, not prompts, terminal captures,
+Pi sessions, launch arguments, unrestricted environment, or observation history.
+Acknowledgement and cancellation are logical deletion, not secure erasure from
+WAL files, backups, or snapshots. pi-shepherd never adopts, migrates, or removes
+another tool's state or resources.

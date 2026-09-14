@@ -20,7 +20,7 @@ pi-shepherd [--json] create NAME [--profile PROFILE] [--cwd PATH]
 pi-shepherd [--json] list [--all] [--include-closed]
 pi-shepherd [--json] show REF
 pi-shepherd [--json] request REF (--stdin | --prompt TEXT | --prompt-file PATH|-)
-  [--wait] [--timeout SECONDS] [--allow-focused]
+  [--wait] [--ack] [--timeout SECONDS] [--allow-focused]
 pi-shepherd [--json] reply REQUEST_ID (--stdin | --file PATH)
 pi-shepherd [--json] result REQUEST_ID [--wait] [--timeout SECONDS] [--ack]
 pi-shepherd [--json] cancel REQUEST_ID
@@ -44,10 +44,14 @@ JSON success is `{schema_version:2,ok:true,command,result}`; application failure
 is `{schema_version:2,ok:false,command,error:{code,message,uncertain}}`. CLI
 syntax errors exit 2, application failures exit 1, and success exits 0. Human
 `read` and completed-result output is plain content; other human output is
-structured JSON text. `attach` requires TTY streams and rejects JSON mode.
+structured JSON text. Runtime `wait` preserves `status=timeout` on timeout,
+reports fresh point-in-time state in `runtime_status`, and uses `wait_outcome`
+to distinguish a matched status event. `attach` requires TTY streams and rejects
+JSON mode.
 
-`profiles`, `--skill`, `result`, and `cancel` work without a live Herdr session.
-Other commands require the caller's Herdr context and protocol 22/schema 1.
+`--json` is accepted before or after a command. `profiles`, `--skill`, `result`,
+and `cancel` work without a live Herdr session. Other commands require the
+caller's Herdr context and protocol 22/schema 1.
 
 ## Pi launch behavior
 
@@ -107,14 +111,17 @@ at most 256 KiB of UTF-8 through stdin or a file. `PI_SHEPHERD_TEAMMATE_ID`,
 live alias/kind, accepted binding, and pending request ID must all agree. A
 stale request ID cannot fill a later slot.
 
-`request --wait` polls for a cooperative reply without acknowledging it. Durable
-`request_status` is only `pending` or `completed`; `wait_outcome`, runtime
-status, and health are separate observations. Blocked, unhealthy, timed-out,
-uncertain-delivery, and settled-without-reply states preserve the request.
-`result --wait` polls durable state and remains usable after agent or server
-termination. Replies are labeled `cooperative_unverified`: exact correlation is
-not authentication or proof of semantic success. Terminal text is never a result
-fallback.
+`request --wait` uses bounded Herdr status waits and durable reply checks
+without acknowledging by default. Add `--ack` to delete a completed reply only
+after successful output; a pending outcome is retained and reports
+`ack_outcome=not_completed`. Durable `request_status` is only `pending` or
+`completed`; `wait_outcome`, runtime status, and health are separate
+observations. Blocked, unhealthy, timed-out, uncertain-delivery, and
+settled-without-reply states preserve the request. `result --wait` polls durable
+state without Herdr and remains usable after agent or server termination.
+`result --ack` rejects pending requests. Replies are labeled
+`cooperative_unverified`: exact correlation is not authentication or proof of
+semantic success. Terminal text is never a result fallback.
 
 A prepared or uncertain request is never replayed. `cancel` conditionally
 deletes only a pending request and does not stop the process. `result --ack`
@@ -131,10 +138,13 @@ intent and are not replayed.
 
 Automatic transitions are limited to exact provisioning binding, unique
 alias/kind promotion, agent-pane refresh within the accepted tab, and positively
-proven closure. `repair` reports one action and its evidence. `repair --apply`
+proven closure. `list` is a nonmutating point-in-time view derived from one
+complete endpoint snapshot; `show` performs automatic reconciliation under the
+teammate lock. `repair` reports one action and its evidence. `repair --apply`
 rechecks that evidence before accepting an exact relocation, restoring the exact
-marker, or resuming an interrupted close. Relocation requires a full teammate
-ID. There is no in-place restart or candidate ranking.
+marker, or resuming an interrupted close, then returns a fresh `after` view.
+Relocation requires a full teammate ID. There is no in-place restart or
+candidate ranking.
 
 Normal close requires an exact uncontaminated tab, more than one tab in its
 workspace, settled runtime, and no pending request. When the agent is absent,

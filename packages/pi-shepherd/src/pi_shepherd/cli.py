@@ -15,7 +15,7 @@ from typing import cast
 
 from . import messages, terminal
 from .config import load_config
-from .errors import TeamError, present
+from .errors import TeamError, present, require
 from .herdr import Herdr
 from .locks import Locks
 from .models import READ_SOURCES, STATUSES, Request
@@ -70,16 +70,49 @@ def parser() -> argparse.ArgumentParser:
         prog="pi-shepherd",
         description="Persistent Pi teammates in Herdr workspaces",
     )
-    root.add_argument("--json", action="store_true")
-    root.add_argument("--skill", action="store_true")
+    root.add_argument("--json", action="store_true", help="emit stable JSON")
+    root.add_argument("--skill", action="store_true", help="print the packaged skill")
     commands = root.add_subparsers(dest="command")
-    commands.add_parser("profiles", help="list configured static profiles")
-    create = commands.add_parser("create", help="create a no-focus teammate tab")
+
+    help_text = {
+        "profiles": "list configured static profiles",
+        "create": "create a no-focus teammate tab",
+        "list": "list point-in-time teammate health",
+        "show": "inspect and reconcile one teammate",
+        "focus": "focus an exact healthy teammate",
+        "attach": "attach an interactive terminal",
+        "repair": "inspect or apply one evidence-backed repair",
+        "close": "close an exact managed teammate tab",
+        "forget": "delete teammate intent without closing resources",
+        "wait": "wait for a runtime status",
+        "read": "read unverified terminal output",
+        "request": "submit one cooperative request",
+        "reply": "store an exact request reply",
+        "result": "retrieve or acknowledge a request result",
+        "cancel": "cancel one pending request slot",
+    }
+
+    def subcommand(name: str) -> argparse.ArgumentParser:
+        command = commands.add_parser(
+            name,
+            help=help_text[name],
+            description=help_text[name],
+        )
+        command.add_argument(
+            "--json",
+            action="store_true",
+            default=argparse.SUPPRESS,
+            help="emit stable JSON",
+        )
+        return command
+
+    subcommand("profiles")
+    create = subcommand("create")
     create.add_argument("name")
     create.add_argument("--profile")
     create.add_argument("--cwd")
     create.add_argument("--startup-timeout", type=integer(4, 300))
-    listing = commands.add_parser("list", help="list workspace teammates")
+    listing = subcommand("list")
     listing.add_argument("--all", action="store_true")
     listing.add_argument("--include-closed", action="store_true")
     for name in (
@@ -93,7 +126,7 @@ def parser() -> argparse.ArgumentParser:
         "read",
         "request",
     ):
-        command = commands.add_parser(name)
+        command = subcommand(name)
         command.add_argument("ref")
         if name in ("close", "forget"):
             command.add_argument("--force", action="store_true")
@@ -113,9 +146,14 @@ def parser() -> argparse.ArgumentParser:
             source.add_argument("--prompt")
             source.add_argument("--prompt-file")
             command.add_argument("--wait", action="store_true")
+            command.add_argument(
+                "--ack",
+                action="store_true",
+                help="acknowledge a completed reply after successful output",
+            )
             command.add_argument("--allow-focused", action="store_true")
     for name in ("reply", "result", "cancel"):
-        command = commands.add_parser(name)
+        command = subcommand(name)
         command.add_argument("request_id")
         if name == "reply":
             source = command.add_mutually_exclusive_group(required=True)
@@ -138,6 +176,8 @@ def parse_args(argv: Sequence[str]) -> Arguments:
         root.error("a command is required")
     if args.command == "attach" and args.json:
         root.error("attach is interactive and rejects --json")
+    if args.command == "request" and args.ack and not args.wait:
+        root.error("request --ack requires --wait")
     return args
 
 
@@ -254,7 +294,13 @@ def main(argv: Sequence[str] | None = None) -> int:
                     result["wait_outcome"] = (
                         "completed" if request.reply is not None else "timeout"
                     )
-                if args.ack and request.reply is not None:
+                if args.ack:
+                    require(
+                        request.reply is not None,
+                        "pending",
+                        "Cannot acknowledge a pending request",
+                    )
+                    result["ack_outcome"] = "on_successful_output"
                     acknowledgement = request
             elif args.command == "cancel":
                 registry.request(args.request_id)
@@ -265,6 +311,14 @@ def main(argv: Sequence[str] | None = None) -> int:
                 if args.command == "attach":
                     return terminal.attach(team, args.ref)
                 result = dispatch(team, args)
+                if args.command == "request" and args.ack:
+                    request_result = cast(dict[str, object], result)
+                    acknowledgement = messages.acknowledgement_candidate(request_result)
+                    request_result["ack_outcome"] = (
+                        "on_successful_output"
+                        if acknowledgement is not None
+                        else "not_completed"
+                    )
         if args.command == "forget" and args.force:
             print(
                 "WARNING: forced forget may orphan a live tab or discard a result",

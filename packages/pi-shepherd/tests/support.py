@@ -43,10 +43,19 @@ class FakeHerdr(Herdr):
         self.after_prompt: Callable[[str], None] | None = None
         self.counter: int = 1
         self.is_shell_ready: bool = True
+        self.wait_calls: list[tuple[str, tuple[str, ...], float]] = []
+        self.compatibility_calls: int = 0
+        self.current_calls: int = 0
+        self.snapshot_calls: int = 0
 
     @override
     def run(
-        self, args: Sequence[str], *, mutation: bool = False, timeout: float = 30
+        self,
+        args: Sequence[str],
+        *,
+        mutation: bool = False,
+        timeout: float = 30,
+        accepted_error_code: str | None = None,
     ) -> str:
         raise AssertionError(f"FakeHerdr must not invoke external commands: {args!r}")
 
@@ -56,14 +65,16 @@ class FakeHerdr(Herdr):
 
     @override
     def compatibility(self) -> None:
-        pass
+        self.compatibility_calls += 1
 
     @override
     def current(self) -> Pane:
+        self.current_calls += 1
         return next(p for p in self.panes if p.pane_id == self.caller_id)
 
     @override
     def snapshot(self) -> Snapshot:
+        self.snapshot_calls += 1
         spaces = sorted({tab.workspace_id for tab in self.tabs})
         workspaces = tuple(
             Workspace(
@@ -131,6 +142,17 @@ class FakeHerdr(Herdr):
         self.effect("prompt")
         if self.after_prompt:
             self.after_prompt(text)
+
+    @override
+    def wait_agent(
+        self, pane: Pane, until: Sequence[str], timeout: float
+    ) -> Pane | None:
+        self.wait_calls.append((pane.pane_id, tuple(until), timeout))
+        agent = next(
+            (item for item in self.agents if item.pane_id == pane.pane_id),
+            None,
+        )
+        return agent if agent is not None and agent.status in until else None
 
     @override
     def close_tab(self, tab: Tab) -> None:

@@ -55,6 +55,9 @@ def main() -> None:
         packaged_skill = (output / "share/pi-shepherd/SKILL.md").read_bytes()
         if run([str(binary), "--skill"]) != packaged_skill:
             raise RuntimeError("Packaged skill does not match CLI skill output")
+        skill_text = packaged_skill.decode("utf-8")
+        if len(skill_text.splitlines()) > 170 or len(skill_text.split()) > 1000:
+            raise RuntimeError("Packaged skill exceeds its agent-context budget")
         for command in ([str(binary)], [sys.executable, "-B", "-m", "pi_shepherd"]):
             result = cast(
                 dict[str, object], json.loads(run([*command, "--json", "profiles"]))

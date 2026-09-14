@@ -59,7 +59,12 @@ def table(value: object) -> dict[str, object]:
 
 
 def closed_keys(raw: Mapping[str, object], allowed: set[str]) -> None:
-    require(not (set(raw) - allowed), "configuration", "Unknown configuration key")
+    unknown = sorted(set(raw) - allowed)
+    require(
+        not unknown,
+        "configuration",
+        "Unknown configuration key: " + ", ".join(unknown),
+    )
 
 
 def text(value: object, *, bounded: bool = False) -> str:

@@ -122,6 +122,44 @@ class HerdrTests(unittest.TestCase):
                 self.assertEqual(caught.exception.uncertain, uncertain)
                 self.assertNotIn("sensitive prompt", str(caught.exception))
 
+    def test_agent_wait_matches_exact_binding_and_handles_timeout(self) -> None:
+        runtime = Herdr(environment={})
+        pane = decode_pane(pane_wire())
+        matched = {
+            "id": "test",
+            "result": {
+                "type": "agent_info",
+                "agent": {**pane_wire(), "agent_status": "blocked"},
+            },
+        }
+        timeout = {
+            "id": "test",
+            "error": {"code": "timeout", "message": "redacted"},
+        }
+        outcomes = (
+            (subprocess.CompletedProcess([], 0, json.dumps(matched).encode(), b""), "blocked"),
+            (subprocess.CompletedProcess([], 1, json.dumps(timeout).encode(), b""), None),
+        )
+        for completed, expected in outcomes:
+            with patch("pi_shepherd.herdr.subprocess.run", return_value=completed) as run:
+                result = runtime.wait_agent(pane, ("blocked",), 0.5)
+            self.assertEqual(result.status if result is not None else None, expected)
+            self.assertIn("--timeout", run.call_args.args[0])
+            self.assertIn("500", run.call_args.args[0])
+
+        malformed_timeout = subprocess.CompletedProcess(
+            [],
+            1,
+            json.dumps({"error": {"code": "timeout"}}).encode(),
+            b"",
+        )
+        with (
+            patch("pi_shepherd.herdr.subprocess.run", return_value=malformed_timeout),
+            self.assertRaises(TeamError) as caught,
+        ):
+            _ = runtime.wait_agent(pane, ("blocked",), 0.5)
+        self.assertEqual(caught.exception.code, "herdr_error")
+
     def test_timeout_and_malformed_success_are_never_replayed(self) -> None:
         runtime = Herdr(environment={})
         for outcome in (b"not JSON", b"\xff"):

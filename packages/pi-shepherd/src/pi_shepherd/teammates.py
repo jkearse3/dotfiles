@@ -36,9 +36,9 @@ class Team:
         return self.context
 
     def resolve(self, reference: str) -> Teammate:
-        context = self.refresh()
+        """Resolve against the latest context; callers must revalidate after locking."""
         return self.registry.resolve(
-            reference, context.endpoint, context.caller.workspace_id
+            reference, self.context.endpoint, self.context.caller.workspace_id
         )
 
     @contextmanager
@@ -62,12 +62,16 @@ class Team:
             )
             yield current
 
-    def observe(self, record: Teammate) -> tuple[Teammate, Health, Snapshot]:
+    def observe(
+        self, record: Teammate, initial_snapshot: Snapshot | None = None
+    ) -> tuple[Teammate, Health, Snapshot]:
+        """Derive health, applying bounded automatic transitions from fresh evidence."""
         from .topology import derive
 
+        snapshot = initial_snapshot
         for _ in range(4):
             current = self.registry.get(record.teammate_id)
-            snapshot = self.runtime.snapshot()
+            snapshot = snapshot or self.runtime.snapshot()
             health = derive(current, snapshot)
             if not health.automatic:
                 require(
@@ -87,14 +91,19 @@ class Team:
                 tab=health.tab.tab_id if health.tab else None,
                 pane=health.pane.pane_id if health.pane else None,
             )
+            snapshot = None
         raise TeamError(
             "conflict", "Topology did not converge within the bounded observation fence"
         )
 
     def healthy(
-        self, record: Teammate, *, settled: bool = False
+        self,
+        record: Teammate,
+        *,
+        settled: bool = False,
+        initial_snapshot: Snapshot | None = None,
     ) -> tuple[Teammate, Health, Snapshot]:
-        record, health, snapshot = self.observe(record)
+        record, health, snapshot = self.observe(record, initial_snapshot)
         require(
             health.status == "healthy" and health.pane is not None,
             "unhealthy",
@@ -134,19 +143,22 @@ class Team:
 
     def show(self, reference: str) -> dict[str, object]:
         with self.locked(reference) as record:
-            record, health, _ = self.observe(record)
+            record, health, _ = self.observe(record, self.context.snapshot)
             return self.view(record, health)
 
     def list(
         self, all_workspaces: bool, include_closed: bool
     ) -> list[dict[str, object]]:
+        """Return point-in-time views from one complete endpoint snapshot."""
+        from .topology import derive
+
         context = self.refresh()
         records = self.registry.list(
             context.endpoint,
             None if all_workspaces else context.caller.workspace_id,
             include_closed,
         )
-        return [self.show(record.teammate_id) for record in records]
+        return [self.view(record, derive(record, context.snapshot)) for record in records]
 
     def create(
         self, name: str, profile_name: str | None, cwd: str | None, timeout: int | None
@@ -251,7 +263,7 @@ class Team:
 
     def repair(self, reference: str, apply: bool) -> dict[str, object]:
         with self.locked(reference, topology=True) as record:
-            record, health, _ = self.observe(record)
+            record, health, _ = self.observe(record, self.context.snapshot)
             result: dict[str, object] = {
                 "teammate_id": record.teammate_id,
                 "health": health.status,
@@ -289,7 +301,7 @@ class Team:
                     "full_id_required",
                     "Relocation requires the full teammate ID",
                 )
-                _ = self.registry.transition(
+                record = self.registry.transition(
                     record,
                     phase=record.phase,
                     workspace=tab.workspace_id,
@@ -301,10 +313,19 @@ class Team:
                     tab, tab_label(record.teammate_id, record.logical_name)
                 )
             elif health.action == "resume_close":
-                _ = self.close_bound(record, health, snapshot, force=False)
+                record = self.close_bound(record, health, snapshot, force=False)
             else:
                 raise TeamError("unhealthy", "No supported repair action")
-            result["applied"] = True
+
+            record, post_health, _ = self.observe(record)
+            result.update(
+                {
+                    "applied": True,
+                    "post_health": post_health.status,
+                    "post_action": post_health.action,
+                    "after": self.view(record, post_health),
+                }
+            )
             return result
 
     def close_bound(
@@ -354,14 +375,14 @@ class Team:
 
     def close(self, reference: str, force: bool) -> dict[str, object]:
         with self.locked(reference, topology=True) as record:
-            record, health, snapshot = self.observe(record)
+            record, health, snapshot = self.observe(record, self.context.snapshot)
             if health.status != "closed":
                 record = self.close_bound(record, health, snapshot, force)
             return {"teammate_id": record.teammate_id, "phase": record.phase}
 
     def forget(self, reference: str, force: bool) -> dict[str, object]:
         with self.locked(reference, topology=True) as record:
-            record, health, _ = self.observe(record)
+            record, health, _ = self.observe(record, self.context.snapshot)
             require(
                 health.status
                 in {

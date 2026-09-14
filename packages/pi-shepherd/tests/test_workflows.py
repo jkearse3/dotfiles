@@ -6,6 +6,7 @@ from dataclasses import replace
 from typing import cast
 from unittest.mock import patch
 
+from pi_shepherd import terminal
 from pi_shepherd.errors import TeamError
 from pi_shepherd.ids import marker, tab_label
 from pi_shepherd.messages import request
@@ -32,6 +33,58 @@ class LifecycleTests(TeamCase):
         self.assertEqual(self.runtime.calls, ["create", "start", "close"])
         self.assertEqual(self.registry.request(request.request_id).reply, "retained")
         self.assertEqual(self.team.show(record.teammate_id)["health"], "closed")
+
+    def test_show_and_list_have_bounded_observation_cost(self) -> None:
+        records = [self.create(name) for name in ("first", "second", "third")]
+        self.runtime.current_calls = 0
+        self.runtime.snapshot_calls = 0
+
+        _ = self.team.show(records[0].teammate_id)
+        self.assertEqual(
+            (self.runtime.current_calls, self.runtime.snapshot_calls),
+            (1, 1),
+        )
+
+        self.runtime.current_calls = 0
+        self.runtime.snapshot_calls = 0
+        views = self.team.list(False, False)
+        self.assertEqual(len(views), 3)
+        self.assertEqual(
+            (self.runtime.current_calls, self.runtime.snapshot_calls),
+            (1, 1),
+        )
+
+    def test_runtime_wait_uses_one_blocking_agent_wait(self) -> None:
+        record = self.create()
+        self.runtime.set_status("working")
+
+        original_wait = self.runtime.wait_agent
+
+        def wait_without_teammate_lock(
+            pane: Pane, until: Sequence[str], timeout: float
+        ) -> Pane | None:
+            with self.locks.hold(record.teammate_id):
+                pass
+            return original_wait(pane, until, timeout)
+
+        with patch.object(self.runtime, "wait_agent", new=wait_without_teammate_lock):
+            result = terminal.wait(self.team, record.teammate_id, "blocked", 1)
+
+        self.assertEqual(result["wait_outcome"], "timeout")
+        self.assertEqual(result["runtime_status"], "working")
+        self.assertEqual(result["status"], "timeout")
+        self.assertEqual(len(self.runtime.wait_calls), 1)
+
+        def transient_match(
+            pane: Pane, _until: Sequence[str], _timeout: float
+        ) -> Pane | None:
+            return replace(pane, status="blocked")
+
+        with patch.object(self.runtime, "wait_agent", new=transient_match):
+            matched = terminal.wait(self.team, record.teammate_id, "blocked", 1)
+        self.assertEqual(matched["wait_outcome"], "matched")
+        self.assertEqual(matched["status"], "blocked")
+        self.assertEqual(matched["runtime_status"], "working")
 
     def test_twin_and_profile_launches_remain_distinct(self) -> None:
         with (
@@ -308,7 +361,9 @@ class LifecycleTests(TeamCase):
             self.team.repair(record.teammate_id, False)["action"], "restore_marker"
         )
         self.assertNotIn("rename", self.runtime.calls)
-        _ = self.team.repair(record.teammate_id, True)
+        repair = self.team.repair(record.teammate_id, True)
+        self.assertEqual(repair["post_health"], "healthy")
+        self.assertIsNone(repair["post_action"])
         self.assertEqual(
             self.runtime.tabs[-1].label,
             tab_label(record.teammate_id, record.logical_name),

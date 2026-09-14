@@ -25,14 +25,17 @@ notification path, or result history.
 
 `topology.derive` performs no I/O. It requires a validated complete snapshot,
 scans the entire endpoint for identity conflicts, and never selects by
-similarity. `Team.observe` applies only proof-preserving transitions under
-bounded revision checks, then takes another snapshot; callers cannot reuse
-pre-transition evidence to authorize an effect. Name resolution rechecks the
-current workspace under its lock and rejects changed name bindings. Tab labels
-combine the immutable task name with the complete identity marker. Marker
-detection searches for the complete identity marker, then accepts only the exact
-current `NAME [pi-shepherd:TEAMMATE_ID]` label so stale or conflicting labels
-cannot conceal duplicate identities.
+similarity. `list` derives every row from one nonmutating point-in-time
+snapshot; commands that reconcile or act use teammate locks. `Team.observe`
+applies only proof-preserving transitions under bounded revision checks, then
+takes another snapshot; callers cannot reuse pre-transition evidence to
+authorize an effect. Its first derivation may consume the fresh post-lock
+context snapshot. Name resolution rechecks the current workspace under its lock
+and rejects changed name bindings. Tab labels combine the immutable task name
+with the complete identity marker. Marker detection searches for the complete
+identity marker, then accepts only the exact current
+`NAME [pi-shepherd:TEAMMATE_ID]` label so stale or conflicting labels cannot
+conceal duplicate identities.
 
 The concrete Herdr boundary validates required fields, full parent/count/focus
 consistency, and operation response identity. Native-session and unrelated API
@@ -64,8 +67,10 @@ Topology-changing operations acquire the endpoint lock before the teammate lock.
 This prevents two cooperating closes from both passing final-tab counting.
 Request/terminal operations use the teammate lock. SQLite unique constraints and
 conditional updates remain the final fence for non-locking request cancellation
-and acknowledgement. Locks are released before polling replies; reply itself
-revalidates the managed caller while holding the teammate lock.
+and acknowledgement. Locks are released before bounded Herdr status waits and
+durable reply checks; every wait observation is freshly revalidated under the
+lock. Reply itself revalidates the managed caller while holding the teammate
+lock.
 
 External effects are not SQLite transactions. There is one invocation per
 effect, with no retry decorator. Unknown mutation failures, malformed success,
@@ -90,8 +95,10 @@ runtime limitation, not a guarantee hidden behind local revision numbers.
 - Lifecycle/inbox tests use a domain fake; they check effect ordering, crash
   intent, uncertainty, reply attribution, explicit repair and flush-before-ack.
 - Herdr wire tests independently cover schema shapes, malformed topology,
-  current terminal resolution, response identity, process proof, and sanitized
-  failures.
+  current terminal resolution, response identity, blocking status waits, process
+  proof, and sanitized failures.
+- Observation call-budget tests keep `show` and point-in-time `list` from
+  regressing into repeated endpoint snapshots.
 - Nix installation checks run outside the source tree, verify store imports and
   exact skill bytes, and execute nonmutating JSON discovery with disposable
   config.
