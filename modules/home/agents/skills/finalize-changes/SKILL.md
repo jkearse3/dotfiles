@@ -13,9 +13,9 @@ argument-hint: "[verified working changes | explicit mutable history set]"
 # Finalize Changes
 
 Convert verified repository changes or explicitly authorized mutable history
-into the fewest coherent, fully described commits or revisions needed for
-review, rollback, and a cohesive history. Preserve the aggregate tree and leave
-a clean post-finalization state.
+into the fewest coherent, fully described, independently valid commits or
+revisions needed for review, rollback, bisection, and a cohesive history.
+Preserve the aggregate tree and leave a clean post-finalization state.
 
 ## Input
 
@@ -27,8 +27,9 @@ Infer and confirm:
 
 - **Target**: verified working changes, or an explicit mutable history set. Do
   not infer a history rewrite boundary from unrelated ancestry.
-- **Boundary intent**: default to the fewest coherent revisions. Treat "single
-  revision", "describe only", and "do not split" as single-revision intent.
+- **Boundary intent**: default to the fewest coherent, independently valid
+  revisions. Treat "single revision", "describe only", and "do not split" as
+  single-revision intent.
 - **Authority**: finalization must be explicitly requested or covered by current
   implementation authority. Verification claims authorize no broader history
   rewrite.
@@ -44,12 +45,13 @@ user-authored, pre-existing, or uncertain history without explicit authority.
    branches, publication state, and full existing descriptions. Resolve the
    immutable base and the complete target tree before mutation.
 2. Analyze the effective diff, changed files, dependencies, and existing
-   boundaries. Keep code, tests, documentation, configuration, and migrations
-   together when they support one concern.
-3. Propose the fewest coherent commits or revisions in dependency order. Split
-   independent concerns; combine partial steps and revision-local fixes. If a
-   requested single target is incoherent, stop and ask to narrow it or permit
-   multiple revisions.
+   boundaries. Keep code, tests, documentation, configuration, migrations, and
+   revision-local fixes in the earliest revision whose concern requires them.
+3. Propose the fewest coherent, independently valid commits or revisions in
+   dependency order. Split independent concerns; combine partial steps and any
+   change that would otherwise rely on a descendant revision. If a requested
+   single target is incoherent, stop and ask to narrow it or permit multiple
+   revisions.
 4. Only when creating or rewriting descriptions, read
    `references/revision-descriptions.md`, then compose and validate each
    complete description. The diff controls what changed; supplied context may
@@ -65,8 +67,8 @@ user-authored, pre-existing, or uncertain history without explicit authority.
    preserve the required empty active position. Leave the Git worktree and index
    clean.
 8. Report the immutable base, ordered change and commit IDs, full descriptions,
-   transformations, moved task-owned references, tree-preservation result,
-   conflicts, and final clean state.
+   transformations, moved task-owned references, known per-revision verification
+   status and gaps, tree-preservation result, conflicts, and final clean state.
 
 ## Boundaries
 

@@ -32,8 +32,12 @@ evidence, not constraints.
 
 - A revision is coherent when one description explains it as one reviewable
   concern without unrelated clauses.
+- A revision is independently valid when it does not knowingly rely on a
+  descendant revision to build, pass its applicable checks, or preserve required
+  behavior.
 - Split independent concerns and combine partial steps, tests, documentation,
-  configuration, and revision-local fixes that complete one concern.
+  configuration, migrations, and revision-local fixes in the earliest revision
+  whose concern requires them.
 - Order dependencies first. Otherwise prefer simpler changes before more complex
   changes and fewer files as the final tie-breaker.
 - Do not split merely because files differ by type or layer.

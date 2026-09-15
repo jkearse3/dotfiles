@@ -104,9 +104,11 @@ unpublished, task-owned commit set authorized for rewrite.
   commits with uncertain ownership. Never perform the rewrite in the user's
   current worktree.
 
-- Preserve commit dependencies and use the fewest coherent commits. A requested
-  single commit that contains independent concerns is a blocker, not permission
-  to obscure them.
+- Preserve commit dependencies and use the fewest coherent, independently valid
+  commits. No commit may knowingly rely on a descendant commit to build, pass
+  its applicable checks, or preserve required behavior. A requested single
+  commit that contains independent concerns is a blocker, not permission to
+  obscure them.
 
 ## Preserve The Tree And Finish
 

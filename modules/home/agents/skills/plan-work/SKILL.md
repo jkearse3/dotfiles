@@ -263,9 +263,10 @@ and report the completed pair without changing either plan.
    algorithms, and edge cases when reconnaissance establishes them and execution
    depends on them; do not invent speculative targets. Keep code, tests,
    documentation, configuration, and operational work together when they support
-   one result. For repository mutations, use expected independently reviewable
-   revision concerns. Authority for the complete request does not combine
-   independent concerns. Assign at most one concern to each mutating delegation.
+   one result. For repository mutations, use expected independently valid and
+   reviewable revision concerns that do not rely on descendants. Authority for
+   the complete request does not combine independent concerns. Assign at most
+   one concern to each mutating delegation.
 7. Define validation from the completion conditions and material risks. End each
    concern with validation only when dependent work needs that proof. Put
    end-to-end and aggregate checks under `Final Validation`; do not repeat the
