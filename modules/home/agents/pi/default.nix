@@ -123,12 +123,14 @@ let
           pkgs.coreutils
           pkgs.findutils
           pkgs.nodejs
-          pkgs.typescript
+          # The import checker loads TypeScript's JavaScript API, which the
+          # TypeScript 7 native preview does not ship.
+          pkgs.typescript_5
         ];
       }
       ''
         # The import checker reads specifiers with the TypeScript preprocessor.
-        export NODE_PATH=${pkgs.typescript}/lib/node_modules
+        export NODE_PATH=${pkgs.typescript_5}/lib/node_modules
 
         bash ${./extension-imports-check-test.sh} ${./extension-imports-check.mjs}
         node ${./extension-imports-check.mjs} ${./extensions}

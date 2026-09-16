@@ -26,6 +26,18 @@ extensions/
 All extension sources must be TypeScript. The repository checks imports, runs
 `tsc`, and executes every `*.test.ts` fixture.
 
+## Edit the last prompt
+
+The `edit-last-prompt` extension treats two Escape presses within 500 ms as an
+“edit and retry” gesture when the first press interrupted an active run. It
+aborts the run, rewinds the active session branch to before its latest user
+message, and restores that message in the editor. Files changed before the
+interrupt remain changed. The same behavior is available explicitly through
+`/edit-last-prompt`.
+
+Idle double-Escape behavior remains owned by Pi's `doubleEscapeAction` setting,
+and a non-empty draft is never overwritten.
+
 ## Herdr lifecycle integration
 
 `herdr-agent-state.ts` is intentionally a relative symlink to the official Pi

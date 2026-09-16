@@ -27,7 +27,9 @@
           unstablePkgs.secretspec
           unstablePkgs.shellcheck
           unstablePkgs.statix
-          unstablePkgs.typescript
+          # The extension import checker requires TypeScript's JavaScript API;
+          # TypeScript 7's native preview only ships the compiler binary.
+          unstablePkgs.typescript_5
         ];
 
         # Pi extension declarations are dev-only and per-checkout: work happens in
