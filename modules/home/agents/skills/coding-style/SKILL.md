@@ -3,9 +3,10 @@ name: coding-style
 description: >-
   Use whenever writing, editing, generating, or refactoring source code. Make
   changes easy for search-driven agents and humans to find, understand, modify,
-  and verify through consistent domain vocabulary, precise types, semantic code
-  paragraphs, scannable record construction, and risk-based durable checks.
-  Apply proportionally without unrelated cleanup or reformatting.
+  and verify through consistent domain vocabulary, precise types, progressive
+  declaration order, semantic code paragraphs, scannable record construction,
+  and risk-based durable checks. Apply proportionally without unrelated cleanup
+  or reformatting.
 ---
 
 # Coding Style
@@ -124,6 +125,33 @@ Describe what the code does and why in durable terms. Cite an issue ID or stable
 design document only when that reference adds information a later reader can
 resolve.
 
+## Order Top-Level Declarations for Progressive Disclosure
+
+At the top level of a file, module, namespace, or equivalent scope, organize
+each coherent region for progressive top-down reading. After language-mandated
+elements, lead with the region's primary concept—whether public or private—then
+place its supporting declarations and lower-level implementation details beneath
+it. Repeat this structure for each primary concept; do not group symbols merely
+by visibility.
+
+Keep direct support relationships contiguous. Place a supporting declaration
+next to the declaration whose contract, shape, or implementation depends on it,
+and do not let an unrelated helper, factory, type, constant, or secondary
+concept split them.
+
+Where the language permits references to later declarations, use that freedom
+for reader clarity rather than unnecessary dependency-first ordering. Actual
+language constraints, generated-code requirements, mandatory tooling, and
+established repository conventions take precedence.
+
+Apply this fully to new files and substantially rewritten top-level regions. In
+an existing file, apply it to declarations introduced or materially reworked by
+the change: keep those declarations in a coherent local group and place that
+group at the most sensible point in the existing order. Do not move or reformat
+unrelated declarations solely to make the surrounding file conform. When ideal
+placement would require broader reordering, preserve the existing structure and
+make the changed region as clear as possible within it.
+
 ## Structure Code Paragraphs
 
 Use blank lines as semantic delimiters. Each paragraph should perform one
@@ -231,13 +259,16 @@ For each materially changed concept:
 2. Confirm symbols covered by **Document Symbol Contracts** have concise,
    conventionally formatted documentation of their contracts.
 3. Confirm related behavior and checks use consistent, discoverable vocabulary.
-4. Scan changed functions for coherent semantic paragraphs and atomic groups.
-5. Confirm multi-field record construction uses one named field or property per
+4. Confirm declarations introduced or materially reworked use primary-first
+   disclosure and contiguous supporting declarations without unrelated
+   reordering.
+5. Scan changed functions for coherent semantic paragraphs and atomic groups.
+6. Confirm multi-field record construction uses one named field or property per
    line, including nested records.
-6. Confirm behavior covered by **Write Durable Checks** has the strongest
+7. Confirm behavior covered by **Write Durable Checks** has the strongest
    practical safe coverage, and report any remaining validation gap.
-7. Run the project's formatter and focused type, lint, and test checks.
-8. Inspect the diff for unnecessary renaming, comments, modules, API changes,
+8. Run the project's formatter and focused type, lint, and test checks.
+9. Inspect the diff for unnecessary renaming, comments, modules, API changes,
    whitespace-only changes, and repository text that depends on internal
    planning or workflow context.
 
