@@ -7,20 +7,12 @@
     "packages/nix-cleanup",
     "packages/nvim-pack",
     "packages/jj-ensure",
-    "packages/pi-shepherd",
     "packages/jj-bookmark-land",
     "packages/jj-description-format",
     "packages/jj-worktree-add",
     "packages/token-count"
   ],
   "executionEnvironments": [
-    {
-      "root": "packages/pi-shepherd/tests",
-      "extraPaths": ["packages/pi-shepherd/src", "packages/pi-shepherd/tests"]
-    },
-    {
-      "root": "packages/pi-shepherd/src"
-    },
     {
       "root": "packages/commit-message",
       "extraPaths": ["packages/commit-message/src"]
