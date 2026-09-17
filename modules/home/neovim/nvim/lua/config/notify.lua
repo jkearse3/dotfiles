@@ -1,3 +1,7 @@
+--- Provides floating, stacked notifications and installs them as `vim.notify`.
+--- Keyed notifications remain active for updates or explicit dismissal;
+--- unkeyed notifications disappear automatically after four seconds.
+
 ---@class NotifyEntry
 ---@field key string
 ---@field msg string
@@ -9,6 +13,7 @@
 ---@type NotifyEntry[]
 local entries = {}
 
+--- Finds an active notification by its stable key.
 ---@param key string
 ---@return integer|nil, NotifyEntry|nil
 local function find_entry(key)
@@ -19,6 +24,7 @@ local function find_entry(key)
 	end
 end
 
+--- Closes an entry's window and forgets its disposable buffer.
 ---@param entry NotifyEntry
 local function close_entry_win(entry)
 	if entry.win and vim.api.nvim_win_is_valid(entry.win) then
@@ -28,19 +34,22 @@ local function close_entry_win(entry)
 	entry.buf = nil
 end
 
+--- Stops and removes an active notification, if it exists.
 ---@param key string
 local function remove_entry(key)
-	local i = find_entry(key)
-	if i then
-		local e = entries[i]
-		if e.timer then
-			e.timer:stop()
-		end
-		close_entry_win(e)
-		table.remove(entries, i)
+	local i, entry = find_entry(key)
+	if not i or not entry then
+		return
 	end
+
+	if entry.timer then
+		entry.timer:stop()
+	end
+	close_entry_win(entry)
+	table.remove(entries, i)
 end
 
+--- Returns the entry's buffer, creating a scratch buffer when needed.
 ---@param entry NotifyEntry
 ---@return integer
 local function get_entry_buf(entry)
@@ -52,42 +61,57 @@ local function get_entry_buf(entry)
 	return entry.buf
 end
 
+--- Adds a word to the current line, moving overflow into completed lines.
+--- Words wider than the limit are split into chunks that fit.
+---@param lines string[]
+---@param line string
+---@param word string
+---@param max_w integer
+---@return string
+local function append_wrapped_word(lines, line, word, max_w)
+	local candidate = line == "" and word or (line .. " " .. word)
+	if vim.fn.strdisplaywidth(candidate) <= max_w then
+		return candidate
+	end
+
+	if line ~= "" then
+		table.insert(lines, line)
+	end
+
+	-- Break single words that exceed max width.
+	while vim.fn.strdisplaywidth(word) > max_w do
+		local cut = max_w
+		while vim.fn.strdisplaywidth(word:sub(1, cut)) > max_w do
+			cut = cut - 1
+		end
+		table.insert(lines, word:sub(1, cut))
+		word = word:sub(cut + 1)
+	end
+
+	return word
+end
+
+--- Wraps each paragraph into display lines no wider than the limit.
 ---@param text string
 ---@param max_w integer
 ---@return string[]
 local function wrap_text(text, max_w)
-	local result = {}
+	local lines = {}
 	for _, paragraph in ipairs(vim.split(text, "\n", { plain = true })) do
 		if vim.fn.strdisplaywidth(paragraph) <= max_w then
-			table.insert(result, paragraph)
+			table.insert(lines, paragraph)
 		else
 			local line = ""
 			for word in paragraph:gmatch("%S+") do
-				local candidate = line == "" and word or (line .. " " .. word)
-				if vim.fn.strdisplaywidth(candidate) > max_w then
-					if line ~= "" then
-						table.insert(result, line)
-					end
-					-- Break single words that exceed max width.
-					while vim.fn.strdisplaywidth(word) > max_w do
-						local cut = max_w
-						while vim.fn.strdisplaywidth(word:sub(1, cut)) > max_w do
-							cut = cut - 1
-						end
-						table.insert(result, word:sub(1, cut))
-						word = word:sub(cut + 1)
-					end
-					line = word
-				else
-					line = candidate
-				end
+				line = append_wrapped_word(lines, line, word, max_w)
 			end
 			if line ~= "" then
-				table.insert(result, line)
+				table.insert(lines, line)
 			end
 		end
 	end
-	return result
+
+	return lines
 end
 
 ---@type table<integer, string>
@@ -100,68 +124,125 @@ local MAX_WIDTH = 50
 
 local ns = vim.api.nvim_create_namespace("notify")
 
-local function render()
-	if #entries == 0 then
+--- Calculates the floating window dimensions for rendered lines.
+---@param lines string[]
+---@return integer, integer
+local function get_content_size(lines)
+	local width = 0
+	for _, line in ipairs(lines) do
+		width = math.max(width, vim.fn.strdisplaywidth(line))
+	end
+
+	return math.min(math.max(width, 1), MAX_WIDTH), #lines
+end
+
+--- Replaces a notification buffer's text and applies severity highlighting.
+---@param buf integer
+---@param lines string[]
+---@param level integer
+local function set_buffer_content(buf, lines, level)
+	vim.api.nvim_buf_set_lines(buf, 0, -1, false, lines)
+	vim.api.nvim_buf_clear_namespace(buf, ns, 0, -1)
+
+	local hl = level_hl[level]
+	if not hl then
 		return
 	end
 
+	for i, line in ipairs(lines) do
+		vim.api.nvim_buf_set_extmark(buf, ns, i - 1, 0, {
+			end_col = #line,
+			hl_group = hl,
+		})
+	end
+end
+
+--- Draws one notification at the requested position and returns its height.
+---@param entry NotifyEntry
+---@param row integer
+---@param col integer
+---@return integer
+local function render_entry(entry, row, col)
+	local lines = wrap_text(entry.msg, MAX_WIDTH)
+	local width, height = get_content_size(lines)
+	local win_opts = {
+		relative = "editor",
+		anchor = "SE",
+		row = row,
+		col = col,
+		width = width,
+		height = height,
+		focusable = false,
+		border = "rounded",
+		style = "minimal",
+	}
+
+	local buf = get_entry_buf(entry)
+	set_buffer_content(buf, lines, entry.level)
+
+	if entry.win and vim.api.nvim_win_is_valid(entry.win) then
+		vim.api.nvim_win_set_config(entry.win, win_opts)
+		vim.api.nvim_win_set_buf(entry.win, buf)
+	else
+		win_opts.noautocmd = true
+		entry.win = vim.api.nvim_open_win(buf, false, win_opts)
+	end
+
+	return height
+end
+
+--- Arranges all active notifications in a bottom-right stack.
+local function render()
 	-- Stack from bottom-right, newest entry at the bottom.
 	local row = vim.o.lines - 2
 	local col = vim.o.columns
 
 	for i = #entries, 1, -1 do
-		local e = entries[i]
-		local lines = wrap_text(e.msg, MAX_WIDTH)
-
-		local width = 0
-		for _, line in ipairs(lines) do
-			width = math.max(width, vim.fn.strdisplaywidth(line))
-		end
-		width = math.min(math.max(width, 1), MAX_WIDTH)
-		local height = #lines
-
-		local win_opts = {
-			relative = "editor",
-			anchor = "SE",
-			row = row,
-			col = col,
-			width = width,
-			height = height,
-			focusable = false,
-			border = "rounded",
-			style = "minimal",
-		}
-
-		local b = get_entry_buf(e)
-		vim.api.nvim_buf_set_lines(b, 0, -1, false, lines)
-		vim.api.nvim_buf_clear_namespace(b, ns, 0, -1)
-
-		local hl = level_hl[e.level]
-		if hl then
-			for j = 1, #lines do
-				vim.api.nvim_buf_set_extmark(
-					b,
-					ns,
-					j - 1,
-					0,
-					{ end_col = #lines[j], hl_group = hl }
-				)
-			end
-		end
-
-		if e.win and vim.api.nvim_win_is_valid(e.win) then
-			vim.api.nvim_win_set_config(e.win, win_opts)
-			vim.api.nvim_win_set_buf(e.win, b)
-		else
-			win_opts.noautocmd = true
-			e.win = vim.api.nvim_open_win(b, false, win_opts)
-		end
-
-		-- Move row up: content height + 2 for top/bottom border.
+		local height = render_entry(entries[i], row, col)
 		row = row - height - 2
 	end
 end
 
+--- Updates a keyed notification or adds it when it is not already active.
+---@param key string
+---@param msg string
+---@param level integer
+local function upsert_keyed_entry(key, msg, level)
+	local _, entry = find_entry(key)
+	if entry then
+		entry.msg = msg
+		entry.level = level
+		return
+	end
+
+	table.insert(entries, {
+		key = key,
+		msg = msg,
+		level = level,
+	})
+end
+
+--- Adds an unkeyed notification that removes itself after four seconds.
+---@param msg string
+---@param level integer
+local function add_transient_entry(msg, level)
+	local key = "transient:" .. tostring(vim.uv.hrtime())
+	local entry = {
+		key = key,
+		msg = msg,
+		level = level,
+	}
+	entry.timer = vim.defer_fn(function()
+		remove_entry(key)
+		render()
+	end, 4000)
+
+	table.insert(entries, entry)
+end
+
+--- Displays, updates, or dismisses a notification.
+--- A key keeps a notification active for later updates; an empty keyed
+--- message dismisses it.
 ---@param msg string
 ---@param level integer|nil
 ---@param opts table|nil
@@ -178,22 +259,9 @@ local function notify(msg, level, opts)
 	end
 
 	if key then
-		local _, existing = find_entry(key)
-		if existing then
-			existing.msg = msg
-			existing.level = level
-		else
-			table.insert(entries, { key = key, msg = msg, level = level })
-		end
+		upsert_keyed_entry(key, msg, level)
 	else
-		-- Transient: generate unique key, auto-dismiss after 4s.
-		local tkey = "transient:" .. tostring(vim.uv.hrtime())
-		local entry = { key = tkey, msg = msg, level = level }
-		entry.timer = vim.defer_fn(function()
-			remove_entry(tkey)
-			render()
-		end, 4000)
-		table.insert(entries, entry)
+		add_transient_entry(msg, level)
 	end
 
 	render()
