@@ -417,7 +417,7 @@ describe("jj diff comparisons", function()
 		assert.is_true(opened, err)
 		local buffer = vim.api.nvim_get_current_buf()
 		assert.are.equal("jj-diff://review", vim.api.nvim_buf_get_name(buffer))
-		assert.are.same({ 6, 0 }, vim.api.nvim_win_get_cursor(0))
+		assert.are.same({ 4, 0 }, vim.api.nvim_win_get_cursor(0))
 		assert.are.same({
 			repo = vim.uv.fs_realpath(directory),
 			target = commit_id,
@@ -571,7 +571,7 @@ describe("jj diff comparisons", function()
 		local absolute = vim.fs.joinpath(directory, "file.txt")
 		vim.fn.writefile({ "line" }, absolute)
 		local function assert_preserved()
-			assert.are.same({ "existing patch" }, vim.api.nvim_buf_get_lines(buffer, 0, -1, false))
+			assert.are.same({ "No changes" }, vim.api.nvim_buf_get_lines(buffer, 0, -1, false))
 			assert.are.same(existing_comparison, vim.b[buffer].jj_diff_comparison)
 			assert.are.same(quickfix, vim.fn.getqflist({ id = 0, title = 0 }))
 		end
@@ -750,14 +750,14 @@ describe("jj diff comparisons", function()
 		assert.is_false(vim.bo[first].swapfile)
 		assert.is_false(vim.bo[first].modifiable)
 		assert.is_true(vim.bo[first].readonly)
-		assert.are.equal("diff", vim.bo[first].filetype)
+		assert.are.equal("jjdiff", vim.bo[first].filetype)
 		assert.are.same(comparison, vim.b[first].jj_diff_comparison)
 
 		local second = assert(jj_diff.open_patch(comparison, "file.txt", function()
 			return "second patch"
 		end))
 		assert.are.equal(first, second)
-		assert.are.same({ "second patch" }, vim.api.nvim_buf_get_lines(second, 0, -1, false))
+		assert.are.same({ "No changes" }, vim.api.nvim_buf_get_lines(second, 0, -1, false))
 		local retained = 0
 		for _, buffer in ipairs(vim.api.nvim_list_bufs()) do
 			if
@@ -887,7 +887,7 @@ describe("jj diff comparisons", function()
 		end)
 		assert.is_nil(opened)
 		assert.are.equal("jj failed", err)
-		assert.are.same({ "existing patch" }, vim.api.nvim_buf_get_lines(buffer, 0, -1, false))
+		assert.are.same({ "No changes" }, vim.api.nvim_buf_get_lines(buffer, 0, -1, false))
 		assert.are.equal("existing quickfix", vim.fn.getqflist({ title = 0 }).title)
 
 		vim.api.nvim_buf_delete(buffer, {})

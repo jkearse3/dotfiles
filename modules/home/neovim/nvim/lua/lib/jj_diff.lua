@@ -4,6 +4,7 @@
 --- retained buffer whose quickfix list indexes files and hunks.
 ---@class lib.jj_diff
 local M = {}
+local jj_diff_render = require("lib.jj_diff_render")
 
 ---@alias lib.jj_diff.Runner fun(args: string[], cwd?: string): string?, string?
 
@@ -984,6 +985,7 @@ end
 ---@return integer buffer
 local function show_patch(comparison, patch, runner)
 	local parsed = M.parse_patch(patch)
+	local rendered = jj_diff_render.render(parsed)
 	local buffer = retained_patch_buffer()
 	if not buffer then
 		buffer = vim.api.nvim_create_buf(true, true)
@@ -1001,21 +1003,22 @@ local function show_patch(comparison, patch, runner)
 
 	vim.bo[buffer].readonly = false
 	vim.bo[buffer].modifiable = true
-	vim.api.nvim_buf_set_lines(buffer, 0, -1, false, parsed.lines)
+	vim.api.nvim_buf_set_lines(buffer, 0, -1, false, rendered.lines)
 	vim.bo[buffer].buftype = "nofile"
 	vim.bo[buffer].bufhidden = "hide"
 	vim.bo[buffer].swapfile = false
-	vim.bo[buffer].filetype = "diff"
+	vim.bo[buffer].filetype = "jjdiff"
 	vim.bo[buffer].modifiable = false
 	vim.bo[buffer].readonly = true
 	vim.b[buffer].jj_diff_comparison = comparison
 
 	vim.keymap.set("n", "gf", function()
-		M.open_working_line(comparison, parsed.rows[vim.api.nvim_win_get_cursor(0)[1]], runner)
+		local row = rendered.rows[vim.api.nvim_win_get_cursor(0)[1]]
+		M.open_working_line(comparison, row and row.location, runner)
 	end, { buffer = buffer, desc = "JJ diff: Open working-copy line" })
 
 	local items = {}
-	for _, item in ipairs(parsed.quickfix) do
+	for _, item in ipairs(rendered.quickfix) do
 		table.insert(items, {
 			bufnr = buffer,
 			lnum = item.lnum,
@@ -1024,6 +1027,7 @@ local function show_patch(comparison, patch, runner)
 		})
 	end
 	vim.api.nvim_win_set_buf(0, buffer)
+	jj_diff_render.decorate(buffer, rendered)
 	set_patch_quickfix(buffer, comparison.title, items)
 	return buffer
 end
@@ -1095,9 +1099,14 @@ function M.open_line_revision(absolute, line, runner)
 		return false, err
 	end
 	local parsed = M.parse_patch(patch)
+	local rendered = jj_diff_render.render(parsed)
 	local row
-	for candidate_row, candidate in pairs(parsed.rows) do
-		if candidate.path == location.path and candidate.line == location.line then
+	for candidate_row, candidate in pairs(rendered.rows) do
+		if
+			candidate.location
+			and candidate.location.path == location.path
+			and candidate.location.line == location.line
+		then
 			if row then
 				return false, "Attributed line appears ambiguously in its revision patch"
 			end
@@ -1105,6 +1114,7 @@ function M.open_line_revision(absolute, line, runner)
 		end
 	end
 	if not row then
+		local renamed = false
 		for _, file in ipairs(parsed.files) do
 			if
 				file.old_path
@@ -1112,8 +1122,16 @@ function M.open_line_revision(absolute, line, runner)
 				and file.old_path ~= file.new_path
 				and not file.copy
 			then
-				row = file.row
+				renamed = true
 				break
+			end
+		end
+		if renamed then
+			for candidate_row, candidate in pairs(rendered.rows) do
+				if candidate.kind == "file" and candidate.path == location.path then
+					row = candidate_row
+					break
+				end
 			end
 		end
 	end

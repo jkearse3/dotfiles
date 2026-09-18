@@ -37,11 +37,12 @@ require("lib.config").run({
 			"kdl",
 		})
 
-		-- Enable treesitter highlighting for all filetypes except tmux (broken parser).
+		-- Enable normal buffer highlighting except for tmux (broken parser) and the
+		-- multi-language JJ review buffer, which projects Tree-sitter captures itself.
 		vim.api.nvim_create_autocmd("FileType", {
 			callback = function(args)
 				local ft = vim.bo[args.buf].filetype
-				if ft == "tmux" then
+				if ft == "tmux" or ft == "jjdiff" then
 					return
 				end
 				pcall(vim.treesitter.start, args.buf)
@@ -52,6 +53,9 @@ require("lib.config").run({
 		vim.api.nvim_create_autocmd("FileType", {
 			callback = function(args)
 				local ft = vim.bo[args.buf].filetype
+				if ft == "jjdiff" then
+					return
+				end
 				local lang = vim.treesitter.language.get_lang(ft)
 				if lang and not pcall(vim.treesitter.language.inspect, lang) then
 					require("nvim-treesitter").install({ lang })
