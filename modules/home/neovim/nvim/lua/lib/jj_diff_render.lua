@@ -31,10 +31,40 @@ local M = {}
 ---@field rows table<integer, lib.jj_diff_render.Line>
 ---@field quickfix lib.jj_diff.PatchIndexEntry[]
 ---@field syntax_fragments lib.jj_diff_render.SyntaxFragment[]
+---@field file_rows integer[]
+---@field hunk_rows integer[]
+
+---@class lib.jj_diff_render.CursorAnchor
+---@field path? string
+---@field kind lib.jj_diff_render.LineKind
+---@field text string
+---@field old_line? integer
+---@field new_line? integer
+
+---@alias lib.jj_diff_render.Freshness "fresh"|"stale"|"unknown"
+
+---@class lib.jj_diff_render.ReviewState
+---@field title string
+---@field freshness lib.jj_diff_render.Freshness
+
+---@class lib.jj_diff_render.WindowState
+---@field buffer integer
+---@field options table<string, any>
 
 local namespace = vim.api.nvim_create_namespace("jj-diff-render")
 local autocmd_group = vim.api.nvim_create_augroup("JjDiffRender", { clear = true })
 local rendered_buffers = {}
+local review_states = {}
+
+---@type table<integer, lib.jj_diff_render.WindowState>
+local window_states = {}
+
+vim.api.nvim_create_autocmd("WinClosed", {
+	group = autocmd_group,
+	callback = function(event)
+		window_states[tonumber(event.match)] = nil
+	end,
+})
 
 local function append_line(result, line)
 	local row = #result.lines + 1
@@ -258,7 +288,14 @@ end
 ---@param parsed lib.jj_diff.ParsedPatch
 ---@return lib.jj_diff_render.Result
 function M.render(parsed)
-	local result = { lines = {}, rows = {}, quickfix = {}, syntax_fragments = {} }
+	local result = {
+		lines = {},
+		rows = {},
+		quickfix = {},
+		syntax_fragments = {},
+		file_rows = {},
+		hunk_rows = {},
+	}
 	for file_index, file in ipairs(parsed.files) do
 		if #result.lines > 0 then
 			append_line(result, { kind = "separator", text = "" })
@@ -270,6 +307,7 @@ function M.render(parsed)
 			text = display_path(file),
 			path = path,
 		})
+		table.insert(result.file_rows, file_row)
 		table.insert(result.quickfix, { lnum = file_row, text = display_text(path) })
 
 		local next_file_row = parsed.files[file_index + 1] and parsed.files[file_index + 1].row
@@ -284,7 +322,9 @@ function M.render(parsed)
 				kind = "hunk",
 				text = "  " .. parsed.lines[hunk.row],
 				path = path,
+				new_line = hunk.new_start,
 			})
+			table.insert(result.hunk_rows, hunk_row)
 			table.insert(result.quickfix, {
 				lnum = hunk_row,
 				text = string.format("%s:%d", display_text(path), hunk.new_start),
@@ -390,12 +430,82 @@ local function apply_syntax_fragment(buffer, fragment)
 	end
 end
 
-local function configure_window(window)
+local review_statuscolumn = "%!v:lua.require'lib.jj_diff_render'.statuscolumn()"
+local review_winbar = "%!v:lua.require'lib.jj_diff_render'.winbar()"
+
+local review_window_options = {
+	"number",
+	"relativenumber",
+	"numberwidth",
+	"signcolumn",
+	"statuscolumn",
+	"winbar",
+	"cursorline",
+}
+
+local function restore_window(window, buffer, keep_state)
+	local state = window_states[window]
+	if not state or state.buffer ~= buffer then
+		return
+	end
+	if vim.api.nvim_win_is_valid(window) then
+		for option, value in pairs(state.options) do
+			vim.wo[window][option] = value
+		end
+	end
+	if not keep_state then
+		window_states[window] = nil
+	end
+end
+
+vim.api.nvim_create_autocmd("BufEnter", {
+	group = autocmd_group,
+	callback = function()
+		local window = vim.api.nvim_get_current_win()
+		local state = window_states[window]
+		if state and vim.api.nvim_win_get_buf(window) ~= state.buffer then
+			restore_window(window, state.buffer, true)
+		end
+	end,
+})
+
+--- Captures options before a window enters the review buffer.
+---@param window integer
+---@param buffer integer Review buffer the saved options belong to.
+function M.prepare_window(window, buffer)
+	local state = window_states[window]
+	if state and state.buffer == buffer then
+		return
+	end
+	if state then
+		if vim.api.nvim_win_get_buf(window) == state.buffer then
+			restore_window(window, state.buffer)
+		else
+			window_states[window] = nil
+		end
+	end
+
+	local options = {}
+	local inherited_review_options = vim.wo[window].statuscolumn == review_statuscolumn
+	for _, option in ipairs(review_window_options) do
+		if inherited_review_options then
+			options[option] = vim.go[option]
+		else
+			options[option] = vim.wo[window][option]
+		end
+	end
+	window_states[window] = { buffer = buffer, options = options }
+end
+
+local function configure_window(window, buffer)
+	M.prepare_window(window, buffer)
+
 	vim.wo[window].number = true
 	vim.wo[window].relativenumber = false
 	vim.wo[window].numberwidth = 12
 	vim.wo[window].signcolumn = "no"
-	vim.wo[window].statuscolumn = "%!v:lua.require'lib.jj_diff_render'.statuscolumn()"
+	vim.wo[window].statuscolumn = review_statuscolumn
+	vim.wo[window].winbar = review_winbar
 	vim.wo[window].cursorline = true
 end
 
@@ -418,7 +528,7 @@ function M.decorate(buffer, rendered)
 		callback = function(event)
 			local window = vim.api.nvim_get_current_win()
 			if vim.api.nvim_win_get_buf(window) == event.buf then
-				configure_window(window)
+				configure_window(window, event.buf)
 			end
 		end,
 	})
@@ -427,12 +537,214 @@ function M.decorate(buffer, rendered)
 		buffer = buffer,
 		once = true,
 		callback = function(event)
+			for window, state in pairs(window_states) do
+				if state.buffer == event.buf then
+					if
+						vim.api.nvim_win_is_valid(window)
+						and vim.api.nvim_win_get_buf(window) == event.buf
+					then
+						restore_window(window, event.buf)
+					else
+						window_states[window] = nil
+					end
+				end
+			end
 			rendered_buffers[event.buf] = nil
+			review_states[event.buf] = nil
 		end,
 	})
 	for _, window in ipairs(vim.fn.win_findbuf(buffer)) do
-		configure_window(window)
+		configure_window(window, buffer)
 	end
+end
+
+--- Updates the title and freshness shown by a rendered review buffer.
+---@param buffer integer
+---@param title string
+---@param freshness lib.jj_diff_render.Freshness
+function M.set_review_state(buffer, title, freshness)
+	review_states[buffer] = { title = title, freshness = freshness }
+	vim.cmd.redrawstatus()
+end
+
+--- Captures a semantic cursor location that can survive review re-rendering.
+---@param buffer integer
+---@param row? integer Defaults to the current window row.
+---@return lib.jj_diff_render.CursorAnchor? anchor
+function M.cursor_anchor(buffer, row)
+	local rendered = rendered_buffers[buffer]
+	row = row or vim.api.nvim_win_get_cursor(0)[1]
+	local line = rendered and rendered.rows[row]
+	if not line then
+		return nil
+	end
+	return {
+		path = line.path,
+		kind = line.kind,
+		text = line.text,
+		old_line = line.old_line,
+		new_line = line.new_line,
+	}
+end
+
+local function anchor_score(line, anchor)
+	if line.path ~= anchor.path or line.kind ~= anchor.kind then
+		return nil
+	end
+	local distance
+	if line.new_line and anchor.new_line then
+		distance = math.abs(line.new_line - anchor.new_line)
+	elseif line.old_line and anchor.old_line then
+		distance = math.abs(line.old_line - anchor.old_line)
+	elseif line.kind == "file" then
+		distance = 0
+	else
+		return nil
+	end
+	return line.text == anchor.text and distance or 1000000 + distance
+end
+
+--- Restores the closest semantic cursor location after a review refresh.
+---@param buffer integer
+---@param anchor? lib.jj_diff_render.CursorAnchor
+---@param fallback_row integer
+---@param window? integer Defaults to the current window.
+function M.restore_cursor(buffer, anchor, fallback_row, window)
+	local rendered = rendered_buffers[buffer]
+	local row = math.min(math.max(fallback_row, 1), vim.api.nvim_buf_line_count(buffer))
+	local score
+	if rendered and anchor then
+		for candidate_row, line in pairs(rendered.rows) do
+			local candidate_score = anchor_score(line, anchor)
+			if candidate_score and (not score or candidate_score < score) then
+				row = candidate_row
+				score = candidate_score
+			end
+		end
+	end
+	vim.api.nvim_win_set_cursor(window or 0, { row, 0 })
+end
+
+local function place_navigation_target(row, alignment)
+	vim.api.nvim_win_set_cursor(0, { row, 0 })
+	vim.cmd("normal! " .. alignment)
+end
+
+local function navigate_rows(rows, direction, alignment)
+	if #rows == 0 then
+		return
+	end
+	local current = vim.api.nvim_win_get_cursor(0)[1]
+	if direction > 0 then
+		for _, row in ipairs(rows) do
+			if row > current then
+				place_navigation_target(row, alignment)
+				return
+			end
+		end
+		place_navigation_target(rows[1], alignment)
+		return
+	end
+	for index = #rows, 1, -1 do
+		if rows[index] < current then
+			place_navigation_target(rows[index], alignment)
+			return
+		end
+	end
+	place_navigation_target(rows[#rows], alignment)
+end
+
+--- Moves to the next or previous rendered file header.
+---@param direction 1|-1
+function M.navigate_file(direction)
+	local rendered = rendered_buffers[vim.api.nvim_get_current_buf()]
+	if rendered then
+		navigate_rows(rendered.file_rows, direction, "zt")
+	end
+end
+
+--- Moves to the next or previous rendered hunk header across files.
+---@param direction 1|-1
+function M.navigate_hunk(direction)
+	local rendered = rendered_buffers[vim.api.nvim_get_current_buf()]
+	if rendered then
+		navigate_rows(rendered.hunk_rows, direction, "zz")
+	end
+end
+
+local function last_row_at_or_before(rows, row)
+	local low = 1
+	local high = #rows
+	local found = 0
+	while low <= high do
+		local middle = math.floor((low + high) / 2)
+		if rows[middle] <= row then
+			found = middle
+			low = middle + 1
+		else
+			high = middle - 1
+		end
+	end
+	return found
+end
+
+local function first_row_at_or_after(rows, row)
+	local low = 1
+	local high = #rows
+	local found = #rows + 1
+	while low <= high do
+		local middle = math.floor((low + high) / 2)
+		if rows[middle] >= row then
+			found = middle
+			high = middle - 1
+		else
+			low = middle + 1
+		end
+	end
+	return found
+end
+
+local function progress_at_row(rendered, row)
+	local file_index = last_row_at_or_before(rendered.file_rows, row)
+	if file_index == 0 then
+		return ""
+	end
+
+	local first_row = rendered.file_rows[file_index]
+	local last_row = rendered.file_rows[file_index + 1] or math.huge
+	local first_hunk = first_row_at_or_after(rendered.hunk_rows, first_row)
+	local after_hunks = first_row_at_or_after(rendered.hunk_rows, last_row)
+	local hunk_count = after_hunks - first_hunk
+	local current_hunk = last_row_at_or_before(rendered.hunk_rows, row)
+	local hunk_index = math.max(current_hunk - first_hunk + 1, 1)
+
+	local progress = string.format("file %d/%d", file_index, #rendered.file_rows)
+	if hunk_count > 0 then
+		progress = string.format("%s · hunk %d/%d", progress, hunk_index, hunk_count)
+	end
+	return progress
+end
+
+--- Formats review identity, progress, and staleness for the window bar.
+---@return string
+function M.winbar()
+	local window = tonumber(vim.g.statusline_winid) or vim.api.nvim_get_current_win()
+	local buffer = vim.api.nvim_win_get_buf(window)
+	local rendered = rendered_buffers[buffer]
+	local state = review_states[buffer]
+	if not rendered or not state then
+		return ""
+	end
+	local row = vim.api.nvim_win_get_cursor(window)[1]
+	local title = state.title:gsub("%%", "%%%%")
+	local freshness = state.freshness == "stale" and "  %#WarningMsg#[stale]%*"
+		or (state.freshness == "unknown" and "  %#WarningMsg#[status unknown]%*" or "")
+	return string.format(
+		"%%#WinBar# %s%%*  %%#Comment#%s%%*%s",
+		title,
+		progress_at_row(rendered, row),
+		freshness
+	)
 end
 
 --- Formats old/new source line numbers and change markers for the review status column.

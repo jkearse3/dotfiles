@@ -18,9 +18,14 @@ local jj_diff_render = require("lib.jj_diff_render")
 ---@field target string Commit ID or revset at the new side of the comparison.
 ---@field from? string Commit ID or revset at the old side of an explicit range.
 
+---@class lib.jj_diff.ReviewSource
+---@field kind "revision"|"bookmark"
+---@field name string Change ID or bookmark name used to resolve the latest comparison.
+
 ---@class lib.jj_diff.ReviewComparison: lib.jj_diff.Comparison
 ---@field title string Display title used by patch views.
 ---@field description? string Revision description displayed above preview stats.
+---@field source? lib.jj_diff.ReviewSource Identity used to refresh rewritten revisions or bookmarks.
 
 ---@class lib.jj_diff.Revision
 ---@field commit_id string
@@ -84,6 +89,25 @@ local jj_diff_render = require("lib.jj_diff_render")
 ---@alias lib.jj_diff.Resolve fun(item: any): lib.jj_diff.ReviewComparison?, string?
 
 local patch_buffer_name = "jj-diff://review"
+local review_autocmd_group = vim.api.nvim_create_augroup("JjDiffReview", { clear = true })
+
+---@class lib.jj_diff.ReviewSession
+---@field comparison lib.jj_diff.ReviewComparison
+---@field path? string
+---@field runner? lib.jj_diff.Runner
+
+---@type table<integer, lib.jj_diff.ReviewSession>
+local review_sessions = {}
+
+vim.api.nvim_create_autocmd("FocusGained", {
+	group = review_autocmd_group,
+	callback = function()
+		local buffer = vim.api.nvim_get_current_buf()
+		if review_sessions[buffer] then
+			M.check_patch_stale(buffer)
+		end
+	end,
+})
 
 --- Removes trailing whitespace, treating `nil` as an empty string.
 ---@param value? string
@@ -303,25 +327,26 @@ function M.annotate_line(repo, path, line, runner)
 	return attribution
 end
 
+local revision_template = '"{"'
+	.. ' ++ "\\"commit_id\\":" ++ json(commit_id)'
+	.. ' ++ ",\\"change_id\\":" ++ json(change_id)'
+	.. ' ++ ",\\"description\\":" ++ json(description)'
+	.. ' ++ ",\\"bookmarks\\":" ++ json(local_bookmarks.map(|b| b.name()))'
+	.. ' ++ "}\\n"'
+
 --- Lists all revisions with stable identifiers and picker labels.
 ---@param repo string Repository root.
 ---@param runner? lib.jj_diff.Runner
 ---@return lib.jj_diff.Revision[]? revisions
 ---@return string? error
 function M.list_revisions(repo, runner)
-	local template = '"{"'
-		.. ' ++ "\\"commit_id\\":" ++ json(commit_id)'
-		.. ' ++ ",\\"change_id\\":" ++ json(change_id)'
-		.. ' ++ ",\\"description\\":" ++ json(description)'
-		.. ' ++ ",\\"bookmarks\\":" ++ json(local_bookmarks.map(|b| b.name()))'
-		.. ' ++ "}\\n"'
 	local output, err = (runner or run_jj)({
 		"log",
 		"--no-graph",
 		"-r",
 		"all()",
 		"-T",
-		template,
+		revision_template,
 		"--color",
 		"never",
 	}, repo)
@@ -361,6 +386,51 @@ function M.list_revisions(repo, runner)
 		)
 	end
 	return revisions
+end
+
+--- Resolves one full JJ change ID without scanning repository history.
+---@param repo string Repository root.
+---@param change_id string Full change ID previously reported by JJ.
+---@param runner? lib.jj_diff.Runner
+---@return lib.jj_diff.Revision? revision
+---@return string? error
+local function current_revision(repo, change_id, runner)
+	if not change_id:match("^[a-z]+$") then
+		return nil, "JJ revision source has an invalid change ID: " .. change_id
+	end
+	local output, err = (runner or run_jj)({
+		"log",
+		"--no-graph",
+		"-r",
+		"change_id(" .. change_id .. ")",
+		"-T",
+		revision_template,
+		"--color",
+		"never",
+	}, repo)
+	if not output then
+		return nil, err
+	end
+	local revisions
+	revisions, err = json_lines(output)
+	if not revisions then
+		return nil, err
+	end
+	if #revisions == 0 then
+		return nil, "JJ revision source no longer exists: " .. change_id
+	end
+	if #revisions ~= 1 then
+		return nil, "JJ revision source is ambiguous: " .. change_id
+	end
+	local revision = revisions[1]
+	if
+		not valid_commit_id(revision.commit_id)
+		or revision.change_id ~= change_id
+		or type(revision.description) ~= "string"
+	then
+		return nil, "JJ returned invalid revision refresh data"
+	end
+	return revision
 end
 
 --- Lists local bookmarks with at least one target and adds picker labels.
@@ -424,6 +494,7 @@ function M.revision_comparison(repo, revision)
 		target = revision.commit_id,
 		title = "jj revision " .. revision.change_id:sub(1, 12),
 		description = revision.description,
+		source = { kind = "revision", name = revision.change_id },
 	}
 end
 
@@ -482,7 +553,52 @@ function M.bookmark_comparison(repo, bookmark, bookmarks, runner)
 		from = base,
 		target = target,
 		title = string.format("jj bookmark %s..%s", table.concat(base_names, ","), bookmark.name),
+		source = { kind = "bookmark", name = bookmark.name },
 	}
+end
+
+--- Resolves a review source to its latest immutable comparison endpoints.
+---@param comparison lib.jj_diff.ReviewComparison
+---@param runner? lib.jj_diff.Runner
+---@return lib.jj_diff.ReviewComparison? current
+---@return string? error
+function M.current_comparison(comparison, runner)
+	local source = comparison.source
+	if not source then
+		return comparison
+	end
+
+	if source.kind == "revision" then
+		local revision, err = current_revision(comparison.repo, source.name, runner)
+		if not revision then
+			return nil, err
+		end
+		return M.revision_comparison(comparison.repo, revision)
+	end
+
+	if source.kind == "bookmark" then
+		local bookmarks, err = M.list_bookmarks(comparison.repo, runner)
+		if not bookmarks then
+			return nil, err
+		end
+		local match
+		for _, bookmark in ipairs(bookmarks) do
+			if bookmark.name == source.name then
+				match = bookmark
+				break
+			end
+		end
+		if not match then
+			return nil, "JJ bookmark source no longer exists: " .. source.name
+		end
+		return M.bookmark_comparison(comparison.repo, match, bookmarks, runner)
+	end
+
+	return nil, "Unknown JJ review source: " .. tostring(source.kind)
+end
+
+local function same_comparison(left, right)
+	return left.repo == right.repo and left.from == right.from and left.target == right.target
 end
 
 --- Renders a comparison's diff stat.
@@ -982,8 +1098,9 @@ end
 ---@param comparison lib.jj_diff.ReviewComparison
 ---@param patch string
 ---@param runner? lib.jj_diff.Runner
+---@param path? string Optional root-relative path scope.
 ---@return integer buffer
-local function show_patch(comparison, patch, runner)
+local function show_patch(comparison, patch, runner, path)
 	local parsed = M.parse_patch(patch)
 	local rendered = jj_diff_render.render(parsed)
 	local buffer = retained_patch_buffer()
@@ -995,6 +1112,7 @@ local function show_patch(comparison, patch, runner)
 			once = true,
 			callback = function()
 				clear_patch_quickfix(buffer)
+				review_sessions[buffer] = nil
 			end,
 		})
 	elseif not vim.api.nvim_buf_is_loaded(buffer) then
@@ -1011,11 +1129,27 @@ local function show_patch(comparison, patch, runner)
 	vim.bo[buffer].modifiable = false
 	vim.bo[buffer].readonly = true
 	vim.b[buffer].jj_diff_comparison = comparison
+	review_sessions[buffer] = { comparison = comparison, path = path, runner = runner }
 
 	vim.keymap.set("n", "gf", function()
 		local row = rendered.rows[vim.api.nvim_win_get_cursor(0)[1]]
 		M.open_working_line(comparison, row and row.location, runner)
 	end, { buffer = buffer, desc = "JJ diff: Open working-copy line" })
+	vim.keymap.set("n", "]c", function()
+		jj_diff_render.navigate_hunk(1)
+	end, { buffer = buffer, desc = "JJ diff: Next hunk" })
+	vim.keymap.set("n", "[c", function()
+		jj_diff_render.navigate_hunk(-1)
+	end, { buffer = buffer, desc = "JJ diff: Previous hunk" })
+	vim.keymap.set("n", "]f", function()
+		jj_diff_render.navigate_file(1)
+	end, { buffer = buffer, desc = "JJ diff: Next file" })
+	vim.keymap.set("n", "[f", function()
+		jj_diff_render.navigate_file(-1)
+	end, { buffer = buffer, desc = "JJ diff: Previous file" })
+	vim.keymap.set("n", "R", function()
+		M.refresh_patch(buffer)
+	end, { buffer = buffer, desc = "JJ diff: Refresh" })
 
 	local items = {}
 	for _, item in ipairs(rendered.quickfix) do
@@ -1026,8 +1160,18 @@ local function show_patch(comparison, patch, runner)
 			text = item.text,
 		})
 	end
+	vim.api.nvim_clear_autocmds({ group = review_autocmd_group, buffer = buffer })
+	jj_diff_render.prepare_window(vim.api.nvim_get_current_win(), buffer)
 	vim.api.nvim_win_set_buf(0, buffer)
 	jj_diff_render.decorate(buffer, rendered)
+	jj_diff_render.set_review_state(buffer, comparison.title, "fresh")
+	vim.api.nvim_create_autocmd("BufEnter", {
+		group = review_autocmd_group,
+		buffer = buffer,
+		callback = function()
+			M.check_patch_stale(buffer)
+		end,
+	})
 	set_patch_quickfix(buffer, comparison.title, items)
 	return buffer
 end
@@ -1046,7 +1190,68 @@ function M.open_patch(comparison, path, runner)
 	if not patch then
 		return nil, err
 	end
-	return show_patch(comparison, patch, runner)
+	return show_patch(comparison, patch, runner, path)
+end
+
+--- Checks whether a retained review's source now resolves to different endpoints.
+---@param buffer integer
+---@return boolean? stale
+---@return string? error
+function M.check_patch_stale(buffer)
+	local session = review_sessions[buffer]
+	if not session then
+		return nil, "No retained JJ review session"
+	end
+	local current, err = M.current_comparison(session.comparison, session.runner)
+	if not current then
+		jj_diff_render.set_review_state(buffer, session.comparison.title, "unknown")
+		return nil, err
+	end
+	local stale = not same_comparison(session.comparison, current)
+	jj_diff_render.set_review_state(buffer, session.comparison.title, stale and "stale" or "fresh")
+	return stale
+end
+
+--- Refreshes a retained review from its latest revision or bookmark endpoints.
+---@param buffer integer
+---@return boolean refreshed
+function M.refresh_patch(buffer)
+	local session = review_sessions[buffer]
+	if not session then
+		notify_error("No retained JJ review session")
+		return false
+	end
+	local comparison, err = M.current_comparison(session.comparison, session.runner)
+	if not comparison then
+		notify_error(err)
+		return false
+	end
+	local patch
+	patch, err = M.patch(comparison, session.path, session.runner)
+	if not patch then
+		notify_error(err)
+		return false
+	end
+
+	local windows = {}
+	for _, window in ipairs(vim.fn.win_findbuf(buffer)) do
+		local fallback_row = vim.api.nvim_win_get_cursor(window)[1]
+		table.insert(windows, {
+			id = window,
+			fallback_row = fallback_row,
+			anchor = jj_diff_render.cursor_anchor(buffer, fallback_row),
+		})
+	end
+	show_patch(comparison, patch, session.runner, session.path)
+	for _, window in ipairs(windows) do
+		if
+			vim.api.nvim_win_is_valid(window.id)
+			and vim.api.nvim_win_get_buf(window.id) == buffer
+		then
+			jj_diff_render.restore_cursor(buffer, window.anchor, window.fallback_row, window.id)
+		end
+	end
+	return true
 end
 
 --- Opens the responsible revision's file-scoped patch for one absolute working-copy location.
@@ -1139,7 +1344,7 @@ function M.open_line_revision(absolute, line, runner)
 		return false, "Attributed line is missing from its revision patch"
 	end
 
-	show_patch(comparison, patch, runner)
+	show_patch(comparison, patch, runner, location.path)
 	vim.api.nvim_win_set_cursor(0, { row, 0 })
 	return true
 end

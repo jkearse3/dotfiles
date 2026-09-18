@@ -1,4 +1,5 @@
 local jj_diff = require("lib.jj_diff")
+local jj_diff_render = require("lib.jj_diff_render")
 
 describe("jj diff patches", function()
 	it("parses files, hunks, quoted paths, and navigable rows", function()
@@ -422,6 +423,7 @@ describe("jj diff comparisons", function()
 			repo = vim.uv.fs_realpath(directory),
 			target = commit_id,
 			title = "jj revision abcdefghijkl",
+			source = { kind = "revision", name = "abcdefghijklmnop" },
 		}, vim.b[buffer].jj_diff_comparison)
 		local scoped_call
 		for _, call in ipairs(calls) do
@@ -508,6 +510,7 @@ describe("jj diff comparisons", function()
 			repo = vim.uv.fs_realpath(directory),
 			target = "aaaaaaaa",
 			title = "jj revision renamechange",
+			source = { kind = "revision", name = "renamechange" },
 		}, vim.b[buffer].jj_diff_comparison)
 
 		vim.api.nvim_buf_delete(buffer, {})
@@ -783,6 +786,78 @@ describe("jj diff comparisons", function()
 		assert.is_false(vim.api.nvim_buf_is_valid(second))
 	end)
 
+	it("marks rewritten revisions stale and refreshes without losing source position", function()
+		local commit_id = "aaaaaaaa"
+		local old_patch = table.concat({
+			"diff --git a/file.lua b/file.lua",
+			"--- a/file.lua",
+			"+++ b/file.lua",
+			"@@ -1 +1 @@",
+			"-local old = true",
+			"+local kept = true",
+		}, "\n")
+		local new_patch = table.concat({
+			"diff --git a/file.lua b/file.lua",
+			"--- a/file.lua",
+			"+++ b/file.lua",
+			"@@ -1 +1,2 @@",
+			"+local prefix = true",
+			"-local old = true",
+			"+local kept = true",
+		}, "\n")
+		local resolution_error
+		local function runner(args)
+			if args[1] == "log" then
+				if resolution_error then
+					return nil, resolution_error
+				end
+				return string.format(
+					'{"commit_id":"%s","change_id":"changeid",'
+						.. '"description":"review","bookmarks":[]}\n',
+					commit_id
+				)
+			end
+			if args[1] == "--config" then
+				return commit_id == "aaaaaaaa" and old_patch or new_patch
+			end
+			return nil, "unexpected JJ command"
+		end
+		local comparison = jj_diff.revision_comparison("/repo", {
+			commit_id = commit_id,
+			change_id = "changeid",
+			description = "review",
+		})
+		local buffer = assert(jj_diff.open_patch(comparison, nil, runner))
+		local first_window = vim.api.nvim_get_current_win()
+		vim.api.nvim_win_set_cursor(first_window, { 4, 0 })
+		vim.cmd("vsplit")
+		local second_window = vim.api.nvim_get_current_win()
+		vim.api.nvim_win_set_cursor(second_window, { 3, 0 })
+		vim.api.nvim_set_current_win(first_window)
+
+		commit_id = "bbbbbbbb"
+		assert.is_true(jj_diff.check_patch_stale(buffer))
+		assert.truthy(jj_diff_render.winbar():find("[stale]", 1, true))
+		assert.is_true(jj_diff.refresh_patch(buffer))
+
+		assert.are.equal("local kept = true", vim.api.nvim_get_current_line())
+		local second_row = vim.api.nvim_win_get_cursor(second_window)[1]
+		assert.are.equal(
+			"local old = true",
+			vim.api.nvim_buf_get_lines(buffer, second_row - 1, second_row, false)[1]
+		)
+		assert.are.equal("bbbbbbbb", vim.b[buffer].jj_diff_comparison.target)
+		assert.is_nil(jj_diff_render.winbar():find("[stale]", 1, true))
+
+		resolution_error = "revision disappeared"
+		local stale, err = jj_diff.check_patch_stale(buffer)
+		assert.is_nil(stale)
+		assert.are.equal(resolution_error, err)
+		assert.truthy(jj_diff_render.winbar():find("[status unknown]", 1, true))
+		vim.api.nvim_win_close(second_window, true)
+		vim.api.nvim_buf_delete(buffer, {})
+	end)
+
 	it("replaces the retained patch quickfix list in place", function()
 		local comparison = {
 			repo = "/repo",
@@ -848,6 +923,8 @@ describe("jj diff comparisons", function()
 			target = "0123456789abcdef",
 			title = "jj revision test",
 		}
+		local original_winbar = vim.wo.winbar
+		vim.wo.winbar = "CUSTOM_BAR"
 		local buffer = assert(jj_diff.open_patch(comparison, nil, function()
 			return patch
 		end))
@@ -857,6 +934,7 @@ describe("jj diff comparisons", function()
 
 		assert.is_true(ok)
 		assert.are.equal(vim.uv.fs_realpath(path), vim.api.nvim_buf_get_name(0))
+		assert.are.equal("CUSTOM_BAR", vim.wo.winbar)
 		assert.are.equal(buffer, vim.fn.bufnr("#"))
 		assert.is_true(vim.api.nvim_buf_is_valid(buffer))
 		assert.are.equal(1, vim.fn.buflisted(buffer))
@@ -865,6 +943,8 @@ describe("jj diff comparisons", function()
 		assert.are.equal(buffer, vim.api.nvim_get_current_buf())
 		vim.api.nvim_feedkeys(vim.keycode("<C-^>"), "nx", false)
 		assert.are.equal(file_buffer, vim.api.nvim_get_current_buf())
+		assert.are.equal("CUSTOM_BAR", vim.wo.winbar)
+		vim.wo.winbar = original_winbar
 
 		vim.api.nvim_buf_delete(buffer, {})
 		vim.cmd("bdelete! " .. vim.api.nvim_get_current_buf())
@@ -969,6 +1049,7 @@ describe("jj diff comparisons", function()
 
 		assert.are.equal("aaaaaaaa", comparison.from)
 		assert.are.equal("bbbbbbbb", comparison.target)
+		assert.are.same({ kind = "bookmark", name = "feature-b" }, comparison.source)
 	end)
 
 	it("refuses missing and conflicted bookmark ancestry", function()

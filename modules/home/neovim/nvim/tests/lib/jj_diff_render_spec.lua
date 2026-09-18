@@ -91,6 +91,8 @@ describe("jj stacked diff rendering", function()
 			{ lnum = 5, text = "new.lua:1" },
 			{ lnum = 9, text = "image.png" },
 		}, rendered.quickfix)
+		assert.are.same({ 1, 9 }, rendered.file_rows)
+		assert.are.same({ 5 }, rendered.hunk_rows)
 	end)
 
 	it("escapes control characters in displayed paths", function()
@@ -174,6 +176,44 @@ describe("jj stacked diff rendering", function()
 		assert.are.same({ 2, 4, 2, 5 }, { render.changed_spans("a λ z", "a 文 z") })
 	end)
 
+	it("centers hunk jumps and places file jumps at the top", function()
+		local original = vim.api.nvim_get_current_buf()
+		local original_height = vim.api.nvim_win_get_height(0)
+		local buffer = vim.api.nvim_create_buf(false, true)
+		local lines = {}
+		local rows = {}
+		for row = 1, 30 do
+			lines[row] = "line " .. row
+			rows[row] = { kind = "context", text = lines[row], path = "file.lua" }
+		end
+		local rendered = {
+			lines = lines,
+			rows = rows,
+			quickfix = {},
+			syntax_fragments = {},
+			file_rows = { 1, 15 },
+			hunk_rows = { 3, 10, 17 },
+		}
+		vim.api.nvim_win_set_height(0, 7)
+		render.prepare_window(vim.api.nvim_get_current_win(), buffer)
+		vim.api.nvim_set_current_buf(buffer)
+		vim.api.nvim_buf_set_lines(buffer, 0, -1, false, lines)
+		render.decorate(buffer, rendered)
+
+		vim.api.nvim_win_set_cursor(0, { 3, 0 })
+		render.navigate_hunk(1)
+		assert.are.same({ 10, 0 }, vim.api.nvim_win_get_cursor(0))
+		assert.is_true(math.abs(vim.fn.winline() - 4) <= 1)
+
+		render.navigate_file(1)
+		assert.are.same({ 15, 0 }, vim.api.nvim_win_get_cursor(0))
+		assert.are.equal(1, vim.fn.winline())
+
+		vim.api.nvim_set_current_buf(original)
+		vim.api.nvim_win_set_height(0, original_height)
+		vim.api.nvim_buf_delete(buffer, { force = true })
+	end)
+
 	it("projects source syntax and diff emphasis onto the review buffer", function()
 		local patch = table.concat({
 			"diff --git a/a.lua b/a.lua",
@@ -185,7 +225,13 @@ describe("jj stacked diff rendering", function()
 		}, "\n")
 		local rendered = render.render(jj_diff.parse_patch(patch))
 		local original = vim.api.nvim_get_current_buf()
+		local window = vim.api.nvim_get_current_win()
+		local original_winbar = vim.wo.winbar
+		local original_statuscolumn = vim.wo.statuscolumn
 		local buffer = vim.api.nvim_create_buf(false, true)
+		vim.wo.winbar = "ORIGINAL"
+		vim.wo.statuscolumn = "ORIGINAL_STATUS"
+		render.prepare_window(window, buffer)
 		vim.api.nvim_set_current_buf(buffer)
 		vim.api.nvim_buf_set_lines(buffer, 0, -1, false, rendered.lines)
 
@@ -202,17 +248,34 @@ describe("jj stacked diff rendering", function()
 		assert.is_true(groups.JjDiffDeletedText)
 		assert.are.equal(12, vim.wo.numberwidth)
 		assert.truthy(vim.wo.statuscolumn:find("jj_diff_render", 1, true))
+		render.set_review_state(buffer, "jj revision test", "stale")
+		assert.truthy(render.winbar():find("jj revision test", 1, true))
+		assert.truthy(render.winbar():find("file 1/1 · hunk 1/1", 1, true))
+		assert.truthy(render.winbar():find("[stale]", 1, true))
+
+		vim.api.nvim_win_set_cursor(0, { 1, 0 })
+		render.navigate_hunk(1)
+		assert.are.same({ 2, 0 }, vim.api.nvim_win_get_cursor(0))
+		render.navigate_hunk(1)
+		assert.are.same({ 2, 0 }, vim.api.nvim_win_get_cursor(0))
+		render.navigate_file(1)
+		assert.are.same({ 1, 0 }, vim.api.nvim_win_get_cursor(0))
 
 		vim.cmd("vsplit")
 		local second_window = vim.api.nvim_get_current_win()
 		local temporary = vim.api.nvim_create_buf(false, true)
 		vim.wo[second_window].statuscolumn = "CUSTOM"
 		vim.api.nvim_win_set_buf(second_window, temporary)
+		assert.is_nil(vim.wo[second_window].statuscolumn:find("jj_diff_render", 1, true))
 		vim.api.nvim_win_set_buf(second_window, buffer)
 		assert.truthy(vim.wo[second_window].statuscolumn:find("jj_diff_render", 1, true))
 		vim.api.nvim_win_close(second_window, true)
 
 		vim.api.nvim_set_current_buf(original)
+		assert.are.equal("ORIGINAL", vim.wo[window].winbar)
+		assert.are.equal("ORIGINAL_STATUS", vim.wo[window].statuscolumn)
+		vim.wo[window].winbar = original_winbar
+		vim.wo[window].statuscolumn = original_statuscolumn
 		vim.api.nvim_buf_delete(temporary, { force = true })
 		vim.api.nvim_buf_delete(buffer, { force = true })
 	end)
