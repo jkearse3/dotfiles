@@ -837,7 +837,7 @@ describe("jj diff comparisons", function()
 
 		commit_id = "bbbbbbbb"
 		assert.is_true(jj_diff.check_patch_stale(buffer))
-		assert.truthy(jj_diff_render.winbar():find("[stale]", 1, true))
+		assert.truthy(jj_diff_render.statusline():find("[stale]", 1, true))
 		assert.is_true(jj_diff.refresh_patch(buffer))
 
 		assert.are.equal("local kept = true", vim.api.nvim_get_current_line())
@@ -847,13 +847,13 @@ describe("jj diff comparisons", function()
 			vim.api.nvim_buf_get_lines(buffer, second_row - 1, second_row, false)[1]
 		)
 		assert.are.equal("bbbbbbbb", vim.b[buffer].jj_diff_comparison.target)
-		assert.is_nil(jj_diff_render.winbar():find("[stale]", 1, true))
+		assert.is_nil(jj_diff_render.statusline():find("[stale]", 1, true))
 
 		resolution_error = "revision disappeared"
 		local stale, err = jj_diff.check_patch_stale(buffer)
 		assert.is_nil(stale)
 		assert.are.equal(resolution_error, err)
-		assert.truthy(jj_diff_render.winbar():find("[status unknown]", 1, true))
+		assert.truthy(jj_diff_render.statusline():find("[status unknown]", 1, true))
 		vim.api.nvim_win_close(second_window, true)
 		vim.api.nvim_buf_delete(buffer, {})
 	end)

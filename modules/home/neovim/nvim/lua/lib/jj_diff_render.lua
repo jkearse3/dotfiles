@@ -431,6 +431,7 @@ local function apply_syntax_fragment(buffer, fragment)
 end
 
 local review_statuscolumn = "%!v:lua.require'lib.jj_diff_render'.statuscolumn()"
+local review_statusline = "%!v:lua.require'lib.jj_diff_render'.statusline()"
 local review_winbar = "%!v:lua.require'lib.jj_diff_render'.winbar()"
 
 local review_window_options = {
@@ -439,6 +440,7 @@ local review_window_options = {
 	"numberwidth",
 	"signcolumn",
 	"statuscolumn",
+	"statusline",
 	"winbar",
 	"cursorline",
 }
@@ -505,6 +507,7 @@ local function configure_window(window, buffer)
 	vim.wo[window].numberwidth = 12
 	vim.wo[window].signcolumn = "no"
 	vim.wo[window].statuscolumn = review_statuscolumn
+	vim.wo[window].statusline = review_statusline
 	vim.wo[window].winbar = review_winbar
 	vim.wo[window].cursorline = true
 end
@@ -725,7 +728,14 @@ local function progress_at_row(rendered, row)
 	return progress
 end
 
---- Formats review identity, progress, and staleness for the window bar.
+local function file_at_row(rendered, row)
+	local file_index = last_row_at_or_before(rendered.file_rows, row)
+	local file_row = rendered.file_rows[file_index]
+	local file = file_row and rendered.rows[file_row]
+	return file and file.text or ""
+end
+
+--- Formats the current review file for the dedicated window bar.
 ---@return string
 function M.winbar()
 	local window = tonumber(vim.g.statusline_winid) or vim.api.nvim_get_current_win()
@@ -736,15 +746,29 @@ function M.winbar()
 		return ""
 	end
 	local row = vim.api.nvim_win_get_cursor(window)[1]
+	local file = file_at_row(rendered, row)
+	return (file ~= "" and file or state.title):gsub("%%", "%%%%")
+end
+
+--- Formats review identity, progress, and staleness for the status line.
+---@return string
+function M.statusline()
+	local window = tonumber(vim.g.statusline_winid) or vim.api.nvim_get_current_win()
+	local buffer = vim.api.nvim_win_get_buf(window)
+	local rendered = rendered_buffers[buffer]
+	local state = review_states[buffer]
+	if not rendered or not state then
+		return ""
+	end
+	local row = vim.api.nvim_win_get_cursor(window)[1]
+	local progress = progress_at_row(rendered, row)
 	local title = state.title:gsub("%%", "%%%%")
 	local freshness = state.freshness == "stale" and "  %#WarningMsg#[stale]%*"
 		or (state.freshness == "unknown" and "  %#WarningMsg#[status unknown]%*" or "")
-	return string.format(
-		"%%#WinBar# %s%%*  %%#Comment#%s%%*%s",
-		title,
-		progress_at_row(rendered, row),
-		freshness
-	)
+	if progress == "" then
+		return string.format("%%#StatusLine# %s%%*%s", title, freshness)
+	end
+	return string.format("%%#StatusLine# %s%%*  %%#Comment#%s%%*%s", progress, title, freshness)
 end
 
 --- Formats old/new source line numbers and change markers for the review status column.

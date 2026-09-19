@@ -228,9 +228,11 @@ describe("jj stacked diff rendering", function()
 		local window = vim.api.nvim_get_current_win()
 		local original_winbar = vim.wo.winbar
 		local original_statuscolumn = vim.wo.statuscolumn
+		local original_statusline = vim.wo.statusline
 		local buffer = vim.api.nvim_create_buf(false, true)
 		vim.wo.winbar = "ORIGINAL"
 		vim.wo.statuscolumn = "ORIGINAL_STATUS"
+		vim.wo.statusline = "ORIGINAL_LINE"
 		render.prepare_window(window, buffer)
 		vim.api.nvim_set_current_buf(buffer)
 		vim.api.nvim_buf_set_lines(buffer, 0, -1, false, rendered.lines)
@@ -249,9 +251,12 @@ describe("jj stacked diff rendering", function()
 		assert.are.equal(12, vim.wo.numberwidth)
 		assert.truthy(vim.wo.statuscolumn:find("jj_diff_render", 1, true))
 		render.set_review_state(buffer, "jj revision test", "stale")
-		assert.truthy(render.winbar():find("jj revision test", 1, true))
-		assert.truthy(render.winbar():find("file 1/1 · hunk 1/1", 1, true))
-		assert.truthy(render.winbar():find("[stale]", 1, true))
+		assert.are.equal("a.lua", render.winbar())
+		assert.is_nil(render.winbar():find("jj revision test", 1, true))
+		assert.truthy(render.statusline():find("jj revision test", 1, true))
+		assert.truthy(render.statusline():find("file 1/1 · hunk 1/1", 1, true))
+		assert.truthy(render.statusline():find("[stale]", 1, true))
+		assert.truthy(vim.wo.statusline:find("jj_diff_render", 1, true))
 
 		vim.api.nvim_win_set_cursor(0, { 1, 0 })
 		render.navigate_hunk(1)
@@ -265,17 +270,22 @@ describe("jj stacked diff rendering", function()
 		local second_window = vim.api.nvim_get_current_win()
 		local temporary = vim.api.nvim_create_buf(false, true)
 		vim.wo[second_window].statuscolumn = "CUSTOM"
+		vim.wo[second_window].statusline = "CUSTOM_LINE"
 		vim.api.nvim_win_set_buf(second_window, temporary)
 		assert.is_nil(vim.wo[second_window].statuscolumn:find("jj_diff_render", 1, true))
+		assert.is_nil(vim.wo[second_window].statusline:find("jj_diff_render", 1, true))
 		vim.api.nvim_win_set_buf(second_window, buffer)
 		assert.truthy(vim.wo[second_window].statuscolumn:find("jj_diff_render", 1, true))
+		assert.truthy(vim.wo[second_window].statusline:find("jj_diff_render", 1, true))
 		vim.api.nvim_win_close(second_window, true)
 
 		vim.api.nvim_set_current_buf(original)
 		assert.are.equal("ORIGINAL", vim.wo[window].winbar)
 		assert.are.equal("ORIGINAL_STATUS", vim.wo[window].statuscolumn)
+		assert.are.equal("ORIGINAL_LINE", vim.wo[window].statusline)
 		vim.wo[window].winbar = original_winbar
 		vim.wo[window].statuscolumn = original_statuscolumn
+		vim.wo[window].statusline = original_statusline
 		vim.api.nvim_buf_delete(temporary, { force = true })
 		vim.api.nvim_buf_delete(buffer, { force = true })
 	end)
