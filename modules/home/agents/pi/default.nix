@@ -279,6 +279,10 @@ in
       # read-only input while keeping pi-specific overrides writable under
       # `~/.pi/agent/mcp.json` and project `.pi/mcp.json` files.
       "npm:pi-mcp-adapter@2.27.0"
+
+      # Replace the built-in read/edit workflow with stable, session-owned line
+      # anchors and reject edits when their previously read content is stale.
+      "npm:pi-hashline-edit-pro@4.3.5"
     ];
 
     home = {
