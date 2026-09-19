@@ -2,117 +2,139 @@
 vim.keymap.set("n", "<leader>/", "<cmd>nohlsearch<cr>", { desc = "Clear search highlights" })
 
 -- Fzf-lua fuzzy finder.
+---@alias config.search.FzfPicker fun(opts?: table): thread?, string?, table?
+
+---@param entry string
+---@return string
+local function git_status_path(entry)
+	return entry:match("%s%-%>%s(.+)$") or entry
+end
+
+---@param fzf fzf-lua
+local function configure_fzf(fzf)
+	---@type fzf-lua.Config
+	local options = {
+		grep = { hidden = true },
+		git = {
+			status = { _fmt = { from = git_status_path } },
+		},
+		winopts = {
+			fullscreen = true,
+			preview = {
+				layout = "vertical",
+				vertical = "down:80%",
+			},
+		},
+		keymap = {
+			fzf = {
+				true,
+				["ctrl-q"] = "select-all+accept",
+				["ctrl-l"] = "accept",
+			},
+		},
+		actions = {
+			files = {
+				true,
+				["ctrl-i"] = fzf.actions.toggle_ignore,
+				["ctrl-h"] = fzf.actions.toggle_hidden,
+			},
+		},
+	}
+
+	fzf.setup(options)
+
+	fzf.register_ui_select()
+end
+
+---@param fzf fzf-lua
+local function explore_directory(fzf)
+	fzf.fzf_exec("fd --type d --hidden --exclude .git", {
+		prompt = vim.fn.fnamemodify(vim.fn.getcwd(), ":~") .. "/",
+		actions = {
+			---@param selected string[]
+			["default"] = function(selected)
+				vim.cmd.Explore(selected[1])
+			end,
+		},
+	})
+end
+
+---@param key string
+---@param picker config.search.FzfPicker
+---@param description string
+local function map_fzf_picker(key, picker, description)
+	vim.keymap.set("n", key, picker, { desc = description })
+end
+
+---@param fzf fzf-lua
+---@param key string
+---@param picker config.search.FzfPicker
+---@param description string
+local function map_visual_fzf_picker(fzf, key, picker, description)
+	vim.keymap.set("v", key, function()
+		picker({ search = fzf.utils.get_visual_selection() })
+	end, { desc = description })
+end
+
+---@param fzf fzf-lua
+local function set_fzf_keymaps(fzf)
+	map_fzf_picker("<leader>fe", function()
+		explore_directory(fzf)
+	end, "FZF: Explore directory")
+	map_fzf_picker("<leader>ff", fzf.files, "FZF: Files")
+	map_fzf_picker("<leader>fs", fzf.lgrep_curbuf, "FZF: Live grep file")
+	map_visual_fzf_picker(
+		fzf,
+		"<leader>fs",
+		fzf.lgrep_curbuf,
+		"FZF: Live grep file (visual selection)"
+	)
+	map_fzf_picker("<leader>fS", fzf.live_grep, "FZF: Live grep workspace")
+	map_visual_fzf_picker(
+		fzf,
+		"<leader>fS",
+		fzf.live_grep,
+		"FZF: Live grep workspace (visual selection)"
+	)
+	map_fzf_picker("<leader>fw", fzf.grep_cword, "FZF: Grep word")
+	map_fzf_picker("<leader>fW", fzf.grep_cWORD, "FZF: Grep WORD")
+	map_fzf_picker("<leader>fm", fzf.marks, "FZF: Marks")
+	map_fzf_picker("<leader>fr", fzf.registers, "FZF: Registers")
+	map_fzf_picker("<leader>f<leader>", fzf.resume, "FZF: Resume last search")
+	map_fzf_picker("<leader>fh", fzf.helptags, "FZF: Help tags")
+	map_fzf_picker("<leader>fk", fzf.keymaps, "FZF: Keymaps")
+	map_fzf_picker("<leader>fb", fzf.buffers, "FZF: Open buffers")
+
+	map_fzf_picker("<leader>fql", fzf.quickfix, "FZF: Quickfix list")
+	map_fzf_picker("<leader>fqs", fzf.quickfix_stack, "FZF: Quickfix stack")
+
+	map_fzf_picker("<leader>fls", fzf.lsp_document_symbols, "FZF: LSP document symbols")
+	map_fzf_picker("<leader>flS", fzf.lsp_live_workspace_symbols, "FZF: LSP workspace symbols")
+	map_fzf_picker("<leader>flr", fzf.lsp_references, "FZF: LSP references")
+	map_fzf_picker("<leader>fld", fzf.lsp_definitions, "FZF: LSP definitions")
+	map_fzf_picker("<leader>flD", fzf.lsp_declarations, "FZF: LSP declarations")
+	map_fzf_picker("<leader>flt", fzf.lsp_typedefs, "FZF: LSP type definitions")
+	map_fzf_picker("<leader>fli", fzf.lsp_implementations, "FZF: LSP type implementations")
+	map_fzf_picker("<leader>flp", fzf.lsp_document_diagnostics, "FZF: LSP document diagnostics")
+	map_fzf_picker("<leader>flP", fzf.lsp_workspace_diagnostics, "FZF: LSP workspace diagnostics")
+
+	map_fzf_picker("<leader>fgs", fzf.git_status, "FZF: Git status")
+	map_fzf_picker("<leader>fgS", fzf.git_stash, "FZF: Git stash")
+	map_fzf_picker("<leader>fgf", fzf.git_files, "FZF: Git files")
+	map_fzf_picker("<leader>fgb", fzf.git_branches, "FZF: Git branches")
+	map_fzf_picker("<leader>fgB", fzf.git_blame, "FZF: Git blame")
+	map_fzf_picker("<leader>fgt", fzf.git_tags, "FZF: Git tags")
+	map_fzf_picker("<leader>fgh", fzf.git_hunks, "FZF: Git hunks")
+
+	map_fzf_picker("<leader>fdb", fzf.dap_breakpoints, "FZF: DAP breakpoints")
+end
+
 require("lib.config").run({
 	plugins = { "https://github.com/ibhagwan/fzf-lua" },
 	setup = function()
+		---@type fzf-lua
 		local fzf = require("fzf-lua")
-
-		fzf.setup({
-			grep = { hidden = true },
-			git = {
-				status = {
-					_fmt = {
-						from = function(entry)
-							return entry:match("%s%-%>%s(.+)$") or entry
-						end,
-					},
-				},
-			},
-			winopts = {
-				fullscreen = true,
-				preview = {
-					layout = "vertical",
-					vertical = "down:80%",
-				},
-			},
-			keymap = {
-				fzf = {
-					true,
-					["ctrl-q"] = "select-all+accept",
-					["ctrl-l"] = "accept",
-				},
-			},
-			actions = {
-				files = {
-					true,
-					["ctrl-i"] = fzf.actions.toggle_ignore,
-					["ctrl-h"] = fzf.actions.toggle_hidden,
-				},
-			},
-		})
-
-		fzf.register_ui_select()
-
-		vim.keymap.set("n", "<leader>fe", function()
-			fzf.fzf_exec("fd --type d --hidden --exclude .git", {
-				prompt = vim.fn.fnamemodify(vim.fn.getcwd(), ":~") .. "/",
-				actions = {
-					["default"] = function(selected)
-						vim.cmd.Explore(selected[1])
-					end,
-				},
-			})
-		end, { desc = "FZF: Explore directory" })
-		vim.keymap.set("n", "<leader>ff", fzf.files, { desc = "FZF: Files" })
-		vim.keymap.set("n", "<leader>fs", fzf.lgrep_curbuf, { desc = "FZF: Live grep file" })
-		vim.keymap.set("v", "<leader>fs", function()
-			fzf.lgrep_curbuf({ search = fzf.utils.get_visual_selection() })
-		end, { desc = "FZF: Live grep file (visual selection)" })
-		vim.keymap.set("n", "<leader>fS", fzf.live_grep, { desc = "FZF: Live grep workspace" })
-		vim.keymap.set("v", "<leader>fS", function()
-			fzf.live_grep({ search = fzf.utils.get_visual_selection() })
-		end, { desc = "FZF: Live grep workspace (visual selection)" })
-		vim.keymap.set("n", "<leader>fw", fzf.grep_cword, { desc = "FZF: Grep word" })
-		vim.keymap.set("n", "<leader>fW", fzf.grep_cWORD, { desc = "FZF: Grep WORD" })
-		vim.keymap.set("n", "<leader>fm", fzf.marks, { desc = "FZF: Marks" })
-		vim.keymap.set("n", "<leader>fr", fzf.registers, { desc = "FZF: Registers" })
-		vim.keymap.set("n", "<leader>f<leader>", fzf.resume, { desc = "FZF: Resume last search" })
-		vim.keymap.set("n", "<leader>fh", fzf.helptags, { desc = "FZF: Help tags" })
-		vim.keymap.set("n", "<leader>fk", fzf.keymaps, { desc = "FZF: Keymaps" })
-		vim.keymap.set("n", "<leader>fb", fzf.buffers, { desc = "FZF: Open buffers" })
-		vim.keymap.set("n", "<leader>fql", fzf.quickfix, { desc = "FZF: Quickfix list" })
-		vim.keymap.set("n", "<leader>fqs", fzf.quickfix_stack, { desc = "FZF: Quickfix stack" })
-		vim.keymap.set(
-			"n",
-			"<leader>fls",
-			fzf.lsp_document_symbols,
-			{ desc = "FZF: LSP document symbols" }
-		)
-		vim.keymap.set(
-			"n",
-			"<leader>flS",
-			fzf.lsp_live_workspace_symbols,
-			{ desc = "FZF: LSP workspace symbols" }
-		)
-		vim.keymap.set("n", "<leader>flr", fzf.lsp_references, { desc = "FZF: LSP references" })
-		vim.keymap.set("n", "<leader>fld", fzf.lsp_definitions, { desc = "FZF: LSP definitions" })
-		vim.keymap.set("n", "<leader>flD", fzf.lsp_declarations, { desc = "FZF: LSP declarations" })
-		vim.keymap.set("n", "<leader>flt", fzf.lsp_typedefs, { desc = "FZF: LSP type definitions" })
-		vim.keymap.set(
-			"n",
-			"<leader>fli",
-			fzf.lsp_implementations,
-			{ desc = "FZF: LSP type implementations" }
-		)
-		vim.keymap.set(
-			"n",
-			"<leader>flp",
-			fzf.lsp_document_diagnostics,
-			{ desc = "FZF: LSP document diagnostics" }
-		)
-		vim.keymap.set(
-			"n",
-			"<leader>flP",
-			fzf.lsp_workspace_diagnostics,
-			{ desc = "FZF: LSP workspace diagnostics" }
-		)
-		vim.keymap.set("n", "<leader>fgs", fzf.git_status, { desc = "FZF: Git status" })
-		vim.keymap.set("n", "<leader>fgS", fzf.git_stash, { desc = "FZF: Git stash" })
-		vim.keymap.set("n", "<leader>fgf", fzf.git_files, { desc = "FZF: Git files" })
-		vim.keymap.set("n", "<leader>fgb", fzf.git_branches, { desc = "FZF: Git branches" })
-		vim.keymap.set("n", "<leader>fgB", fzf.git_blame, { desc = "FZF: Git blame" })
-		vim.keymap.set("n", "<leader>fgt", fzf.git_tags, { desc = "FZF: Git tags" })
-		vim.keymap.set("n", "<leader>fgh", fzf.git_hunks, { desc = "FZF: Git hunks" })
-		vim.keymap.set("n", "<leader>fdb", fzf.dap_breakpoints, { desc = "FZF: DAP breakpoints" })
+		configure_fzf(fzf)
+		set_fzf_keymaps(fzf)
 	end,
 })
