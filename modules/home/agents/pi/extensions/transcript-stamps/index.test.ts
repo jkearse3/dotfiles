@@ -77,6 +77,16 @@ function withClock(observations: number[], run: () => void): void {
   }
 }
 
+function localUtcOffset(timestamp: number): string {
+  const offsetMinutes = -new Date(timestamp).getTimezoneOffset();
+  const sign = offsetMinutes < 0 ? "-" : "+";
+  const absoluteOffsetMinutes = Math.abs(offsetMinutes);
+  const hours = Math.floor(absoluteOffsetMinutes / 60);
+  const minutes = absoluteOffsetMinutes % 60;
+
+  return `UTC${sign}${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}`;
+}
+
 test("lifecycle stamps finalized queued messages and parallel tools", () => {
   const harness = createExtensionHarness();
   const base = new Date(2026, 0, 2, 14, 0, 0).getTime();
@@ -148,7 +158,7 @@ test("lifecycle stamps finalized queued messages and parallel tools", () => {
   assert.equal(harness.appended[2]?.createdAt, base + 2_200);
   assert.equal(
     formatTranscriptStamp(harness.appended[2]!),
-    "14:00:02 · first 500ms · response 1.8s · turn 3.0s · tools 900ms×2/1err · 13 tok/s",
+    `14:00:02 ${localUtcOffset(base + 2_200)} · first 500ms · response 1.8s · turn 3.0s · tools 900ms×2/1err · 13 tok/s`,
   );
 });
 

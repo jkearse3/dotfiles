@@ -6,6 +6,7 @@ export interface TranscriptStampDefaults {
   timeZone: "local";
   hourCycle: "24h" | "12h";
   showSeconds: boolean;
+  showTimeZone: boolean;
   dateContext: "first-and-day-change" | "day-change" | "never";
   showAssistantDuration: boolean;
   showTurnDuration: boolean;
@@ -20,6 +21,7 @@ export const TRANSCRIPT_STAMP_DEFAULTS: Readonly<TranscriptStampDefaults> =
     timeZone: "local",
     hourCycle: "24h",
     showSeconds: true,
+    showTimeZone: true,
     dateContext: "first-and-day-change",
     showAssistantDuration: true,
     showTurnDuration: true,
@@ -240,7 +242,10 @@ export function formatTranscriptStamp(
         ? " AM"
         : " PM"
       : "";
-  const time = `${timeParts.join(":")}${period}`;
+  const timeZone = TRANSCRIPT_STAMP_DEFAULTS.showTimeZone
+    ? ` ${formatLocalUtcOffset(created)}`
+    : "";
+  const time = `${timeParts.join(":")}${period}${timeZone}`;
   const date = [
     created.getFullYear(),
     String(created.getMonth() + 1).padStart(2, "0"),
@@ -373,6 +378,16 @@ function shouldShowStampDate(stamp: Readonly<TranscriptStampData>): boolean {
     current.getMonth() !== previous.getMonth() ||
     current.getDate() !== previous.getDate()
   );
+}
+
+function formatLocalUtcOffset(date: Date): string {
+  const offsetMinutes = -date.getTimezoneOffset();
+  const sign = offsetMinutes < 0 ? "-" : "+";
+  const absoluteOffsetMinutes = Math.abs(offsetMinutes);
+  const hours = Math.floor(absoluteOffsetMinutes / 60);
+  const minutes = absoluteOffsetMinutes % 60;
+
+  return `UTC${sign}${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}`;
 }
 
 function formatTokenRate(

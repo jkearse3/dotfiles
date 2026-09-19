@@ -20,11 +20,22 @@ function localTime(
   return new Date(2026, 0, day, hour, minute, second).getTime();
 }
 
+function localUtcOffset(timestamp: number): string {
+  const offsetMinutes = -new Date(timestamp).getTimezoneOffset();
+  const sign = offsetMinutes < 0 ? "-" : "+";
+  const absoluteOffsetMinutes = Math.abs(offsetMinutes);
+  const hours = Math.floor(absoluteOffsetMinutes / 60);
+  const minutes = absoluteOffsetMinutes % 60;
+
+  return `UTC${sign}${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}`;
+}
+
 test("defaults are explicit and require no runtime configuration", () => {
   assert.deepEqual(TRANSCRIPT_STAMP_DEFAULTS, {
     timeZone: "local",
     hourCycle: "24h",
     showSeconds: true,
+    showTimeZone: true,
     dateContext: "first-and-day-change",
     showAssistantDuration: true,
     showTurnDuration: true,
@@ -40,11 +51,11 @@ test("first stamp includes local date and subsequent same-day stamp stays compac
 
   assert.equal(
     formatTranscriptStamp(createTranscriptStamp("user", first)),
-    "2026-01-02 · 14:03:04",
+    `2026-01-02 · 14:03:04 ${localUtcOffset(first)}`,
   );
   assert.equal(
     formatTranscriptStamp(createTranscriptStamp("user", second, first)),
-    "14:04:05",
+    `14:04:05 ${localUtcOffset(second)}`,
   );
 });
 
@@ -54,7 +65,7 @@ test("local day changes restore date context", () => {
 
   assert.equal(
     formatTranscriptStamp(createTranscriptStamp("user", current, previous)),
-    "2026-01-03 · 00:00:01",
+    `2026-01-03 · 00:00:01 ${localUtcOffset(current)}`,
   );
 });
 
@@ -70,7 +81,7 @@ test("assistant duration favors compact human-scale precision", () => {
         createdAt + 325,
       ),
     ),
-    "14:03:04 · response 325ms",
+    `14:03:04 ${localUtcOffset(createdAt)} · response 325ms`,
   );
   assert.equal(
     formatTranscriptStamp(
@@ -81,7 +92,7 @@ test("assistant duration favors compact human-scale precision", () => {
         createdAt + 3_200,
       ),
     ),
-    "14:03:04 · response 3.2s",
+    `14:03:04 ${localUtcOffset(createdAt)} · response 3.2s`,
   );
   assert.equal(
     formatTranscriptStamp(
@@ -92,7 +103,7 @@ test("assistant duration favors compact human-scale precision", () => {
         createdAt + 63_400,
       ),
     ),
-    "14:03:04 · response 1m 03s",
+    `14:03:04 ${localUtcOffset(createdAt)} · response 1m 03s`,
   );
 });
 
@@ -116,7 +127,7 @@ test("assistant stamp distinguishes response and complete turn duration", () => 
   assert.equal(stamp.version, 3);
   assert.equal(
     formatTranscriptStamp(stamp),
-    "14:03:04 · response 3.2s · turn 8.4s",
+    `14:03:04 ${localUtcOffset(createdAt)} · response 3.2s · turn 8.4s`,
   );
 });
 
@@ -148,7 +159,7 @@ test("assistant stamp summarizes latency, tools, and token throughput", () => {
 
   assert.equal(
     formatTranscriptStamp(stamp),
-    "14:03:04 · first 1.5s · response 3.5s · turn 9.0s · tools 4.0s×3/1err · 50 tok/s",
+    `14:03:04 ${localUtcOffset(createdAt)} · first 1.5s · response 3.5s · turn 9.0s · tools 4.0s×3/1err · 50 tok/s`,
   );
 });
 
