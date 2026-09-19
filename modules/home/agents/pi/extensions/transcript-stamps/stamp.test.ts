@@ -1,0 +1,269 @@
+import assert from "node:assert/strict";
+import test from "node:test";
+
+import {
+  createTranscriptStamp,
+  findLatestTranscriptStampTime,
+  findLatestUnstampedTranscriptMessage,
+  formatTranscriptStamp,
+  isTranscriptStampData,
+  TRANSCRIPT_STAMP_DEFAULTS,
+  TRANSCRIPT_STAMP_ENTRY_TYPE,
+} from "./stamp.ts";
+
+function localTime(
+  day: number,
+  hour: number,
+  minute: number,
+  second: number,
+): number {
+  return new Date(2026, 0, day, hour, minute, second).getTime();
+}
+
+test("defaults are explicit and require no runtime configuration", () => {
+  assert.deepEqual(TRANSCRIPT_STAMP_DEFAULTS, {
+    timeZone: "local",
+    hourCycle: "24h",
+    showSeconds: true,
+    dateContext: "first-and-day-change",
+    showAssistantDuration: true,
+    showTurnDuration: true,
+    showFirstContentLatency: true,
+    showToolPerformance: true,
+    showTokenRate: true,
+  });
+});
+
+test("first stamp includes local date and subsequent same-day stamp stays compact", () => {
+  const first = localTime(2, 14, 3, 4);
+  const second = localTime(2, 14, 4, 5);
+
+  assert.equal(
+    formatTranscriptStamp(createTranscriptStamp("user", first)),
+    "2026-01-02 · 14:03:04",
+  );
+  assert.equal(
+    formatTranscriptStamp(createTranscriptStamp("user", second, first)),
+    "14:04:05",
+  );
+});
+
+test("local day changes restore date context", () => {
+  const previous = localTime(2, 23, 59, 59);
+  const current = localTime(3, 0, 0, 1);
+
+  assert.equal(
+    formatTranscriptStamp(createTranscriptStamp("user", current, previous)),
+    "2026-01-03 · 00:00:01",
+  );
+});
+
+test("assistant duration favors compact human-scale precision", () => {
+  const createdAt = localTime(2, 14, 3, 4);
+
+  assert.equal(
+    formatTranscriptStamp(
+      createTranscriptStamp(
+        "assistant",
+        createdAt,
+        createdAt - 1,
+        createdAt + 325,
+      ),
+    ),
+    "14:03:04 · response 325ms",
+  );
+  assert.equal(
+    formatTranscriptStamp(
+      createTranscriptStamp(
+        "assistant",
+        createdAt,
+        createdAt - 1,
+        createdAt + 3_200,
+      ),
+    ),
+    "14:03:04 · response 3.2s",
+  );
+  assert.equal(
+    formatTranscriptStamp(
+      createTranscriptStamp(
+        "assistant",
+        createdAt,
+        createdAt - 1,
+        createdAt + 63_400,
+      ),
+    ),
+    "14:03:04 · response 1m 03s",
+  );
+});
+
+test("assistant stamp distinguishes response and complete turn duration", () => {
+  const turnStartedAt = localTime(2, 14, 3, 3);
+  const createdAt = turnStartedAt + 1_000;
+  const responseCompletedAt = createdAt + 3_200;
+  const turnCompletedAt = turnStartedAt + 8_400;
+
+  const stamp = createTranscriptStamp(
+    "assistant",
+    createdAt,
+    createdAt - 1,
+    responseCompletedAt,
+    {
+      startedAt: turnStartedAt,
+      completedAt: turnCompletedAt,
+    },
+  );
+
+  assert.equal(stamp.version, 3);
+  assert.equal(
+    formatTranscriptStamp(stamp),
+    "14:03:04 · response 3.2s · turn 8.4s",
+  );
+});
+
+test("assistant stamp summarizes latency, tools, and token throughput", () => {
+  const turnStartedAt = localTime(2, 14, 3, 3);
+  const createdAt = turnStartedAt + 1_000;
+  const firstContentAt = turnStartedAt + 1_500;
+  const responseCompletedAt = createdAt + 3_500;
+  const turnCompletedAt = turnStartedAt + 9_000;
+
+  const stamp = createTranscriptStamp(
+    "assistant",
+    createdAt,
+    createdAt - 1,
+    responseCompletedAt,
+    {
+      startedAt: turnStartedAt,
+      completedAt: turnCompletedAt,
+      firstContentAt,
+      outputTokens: 150,
+      tools: {
+        startedAt: turnStartedAt + 4_000,
+        completedAt: turnStartedAt + 8_000,
+        count: 3,
+        errorCount: 1,
+      },
+    },
+  );
+
+  assert.equal(
+    formatTranscriptStamp(stamp),
+    "14:03:04 · first 1.5s · response 3.5s · turn 9.0s · tools 4.0s×3/1err · 50 tok/s",
+  );
+});
+
+test("persisted stamp validation rejects ambiguous or unsafe shapes", () => {
+  const createdAt = localTime(2, 14, 3, 4);
+
+  assert.equal(
+    isTranscriptStampData(
+      createTranscriptStamp("assistant", createdAt, undefined, createdAt + 1),
+    ),
+    true,
+  );
+  assert.equal(
+    isTranscriptStampData(
+      createTranscriptStamp("user", createdAt, undefined, createdAt + 1),
+    ),
+    false,
+  );
+  assert.equal(
+    isTranscriptStampData(
+      createTranscriptStamp("assistant", createdAt, undefined, createdAt - 1),
+    ),
+    false,
+  );
+  assert.equal(
+    isTranscriptStampData({
+      ...createTranscriptStamp("user", createdAt),
+      unexpected: true,
+    }),
+    false,
+  );
+  const legacyTurnStamp = {
+    version: 2,
+    role: "assistant",
+    createdAt,
+    turnStartedAt: createdAt - 1_000,
+    turnCompletedAt: createdAt + 3_000,
+  };
+  assert.equal(isTranscriptStampData(legacyTurnStamp), true);
+  const turnStamp = createTranscriptStamp(
+    "assistant",
+    createdAt,
+    undefined,
+    createdAt + 2_000,
+    {
+      startedAt: createdAt - 1_000,
+      completedAt: createdAt + 3_000,
+    },
+  );
+  assert.equal(isTranscriptStampData(turnStamp), true);
+  assert.equal(
+    isTranscriptStampData({
+      ...turnStamp,
+      toolCount: 1,
+    }),
+    false,
+  );
+  assert.equal(
+    isTranscriptStampData({
+      ...turnStamp,
+      turnCompletedAt: createdAt + 1_000,
+    }),
+    false,
+  );
+});
+
+test("latest stamp lookup ignores unrelated and malformed session entries", () => {
+  const older = localTime(2, 14, 3, 4);
+  const newer = localTime(2, 14, 4, 5);
+  const entries = [
+    { type: "message", message: { role: "user", timestamp: older } },
+    {
+      type: "custom",
+      customType: TRANSCRIPT_STAMP_ENTRY_TYPE,
+      data: createTranscriptStamp("user", older),
+    },
+    {
+      type: "custom",
+      customType: TRANSCRIPT_STAMP_ENTRY_TYPE,
+      data: { version: 99, role: "user", createdAt: newer },
+    },
+    {
+      type: "custom",
+      customType: TRANSCRIPT_STAMP_ENTRY_TYPE,
+      data: createTranscriptStamp("assistant", newer, older, newer + 1),
+    },
+  ];
+
+  assert.equal(findLatestTranscriptStampTime(entries), newer);
+  assert.equal(findLatestTranscriptStampTime(entries.slice(0, 1)), undefined);
+});
+
+test("unstamped terminal message is detected for clone reconciliation", () => {
+  const createdAt = localTime(2, 14, 3, 4);
+  const message = {
+    type: "message",
+    message: {
+      role: "user",
+      timestamp: createdAt,
+    },
+  };
+
+  assert.deepEqual(findLatestUnstampedTranscriptMessage([message]), {
+    role: "user",
+    createdAt,
+  });
+  assert.equal(
+    findLatestUnstampedTranscriptMessage([
+      message,
+      {
+        type: "custom",
+        customType: TRANSCRIPT_STAMP_ENTRY_TYPE,
+        data: createTranscriptStamp("user", createdAt),
+      },
+    ]),
+    undefined,
+  );
+});

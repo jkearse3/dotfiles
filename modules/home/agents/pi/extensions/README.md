@@ -10,6 +10,20 @@ In editable Home Manager mode that path is a symlink into this checkout. Pi
 auto-discovers `*/index.ts`, and `/reload` applies source changes without a Home
 Manager rebuild.
 
+## Transcript stamps
+
+The `transcript-stamps` extension adds dim, right-aligned rows after user
+messages and at the close of assistant turns (after any tool rows). Its fixed
+defaults are local 24-hour time with seconds, a date on the first stamp and at
+local day changes, first-content latency, assistant response and complete-turn
+duration, aggregate tool wall time/count/errors, and reported output-token
+throughput. Timing values are local Pi observations rather than provider
+telemetry.
+
+Stamp entries persist in the session but remain outside model context. The
+extension performs no settings or network I/O, starts no timers or background
+work, and caches rendered output by terminal width.
+
 ## Create an extension
 
 Use a directory with an `index.ts` entry point and keep helpers and fixtures
