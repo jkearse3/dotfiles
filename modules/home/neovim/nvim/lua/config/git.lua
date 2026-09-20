@@ -126,6 +126,7 @@ require("lib.config").run({
 
 local jj_history = require("lib.jj_history")
 vim.keymap.set("n", "<leader>jl", jj_history.pick_stack, { desc = "JJ: Change stack" })
+vim.keymap.set("n", "<leader>jf", jj_history.pick_file, { desc = "JJ: File history" })
 
 -- Read-only history; action allowlists are installed by config.search.
 local git_history = require("lib.git_history")

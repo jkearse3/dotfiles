@@ -266,7 +266,54 @@ describe("read-only JJ history", function()
 		assert.matches("Ctrl-D: complete patch against parents", patch, 1, true)
 	end)
 
-	it("wires revision review and evolution without replacing existing Git history", function()
+	it(
+		"filters file history and patches with literal filesets, excluding unrelated changes",
+		function()
+			local path = 'space (all) | "quote" café.txt'
+			vim.fn.writefile({ "target content" }, repo .. "/" .. path)
+			vim.fn.writefile({ "unrelated content" }, repo .. "/other.txt")
+			jj("describe", "-m", "file addition")
+			local target = jj("log", "--no-graph", "-r", "@", "-T", "commit_id")
+			jj("new", "-m", "unrelated revision")
+			vim.fn.writefile({ "other modification" }, repo .. "/other.txt")
+			jj("describe", "-m", "unrelated revision")
+			local buffer = vim.fn.bufadd(repo .. "/" .. path)
+			vim.fn.bufload(buffer)
+			vim.api.nvim_win_set_buf(0, buffer)
+			history.pick_file()
+			assert.matches("JJ file ", options.prompt, 1, true)
+			assert.are.equal(1, #entries)
+			assert.matches(target:sub(1, 12), entries[1], 1, true)
+			options.actions().enter({ entries[1] })
+			local patch = table.concat(vim.api.nvim_buf_get_lines(0, 0, -1, false), "\n")
+			assert.matches("+target content", patch, 1, true)
+			assert.is_nil(patch:find("unrelated content", 1, true))
+			assert.is_false(vim.bo.modifiable)
+			options.actions()["ctrl-e"]({ entries[1] })
+			assert.are.equal("Previous drafts> ", options.prompt)
+			assert.matches(target:sub(1, 12), entries[1], 1, true)
+			options.actions()["ctrl-d"]({ entries[1] })
+			local complete = table.concat(vim.api.nvim_buf_get_lines(0, 0, -1, false), "\n")
+			assert.matches("Complete patch against parents", complete, 1, true)
+			assert.matches("+unrelated content", complete, 1, true)
+		end
+	)
+
+	it("rejects unnamed file-history buffers without falling back to repository history", function()
+		local notify, message = vim.notify
+		vim.notify = function(value)
+			message = value
+		end
+		vim.api.nvim_win_set_buf(0, vim.api.nvim_create_buf(false, true))
+		entries, options = nil, nil
+		local ok, err = pcall(history.pick_file)
+		vim.notify = notify
+		assert(ok, err)
+		assert.is_nil(entries)
+		assert.matches("requires a named file buffer", message, 1, true)
+	end)
+
+	it("wires revision and file history without a standalone evolution mapping", function()
 		local config = package.loaded["lib.config"]
 		package.loaded["lib.config"] = {
 			run = function(spec)
@@ -286,10 +333,25 @@ describe("read-only JJ history", function()
 		)
 		assert.are.equal("", vim.fn.maparg("<leader>je", "n"))
 		assert.is_nil(history.pick_evolution)
+		assert.are.equal(history.pick_file, vim.fn.maparg("<leader>jf", "n", false, true).callback)
 		assert.are.equal(
 			require("lib.git_history").pick_file,
 			vim.fn.maparg("<leader>glf", "n", false, true).callback
 		)
+	end)
+
+	it("encodes control characters using JJ fileset syntax rather than JSON escapes", function()
+		for _, suffix in ipairs({ "\1", "\b", "\f", "\n", "\r", "\t", "\\", '"' }) do
+			local path = "control" .. suffix .. "file.txt"
+			vim.fn.writefile({ "literal bytes" }, repo .. "/" .. path)
+			jj("describe", "-m", "literal path")
+			local revisions, err = history.list(repo, nil, path)
+			assert.is_not_nil(revisions, err)
+			assert.are.equal(1, #revisions)
+			local patch, patch_err = history.patch(repo, revisions[1], nil, path)
+			assert.is_not_nil(patch, patch_err)
+			assert.matches("+literal bytes", patch, 1, true)
+		end
 	end)
 
 	it(

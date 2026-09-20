@@ -78,12 +78,19 @@ commit ancestry.
 Description-only edits and rebases can produce drafts without source-code
 changes. Inspection never restores a draft or records unsaved edits.
 
+`<leader>jf` lists up to 200 revisions affecting the current file in `@`'s
+ancestry. Enter inspects only that path's patch; Ctrl-E opens previous drafts of
+the whole selected change; Ctrl-Y copies its change ID. Paths are literal,
+including fileset metacharacters. This is path-based history, not
+rename-following history; use `<leader>glf` to follow renames. Unnamed and
+non-file buffers are rejected.
+
 These pickers resolve the current file's repository, falling back to editor cwd
 for non-file buffers. Commands use `--at-operation=@ --ignore-working-copy`:
 they do not snapshot disk edits, import Git refs, or advance JJ's operation log.
 They show the last recorded snapshot, not unsaved or subsequently changed files.
 Record changes through your normal JJ workflow before inspecting them here.
-Existing Git history and the specialized `gdb`/`gdl`/`gds` mappings are
+Existing Git history, `jf`, and the specialized `gdb`/`gdl`/`gds` mappings are
 otherwise unchanged; lazy file expansion applies to the `jl` revision overview.
 
 Divergent operation heads are reported as an error, not automatically

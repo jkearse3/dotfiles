@@ -26,6 +26,13 @@ function M.run(args, repo)
 	return result.stdout or ""
 end
 
+--- JJ quoted strings do not accept JSON's Unicode escapes; retain other bytes literally.
+local function literal_fileset(path)
+	local escapes =
+		{ ['"'] = '\\"', ["\\"] = "\\\\", ["\n"] = "\\n", ["\r"] = "\\r", ["\t"] = "\\t" }
+	return 'root-file:"' .. path:gsub('["\\\n\r\t]', escapes) .. '"'
+end
+
 local revision_template =
 	'"[" ++ json(self) ++ "," ++ json(local_bookmarks.map(|b| b.name())) ++ "]\\n"'
 
@@ -34,7 +41,8 @@ local revision_template =
 ---@return lib.jj_history.Revision[]? revisions
 ---@return string? error
 ---@param evolution? string Commit/revset whose evolutionary predecessors to list instead.
-function M.list(repo, evolution)
+---@param path? string Exact root-relative path; limits history to workspace ancestry, without rename following.
+function M.list(repo, evolution, path)
 	local args = { "log", "--no-graph", "--limit", "200", "--template", revision_template }
 	if evolution then
 		local template = '"[" ++ json(commit) ++ "," ++ json(commit.local_bookmarks().map(|b| b.name()))'
@@ -49,6 +57,9 @@ function M.list(repo, evolution)
 			"--template",
 			template,
 		}
+	end
+	if path then
+		vim.list_extend(args, { "-r", "::@", "--", literal_fileset(path) })
 	end
 	local output, err = M.run(args, repo)
 	if not output then
@@ -102,7 +113,8 @@ local draft_template = table.concat({
 ---@return string? patch
 ---@return string? error
 ---@param evolution? string Inspect the version's predecessor-relative interdiff when set.
-function M.patch(repo, revision, evolution)
+---@param path? string Scope the parent-relative patch to this exact root-relative path.
+function M.patch(repo, revision, evolution, path)
 	if evolution then
 		if revision.has_predecessors == false then
 			return "Previous drafts of this change\nChange: "
@@ -125,6 +137,16 @@ function M.patch(repo, revision, evolution)
 			"--git",
 			"--template",
 			draft_template,
+		}, repo)
+	end
+	if path then
+		return M.run({
+			"diff",
+			"--git",
+			"-r",
+			revision.commit_id,
+			"--",
+			literal_fileset(path),
 		}, repo)
 	end
 	return M.run({ "show", "--git", revision.commit_id }, repo)
@@ -152,8 +174,9 @@ end
 --- Opens a read-only picker with exact-entry lookup, not user text interpolated into commands.
 ---@param repo string
 ---@param evolution? string Revision to explore with evolog; absent selects stack history.
-function M.pick(repo, evolution)
-	local revisions, err = M.list(repo, evolution)
+---@param path? string Exact root-relative file to inspect within workspace ancestry.
+function M.pick(repo, evolution, path)
+	local revisions, err = M.list(repo, evolution, path)
 	if not revisions then
 		notify(err)
 		return
@@ -195,7 +218,9 @@ function M.pick(repo, evolution)
 	end
 
 	require("fzf-lua").fzf_exec(entries, {
-		prompt = evolution and "Previous drafts> " or "JJ stack> ",
+		prompt = evolution and "Previous drafts> "
+			or path and ("JJ file " .. display(path) .. "> ")
+			or "JJ stack> ",
 		fzf_opts = {
 			["--delimiter"] = "\t",
 			["--with-nth"] = "2..",
@@ -216,11 +241,11 @@ function M.pick(repo, evolution)
 					return
 				end
 				local content, preview_err
-				if not evolution then
+				if not evolution and not path then
 					content = revision.description
 						.. "\n\nEnter: file overview (patches remain unloaded)\nCtrl-E: previous drafts of this change  Ctrl-Y: change ID"
 				else
-					content, preview_err = M.patch(repo, revision, evolution)
+					content, preview_err = M.patch(repo, revision, evolution, path)
 				end
 				local buffer = self:get_tmp_buffer()
 				vim.api.nvim_buf_set_lines(
@@ -261,11 +286,11 @@ function M.pick(repo, evolution)
 					end
 				end),
 				["enter"] = selected_action(function(revision)
-					if not evolution then
+					if not evolution and not path then
 						require("lib.jj_review").open(repo, revision)
 						return
 					end
-					local content, patch_err = M.patch(repo, revision, evolution)
+					local content, patch_err = M.patch(repo, revision, evolution, path)
 					if content then
 						show_patch(content)
 					else
@@ -280,20 +305,35 @@ function M.pick(repo, evolution)
 	})
 end
 
-local function pick_current(evolution)
+local function pick_current(evolution, file_history)
 	local file = vim.api.nvim_buf_get_name(0)
+	if file_history and (vim.bo.buftype ~= "" or file == "") then
+		notify("JJ file history requires a named file buffer")
+		return
+	end
 	local cwd = vim.bo.buftype == "" and file ~= "" and vim.fs.dirname(file) or vim.fn.getcwd()
 	local repo, err = M.run({ "root" }, cwd)
 	if not repo then
 		notify(err)
 		return
 	end
-	M.pick(repo:gsub("\n$", ""), evolution)
+	repo = repo:gsub("\n$", "")
+	local path = file_history and vim.fs.relpath(repo, file) or nil
+	if file_history and not path then
+		notify("Current file is outside the JJ workspace")
+		return
+	end
+	M.pick(repo, evolution, path)
 end
 
 --- Browses the current file's JJ repository, falling back to cwd for non-file buffers.
 function M.pick_stack()
 	pick_current()
+end
+
+--- Browses recorded modifications to the current path in @'s ancestry; does not follow renames.
+function M.pick_file()
+	pick_current(nil, true)
 end
 
 return M
