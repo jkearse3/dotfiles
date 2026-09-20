@@ -5,6 +5,7 @@ local M = {}
 ---@field change_id string Stable change identity.
 ---@field description string
 ---@field bookmarks string[]
+---@field path? string Historical root-relative filename for rename-aware file-history selections.
 ---@field recorded_at? string Committer timestamp of this recorded draft, including timezone.
 ---@field has_predecessors? boolean Present on evolution entries; false identifies an initial draft.
 
@@ -183,14 +184,27 @@ end
 ---@param repo string
 ---@param evolution? string Revision to explore with evolog; absent selects stack history.
 ---@param path? string Exact root-relative file to inspect within workspace ancestry.
-function M.pick(repo, evolution, path)
-	local revisions, err = M.list(repo, evolution, path)
+---@param file_history? lib.jj_file_history.Result Resolved rename-aware entries; internal callback input.
+function M.pick(repo, evolution, path, file_history)
+	if path and not evolution and not file_history then
+		vim.notify("Looking up recorded file history; <leader>jx cancels", vim.log.levels.INFO)
+		require("lib.jj_review_source").inspect_file_history(repo, path, function(result)
+			M.pick(repo, nil, path, result)
+		end)
+		return
+	end
+	local revisions, err
+	if file_history then
+		revisions = file_history.revisions
+	else
+		revisions, err = M.list(repo, evolution, path)
+	end
 	if not revisions then
 		notify(err)
 		return
 	end
 	if #revisions == 0 then
-		notify("No JJ history entries")
+		notify(file_history and file_history.boundary or "No JJ history entries")
 		return
 	end
 	local entries, lookup = {}, {}
@@ -213,6 +227,9 @@ function M.pick(repo, evolution, path)
 				display(revision.description)
 			)
 		end
+		if file_history then
+			entry = entry .. "  [" .. display(revision.path) .. "]"
+		end
 		entries[#entries + 1] = entry
 		lookup[entry] = revision
 	end
@@ -233,13 +250,16 @@ function M.pick(repo, evolution, path)
 			["--delimiter"] = "\t",
 			["--with-nth"] = "2..",
 			["--no-sort"] = true,
-			["--header"] = evolution and table.concat({
-				"Previous drafts of this change",
-				"Change: " .. revisions[1].change_id,
-				"Enter: changes since earlier draft(s)",
-				"Ctrl-D: complete patch against parents",
-				"Ctrl-Y: copy change ID",
-			}, "\n") or nil,
+			["--header"] = evolution
+					and table.concat({
+						"Previous drafts of this change",
+						"Change: " .. revisions[1].change_id,
+						"Enter: changes since earlier draft(s)",
+						"Ctrl-D: complete patch against parents",
+						"Ctrl-Y: copy change ID",
+					}, "\n")
+				or file_history and ("Rename-aware recorded file history (inferred names)\n" .. file_history.boundary .. "\nEnter: revision overview  Ctrl-E: previous drafts  Ctrl-Y: change ID")
+				or nil,
 		},
 		previewer = function()
 			local class = require("fzf-lua.previewer.builtin").base:extend()
@@ -250,7 +270,12 @@ function M.pick(repo, evolution, path)
 				end
 				local content, preview_err
 				if not evolution then
-					content = revision.description
+					content = (
+						revision.path
+							and ("Historical path: " .. display(revision.path) .. "\n\n")
+						or ""
+					)
+						.. revision.description
 						.. "\n\nEnter: file overview (patches remain unloaded)\nCtrl-E: previous drafts of this change  Ctrl-Y: change ID"
 				else
 					content, preview_err = M.patch(repo, revision, evolution, path)
@@ -283,7 +308,7 @@ function M.pick(repo, evolution, path)
 				end),
 				["enter"] = selected_action(function(revision)
 					if not evolution then
-						require("lib.jj_review").open(repo, revision, path)
+						require("lib.jj_review").open(repo, revision, revision.path or path)
 						return
 					end
 					local content, patch_err = M.patch(repo, revision, evolution, path)
@@ -327,7 +352,7 @@ function M.pick_stack()
 	pick_current()
 end
 
---- Browses recorded modifications to the current path in @'s ancestry; does not follow renames.
+--- Browses recorded file history across conservative rename transitions; reports traversal boundaries.
 function M.pick_file()
 	pick_current(nil, true)
 end

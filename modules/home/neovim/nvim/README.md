@@ -26,7 +26,7 @@ file. There is no mandatory file-scope picker.
 | ------------ | -------------------------------------------------------------------------------------------------- |
 | `<leader>jl` | Configured JJ revision history; Enter reviews a revision against its parents.                      |
 | `<leader>jb` | Local bookmark range: nearest strictly older first-parent bookmark → selected bookmark.            |
-| `<leader>jf` | Current-path history; Enter reviews the whole selected revision, focusing that file's header.      |
+| `<leader>jf` | Rename-aware file history; Enter reviews the whole revision, focusing its historical filename.     |
 | `<leader>ja` | Recorded origin of the current line; focus its historical file header in the responsible revision. |
 | `<leader>jr` | Resume the retained overview without refreshing or loading patches.                                |
 | `<leader>jx` | Cancel pending source lookup and outstanding review requests, including from a source-file buffer. |
@@ -38,10 +38,30 @@ silently switch comparison semantics to Git.
 
 Revision and file-history pickers show metadata, not patches. Both list at most
 200 revisions; Enter opens the shared overview, Ctrl-E opens previous drafts of
-the selected change, and Ctrl-Y copies its change ID. File history searches the
-literal current path in `@`'s ancestry, not renames; use Git `glf` for
-rename-following history. Unnamed and non-file buffers are rejected for
-file/line inspection.
+the selected change, and Ctrl-Y copies its change ID. Unnamed and non-file
+buffers are rejected for file/line inspection.
+
+`jf` traces the recorded file backward through single-parent commits and
+detected renames, including rename-plus-edit and repeated renames. Each row and
+preview shows its historical filename; Enter selects that file's collapsed
+header. Lookup is asynchronous, uses only metadata, and pins one operation.
+`<leader>jx` cancels it; switching buffers discards late results. Unsaved
+contents are not snapshotted; the path must exist in recorded `@`.
+
+Rename detection is **inferred**, not definitive file identity. The header
+always explains where tracing ended. Additions (including copies or undetected
+renames), merges, and competing removed/renamed source paths stop traversal. A
+delete/recreate does not join separate file lifetimes. Even unrelated
+simultaneous deletions can make a rename too uncertain to follow. No merge
+parent is silently selected.
+
+Lookup skips unchanged commits, inspects at most 500 candidate commits, and
+returns at most 200 matching revisions. A 30-second traversal budget is checked
+between revisions; each individual request also has the existing 30-second
+timeout and 2 MiB metadata cap. Budget-limited results are explicitly labeled
+partial. Use Git `glf` if you need its alternative rename/history behavior. This
+does not change `ja`'s annotation semantics or its existing 1 MiB analysis-patch
+limit.
 
 Bookmark ranges retain their existing first-parent policy—not a guessed default
 branch or merge base. Missing ancestor bookmarks and ambiguous/conflicted

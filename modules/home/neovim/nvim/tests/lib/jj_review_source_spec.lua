@@ -105,6 +105,144 @@ describe("unified JJ review sources", function()
 		vim.fn.delete(directory, "rf")
 	end)
 
+	it("follows repeated renames with edits and opens the historical header lazily", function()
+		jj("new", "-m", "first rename")
+		assert(vim.uv.fs_rename(repo .. "/file.txt", repo .. "/middle.txt"))
+		jj("describe", "-m", "first rename")
+		jj("new", "-m", "second rename")
+		local path = 'final (all) "quoted".txt'
+		assert(vim.uv.fs_rename(repo .. "/middle.txt", repo .. "/" .. path))
+		vim.fn.writefile({ "first", "second", "third", "fourth" }, repo .. "/" .. path)
+		jj("describe", "-m", "second rename")
+		edit(path)
+		local before = operation()
+		local result = assert(resolve({ kind = "file-history", path = path }))
+		local paths = vim.tbl_map(function(entry)
+			return entry.path
+		end, result.revisions)
+		assert.are.same({ path, "middle.txt", "file.txt", "file.txt", "file.txt" }, paths)
+		assert.matches("Added at", result.boundary, 1, true)
+		local entries, options
+		fzf.fzf_exec = function(items, opts)
+			entries, options = items, opts
+		end
+		history.pick_file()
+		assert.is_true(vim.wait(5000, function()
+			return entries ~= nil
+		end))
+		assert.matches("file.txt", entries[#entries], 1, true)
+		assert.matches("Added at", options.fzf_opts["--header"], 1, true)
+		options.actions().enter({ entries[#entries] })
+		wait_for("not loaded")
+		assert.matches("file.txt", vim.api.nvim_get_current_line(), 1, true)
+		assert.is_nil(text():find("\nfirst\n", 1, true))
+		assert.are.equal(before, operation())
+	end)
+
+	it("skips unchanged commits without requesting a diff for each ancestor", function()
+		for index = 1, 12 do
+			jj("new", "-m", "unrelated empty " .. index)
+		end
+		local diffs = 0
+		process.start = function(root, args, limit, complete, op)
+			if args[1] == "diff" then
+				diffs = diffs + 1
+			end
+			return original_start(root, args, limit, complete, op)
+		end
+		local result = assert(resolve({ kind = "file-history", path = "file.txt" }))
+		assert.are.equal(3, #result.revisions)
+		assert.are.equal(3, diffs)
+		assert.are.equal(base, result.revisions[3].commit_id)
+	end)
+
+	it("does not load unrelated patch bodies while tracing file history", function()
+		vim.fn.writefile({ string.rep("payload", 160000) }, repo .. "/large.txt", "b")
+		jj(
+			"--config",
+			"snapshot.max-new-file-size=2000000",
+			"describe",
+			"-m",
+			"large unrelated addition"
+		)
+		local before = operation()
+		local operations = {}
+		process.start = function(root, args, limit, complete, op)
+			assert.is_false(vim.tbl_contains(args, "--git"))
+			if op then
+				operations[#operations + 1] = op
+			end
+			return original_start(root, args, limit, complete, op)
+		end
+		local result = assert(resolve({ kind = "file-history", path = "file.txt" }))
+		assert.are.equal(3, #result.revisions)
+		assert.are.equal(base, result.revisions[3].commit_id)
+		assert.is_true(#operations > 3)
+		for _, op in ipairs(operations) do
+			assert.are.equal(before, op)
+		end
+		assert.are.equal(before, operation())
+	end)
+
+	it("stops at competing rename candidates rather than trusting JJ's chosen source", function()
+		jj("new", "-m", "duplicate")
+		vim.fn.writefile({ "first", "second", "third" }, repo .. "/duplicate.txt")
+		jj("describe", "-m", "duplicate")
+		jj("new", "-m", "ambiguous rename")
+		assert(vim.uv.fs_rename(repo .. "/file.txt", repo .. "/new.txt"))
+		assert(vim.uv.fs_unlink(repo .. "/duplicate.txt"))
+		jj("describe", "-m", "ambiguous rename")
+		local result = assert(resolve({ kind = "file-history", path = "new.txt" }))
+		assert.are.equal(1, #result.revisions)
+		assert.matches("competing rename sources", result.boundary, 1, true)
+	end)
+
+	it("does not join copies or recreated paths to an unrelated prior lifetime", function()
+		jj("new", "-m", "copy")
+		vim.fn.writefile({ "first", "second", "third" }, repo .. "/copy.txt")
+		jj("describe", "-m", "copy")
+		local result = assert(resolve({ kind = "file-history", path = "copy.txt" }))
+		assert.are.equal(1, #result.revisions)
+		assert.matches("Added at", result.boundary, 1, true)
+		jj("new", "-m", "delete")
+		assert(vim.uv.fs_unlink(repo .. "/file.txt"))
+		jj("describe", "-m", "delete")
+		jj("new", "-m", "recreate")
+		vim.fn.writefile({ "first", "second", "third" }, repo .. "/file.txt")
+		jj("describe", "-m", "recreate")
+		result = assert(resolve({ kind = "file-history", path = "file.txt" }))
+		assert.are.equal(1, #result.revisions)
+		assert.matches("recreate", result.revisions[1].description, 1, true)
+	end)
+
+	it("reports a merge boundary without following an arbitrary parent", function()
+		jj("new", "-m", "left")
+		vim.fn.writefile({ "left" }, repo .. "/left.txt")
+		jj("describe", "-m", "left")
+		local left = id()
+		jj("new", target, "-m", "right")
+		vim.fn.writefile({ "right" }, repo .. "/right.txt")
+		jj("describe", "-m", "right")
+		local right = id()
+		jj("new", left, right, "-m", "merge")
+		local result = assert(resolve({ kind = "file-history", path = "file.txt" }))
+		assert.are.equal(0, #result.revisions)
+		assert.matches("stopped at merge", result.boundary, 1, true)
+	end)
+
+	it("cancels file-history lookup before opening a picker", function()
+		local opened = false
+		fzf.fzf_exec = function()
+			opened = true
+		end
+		history.pick_file()
+		review.cancel()
+		vim.wait(200, function()
+			return false
+		end)
+		assert.is_false(opened)
+	end)
+
 	it("opens bookmark ranges lazily and refreshes when only the base moves", function()
 		local before = operation()
 		local comparison = assert(resolve({ kind = "bookmark", name = "feature" }))

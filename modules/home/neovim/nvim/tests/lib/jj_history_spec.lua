@@ -298,7 +298,11 @@ describe("read-only JJ history", function()
 			local buffer = vim.fn.bufadd(repo .. "/" .. path)
 			vim.fn.bufload(buffer)
 			vim.api.nvim_win_set_buf(0, buffer)
+			options, entries = nil, nil
 			history.pick_file()
+			assert.is_true(vim.wait(5000, function()
+				return options ~= nil
+			end))
 			assert.matches("JJ file ", options.prompt, 1, true)
 			assert.are.equal(1, #entries)
 			assert.matches(target:sub(1, 12), entries[1], 1, true)

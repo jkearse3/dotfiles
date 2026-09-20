@@ -3,9 +3,9 @@ local process = require("lib.jj_review_process")
 local diff = require("lib.jj_diff")
 
 ---@class lib.jj_review.Source
----@field kind "revision"|"fixed"|"bookmark"|"line"|"bookmarks"
+---@field kind "revision"|"fixed"|"bookmark"|"line"|"bookmarks"|"file-history"
 ---@field name? string Full change ID, exact commit ID, or local bookmark name.
----@field path? string Root-relative path for line attribution.
+---@field path? string Root-relative path for line attribution or file history.
 ---@field line? integer One-based recorded working-file line.
 
 ---@class lib.jj_review.Focus
@@ -97,6 +97,9 @@ local function revision(run, revset)
 end
 
 local function resolve(repo, source, run)
+	if source.kind == "file-history" then
+		return require("lib.jj_file_history").trace(source.path, run)
+	end
 	if source.kind == "bookmarks" then
 		return diff.list_bookmarks(repo, run)
 	end
@@ -216,7 +219,7 @@ end
 --- Metadata is capped at 2 MiB; file verification and each line-analysis patch at 1 MiB.
 ---@param repo string
 ---@param source lib.jj_review.Source
----@param complete fun(result: lib.jj_review.Comparison|table[]|nil, error: string?)
+---@param complete fun(result: lib.jj_review.Comparison|lib.jj_file_history.Result|table[]|nil, error: string?)
 ---@return lib.jj_review.Job request
 function M.start(repo, source, complete)
 	local active, job, operation = true, nil, nil
@@ -321,6 +324,14 @@ local function inspect(repo, source, callback)
 		end
 		callback(result)
 	end)
+end
+
+--- Looks up renamed file history with the same cancellation and initiating-buffer guards as ja.
+---@param repo string
+---@param path string Recorded root-relative file path.
+---@param callback fun(result: lib.jj_file_history.Result)
+function M.inspect_file_history(repo, path, callback)
+	inspect(repo, { kind = "file-history", path = path }, callback)
 end
 
 --- Selects a local bookmark, then opens its first-parent bookmark range in the shared overview.
