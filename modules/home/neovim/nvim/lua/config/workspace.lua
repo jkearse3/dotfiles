@@ -1,4 +1,6 @@
--- Helper to encode a string for use in a URI (for session file naming).
+--- Percent-encodes the workspace path into a single session filename.
+---@param str string
+---@return string
 local function uri_encode(str)
 	local substituted, _ = str:gsub("([^%w%-%.%_%~])", function(char)
 		return string.format("%%%02X", char:byte())
@@ -6,7 +8,9 @@ local function uri_encode(str)
 	return substituted
 end
 
--- Helper to escape % for vim.cmd.
+--- Prevents percent-encoded bytes from expanding to the current filename.
+---@param str string
+---@return string
 local function escape_string_for_vim_cmd(str)
 	local substituted, _ = str:gsub("%%", "\\%%")
 	return substituted
@@ -19,18 +23,40 @@ local dir_uri_encoded = uri_encode(cwd)
 vim.opt.shadafile = workspaces_dir .. dir_uri_encoded .. ".shada"
 local session_path = workspaces_dir .. dir_uri_encoded .. ".session.vim"
 
--- Save session (including DAP breakpoints).
-local function save_session()
-	local success, result = pcall(function()
-		local dap_breakpoints = require("dap.breakpoints")
-		local saved_breakpoints = {}
-		local breakpoints_by_buf = dap_breakpoints.get()
-		for buf, breakpoints in pairs(breakpoints_by_buf) do
-			saved_breakpoints[tostring(buf)] = breakpoints
+--- Stores breakpoint buffer keys as strings so they survive JSON serialization.
+local function save_breakpoints()
+	local dap_breakpoints = require("dap.breakpoints")
+	local saved_breakpoints = {}
+	for buf, breakpoints in pairs(dap_breakpoints.get()) do
+		saved_breakpoints[tostring(buf)] = breakpoints
+	end
+	vim.g.DAP_BREAKPOINTS_JSON = vim.fn.json_encode(saved_breakpoints)
+end
+
+--- Restores optional breakpoint state after the session has recreated buffers.
+local function load_breakpoints()
+	local dap_breakpoints = require("dap.breakpoints")
+	local breakpoints_json = vim.g.DAP_BREAKPOINTS_JSON or ""
+	if breakpoints_json == "" then
+		return
+	end
+
+	---@type table<string, dap.bp[]>
+	local breakpoints_by_buf = vim.fn.json_decode(breakpoints_json)
+	for buf, breakpoints in pairs(breakpoints_by_buf) do
+		for _, breakpoint in pairs(breakpoints) do
+			dap_breakpoints.set({
+				condition = breakpoint.condition,
+				log_message = breakpoint.logMessage,
+				hit_condition = breakpoint.hitCondition,
+			}, tonumber(buf), breakpoint.line)
 		end
-		local saved_breakpoints_json = vim.fn.json_encode(saved_breakpoints)
-		vim.g.DAP_BREAKPOINTS_JSON = saved_breakpoints_json
-	end)
+	end
+end
+
+--- Saves the session even if optional DAP breakpoint serialization fails.
+local function save_session()
+	local success, result = pcall(save_breakpoints)
 	if not success then
 		vim.notify("Failed to save dap breakpoints: " .. result, vim.log.levels.ERROR)
 	end
@@ -46,7 +72,7 @@ local function save_session()
 	vim.notify("Session saved: " .. session_path, vim.log.levels.INFO)
 end
 
--- Load session (including DAP breakpoints).
+--- Loads the session before attempting optional DAP breakpoint restoration.
 local function load_session()
 	if vim.fn.filereadable(session_path) == 0 then
 		vim.notify("Session file not found: " .. session_path, vim.log.levels.ERROR)
@@ -60,24 +86,8 @@ local function load_session()
 		vim.notify("Failed to load session: " .. err, vim.log.levels.ERROR)
 		return
 	end
-	local success, result = pcall(function()
-		local dap_breakpoints = require("dap.breakpoints")
-		local breakpoints_json = vim.g.DAP_BREAKPOINTS_JSON or ""
-		if breakpoints_json ~= "" then
-			local breakpoints_by_buf = vim.fn.json_decode(breakpoints_json)
-			for buf, breakpoints in pairs(breakpoints_by_buf) do
-				for _, breakpoint in pairs(breakpoints) do
-					local line = breakpoint.line
-					local opts = {
-						condition = breakpoint.condition,
-						log_message = breakpoint.logMessage,
-						hit_condition = breakpoint.hitCondition,
-					}
-					dap_breakpoints.set(opts, tonumber(buf), line)
-				end
-			end
-		end
-	end)
+
+	local success, result = pcall(load_breakpoints)
 	if not success then
 		vim.notify("Failed to load dap breakpoints: " .. result, vim.log.levels.ERROR)
 	end
