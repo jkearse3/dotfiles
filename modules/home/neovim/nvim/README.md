@@ -70,11 +70,13 @@ together. The overview names the comparison and shows exact immutable
 base/target IDs. Source resolution pins one JJ operation across its requests.
 
 `ja` verifies disk and loaded buffer text against a pinned recorded `@` before
-attributing a line. It follows historical renames and line shifts, refuses
-ambiguous or copied/deleted mappings, and reports the historical path and line.
-The file header is selected without expanding it: expand and page to inspect the
-reported line. Saved-but-unrecorded edits, unsaved edits, and stale buffers are
-refused.
+attributing a line. It validates surviving line shifts and refuses ambiguous or
+copied/deleted mappings. It retains JJ's annotation semantics: JJ currently
+stops at renames, so unchanged lines can be attributed to the rename itself
+rather than their earlier origin. `jf`'s rename traversal does not override line
+attribution. The file header is selected without expanding it: expand and page
+to inspect the reported line. Saved-but-unrecorded edits, unsaved edits, and
+stale buffers are refused.
 
 ### Within the overview
 
@@ -103,12 +105,14 @@ collapse/eviction.
 
 Each request times out after 30 seconds. File spools are capped at 32 MiB;
 metadata at 2 MiB / 10,000 files; individual patch lines at 128 KiB. Line-origin
-resolution analyzes two complete comparison patches to disambiguate renames,
-with a **1 MiB limit on each analysis patch**; it never silently truncates them.
-File verification and working-copy jump mapping also have 1 MiB limits. If line
-inspection exceeds these limits, use revision/bookmark review or external tools
-instead. Failed patch generation never displays partial output. Replacement,
-deletion, cancellation and editor exit clean up owned temporary files.
+resolution analyzes only the selected file's origin and forward comparison
+patches, with a **1 MiB limit on each file-scoped analysis patch**. Unrelated
+repository changes do not consume that budget; oversized selected-file patches
+are explicitly refused, never silently truncated. File verification and
+working-copy jump mapping also have 1 MiB limits. If line inspection exceeds
+these limits, use revision/bookmark review or external tools instead. Failed
+patch generation never displays partial output. Replacement, deletion,
+cancellation and editor exit clean up owned temporary files.
 
 ### Previous drafts
 

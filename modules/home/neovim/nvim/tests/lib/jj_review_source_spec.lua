@@ -489,19 +489,67 @@ describe("unified JJ review sources", function()
 		end
 	end)
 
-	it("refuses oversized attribution analysis rather than silently truncating it", function()
+	it("ignores large unrelated patches in both origin and forward comparisons", function()
 		vim.fn.writefile({ string.rep("payload", 160000) }, repo .. "/large.txt", "b")
+		vim.fn.writefile({ "origin", "second", "third" }, repo .. "/file.txt")
 		jj(
 			"--config",
 			"snapshot.max-new-file-size=2000000",
 			"describe",
 			"-m",
-			"large unrelated addition"
+			"origin with large unrelated addition"
 		)
+		local origin = id()
+		jj("new", "-m", "shift with large unrelated edit")
+		vim.fn.writefile({ string.rep("changed", 160000) }, repo .. "/large.txt", "b")
+		vim.fn.writefile({ "inserted", "origin", "second", "third" }, repo .. "/file.txt")
+		jj("describe", "-m", "shift with large unrelated edit")
+		vim.cmd("edit!")
+		local before, patches = operation(), 0
+		process.start = function(root, args, ...)
+			if vim.tbl_contains(args, "--git") then
+				patches = patches + 1
+				assert.are.equal("--", args[#args - 1])
+				assert.are.equal(sources.fileset("file.txt"), args[#args])
+			end
+			return original_start(root, args, ...)
+		end
+		local result, err = resolve({ kind = "line", path = "file.txt", line = 2 })
+		assert.is_nil(err)
+		assert.are.equal(origin, result.revision.commit_id)
+		assert.are.same({ path = "file.txt", line = 1 }, result.focus)
+		assert.are.equal(2, patches)
+		assert.are.equal(before, operation())
+	end)
+
+	it("still refuses an oversized selected-file patch with a specific error", function()
+		vim.fn.writefile({ "before", string.rep("a", 600000) }, repo .. "/file.txt")
+		jj("describe", "-m", "large selected file")
+		jj("new", "-m", "large selected-file change")
+		vim.fn.writefile({ "origin", string.rep("b", 600000) }, repo .. "/file.txt")
+		jj("describe", "-m", "large selected-file change")
+		vim.cmd("edit!")
 		local before = operation()
 		local result, err = resolve({ kind = "line", path = "file.txt", line = 1 })
 		assert.is_nil(result)
-		assert.matches("cache limit", err, 1, true)
+		assert.matches("file patch exceeds the 1 MiB analysis limit", err, 1, true)
+		assert.are.equal(before, operation())
+	end)
+
+	it("reports the selected-file verification limit separately", function()
+		vim.fn.writefile({ string.rep("payload", 160000) }, repo .. "/file.txt", "b")
+		jj(
+			"--config",
+			"snapshot.max-new-file-size=2000000",
+			"describe",
+			"-m",
+			"oversized selected file"
+		)
+		vim.cmd("edit!")
+		local before = operation()
+		local result, err = resolve({ kind = "line", path = "file.txt", line = 1 })
+		assert.is_nil(result)
+		assert.matches("file exceeds the 1 MiB verification limit", err, 1, true)
 		assert.are.equal(before, operation())
 	end)
 

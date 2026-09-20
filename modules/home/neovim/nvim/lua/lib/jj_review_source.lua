@@ -245,6 +245,13 @@ function M.start(repo, source, complete)
 				vim.uv.fs_unlink(current.path)
 			end
 			if active then
+				if source.kind == "line" and err == "JJ output exceeded the cache limit" then
+					if vim.tbl_contains(args, "--git") then
+						err = "JJ line-origin file patch exceeds the 1 MiB analysis limit"
+					elseif args[1] == "file" and args[2] == "show" then
+						err = "JJ line-origin file exceeds the 1 MiB verification limit"
+					end
+				end
 				callback(output, err or read_err)
 			end
 		end, operation)

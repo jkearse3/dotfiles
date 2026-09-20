@@ -261,21 +261,18 @@ describe("jj diff comparisons", function()
 		assert.truthy(err:find("jj returned invalid JSON"))
 	end)
 
-	it("resolves renamed and shifted lines using complete comparison patches", function()
+	it("resolves shifted lines using exact file-scoped comparison patches", function()
 		local revision_patch = table.concat({
-			"diff --git a/old.txt b/old.txt",
-			"--- a/old.txt",
-			"+++ b/old.txt",
+			"diff --git a/moved.txt b/moved.txt",
+			"--- a/moved.txt",
+			"+++ b/moved.txt",
 			"@@ -1 +1 @@",
 			"-before",
 			"+line",
 		}, "\n")
 		local forward_patch = table.concat({
-			"diff --git a/old.txt b/moved.txt",
-			"similarity index 80%",
-			"rename from old.txt",
-			"rename to moved.txt",
-			"--- a/old.txt",
+			"diff --git a/moved.txt b/moved.txt",
+			"--- a/moved.txt",
 			"+++ b/moved.txt",
 			"@@ -1 +1,2 @@",
 			"+inserted",
@@ -291,13 +288,14 @@ describe("jj diff comparisons", function()
 				if args[1] == "file" then
 					return '{"commit_id":"aaaaaaaa","change_id":"changeid","line_number":2,"original_line_number":1}'
 				end
-				assert.is_false(vim.tbl_contains(args, "--"))
+				assert.are.equal("--", args[#args - 1])
+				assert.are.equal('root-file:"moved.txt"', args[#args])
 				return args[4] == "--from" and forward_patch or revision_patch
 			end
 		)
 		assert.are.equal(3, calls)
 		assert.are.equal("aaaaaaaa", comparison.target)
-		assert.are.same({ path = "old.txt", line = 1 }, location)
+		assert.are.same({ path = "moved.txt", line = 1 }, location)
 	end)
 
 	it("supports lines attributed to the working-copy commit", function()

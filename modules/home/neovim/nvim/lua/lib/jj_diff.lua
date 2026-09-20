@@ -631,6 +631,8 @@ function M.map_line(patch, path, line)
 end
 
 --- Resolves a working-copy line to its location in the responsible revision.
+--- JJ annotation stops at renames: both analysis patches use its current literal path.
+--- Unrelated files must not consume the attribution budget; unmappable origins are refused.
 ---@param repo string Repository root.
 ---@param path string Root-relative working-copy path.
 ---@param line integer One-based working-copy line number.
@@ -644,13 +646,13 @@ function M.resolve_line_revision(repo, path, line, runner)
 	end
 	local comparison = M.revision_comparison(repo, attribution)
 	local revision_patch
-	revision_patch, err = M.patch(comparison, nil, runner)
+	revision_patch, err = M.patch(comparison, path, runner)
 	if not revision_patch then
 		return nil, err
 	end
 	local forward_patch
 	forward_patch, err =
-		M.patch({ repo = repo, from = attribution.commit_id, target = "@" }, nil, runner)
+		M.patch({ repo = repo, from = attribution.commit_id, target = "@" }, path, runner)
 	if not forward_patch then
 		return nil, err
 	end
