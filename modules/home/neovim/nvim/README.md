@@ -9,93 +9,113 @@
   contents; Ctrl-S/Ctrl-V/Ctrl-T open them in a split, vertical split, or tab.
   Ctrl-D opens the full commit patch; Ctrl-Y copies the SHA.
 - `<leader>gbf`: Gitsigns full-file blame; `<leader>gbl`: line blame.
-- Existing `<leader>gdb`, `<leader>gdl`, and `<leader>gds` retain specialized JJ
-  review.
+- JJ comparisons use the shared file overview described below.
 
 The fzf-lua commit, file-commit, and reflog pickers use read-only action
 allowlists, including when called directly with `:FzfLua`. Other Git pickers,
 existing stage/reset mappings, and LazyGit are unchanged and can still mutate
 repositories.
 
-## JJ history
+## JJ inspection
 
-`<leader>jl` opens JJ's configured default log selection (normally local mutable
-changes plus context). The picker lists up to 200 revisions in topology order,
-with change IDs, commit IDs, bookmarks and descriptions. The picker preview is
-metadata only. Enter opens the selected revision's retained **file overview**,
-with no patches loaded. `<leader>gdr` has been removed in favor of this one
-entry point. Ctrl-Y copies the change ID; Ctrl-E opens previous drafts of the
-selected change.
+All complete JJ comparisons use one retained, read-only **file overview**.
+Opening it loads metadata only: every file starts collapsed, including a focused
+file. There is no mandatory file-scope picker.
 
-Within the overview:
+| Key          | Inspect                                                                                            |
+| ------------ | -------------------------------------------------------------------------------------------------- |
+| `<leader>jl` | Configured JJ revision history; Enter reviews a revision against its parents.                      |
+| `<leader>jb` | Local bookmark range: nearest strictly older first-parent bookmark → selected bookmark.            |
+| `<leader>jf` | Current-path history; Enter reviews the whole selected revision, focusing that file's header.      |
+| `<leader>ja` | Recorded origin of the current line; focus its historical file header in the responsible revision. |
+| `<leader>jr` | Resume the retained overview without refreshing or loading patches.                                |
+| `<leader>jx` | Cancel pending source lookup and outstanding review requests, including from a source-file buffer. |
 
-- **Enter** expands/collapses the current file. Only expansion requests its
-  patch.
-- **`]f` / `[f`** move between all file headers; **`f`** finds a file. Neither
-  loads it.
-- **`]c` / `[c`** navigate hunks in currently displayed pages only.
-- **`]p` / `[p`** replace the current file's page with the next/previous page.
-- **`gf`** maps a surviving source line to the working copy using the existing
-  JJ review navigation. Deleted lines have no working-copy target. Disk and
-  buffer contents must match the recorded working snapshot; unsnapshotted edits
-  and stale buffers are refused rather than jumping to misleading line numbers.
-- **`x`** cancels outstanding requests. **`R`** resolves the latest version of
-  the change, clears cached patches, and reloads the collapsed overview.
+The former `gdb` and `gdl` routes are now `jb` and `ja`. `gds` is removed: use
+`jr` to return to review and buffer-local `f` to find a file. `gdr` and
+standalone `je` are also absent. Git mappings remain separate; JJ failures never
+silently switch comparison semantics to Git.
 
-The existing syntax-aware review renderer, line-number gutter and quickfix index
-are reused. Search and hunk navigation cover displayed pages, not unloaded text.
-The review stays pinned until explicit refresh.
+Revision and file-history pickers show metadata, not patches. Both list at most
+200 revisions; Enter opens the shared overview, Ctrl-E opens previous drafts of
+the selected change, and Ctrl-Y copies its change ID. File history searches the
+literal current path in `@`'s ancestry, not renames; use Git `glf` for
+rename-following history. Unnamed and non-file buffers are rejected for
+file/line inspection.
 
-Every file follows the same bounded-page flow: up to 400 patch lines / 128 KiB
-per page. JJ generates an explicitly requested file patch asynchronously into a
-private temporary disk cache, rather than collecting the entire patch in Lua.
-Generation is cancellable; pages render after generation finishes. Collapsing
-retains the cache. At most eight files are expanded, and sixteen file caches are
-retained; least-recently-used entries collapse/evict as needed.
+Bookmark ranges retain their existing first-parent policy—not a guessed default
+branch or merge base. Missing ancestor bookmarks and ambiguous/conflicted
+targets are errors. Multiple normal bookmark names at the same base are shown
+together. The overview names the comparison and shows exact immutable
+base/target IDs. Source resolution pins one JJ operation across its requests.
 
-Requests time out after 30 seconds. File caches are limited to 32 MiB each; the
-overview is limited to 2 MiB / 10,000 files. A single patch line exceeding 128
-KiB is refused explicitly. Working-copy jumps require mapping diffs and
-destination files of at most 1 MiB each. Failures never display a partial
-generated patch. Refresh, replacement, deletion and editor exit clean up caches
-and cancel outstanding work.
+`ja` verifies disk and loaded buffer text against a pinned recorded `@` before
+attributing a line. It follows historical renames and line shifts, refuses
+ambiguous or copied/deleted mappings, and reports the historical path and line.
+The file header is selected without expanding it: expand and page to inspect the
+reported line. Saved-but-unrecorded edits, unsaved edits, and stale buffers are
+refused.
 
-**Previous drafts of this change** is contextual: select a change in `jl`, then
-press **Ctrl-E**. There is no standalone `<leader>je` mapping. The view includes
-the selected revision and its earlier recorded drafts, capped at 200 entries.
-Rows show recording timestamps (with timezone), exact commit IDs, and
-descriptions; the selected revision is labeled. This is draft history, not
-commit ancestry.
+### Within the overview
 
-- **Preview / Enter:** changes from the selected draft's actual predecessor(s)
-  to that draft. The comparison names both sides; `jj evolog` excludes unrelated
-  parent changes introduced by rebasing. An initial draft is labeled as having
-  no earlier recorded draft.
-- **Ctrl-D:** that draft's complete patch against its parents, explicitly
-  labeled as a different comparison.
+- **Enter:** expand/collapse a file. Only expansion loads its displayed patch.
+- **`]f` / `[f`**, **`f`:** navigate/find file headers without loading patches.
+- **`]c` / `[c`:** navigate hunks in displayed pages only.
+- **`]p` / `[p`:** next/previous bounded patch page for the current file.
+- **`gf`:** map a surviving source line from the comparison's target to recorded
+  working-copy contents. Deleted lines have no target; unsafe disk/buffer
+  mismatches are refused rather than jumping to misleading offsets.
+- **`x`:** cancel pending source lookup and review requests.
+- **`R`:** resolve the latest change or bookmark range, invalidate caches on
+  success, and reload collapsed metadata. A failed source resolution retains the
+  pinned view and completed caches. Historical drafts instead reload their exact
+  commit.
+
+Reviews stay pinned until explicit refresh. The source-line gutter, syntax
+highlighting, quickfix index, paging and navigation are shared across entry
+points. Search and hunk navigation cover displayed pages, not unloaded text.
+
+Each page contains at most 400 patch lines / 128 KiB. File generation is
+asynchronous and cancellable, spooling privately to disk; pages render after
+generation finishes. Collapse retains the cache. At most eight files are
+expanded and sixteen file caches retained, with least-recently-used
+collapse/eviction.
+
+Each request times out after 30 seconds. File spools are capped at 32 MiB;
+metadata at 2 MiB / 10,000 files; individual patch lines at 128 KiB. Line-origin
+resolution analyzes two complete comparison patches to disambiguate renames,
+with a **1 MiB limit on each analysis patch**; it never silently truncates them.
+File verification and working-copy jump mapping also have 1 MiB limits. If line
+inspection exceeds these limits, use revision/bookmark review or external tools
+instead. Failed patch generation never displays partial output. Replacement,
+deletion, cancellation and editor exit clean up owned temporary files.
+
+### Previous drafts
+
+Select a change in `jl` or `jf`, then **Ctrl-E**. This is draft history, not
+commit ancestry: the selected revision and up to 199 predecessors are shown with
+recording timestamps, exact commit IDs and descriptions.
+
+- **Preview / Enter:** labeled changes from the draft's actual predecessor(s),
+  with unrelated rebase-parent changes excluded by `jj evolog`. An initial draft
+  has no earlier comparison. This interdiff remains a distinct read-only patch
+  view.
+- **Ctrl-D:** open the shared collapsed overview for that draft against its
+  parents. Its refresh remains pinned to the exact draft, not the latest change
+  version.
 - **Ctrl-Y:** copy the stable change ID.
 
-Description-only edits and rebases can produce drafts without source-code
-changes. Inspection never restores a draft or records unsaved edits.
+Inspection does not restore drafts, snapshot files, import Git refs, reconcile
+divergent operation heads, or advance the operation log. Record edits and
+resolve divergence through your normal JJ workflow first.
 
-`<leader>jf` lists up to 200 revisions affecting the current file in `@`'s
-ancestry. Enter inspects only that path's patch; Ctrl-E opens previous drafts of
-the whole selected change; Ctrl-Y copies its change ID. Paths are literal,
-including fileset metacharacters. This is path-based history, not
-rename-following history; use `<leader>glf` to follow renames. Unnamed and
-non-file buffers are rejected.
+### Git-only alternatives
 
-These pickers resolve the current file's repository, falling back to editor cwd
-for non-file buffers. Commands use `--at-operation=@ --ignore-working-copy`:
-they do not snapshot disk edits, import Git refs, or advance JJ's operation log.
-They show the last recorded snapshot, not unsaved or subsequently changed files.
-Record changes through your normal JJ workflow before inspecting them here.
-Existing Git history, `jf`, and the specialized `gdb`/`gdl`/`gds` mappings are
-otherwise unchanged; lazy file expansion applies to the `jl` revision overview.
-
-Divergent operation heads are reported as an error, not automatically
-reconciled. Resolve them explicitly through your normal JJ workflow before
-reopening history.
+When JJ is unavailable or the repository is Git-only, use the existing explicit
+Git routes: `glh` for repository history, `glf` for rename-following file
+history, `gbl` for full line blame, and `gbf` for full-file blame. In the
+Gitsigns blame buffer, `s` inspects the responsible commit. LazyGit (`gg`) and
+existing mutation and gutter mappings are unchanged.
 
 ## Shareable links
 

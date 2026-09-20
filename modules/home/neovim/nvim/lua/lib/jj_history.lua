@@ -17,7 +17,15 @@ function M.run(args, repo)
 	local command =
 		{ "jj", "--at-operation=@", "--ignore-working-copy", "--no-pager", "--color", "never" }
 	vim.list_extend(command, args)
-	local result = vim.system(command, { cwd = repo, text = true }):wait(10000)
+	local ok, result = pcall(function()
+		return vim.system(command, { cwd = repo, text = true }):wait(10000)
+	end)
+	if not ok then
+		return nil,
+			"JJ unavailable: "
+				.. tostring(result)
+				.. "\nUse Git history/blame: glh / glf / gbl / gbf"
+	end
 	if result.code ~= 0 then
 		return nil,
 			vim.trim(result.stderr or "") ~= "" and vim.trim(result.stderr)
@@ -241,7 +249,7 @@ function M.pick(repo, evolution, path)
 					return
 				end
 				local content, preview_err
-				if not evolution and not path then
+				if not evolution then
 					content = revision.description
 						.. "\n\nEnter: file overview (patches remain unloaded)\nCtrl-E: previous drafts of this change  Ctrl-Y: change ID"
 				else
@@ -268,26 +276,14 @@ function M.pick(repo, evolution, path)
 			return {
 				[evolution and "ctrl-d" or "ctrl-e"] = selected_action(function(revision)
 					if evolution then
-						local content, patch_err = M.patch(repo, revision)
-						if content then
-							show_patch(
-								"Complete patch against parents (not changes between drafts)\nSelected draft: "
-									.. revision.commit_id
-									.. "\nRecorded: "
-									.. (revision.recorded_at or "time unavailable")
-									.. "\n\n"
-									.. content
-							)
-						else
-							notify(patch_err)
-						end
+						require("lib.jj_review").open(repo, revision, nil, true)
 					else
 						M.pick(repo, revision.commit_id)
 					end
 				end),
 				["enter"] = selected_action(function(revision)
-					if not evolution and not path then
-						require("lib.jj_review").open(repo, revision)
+					if not evolution then
+						require("lib.jj_review").open(repo, revision, path)
 						return
 					end
 					local content, patch_err = M.patch(repo, revision, evolution, path)

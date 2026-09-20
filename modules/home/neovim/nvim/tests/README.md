@@ -17,3 +17,9 @@ To run a focused check, replace `'tests'` with a spec path such as
 `'tests/lib/lazygit_spec.lua'`. LazyGit tests use mocked jobs and a disposable
 Neovim terminal subprocess, not the real LazyGit application or repository
 mutations.
+
+`tests/lib/jj_review_source_spec.lua` uses disposable JJ repositories for pinned
+bookmark ranges, read-only line attribution, concurrent bookmark movement,
+divergent operation heads, bounded analysis, and cancellation. These tests
+create and rewrite only temporary fixture history; they do not activate the
+personal Neovim configuration or mutate this repository's history.

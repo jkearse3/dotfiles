@@ -2,6 +2,7 @@ local M = {}
 local process = require("lib.jj_review_process")
 local page = require("lib.jj_review_page")
 local render = require("lib.jj_diff_render")
+local sources = require("lib.jj_review_source")
 local group = vim.api.nvim_create_augroup("JjLazyReview", { clear = true })
 
 ---@class lib.jj_review.File
@@ -22,6 +23,7 @@ local group = vim.api.nvim_create_augroup("JjLazyReview", { clear = true })
 ---@field buffer integer
 ---@field repo string
 ---@field revision lib.jj_history.Revision
+---@field comparison lib.jj_review.Comparison
 ---@field files lib.jj_review.File[]
 ---@field jobs table<lib.jj_review.Job, boolean>
 ---@field rows integer[] File header rows, including collapsed files.
@@ -42,11 +44,13 @@ local function text(value)
 	return (value:gsub("[%c]", " "))
 end
 
-local function fileset(path)
-	local escaped = path:gsub('[\\"%c]', function(char)
-		return string.format("\\x%02x", char:byte())
-	end)
-	return 'root-file:"' .. escaped .. '"'
+local fileset = sources.fileset
+
+local function comparison_args(session)
+	if session.comparison.from then
+		return { "diff", "--from", session.comparison.from, "--to", session.revision.commit_id }
+	end
+	return { "diff", "-r", session.revision.commit_id }
 end
 
 local function unlink(path)
@@ -127,6 +131,30 @@ local function redraw(session)
 			.. " / "
 			.. session.revision.commit_id:sub(1, 12),
 	})
+	append({ kind = "metadata", text = text(session.comparison.title) })
+	append({
+		kind = "metadata",
+		text = "Compare: "
+			.. (session.comparison.from or "parents")
+			.. " -> "
+			.. session.revision.commit_id,
+	})
+	append({
+		kind = "metadata",
+		text = session.comparison.source.kind == "fixed"
+				and "Pinned draft — R reloads this exact version"
+			or "Recorded snapshots — R resolves the latest source",
+	})
+	if session.comparison.focus and session.comparison.focus.line then
+		append({
+			kind = "metadata",
+			text = "Origin in this revision: "
+				.. text(session.comparison.focus.path)
+				.. ":"
+				.. session.comparison.focus.line
+				.. " — expand/page to inspect; header selected",
+		})
+	end
 	for index, line in ipairs(vim.split(session.revision.description, "\n", { plain = true })) do
 		if index > 20 then
 			append({ kind = "metadata", text = "[description truncated]" })
@@ -193,7 +221,11 @@ local function redraw(session)
 	vim.bo[session.buffer].readonly = true
 	session.rendered = result
 	render.decorate(session.buffer, result)
-	render.set_review_state(session.buffer, "JJ revision overview", "fresh")
+	render.set_review_state(
+		session.buffer,
+		"Pinned JJ review: " .. text(session.comparison.title),
+		"fresh"
+	)
 	local items = {}
 	for _, item in ipairs(result.quickfix) do
 		items[#items + 1] = { bufnr = session.buffer, lnum = item.lnum, text = item.text }
@@ -203,13 +235,13 @@ local function redraw(session)
 		vim.fn.setqflist(
 			{},
 			"r",
-			{ id = session.quickfix, title = "JJ revision overview", items = items }
+			{ id = session.quickfix, title = text(session.comparison.title), items = items }
 		)
 		if vim.api.nvim_get_current_buf() == session.buffer then
 			vim.cmd("silent chistory " .. list.nr)
 		end
 	else
-		vim.fn.setqflist({}, " ", { title = "JJ revision overview", items = items })
+		vim.fn.setqflist({}, " ", { title = text(session.comparison.title), items = items })
 		session.quickfix = vim.fn.getqflist({ id = 0 }).id
 	end
 	for window, anchor in pairs(anchors) do
@@ -243,38 +275,46 @@ end
 local function load_files(session)
 	local template =
 		'"{\\"path\\":" ++ stringify(path).escape_json() ++ ",\\"display\\":" ++ display_diff_path.escape_json() ++ ",\\"status\\":" ++ status_char.escape_json() ++ "}\\n"'
-	capture(
-		session,
-		{ "diff", "-r", session.revision.commit_id, "-T", template },
-		function(output, err)
-			if err then
-				session.notice = text(err)
+	local args = comparison_args(session)
+	vim.list_extend(args, { "-T", template })
+	capture(session, args, function(output, err)
+		if err then
+			session.notice = text(err)
+			redraw(session)
+			return
+		end
+		local files = {}
+		for line in output:gmatch("[^\r\n]+") do
+			local ok, file = pcall(vim.json.decode, line)
+			if
+				not ok
+				or type(file) ~= "table"
+				or type(file.path) ~= "string"
+				or type(file.display) ~= "string"
+				or type(file.status) ~= "string"
+				or #files >= 10000
+			then
+				session.notice = "Invalid or oversized JJ file overview"
 				redraw(session)
 				return
 			end
-			local files = {}
-			for line in output:gmatch("[^\r\n]+") do
-				local ok, file = pcall(vim.json.decode, line)
-				if
-					not ok
-					or type(file) ~= "table"
-					or type(file.path) ~= "string"
-					or type(file.display) ~= "string"
-					or type(file.status) ~= "string"
-					or #files >= 10000
-				then
-					session.notice = "Invalid or oversized JJ file overview"
-					redraw(session)
+			files[#files + 1] = file
+		end
+		session.files = files
+		session.notice = #files .. " changed files — patches load only when explicitly expanded"
+		redraw(session)
+		local focus = session.comparison.focus
+		if focus and vim.api.nvim_get_current_buf() == session.buffer then
+			for index, file in ipairs(files) do
+				if file.path == focus.path then
+					vim.api.nvim_win_set_cursor(0, { session.rows[index], 0 })
 					return
 				end
-				files[#files + 1] = file
 			end
-			session.files = files
-			session.notice = #files
-				.. " changed files — patches load only when explicitly expanded"
+			session.notice = session.notice .. " — selected path is not in this comparison"
 			redraw(session)
 		end
-	)
+	end)
 end
 
 local function read_page(session, file, number)
@@ -361,16 +401,9 @@ function M.toggle(buffer)
 		read_page(session, file, file.page or 1)
 		return
 	end
-	local args = {
-		"--config",
-		"diff.git.show-path-prefix=true",
-		"diff",
-		"--git",
-		"-r",
-		session.revision.commit_id,
-		"--",
-		fileset(file.path),
-	}
+	local args = { "--config", "diff.git.show-path-prefix=true" }
+	vim.list_extend(args, comparison_args(session))
+	vim.list_extend(args, { "--git", "--", fileset(file.path) })
 	local job
 	job = process.start(session.repo, args, patch_limit, function(err)
 		local live = session.active and session.jobs[job] and file.job == job
@@ -416,7 +449,8 @@ end
 --- Cancels active requests, retaining completed cached pages.
 ---@param buffer integer
 function M.cancel(buffer)
-	local session = sessions[buffer]
+	sources.cancel_pending()
+	local session = sessions[buffer or vim.fn.bufnr(buffer_name)]
 	if session then
 		cancel(session)
 		session.notice = "Requests cancelled — R refreshes the overview"
@@ -424,7 +458,7 @@ function M.cancel(buffer)
 	end
 end
 
---- Resolves the current change version and discards all cached patches before loading metadata.
+--- Resolves the latest source transactionally. Failed resolution preserves the pinned view/cache.
 ---@param buffer integer
 function M.refresh(buffer)
 	local session = sessions[buffer]
@@ -432,69 +466,37 @@ function M.refresh(buffer)
 		return
 	end
 	cancel(session)
-	for _, file in ipairs(session.files) do
-		drop(file)
-	end
-	session.files, session.rows = {}, {}
-	session.notice = "Refreshing change…"
+	session.notice = "Resolving review source…"
 	redraw(session)
-	capture(session, {
-		"log",
-		"--no-graph",
-		"-r",
-		"change_id(" .. session.revision.change_id .. ")",
-		"-T",
-		'json(self) ++ "\\n"',
-	}, function(output, err)
-		local ok, revision = pcall(vim.json.decode, output or "")
-		if
-			err
-			or not ok
-			or type(revision) ~= "table"
-			or type(revision.commit_id) ~= "string"
-			or not revision.commit_id:match("^%x+$")
-			or revision.change_id ~= session.revision.change_id
-			or type(revision.description) ~= "string"
-		then
-			session.notice = text(err or "Change no longer resolves to exactly one revision")
+	local job
+	job = sources.start(session.repo, session.comparison.source, function(comparison, err)
+		if not session.active or not session.jobs[job] then
+			return
+		end
+		session.jobs[job] = nil
+		if err then
+			session.notice = "Refresh failed; retained pinned comparison: " .. text(err)
 			redraw(session)
 			return
 		end
-		session.revision = revision
+		-- Requests launched against the old comparison while resolution was in flight are stale.
+		cancel(session)
+		for _, file in ipairs(session.files) do
+			drop(file)
+		end
+		if session.comparison.focus then
+			comparison.focus = { path = session.comparison.focus.path }
+		end
+		session.comparison, session.revision = comparison, comparison.revision
+		session.files, session.rows = {}, {}
+		session.notice = "Loading changed-file overview…"
+		redraw(session)
 		load_files(session)
 	end)
+	session.jobs[job] = true
 end
 
---- Validates disk and any loaded buffer against the pinned working snapshot.
-local function working_file_error(repo, path, expected)
-	local absolute = vim.fs.joinpath(repo, path)
-	local disk, err = process.read(absolute, 1024 * 1024 + 1)
-	if not disk then
-		return err
-	end
-	if disk ~= expected then
-		return "Working file differs from recorded JJ snapshot; record changes before jumping"
-	end
-	local buffer = vim.fn.bufnr(absolute)
-	if buffer >= 0 and vim.api.nvim_buf_is_loaded(buffer) then
-		if vim.bo[buffer].modified or vim.bo[buffer].buftype ~= "" then
-			return "Working-copy buffer has unsaved changes or is not a file"
-		end
-		local contents = table.concat(vim.api.nvim_buf_get_lines(buffer, 0, -1, false), "\n")
-		if vim.bo[buffer].endofline then
-			contents = contents .. "\n"
-		end
-		if vim.bo[buffer].bomb and expected:sub(1, 3) == "\239\187\191" then
-			expected = expected:sub(4)
-		end
-		if vim.bo[buffer].fileformat == "dos" then
-			expected = expected:gsub("\r\n", "\n")
-		end
-		if contents ~= expected then
-			return "Buffer differs from recorded JJ snapshot; save/record or reload before jumping"
-		end
-	end
-end
+local working_file_error = sources.file_error
 
 local function working_line(session)
 	local row = session.rendered.rows[vim.api.nvim_win_get_cursor(0)[1]]
@@ -538,7 +540,7 @@ local function working_line(session)
 			commit,
 		}, function(patch)
 			local diff = require("lib.jj_diff")
-			local path = diff.map_line(patch, location.path, location.line)
+			local path, line = diff.map_line(patch, location.path, location.line)
 			if not path then
 				vim.notify("Patch line does not survive in the working copy", vim.log.levels.WARN)
 				return
@@ -551,13 +553,32 @@ local function working_line(session)
 						vim.notify(err, vim.log.levels.WARN)
 						return
 					end
-					diff.open_working_line(
-						{ repo = session.repo, target = session.revision.commit_id },
-						location,
-						function()
-							return patch
-						end
-					)
+					local absolute = vim.fs.joinpath(session.repo, path)
+					local stat = vim.uv.fs_stat(absolute)
+					if not stat or stat.type ~= "file" then
+						vim.notify(
+							"Working-copy file does not exist: " .. path,
+							vim.log.levels.WARN
+						)
+						return
+					end
+					local buffer = vim.fn.bufadd(absolute)
+					vim.fn.bufload(buffer)
+					-- Loading may run hooks that change the buffer after the first verification.
+					err = working_file_error(session.repo, path, expected)
+					if err then
+						vim.notify(err, vim.log.levels.WARN)
+						return
+					end
+					if line > vim.api.nvim_buf_line_count(buffer) then
+						vim.notify(
+							"Mapped line is outside the working-copy file",
+							vim.log.levels.WARN
+						)
+						return
+					end
+					vim.cmd.edit(vim.fn.fnameescape(absolute))
+					vim.api.nvim_win_set_cursor(0, { line, 0 })
 				end
 			)
 		end)
@@ -589,12 +610,32 @@ function M.pick_file(buffer)
 	end)
 end
 
---- Opens/replaces the retained revision overview. Fetches only changed-file metadata until
---- explicit expansion. Pages, temporary cache and callbacks are scoped to this review session.
+--- Opens a revision against its parents; optional path focuses a header without loading its patch.
+--- Fixed drafts reload the same commit on R; normal revisions follow the change's latest version.
 ---@param repo string
 ---@param revision lib.jj_history.Revision
+---@param path? string Root-relative path to focus.
+---@param fixed? boolean Keep an exact historical draft pinned across refresh.
 ---@return integer buffer
-function M.open(repo, revision)
+function M.open(repo, revision, path, fixed)
+	return M.open_comparison(repo, {
+		revision = revision,
+		title = fixed and "Pinned draft against parents" or "Revision against parents",
+		source = {
+			kind = fixed and "fixed" or "revision",
+			name = fixed and revision.commit_id or revision.change_id,
+		},
+		focus = path and { path = path } or nil,
+	})
+end
+
+--- Opens/replaces the shared overview for immutable comparison endpoints. Only metadata loads.
+--- Expansion, pages, cache and callbacks belong to this session, regardless of its entry point.
+---@param repo string
+---@param comparison lib.jj_review.Comparison
+---@return integer buffer
+function M.open_comparison(repo, comparison)
+	sources.cancel_pending()
 	local buffer = vim.fn.bufnr(buffer_name)
 	if buffer < 0 then
 		buffer = vim.api.nvim_create_buf(true, true)
@@ -606,7 +647,8 @@ function M.open(repo, revision)
 	local session = {
 		buffer = buffer,
 		repo = repo,
-		revision = vim.deepcopy(revision),
+		revision = vim.deepcopy(comparison.revision),
+		comparison = vim.deepcopy(comparison),
 		files = {},
 		jobs = {},
 		rows = {},
@@ -671,6 +713,17 @@ function M.open(repo, revision)
 	redraw(session)
 	load_files(session)
 	return buffer
+end
+
+--- Returns to the retained review without resolving sources, refreshing, or loading any patches.
+function M.resume()
+	local buffer = vim.fn.bufnr(buffer_name)
+	if not sessions[buffer] then
+		vim.notify("No retained JJ review; use jl, jb, jf, or ja first", vim.log.levels.INFO)
+		return
+	end
+	render.prepare_window(vim.api.nvim_get_current_win(), buffer)
+	vim.api.nvim_win_set_buf(0, buffer)
 end
 
 vim.api.nvim_create_autocmd("VimLeavePre", {

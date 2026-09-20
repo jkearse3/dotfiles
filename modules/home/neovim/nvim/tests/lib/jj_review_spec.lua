@@ -158,20 +158,64 @@ describe("lazy JJ review", function()
 		review.toggle(buffer)
 		finish(2, patch(2))
 		review.refresh(buffer)
-		assert.is_nil(vim.uv.fs_stat(requests[2].job.path))
+		assert.is_not_nil(vim.uv.fs_stat(requests[2].job.path))
+		finish(3, string.rep("c", 128))
 		local newer = vim.tbl_extend(
 			"force",
 			revision,
 			{ commit_id = string.rep("b", 40), description = "Updated" }
 		)
-		finish(3, vim.json.encode(newer))
-		assert.is_true(vim.tbl_contains(requests[4].args, newer.commit_id))
-		finish(4, files({ "b.lua" }))
+		finish(4, vim.json.encode(newer))
+		assert.is_nil(vim.uv.fs_stat(requests[2].job.path))
+		assert.is_true(vim.tbl_contains(requests[5].args, newer.commit_id))
+		finish(5, files({ "b.lua" }))
 		assert.matches("Updated", contents(), 1, true)
 		assert.is_nil(contents():find("M a.lua", 1, true))
 		assert.matches("not loaded", contents(), 1, true)
-		assert.are.equal(4, #requests)
+		assert.are.equal(5, #requests)
 	end)
+
+	it("keeps the pinned view and cached patches when refresh fails", function()
+		finish(1, files({ "a.lua" }))
+		select_file("a.lua")
+		review.toggle(buffer)
+		finish(2, patch(2))
+		review.refresh(buffer)
+		finish(3, string.rep("c", 128))
+		finish(4, "", "ambiguous source")
+		assert.matches("Refresh failed; retained pinned comparison", contents(), 1, true)
+		assert.matches("line 1", contents(), 1, true)
+		assert.is_not_nil(vim.uv.fs_stat(requests[2].job.path))
+	end)
+
+	it(
+		"uses the same immutable range for metadata and explicit expansion and resumes without loading",
+		function()
+			buffer = review.open_comparison(directory, {
+				revision = revision,
+				from = string.rep("b", 40),
+				title = "base -> feature (nearest first-parent bookmark)",
+				source = { kind = "bookmark", name = "feature" },
+				focus = { path = "b.lua", line = 20 },
+			})
+			assert.are.same(
+				{ "diff", "--from", string.rep("b", 40), "--to", revision.commit_id },
+				vim.list_slice(requests[2].args, 1, 5)
+			)
+			finish(2, files({ "a.lua", "b.lua" }))
+			assert.are.equal(row("M b.lua"), vim.api.nvim_win_get_cursor(0)[1])
+			assert.are.equal(2, #requests)
+			assert.matches("base -> feature", contents(), 1, true)
+			review.toggle(buffer)
+			assert.is_true(vim.tbl_contains(requests[3].args, "--from"))
+			assert.is_true(vim.tbl_contains(requests[3].args, string.rep("b", 40)))
+			finish(3, patch(2))
+			vim.api.nvim_set_current_buf(original_buf)
+			review.resume()
+			assert.are.equal(buffer, vim.api.nvim_get_current_buf())
+			assert.are.equal(3, #requests)
+		end
+	)
 
 	it("reports failures without displaying partial patches and can retry", function()
 		finish(1, files({ "a.lua" }))

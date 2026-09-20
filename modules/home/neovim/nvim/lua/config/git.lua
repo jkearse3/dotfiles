@@ -113,20 +113,18 @@ require("lib.config").run({
 	end,
 })
 
--- JJ diff review
-require("lib.config").run({
-	plugins = { "https://github.com/ibhagwan/fzf-lua" },
-	setup = function()
-		local jj_diff = require("lib.jj_diff")
-		vim.keymap.set("n", "<leader>gdb", jj_diff.pick_bookmark, { desc = "JJ diff: Bookmark" })
-		vim.keymap.set("n", "<leader>gdl", jj_diff.open_cursor_revision, { desc = "JJ diff: Line" })
-		vim.keymap.set("n", "<leader>gds", jj_diff.pick_retained_scope, { desc = "JJ diff: Scope" })
-	end,
-})
-
+-- JJ inspection: every complete comparison uses the same retained, lazy overview.
 local jj_history = require("lib.jj_history")
 vim.keymap.set("n", "<leader>jl", jj_history.pick_stack, { desc = "JJ: Change stack" })
 vim.keymap.set("n", "<leader>jf", jj_history.pick_file, { desc = "JJ: File history" })
+local jj_sources = require("lib.jj_review_source")
+local jj_review = require("lib.jj_review")
+vim.keymap.set("n", "<leader>jb", jj_sources.pick_bookmark, { desc = "JJ: Bookmark range" })
+vim.keymap.set("n", "<leader>ja", jj_sources.open_line, { desc = "JJ: Inspect line origin" })
+vim.keymap.set("n", "<leader>jr", jj_review.resume, { desc = "JJ: Resume review" })
+vim.keymap.set("n", "<leader>jx", function()
+	jj_review.cancel()
+end, { desc = "JJ: Cancel inspection" })
 
 -- Read-only history; action allowlists are installed by config.search.
 local git_history = require("lib.git_history")

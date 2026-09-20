@@ -12,8 +12,9 @@ local uv = vim.uv
 ---@param args string[]
 ---@param limit integer Maximum output bytes.
 ---@param complete fun(error: string?)
+---@param operation? string Exact recorded operation for a multi-request resolution; defaults to @.
 ---@return lib.jj_review.Job
-function M.start(repo, args, limit, complete)
+function M.start(repo, args, limit, complete, operation)
 	local path = vim.fn.tempname()
 	local fd, open_err = uv.fs_open(path, "wx", 384)
 	local job = { path = fd and path or nil, cancel = function() end }
@@ -23,8 +24,13 @@ function M.start(repo, args, limit, complete)
 		end)
 		return job
 	end
-	local command =
-		{ "--at-operation=@", "--ignore-working-copy", "--no-pager", "--color", "never" }
+	local command = {
+		"--at-operation=" .. (operation or "@"),
+		"--ignore-working-copy",
+		"--no-pager",
+		"--color",
+		"never",
+	}
 	vim.list_extend(command, args)
 	local stderr = assert(uv.new_pipe(false))
 	local timer = assert(uv.new_timer())

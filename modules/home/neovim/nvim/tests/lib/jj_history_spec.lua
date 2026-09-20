@@ -15,6 +15,28 @@ describe("read-only JJ history", function()
 		return command({ "jj", "--no-pager", "--color", "never", ... })
 	end
 
+	local function review_text()
+		return table.concat(vim.api.nvim_buf_get_lines(0, 0, -1, false), "\n")
+	end
+	local function wait_overview()
+		assert.is_true(vim.wait(5000, function()
+			return review_text():find("not loaded", 1, true) ~= nil
+		end))
+	end
+	local function expand_file(path, expected)
+		for row, line in ipairs(vim.api.nvim_buf_get_lines(0, 0, -1, false)) do
+			if line:sub(1, 3) == "[+]" and line:find(path, 1, true) then
+				vim.api.nvim_win_set_cursor(0, { row, 0 })
+				require("lib.jj_review").toggle(vim.api.nvim_get_current_buf())
+				assert.is_true(vim.wait(5000, function()
+					return review_text():find(expected, 1, true) ~= nil
+				end))
+				return
+			end
+		end
+		error("No header for " .. path)
+	end
+
 	before_each(function()
 		directory = vim.fn.tempname()
 		repo = directory .. "/repo"
@@ -224,14 +246,10 @@ describe("read-only JJ history", function()
 		)
 		assert.matches("Earlier draft(s): " .. predecessor, draft, 1, true)
 		options.actions()["ctrl-d"]({ entries[1] })
-		local complete = table.concat(vim.api.nvim_buf_get_lines(0, 0, -1, false), "\n")
-		assert.matches(
-			"Complete patch against parents (not changes between drafts)",
-			complete,
-			1,
-			true
-		)
-		assert.matches("+rewritten", complete, 1, true)
+		wait_overview()
+		assert.matches("Pinned draft against parents", review_text(), 1, true)
+		assert.is_nil(review_text():find("\nrewritten\n", 1, true))
+		expand_file("file.txt", "\nrewritten\n")
 		assert.are.equal(
 			before,
 			history.run({ "op", "log", "--no-graph", "--limit", "1", "-T", "id" }, repo)
@@ -285,17 +303,19 @@ describe("read-only JJ history", function()
 			assert.are.equal(1, #entries)
 			assert.matches(target:sub(1, 12), entries[1], 1, true)
 			options.actions().enter({ entries[1] })
-			local patch = table.concat(vim.api.nvim_buf_get_lines(0, 0, -1, false), "\n")
-			assert.matches("+target content", patch, 1, true)
-			assert.is_nil(patch:find("unrelated content", 1, true))
+			wait_overview()
+			assert.matches(path, vim.api.nvim_get_current_line(), 1, true)
+			assert.is_nil(review_text():find("target content", 1, true))
+			expand_file(path, "\ntarget content\n")
+			assert.is_nil(review_text():find("unrelated content", 1, true))
 			assert.is_false(vim.bo.modifiable)
 			options.actions()["ctrl-e"]({ entries[1] })
 			assert.are.equal("Previous drafts> ", options.prompt)
 			assert.matches(target:sub(1, 12), entries[1], 1, true)
 			options.actions()["ctrl-d"]({ entries[1] })
-			local complete = table.concat(vim.api.nvim_buf_get_lines(0, 0, -1, false), "\n")
-			assert.matches("Complete patch against parents", complete, 1, true)
-			assert.matches("+unrelated content", complete, 1, true)
+			wait_overview()
+			assert.matches("Pinned draft against parents", review_text(), 1, true)
+			expand_file("other.txt", "\nunrelated content\n")
 		end
 	)
 
@@ -327,10 +347,22 @@ describe("read-only JJ history", function()
 		assert(ok, err)
 		assert.are.equal(history.pick_stack, vim.fn.maparg("<leader>jl", "n", false, true).callback)
 		assert.are.equal("", vim.fn.maparg("<leader>gdr", "n"))
+		for _, key in ipairs({ "gdb", "gdl", "gds" }) do
+			assert.are.equal("", vim.fn.maparg("<leader>" .. key, "n"))
+		end
 		assert.are.equal(
-			require("lib.jj_diff").pick_bookmark,
-			vim.fn.maparg("<leader>gdb", "n", false, true).callback
+			require("lib.jj_review_source").pick_bookmark,
+			vim.fn.maparg("<leader>jb", "n", false, true).callback
 		)
+		assert.are.equal(
+			require("lib.jj_review_source").open_line,
+			vim.fn.maparg("<leader>ja", "n", false, true).callback
+		)
+		assert.are.equal(
+			require("lib.jj_review").resume,
+			vim.fn.maparg("<leader>jr", "n", false, true).callback
+		)
+		assert.are.equal("function", type(vim.fn.maparg("<leader>jx", "n", false, true).callback))
 		assert.are.equal("", vim.fn.maparg("<leader>je", "n"))
 		assert.is_nil(history.pick_evolution)
 		assert.are.equal(history.pick_file, vim.fn.maparg("<leader>jf", "n", false, true).callback)
@@ -508,6 +540,19 @@ describe("read-only JJ history", function()
 			)
 		end
 	)
+
+	it("reports an unavailable JJ executable without breaking Git-only inspection", function()
+		local system = vim.system
+		vim.system = function()
+			error("jj executable unavailable")
+		end
+		local ok, output, err = pcall(history.run, { "root" }, repo)
+		vim.system = system
+		assert.is_true(ok)
+		assert.is_nil(output)
+		assert.matches("JJ unavailable", err, 1, true)
+		assert.matches("glh / glf / gbl / gbf", err, 1, true)
+	end)
 
 	it("reports malformed data and command failures without opening a picker", function()
 		local run = history.run
