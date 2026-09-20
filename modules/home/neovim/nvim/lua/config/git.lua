@@ -118,12 +118,14 @@ require("lib.config").run({
 	plugins = { "https://github.com/ibhagwan/fzf-lua" },
 	setup = function()
 		local jj_diff = require("lib.jj_diff")
-		vim.keymap.set("n", "<leader>gdr", jj_diff.pick_revision, { desc = "JJ diff: Revision" })
 		vim.keymap.set("n", "<leader>gdb", jj_diff.pick_bookmark, { desc = "JJ diff: Bookmark" })
 		vim.keymap.set("n", "<leader>gdl", jj_diff.open_cursor_revision, { desc = "JJ diff: Line" })
 		vim.keymap.set("n", "<leader>gds", jj_diff.pick_retained_scope, { desc = "JJ diff: Scope" })
 	end,
 })
+
+local jj_history = require("lib.jj_history")
+vim.keymap.set("n", "<leader>jl", jj_history.pick_stack, { desc = "JJ: Change stack" })
 
 -- Read-only history; action allowlists are installed by config.search.
 local git_history = require("lib.git_history")
