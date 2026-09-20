@@ -12,12 +12,13 @@ end
 
 ---@param fzf fzf-lua
 local function configure_fzf(fzf)
+	local git_options = require("lib.git_history").options(fzf)
+	git_options.status = { _fmt = { from = git_status_path } }
+
 	---@type fzf-lua.Config
 	local options = {
 		grep = { hidden = true },
-		git = {
-			status = { _fmt = { from = git_status_path } },
-		},
+		git = git_options,
 		winopts = {
 			fullscreen = true,
 			preview = {

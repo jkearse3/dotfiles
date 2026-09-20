@@ -50,6 +50,7 @@ require("lib.config").run({
 			gitsigns.blame_line({ full = true })
 		end
 		vim.keymap.set("n", "<leader>gbl", blame_line, { desc = "Git: Blame line" })
+		vim.keymap.set("n", "<leader>gbf", gitsigns.blame, { desc = "Git: Blame file" })
 
 		vim.keymap.set(
 			"n",
@@ -124,18 +125,15 @@ require("lib.config").run({
 	end,
 })
 
+-- Read-only history; action allowlists are installed by config.search.
+local git_history = require("lib.git_history")
+vim.keymap.set("n", "<leader>glh", git_history.pick_repository, { desc = "Git: Repo history" })
+vim.keymap.set("n", "<leader>glf", git_history.pick_file, { desc = "Git: File history" })
+
 -- Fugitive
 require("lib.config").run({
 	plugins = { "https://github.com/tpope/vim-fugitive", "https://github.com/tpope/vim-rhubarb" },
 	setup = function()
-		vim.keymap.set("n", "<leader>glh", "<cmd>Git log<cr>", { desc = "Git: repo history" })
-		vim.keymap.set(
-			"n",
-			"<leader>glf",
-			"<cmd>Git log --follow -- %<cr>",
-			{ desc = "Git: file history" }
-		)
-
 		local function yank_remote_permalink()
 			local prefix = ""
 			local mode = vim.fn.mode()
