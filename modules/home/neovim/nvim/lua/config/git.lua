@@ -130,32 +130,20 @@ local git_history = require("lib.git_history")
 vim.keymap.set("n", "<leader>glh", git_history.pick_repository, { desc = "Git: Repo history" })
 vim.keymap.set("n", "<leader>glf", git_history.pick_file, { desc = "Git: File history" })
 
--- Fugitive
-require("lib.config").run({
-	plugins = { "https://github.com/tpope/vim-fugitive", "https://github.com/tpope/vim-rhubarb" },
-	setup = function()
-		local function yank_remote_permalink()
-			local prefix = ""
-			local mode = vim.fn.mode()
-			local is_visual_mode = mode == "v" or mode == "V"
-			if is_visual_mode then
-				local start_line_num = vim.fn.line("'<")
-				local end_line_num = vim.fn.line("'>")
-				prefix = string.format("%d,%d", start_line_num, end_line_num)
-			else
-				local line_num = vim.fn.line(".")
-				prefix = string.format("%d", line_num)
-			end
-			vim.cmd(string.format("%sGBrowse!", prefix))
-		end
-		vim.keymap.set(
-			{ "n", "v" },
-			"<leader>gy",
-			yank_remote_permalink,
-			{ desc = "Git: Yank remote permalink" }
-		)
-	end,
+local git_permalink = require("lib.git_permalink")
+vim.api.nvim_create_user_command("CopyGitPermalink", function(opts)
+	git_permalink.copy(opts.line1, opts.line2)
+end, {
+	desc = "Copy commit-pinned GitHub permalink",
+	range = true,
 })
+vim.keymap.set("n", "<leader>gy", function()
+	local line = vim.api.nvim_win_get_cursor(0)[1]
+	git_permalink.copy(line, line)
+end, { desc = "Git: Yank remote permalink" })
+vim.keymap.set("x", "<leader>gy", function()
+	git_permalink.copy(vim.fn.getpos("v")[2], vim.api.nvim_win_get_cursor(0)[1])
+end, { desc = "Git: Yank selected remote permalink" })
 
 -- Plenary remains available for the headless regression suite.
 require("lib.config").run({
