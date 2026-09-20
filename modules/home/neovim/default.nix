@@ -34,7 +34,6 @@ in
 
   home = {
     packages = [
-      pkgs.copilot-language-server
       pkgs.tree-sitter
       dotfilesPackages.nvim-pack
     ];
