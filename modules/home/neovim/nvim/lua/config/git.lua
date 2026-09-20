@@ -159,25 +159,13 @@ require("lib.config").run({
 	end,
 })
 
--- LazyGit
+-- Plenary remains available for the headless regression suite.
 require("lib.config").run({
-	plugins = {
-		"https://github.com/nvim-lua/plenary.nvim",
-		"https://github.com/kdheepak/lazygit.nvim",
-	},
-	setup = function()
-		_G.edit_from_lazygit = function(file_path, line)
-			local path = vim.fn.expand("%:p")
-			if path ~= file_path then
-				vim.cmd("edit " .. file_path)
-			end
-			if line then
-				vim.cmd(tostring(line))
-			end
-		end
-
-		vim.g.lazygit_floating_window_scaling_factor = 1
-
-		vim.keymap.set("n", "<leader>gg", "<cmd>LazyGit<cr>", { desc = "LazyGit" })
-	end,
+	plugins = { "https://github.com/nvim-lua/plenary.nvim" },
 })
+
+-- Native terminal integration; the LazyGit application remains installed by Nix.
+local lazygit = require("lib.lazygit")
+_G.edit_from_lazygit = lazygit.edit
+vim.api.nvim_create_user_command("LazyGit", lazygit.open, { desc = "Open LazyGit" })
+vim.keymap.set("n", "<leader>gg", "<cmd>LazyGit<cr>", { desc = "LazyGit" })
