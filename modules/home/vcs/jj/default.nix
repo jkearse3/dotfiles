@@ -31,6 +31,7 @@
             "--reversed"
           ];
         };
+        revsets.bookmark-advance-to = "closest_pushable(@)";
         revset-aliases = {
           "closest_bookmark(to)" = "heads(::to & bookmarks())";
           "closest_pushable(to)" =
@@ -41,16 +42,6 @@
           "branch()" = "branch(@)";
           "focus" = "fork_point(@ | trunk())::heads(@::) | trunk()";
           "clean" = "@ | ancestors(@, 30) & merges() | trunk()";
-        };
-        aliases = {
-          tug = [
-            "bookmark"
-            "move"
-            "--from"
-            "closest_bookmark(@)"
-            "--to"
-            "closest_pushable(@)"
-          ];
         };
       };
     };
