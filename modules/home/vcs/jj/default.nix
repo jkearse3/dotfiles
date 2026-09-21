@@ -56,10 +56,6 @@
             "--reversed"
             "-s"
           ];
-          stat = [
-            "show"
-            "--stat"
-          ];
         };
       };
     };
