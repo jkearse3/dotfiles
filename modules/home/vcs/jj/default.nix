@@ -40,8 +40,6 @@
           # it (stacking-aware). Falls back to trunk() when no base bookmark exists.
           "branch(rev)" = "heads((::(closest_bookmark(rev-)-) & bookmarks()) | trunk())..rev";
           "branch()" = "branch(@)";
-          "focus" = "fork_point(@ | trunk())::heads(@::) | trunk()";
-          "clean" = "@ | ancestors(@, 30) & merges() | trunk()";
         };
       };
     };
