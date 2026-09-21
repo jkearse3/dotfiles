@@ -40,6 +40,29 @@ extensions/
 All extension sources must be TypeScript. The repository checks imports, runs
 `tsc`, and executes every `*.test.ts` fixture.
 
+## Subscription usage
+
+The `usage` extension is the locally owned, dependency-free home for
+subscription quota and billing views. `/usage` checks every supported provider
+with configured Pi authentication. Only an explicit command can start provider
+work; the extension performs no background polling. Codex is the first adapter.
+
+Adapters own provider detection, official-origin authentication checks,
+transport, normalization, provider-specific semantics, and non-secret credential
+fingerprints. A shared coordinator keeps successful reports in a bounded
+process-local cache for five minutes and deduplicates matching in-flight
+requests. The dashboard identifies provider versus cached data and shows its
+age. Press `r` in the results view to bypass a fresh cache entry. The registry
+preserves adapter order, bounds concurrency, and keeps partial failures visible.
+Shared transport refuses redirects, bounds response bodies, redacts credentials
+from errors, and never forwards provider headers other than the required
+authorization.
+
+The provider-adapter approach was initially inspired by the MIT-licensed
+[`pi-usage` extension](https://github.com/narumiruna/pi-extensions/tree/main/packages/pi-usage).
+This local implementation is independently maintained and expected to diverge as
+its provider coverage and safety model evolve.
+
 ## Edit the last prompt
 
 The `edit-last-prompt` extension treats two Escape presses within 500 ms as an
