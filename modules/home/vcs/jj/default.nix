@@ -60,14 +60,6 @@
             "show"
             "--stat"
           ];
-          divergent = [
-            "log"
-            "-r"
-            "divergent()"
-            "--no-graph"
-            "-T"
-            ''change_id.shortest() ++ " -> " ++ commit_id.short() ++ " (" ++ format_timestamp(committer.timestamp()) ++ ")\n"''
-          ];
         };
       };
     };
