@@ -51,11 +51,6 @@
             "--to"
             "closest_pushable(@)"
           ];
-          ll = [
-            "log"
-            "--reversed"
-            "-s"
-          ];
         };
       };
     };
