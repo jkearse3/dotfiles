@@ -180,7 +180,7 @@ class CommitMessageTests(unittest.TestCase):
     def test_recognized_trailer_keys_keep_hanging_indent(self) -> None:
         for trailer in (
             "Signed-off-by: A reviewer identity long enough to need wrapping.",
-            "Fixes: This trailer value has enough words to wrap onto two lines.",
+            "Reverts: This trailer value has enough words to wrap onto two lines.",
         ):
             with self.subTest(trailer=trailer):
                 lines = format_message(
@@ -224,6 +224,136 @@ class CommitMessageTests(unittest.TestCase):
             format_message(message, "--body-width", "10").stdout,
             message + "\n",
         )
+
+    def test_validator_accepts_canonical_issue_footers(self) -> None:
+        for footer in (
+            "Fixes #123",
+            "Closes owner/repository#456",
+            "Resolves PROJ-7",
+            "Refs ENG-8",
+        ):
+            with self.subTest(footer=footer):
+                message = f"fix: validate footer\n\nBody.\n\n{footer}\n"
+                self.assertEqual(validate_message(message).returncode, 0)
+
+    def test_validator_rejects_malformed_issue_footers(self) -> None:
+        for footer in (
+            "Refs PROJ-4.",
+            "Refs  PROJ-4",
+            "Refs PROJ-4,",
+            "Fixes #12, #15",
+            "Closes ../..#1",
+            "Closes owner/..#1",
+            "Fixes: #12",
+            "Refs: PROJ-4",
+            "Closes: arbitrary prose",
+            "refs PROJ-4",
+            "Refs",
+        ):
+            with self.subTest(footer=footer):
+                message = f"fix: validate footer\n\nBody.\n\n{footer}\n"
+                result = validate_message(message)
+                self.assertEqual(result.returncode, 1)
+                self.assertIn("malformed issue-reference footer", result.stderr)
+
+    def test_formatter_preserves_malformed_issue_footer_for_validation(self) -> None:
+        message = "fix: preserve candidate\n\nBody paragraph.\nRefs PROJ-4."
+        output = format_message(message).stdout
+        self.assertEqual(output, message + "\n")
+        self.assertEqual(validate_message(output).returncode, 1)
+
+    def test_formatter_preserves_malformed_trailers_for_validation(self) -> None:
+        for body in (
+            "Body paragraph.\nSigned-off-by:",
+            "Signed-off-by:\nAlpha",
+        ):
+            with self.subTest(body=body):
+                message = f"fix: preserve candidate\n\n{body}"
+                output = format_message(message).stdout
+                self.assertEqual(output, message + "\n")
+                self.assertEqual(validate_message(output).returncode, 1)
+
+    def test_validator_requires_footer_block_separation_and_final_position(self) -> None:
+        for message in (
+            "fix: validate footer\n\nBody.\nRefs PROJ-4\n",
+            "fix: validate footer\n\nRefs PROJ-4\n\nBody.\n",
+        ):
+            with self.subTest(message=message):
+                result = validate_message(message)
+                self.assertEqual(result.returncode, 1)
+                self.assertIn("footer", result.stderr)
+
+    def test_validator_requires_contiguous_footer_entries(self) -> None:
+        message = (
+            "fix: validate footer\n\nBody.\n\n"
+            "Refs PROJ-4\n\n"
+            "Signed-off-by: Alpha <a@example.com>\n"
+        )
+        result = validate_message(message)
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("final footer block", result.stderr)
+
+    def test_validator_requires_indented_trailer_continuations(self) -> None:
+        message = (
+            "fix: validate footer\n\nBody.\n\n"
+            "Signed-off-by: Alpha identity\n"
+            "continued without indentation\n"
+        )
+        result = validate_message(message)
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("non-footer line", result.stderr)
+
+    def test_validator_accepts_canonical_git_trailers(self) -> None:
+        message = (
+            "fix: validate trailers\n\nBody.\n\n"
+            "Link: https://example.com/change\n"
+            "Signed-off-by: Alpha <a@example.com>\n"
+            "  delegated by Beta\n"
+        )
+        self.assertEqual(validate_message(message).returncode, 0)
+
+    def test_validator_rejects_malformed_git_trailer_separator(self) -> None:
+        message = "fix: validate trailers\n\nBody.\n\nSigned-off-by : Alpha\n"
+        result = validate_message(message)
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("malformed trailer", result.stderr)
+
+    def test_validator_requires_exact_canonical_footer(self) -> None:
+        message = "fix: validate footer\n\nBody.\n\nRefs PROJ-4\n"
+        present = validate_message(message, "--require-footer", "Refs PROJ-4")
+        missing = validate_message(message, "--require-footer", "Fixes PROJ-4")
+        malformed = validate_message(message, "--require-footer", "Refs PROJ-4.")
+        colon_form = validate_message(message, "--require-footer", "Refs: PROJ-4")
+
+        self.assertEqual(present.returncode, 0)
+        self.assertEqual(missing.returncode, 1)
+        self.assertIn("required footer is missing: Fixes PROJ-4", missing.stderr)
+        self.assertEqual(malformed.returncode, 1)
+        self.assertIn("required footer is not canonical: Refs PROJ-4.", malformed.stderr)
+        self.assertEqual(colon_form.returncode, 1)
+        self.assertIn("required footer is not canonical: Refs: PROJ-4", colon_form.stderr)
+
+    def test_validator_ignores_footer_examples_inside_fences(self) -> None:
+        message = (
+            "docs: show footer examples\n\n"
+            "Use this footer:\n\n"
+            "```text\n"
+            "Refs PROJ-4.\n"
+            "Signed-off-by : Example\n"
+            "```\n"
+        )
+        self.assertEqual(validate_message(message).returncode, 0)
+
+    def test_validator_treats_fences_as_breaking_change_continuations(self) -> None:
+        message = (
+            "feat!: change behavior\n\n"
+            "BREAKING CHANGE: migrate footer generation as follows.\n"
+            "```text\n"
+            "Refs PROJ-4.\n"
+            "Signed-off-by : Example\n"
+            "```\n"
+        )
+        self.assertEqual(validate_message(message).returncode, 0)
 
     def test_issue_footer_is_not_absorbed_into_a_prose_paragraph(self) -> None:
         message = "fix: close it\n\nThis paragraph explains the change.\nResolves #99"
@@ -296,7 +426,7 @@ class CommitMessageTests(unittest.TestCase):
     def test_wrapped_trailer_value_survives_git_trailer_parsing(self) -> None:
         message = (
             "feat: demo\n\nBody.\n\n"
-            "Fixes: first line of a value that the author hand wrapped across two\n"
+            "Reverts: first line of a value that the author hand wrapped across two\n"
             "lines here\n"
         )
         parsed = subprocess.run(
@@ -308,7 +438,7 @@ class CommitMessageTests(unittest.TestCase):
         )
         self.assertEqual(
             parsed.stdout,
-            "Fixes: first line of a value that the author hand wrapped across two "
+            "Reverts: first line of a value that the author hand wrapped across two "
             + "lines here\n",
         )
 
@@ -334,7 +464,7 @@ class CommitMessageTests(unittest.TestCase):
                 self.assertEqual(format_message(message).stdout, message + "\n")
 
     def test_a_line_the_author_already_fit_passes_through_verbatim(self) -> None:
-        for body in ("- name        value", "- foo\tbar", "Fixes: A  B"):
+        for body in ("- name        value", "- foo\tbar", "Reverts: A  B"):
             with self.subTest(body=body):
                 message = f"fix: keep spacing\n\n{body}"
                 self.assertEqual(format_message(message).stdout, message + "\n")
@@ -391,7 +521,7 @@ class CommitMessageTests(unittest.TestCase):
         message = (
             "feat: format descriptions.\n\n"
             "This body contains enough ordinary prose to require deterministic wrapping at a narrow configured width.\n\n"
-            "Fixes: This trailer value also needs deterministic wrapping for validation."
+            "Reverts: This trailer value also needs deterministic wrapping for validation."
         )
         first = format_message(message, "--body-width", "50").stdout
         second = format_message(first, "--body-width", "50").stdout

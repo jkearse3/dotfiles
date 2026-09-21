@@ -12,7 +12,8 @@ indented continuations.
 
 Line endings are normalized to LF and non-empty output ends with exactly one
 newline. The validator intentionally does not enforce Conventional Commit
-structure: any non-empty subject within the width limit is accepted.
+subject structure: any non-empty subject within the width limit is accepted,
+while recognized footer metadata must use canonical structure.
 """
 
 from __future__ import annotations
@@ -21,7 +22,7 @@ import argparse
 import re
 import sys
 from dataclasses import dataclass
-from typing import cast
+from typing import Literal, cast
 
 DEFAULT_BODY_WIDTH = 72
 DEFAULT_SUBJECT_WIDTH = 72
@@ -43,19 +44,39 @@ LIST_RE = re.compile(r"^(?P<prefix>[ \t]*(?:[-+*]|\d+[.)])[ \t]+)(?P<text>\S.*)$
 TRAILER_RE = re.compile(
     r"^(?P<prefix>(?:BREAKING CHANGE"
     + r"|(?i:[A-Z][A-Z0-9]*(?:-[A-Z0-9]+)+"
-    + r"|Closes|Fixes|Resolves|Refs|Reverts|Cc|Link)):[ \t]+)(?P<text>\S.*)$"
+    + r"|Reverts|Cc|Link)):[ \t]+)(?P<text>\S.*)$"
 )
 
 # Issue-reference footers stay on their own lines: never joined into a
-# paragraph and never wrapped. Any recognized keyword pairs with either a
-# GitHub-style numeric id (`#123`) or a tracker key (`ENG-45`, `JIRA-456`),
-# and one keyword may cite several comma-separated ids (`Closes #12, #15`).
-# The keyword is intentionally colon-free: `Closes: #1` is a plain trailer
-# TRAILER_RE already recognizes and hang-indents.
+# paragraph and never wrapped. Their canonical form uses one tracker identifier
+# per line and no terminal punctuation. A broader candidate expression keeps
+# malformed references structurally intact so validation can report them after
+# formatting instead of allowing them to merge into adjacent prose.
 ISSUE_REFERENCE_KEYWORD = r"(?:Closes|Fixes|Resolves|Refs)"
-ISSUE_REFERENCE_ID = r"(?:#[0-9]+|[A-Z][A-Z0-9]*-[0-9]+)"
-ISSUE_REFERENCE_RE = re.compile(
-    rf"^{ISSUE_REFERENCE_KEYWORD} {ISSUE_REFERENCE_ID}(?:, {ISSUE_REFERENCE_ID})*$"
+GITHUB_OWNER = r"[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?"
+GITHUB_REPOSITORY = r"(?!(?:\.{1,2})#)[A-Za-z0-9_.-]+"
+ISSUE_REFERENCE_ID = (
+    rf"(?:#[0-9]+|{GITHUB_OWNER}/{GITHUB_REPOSITORY}#[0-9]+"
+    + r"|[A-Z][A-Z0-9]*-[0-9]+)"
+)
+ISSUE_REFERENCE_RE = re.compile(rf"^{ISSUE_REFERENCE_KEYWORD} {ISSUE_REFERENCE_ID}$")
+ISSUE_REFERENCE_CANDIDATE_RE = re.compile(
+    r"^(?i:Closes|Fixes|Resolves|Refs)(?:[ \t]|:|$)"
+)
+
+# Validation accepts the same intentionally bounded trailer vocabulary that the
+# formatter can preserve and wrap unambiguously. Arbitrary single-word prefixes
+# such as `Records:` remain prose; standard hyphenated Git tokens and the known
+# single-word tokens below are trailers.
+CANONICAL_TRAILER_RE = re.compile(
+    r"^(?P<token>BREAKING CHANGE"
+    + r"|(?i:[A-Z][A-Z0-9]*(?:-[A-Z0-9]+)+|Reverts|Cc|Link))"
+    + r": (?P<text>\S.*)$"
+)
+TRAILER_CANDIDATE_RE = re.compile(
+    r"^(?:BREAKING CHANGE"
+    + r"|(?i:[A-Z][A-Z0-9]*(?:-[A-Z0-9]+)+|Reverts|Cc|Link))"
+    + r"[ \t]*:"
 )
 DIFF_HEADER_RE = re.compile(
     r"^(?:(?:old|new|deleted file|new file) mode [0-7]{6}"
@@ -209,6 +230,11 @@ def open_paragraph(line: str) -> Paragraph | None:
             texts=[trailer_match.group("text")],
         )
 
+    if (
+        ISSUE_REFERENCE_CANDIDATE_RE.match(line) is not None
+        or TRAILER_CANDIDATE_RE.match(line) is not None
+    ):
+        return None
     if is_prose_line(line):
         return Paragraph(first_prefix="", continuation_prefix="", texts=[line])
 
@@ -286,7 +312,8 @@ def format_body_line(line: str, *, width: int) -> list[str]:
 
     if (
         line[0].isspace()
-        or ISSUE_REFERENCE_RE.fullmatch(line) is not None
+        or ISSUE_REFERENCE_CANDIDATE_RE.match(line) is not None
+        or TRAILER_CANDIDATE_RE.match(line) is not None
         or looks_preformatted(line)
     ):
         return [line]
@@ -341,7 +368,8 @@ def is_prose_continuation_line(line: str) -> bool:
         and not is_diff_marker_line(line)
         and LIST_RE.fullmatch(line) is None
         and TRAILER_RE.fullmatch(line) is None
-        and ISSUE_REFERENCE_RE.fullmatch(line) is None
+        and ISSUE_REFERENCE_CANDIDATE_RE.match(line) is None
+        and TRAILER_CANDIDATE_RE.match(line) is None
         and not looks_preformatted(line)
     )
 
@@ -474,6 +502,154 @@ def validate_body_lines(lines: list[str], *, body_width: int) -> list[str]:
     return errors
 
 
+def footer_candidate_indices(lines: list[str]) -> list[int]:
+    """Return body-line indices that may begin footer metadata.
+
+    Fenced examples are excluded because their contents are line-sensitive sample
+    text, not commit metadata.
+    """
+    indices: list[int] = []
+    fence: str | None = None
+    for index, line in enumerate(lines[1:], start=1):
+        if fence is not None:
+            closing_marker = line.strip()
+            if (
+                len(closing_marker) >= len(fence)
+                and set(closing_marker) == {fence[0]}
+            ):
+                fence = None
+            continue
+
+        fence_match = FENCE_RE.match(line)
+        if fence_match is not None:
+            fence = fence_match.group("marker")
+            continue
+
+        if (
+            ISSUE_REFERENCE_CANDIDATE_RE.match(line) is not None
+            or TRAILER_CANDIDATE_RE.match(line) is not None
+        ):
+            indices.append(index)
+
+    return indices
+
+
+def validate_footer_lines(lines: list[str], *, required_footers: list[str]) -> list[str]:
+    """Return structural footer errors and missing required-footer errors.
+
+    Recognized issue references and trailers form one final, contiguous block
+    separated from the body by a blank line. Issue-reference keywords are
+    reserved, so malformed variants remain detectable rather than becoming prose.
+    """
+    errors: list[str] = []
+    if len(lines) < 2:
+        return [f"required footer is missing: {footer}" for footer in required_footers]
+
+    final_line_index = len(lines) - 1
+    while final_line_index > 0 and not lines[final_line_index].strip():
+        final_line_index -= 1
+
+    final_block_start = final_line_index
+    while final_block_start > 0 and lines[final_block_start - 1].strip():
+        final_block_start -= 1
+
+    candidate_indices = footer_candidate_indices(lines)
+    final_candidates = [
+        index
+        for index in candidate_indices
+        if final_block_start <= index <= final_line_index
+    ]
+
+    for index in candidate_indices:
+        if index < final_block_start:
+            errors.append(
+                f"line {index + 1}: footer entry must be in the final footer block"
+            )
+
+    footer_entries: list[str] = []
+    if final_candidates:
+        footer_start = final_candidates[0]
+        if footer_start != final_block_start or footer_start == 1:
+            errors.append(
+                f"line {footer_start + 1}: footer block must be separated "
+                + "from the body by a blank line"
+            )
+
+        continuation_style: Literal["breaking", "indented"] | None = None
+        footer_fence: str | None = None
+        for index in range(footer_start, final_line_index + 1):
+            line = lines[index]
+            if footer_fence is not None:
+                closing_marker = line.strip()
+                if (
+                    len(closing_marker) >= len(footer_fence)
+                    and set(closing_marker) == {footer_fence[0]}
+                ):
+                    footer_fence = None
+                continue
+
+            fence_match = FENCE_RE.match(line)
+            if continuation_style == "breaking" and fence_match is not None:
+                footer_fence = fence_match.group("marker")
+                continue
+
+            issue_match = ISSUE_REFERENCE_RE.fullmatch(line)
+            trailer_match = CANONICAL_TRAILER_RE.fullmatch(line)
+
+            if issue_match is not None:
+                footer_entries.append(line)
+                continuation_style = None
+                continue
+
+            if trailer_match is not None:
+                footer_entries.append(line)
+                continuation_style = (
+                    "breaking"
+                    if trailer_match.group("token") == "BREAKING CHANGE"
+                    else "indented"
+                )
+                continue
+
+            if ISSUE_REFERENCE_CANDIDATE_RE.match(line) is not None:
+                errors.append(
+                    f"line {index + 1}: malformed issue-reference footer; "
+                    + "use one unpunctuated identifier after the keyword"
+                )
+                continuation_style = None
+                continue
+
+            if TRAILER_CANDIDATE_RE.match(line) is not None:
+                errors.append(
+                    f"line {index + 1}: malformed trailer; use `Token: value`"
+                )
+                continuation_style = "indented"
+                continue
+
+            if line[:1].isspace() and line.strip():
+                if continuation_style is None:
+                    errors.append(
+                        f"line {index + 1}: footer continuation has no preceding trailer"
+                    )
+                continue
+
+            if continuation_style == "breaking":
+                continue
+
+            errors.append(f"line {index + 1}: footer block contains a non-footer line")
+            continuation_style = None
+
+    for footer in required_footers:
+        if (
+            ISSUE_REFERENCE_RE.fullmatch(footer) is None
+            and CANONICAL_TRAILER_RE.fullmatch(footer) is None
+        ):
+            errors.append(f"required footer is not canonical: {footer}")
+        elif footer not in footer_entries:
+            errors.append(f"required footer is missing: {footer}")
+
+    return errors
+
+
 def has_allowed_unbreakable_overrun(line: str, *, body_width: int) -> bool:
     """Return whether ``line`` exceeds ``body_width`` only via unbreakable spans.
 
@@ -542,6 +718,12 @@ def create_parser() -> argparse.ArgumentParser:
             + f"(default: {DEFAULT_BODY_WIDTH})"
         ),
     )
+    _ = validator.add_argument(
+        "--require-footer",
+        action="append",
+        default=[],
+        help="require an exact canonical footer (repeatable)",
+    )
     return parser
 
 
@@ -560,6 +742,12 @@ def main(argv: list[str] | None = None) -> int:
     subject = lines[0] if lines else ""
     errors = validate_subject(subject, subject_width=cast(int, namespace.subject_width))
     errors.extend(validate_body_lines(lines, body_width=cast(int, namespace.body_width)))
+    errors.extend(
+        validate_footer_lines(
+            lines,
+            required_footers=cast(list[str], namespace.require_footer),
+        )
+    )
 
     if errors:
         print_validation_errors(errors)

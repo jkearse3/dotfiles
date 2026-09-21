@@ -43,6 +43,7 @@ class CompletionTests(unittest.TestCase):
         validate_options = fish_candidates("commit-message validate --")
         self.assertIn("--subject-width", validate_options)
         self.assertIn("--body-width", validate_options)
+        self.assertIn("--require-footer", validate_options)
 
     def test_zsh_defines_subcommands_and_options(self) -> None:
         result = run(
@@ -66,6 +67,10 @@ class CompletionTests(unittest.TestCase):
         for command, expected in (
             ("format", "--body-width[maximum body/footer line width]:characters"),
             ("validate", "--subject-width[maximum subject width]:characters"),
+            (
+                "validate",
+                "*--require-footer[require an exact canonical footer]:footer",
+            ),
         ):
             with self.subTest(command=command):
                 command_result = run(
