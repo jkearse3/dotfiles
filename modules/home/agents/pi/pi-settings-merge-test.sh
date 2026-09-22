@@ -13,7 +13,7 @@ seed=$(mktemp)
 cat >"$seed" <<'JSON'
 {
   "theme": "dark",
-  "defaultModel": "gpt-5.6-sol",
+  "defaultModel": "gpt-6-sol",
   "tuiMode": "fullscreen",
   "lastChangelogVersion": "999.999.999"
 }
@@ -68,7 +68,7 @@ check() {
 
 check "missing live file is seeded" \
 	'<missing>' '[]' '<missing>' \
-	'.theme == "dark" and .defaultModel == "gpt-5.6-sol" and .tuiMode == "fullscreen" and (has("packages") | not)'
+	'.theme == "dark" and .defaultModel == "gpt-6-sol" and .tuiMode == "fullscreen" and (has("packages") | not)'
 
 check "empty object takes the whole seed" \
 	'{}' '[]' '[]' \

@@ -34,7 +34,7 @@ let
   seedSettings = {
     theme = "tokyonight";
     defaultProvider = "openai-codex";
-    defaultModel = "gpt-5.6-sol";
+    defaultModel = "gpt-6-sol";
     defaultThinkingLevel = "medium";
     tuiMode = "fullscreen";
     lastChangelogVersion = "999.999.999";
