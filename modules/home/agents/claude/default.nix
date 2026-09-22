@@ -91,7 +91,7 @@ let
     "disableAgentView"
     "editorMode"
     "model"
-    "modelSettings.claude-opus-4-8.effortLevel"
+    "modelSettings.claude-opus-5-5.effortLevel"
     "outputStyle"
     "promptSuggestionEnabled"
     "skipAutoPermissionPrompt"
