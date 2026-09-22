@@ -72,7 +72,6 @@ in
       default = [
         "shared/communication"
         "shared/reasoning"
-        "shared/scratchpad"
         "shared/delegation"
         "shared/version-control"
         "shared/mutation-safety"
