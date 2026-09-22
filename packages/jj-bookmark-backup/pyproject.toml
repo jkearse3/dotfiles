@@ -1,0 +1,15 @@
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "jj-bookmark-backup"
+version = "0.0.0"
+description = "Preserve a remote jj bookmark with fresh change IDs"
+requires-python = ">=3.11"
+
+[project.scripts]
+jj-bookmark-backup = "jj_bookmark_backup.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]

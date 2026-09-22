@@ -4,6 +4,7 @@
 }:
 {
   home.packages = [
+    dotfilesPackages.jj-bookmark-backup
     dotfilesPackages.jj-bookmark-nearest
     dotfilesPackages.jj-bookmark-current
     dotfilesPackages.jj-bookmark-default
@@ -31,6 +32,7 @@
             "--reversed"
           ];
         };
+        git.private-commits = ''bookmarks(glob:"backup-*")'';
         revsets.bookmark-advance-to = "closest_pushable(@)";
         revset-aliases = {
           "closest_bookmark(to)" = "heads(::to & bookmarks())";
@@ -45,11 +47,13 @@
     };
 
     fish.shellAliases = {
+      jjbb = "jj-bookmark-backup";
       jjbl = "jj-bookmark-land";
       jjbp = "jj-bookmark-push";
       jjbr = "jj-bookmark-rebase";
     };
     zsh.shellAliases = {
+      jjbb = "jj-bookmark-backup";
       jjbl = "jj-bookmark-land";
       jjbp = "jj-bookmark-push";
       jjbr = "jj-bookmark-rebase";

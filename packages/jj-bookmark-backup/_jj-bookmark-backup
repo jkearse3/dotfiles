@@ -1,0 +1,18 @@
+#compdef jj-bookmark-backup
+
+function _jj_bookmark_backup_bookmarks() {
+  local -a bookmarks
+  bookmarks=("${(@f)$(jj bookmark list --ignore-working-copy --all-remotes -T 'if(present, name ++ "\n")' 2>/dev/null | sort -u)}")
+  compadd -a bookmarks
+}
+
+function _jj_bookmark_backup_remotes() {
+  local -a remotes
+  remotes=("${(@f)$(jj git remote list --ignore-working-copy 2>/dev/null | cut -d ' ' -f 1)}")
+  compadd -a remotes
+}
+
+_arguments \
+  '(-h --help)'{-h,--help}'[show help]' \
+  '--remote[source remote]:remote:_jj_bookmark_backup_remotes' \
+  '1:bookmark:_jj_bookmark_backup_bookmarks'

@@ -41,6 +41,9 @@
           inherit jj-bookmark-current;
         };
         jj-change-select = pkgs.callPackage ../packages/jj-change-select/package.nix { };
+        jj-bookmark-backup = pkgs.callPackage ../packages/jj-bookmark-backup/package.nix {
+          inherit (unstablePkgs) jujutsu;
+        };
         jj-bookmark-nearest = pkgs.callPackage ../packages/jj-bookmark-nearest/package.nix { };
         jj-bookmark-current = pkgs.callPackage ../packages/jj-bookmark-current/package.nix {
           inherit jj-bookmark-nearest;
