@@ -66,7 +66,7 @@ require("lib.config").run({
 		)
 
 		local function switch_gutter_base_default()
-			local default_branch = vim.fn.system("jj-bookmark-default")
+			local default_branch = vim.fn.system("jjx bookmark default")
 			vim.api.nvim_command("Gitsigns change_base " .. default_branch .. " true")
 			vim.notify("Switching git gutter against " .. default_branch)
 		end
@@ -78,7 +78,7 @@ require("lib.config").run({
 		)
 
 		local function switch_gutter_base_previous()
-			local prev_branch = vim.fn.system("jj-bookmark-previous")
+			local prev_branch = vim.fn.system("jjx bookmark previous")
 			vim.api.nvim_command("Gitsigns change_base " .. prev_branch .. " true")
 			vim.notify("Switching git gutter against " .. prev_branch)
 		end

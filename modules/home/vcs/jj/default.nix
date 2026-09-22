@@ -4,20 +4,7 @@
 }:
 {
   home.packages = [
-    dotfilesPackages.jj-bookmark-backup
-    dotfilesPackages.jj-bookmark-nearest
-    dotfilesPackages.jj-bookmark-current
-    dotfilesPackages.jj-bookmark-default
-    dotfilesPackages.jj-bookmark-stacked
-    dotfilesPackages.jj-bookmark-previous
-    dotfilesPackages.jj-bookmark-push
-    dotfilesPackages.jj-bookmark-rebase
-    dotfilesPackages.jj-bookmark-select
-    dotfilesPackages.jj-change-select
-    dotfilesPackages.jj-ensure
-    dotfilesPackages.jj-bookmark-land
-    dotfilesPackages.jj-description-format
-    dotfilesPackages.jj-worktree-add
+    dotfilesPackages.jjx
   ];
 
   programs = {
@@ -32,6 +19,12 @@
             "--reversed"
           ];
         };
+        aliases.x = [
+          "util"
+          "exec"
+          "--"
+          "jjx"
+        ];
         git.private-commits = ''bookmarks(glob:"backup-*")'';
         revsets.bookmark-advance-to = "closest_pushable(@)";
         revset-aliases = {
@@ -47,16 +40,16 @@
     };
 
     fish.shellAliases = {
-      jjbb = "jj-bookmark-backup";
-      jjbl = "jj-bookmark-land";
-      jjbp = "jj-bookmark-push";
-      jjbr = "jj-bookmark-rebase";
+      jjbb = "jjx bookmark backup";
+      jjbl = "jjx bookmark land";
+      jjbp = "jjx bookmark push";
+      jjbr = "jjx bookmark rebase";
     };
     zsh.shellAliases = {
-      jjbb = "jj-bookmark-backup";
-      jjbl = "jj-bookmark-land";
-      jjbp = "jj-bookmark-push";
-      jjbr = "jj-bookmark-rebase";
+      jjbb = "jjx bookmark backup";
+      jjbl = "jjx bookmark land";
+      jjbp = "jjx bookmark push";
+      jjbr = "jjx bookmark rebase";
     };
   };
 }

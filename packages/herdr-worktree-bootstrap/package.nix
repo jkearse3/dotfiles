@@ -1,23 +1,23 @@
 {
   herdr,
-  jj-ensure,
+  jjx,
   pkgs,
 }:
 let
   pluginId = "dotfiles.worktree-bootstrap";
   mkHook =
-    jjEnsure:
+    jjxPackage:
     pkgs.writeShellApplication {
       name = "herdr-worktree-bootstrap";
       runtimeInputs = [
-        jjEnsure
+        jjxPackage
         pkgs.jq
       ];
       text = builtins.readFile ./worktree-created.sh;
     };
-  hook = mkHook jj-ensure;
+  hook = mkHook jjx;
   failingHook = mkHook (
-    pkgs.writeShellScriptBin "jj-ensure" ''
+    pkgs.writeShellScriptBin "jjx" ''
       exit 23
     ''
   );

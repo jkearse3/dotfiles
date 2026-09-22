@@ -10,7 +10,7 @@
         packages = [
           config.treefmt.build.wrapper
           config.packages.commit-message
-          config.packages.jj-ensure
+          config.packages.jjx
 
           unstablePkgs.bash
           unstablePkgs.basedpyright

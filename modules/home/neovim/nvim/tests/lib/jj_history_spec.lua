@@ -49,7 +49,7 @@ describe("read-only JJ history", function()
 			vim.env.JJ_CONFIG
 		)
 		command({ "git", "init", "--quiet" })
-		command({ "jj-ensure" })
+		command({ "jjx", "ensure" })
 		vim.fn.writefile({ "first" }, repo .. "/file.txt")
 		jj("describe", "-m", "first revision")
 		first_commit = jj("log", "--no-graph", "-r", "@", "-T", "commit_id")

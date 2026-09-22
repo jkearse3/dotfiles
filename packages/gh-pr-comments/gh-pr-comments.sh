@@ -15,7 +15,7 @@ repo="${repo_info#*/}"
 
 # Auto-detect PR number from current branch if not provided.
 if [[ -z $pr_num ]]; then
-	branch=$(jj-bookmark-current)
+	branch=$(jjx bookmark current)
 	if [[ -z $branch ]]; then
 		echo "error: no branch found for current revision" >&2
 		exit 1

@@ -309,12 +309,12 @@ assert_status 2 "$bare_status" 'bare Git repositories are not worktrees'
 	assert_eq "$main" "$result" 'colocated repositories prefer Git main worktree'
 )
 
-if command -v jj-ensure >/dev/null 2>&1 && command -v jj >/dev/null 2>&1; then
+if command -v jjx >/dev/null 2>&1 && command -v jj >/dev/null 2>&1; then
 	jj_main="$TMPDIR_ROOT/jj main"
 	jj_linked="$TMPDIR_ROOT/jj linked"
 	git init -q "$jj_main"
 	git -C "$jj_main" -c user.name=Test -c user.email=test@example.com commit -q --allow-empty -m initial
-	(cd "$jj_main" && jj-ensure >/dev/null)
+	(cd "$jj_main" && jjx ensure >/dev/null)
 	jj -R "$jj_main" workspace add --name secondary "$jj_linked" >/dev/null 2>&1
 	if (cd "$jj_linked" && git rev-parse --is-inside-work-tree >/dev/null 2>&1); then
 		fail 'jj linked fixture must not be a Git worktree'

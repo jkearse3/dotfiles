@@ -38,33 +38,10 @@
         git-worktree-cd = pkgs.callPackage ../packages/git-worktree-cd/package.nix { };
         git-worktree-select = pkgs.callPackage ../packages/git-worktree-select/package.nix { };
         gh-pr-comments = pkgs.callPackage ../packages/gh-pr-comments/package.nix {
-          inherit jj-bookmark-current;
+          inherit jjx;
         };
-        jj-change-select = pkgs.callPackage ../packages/jj-change-select/package.nix { };
-        jj-bookmark-backup = pkgs.callPackage ../packages/jj-bookmark-backup/package.nix {
-          inherit (unstablePkgs) jujutsu;
-        };
-        jj-bookmark-nearest = pkgs.callPackage ../packages/jj-bookmark-nearest/package.nix { };
-        jj-bookmark-current = pkgs.callPackage ../packages/jj-bookmark-current/package.nix {
-          inherit jj-bookmark-nearest;
-        };
-        jj-bookmark-default = pkgs.callPackage ../packages/jj-bookmark-default/package.nix {
-          inherit jj-bookmark-nearest;
-        };
-        jj-bookmark-stacked = pkgs.callPackage ../packages/jj-bookmark-stacked/package.nix {
-          inherit jj-bookmark-default;
-        };
-        jj-bookmark-previous = pkgs.callPackage ../packages/jj-bookmark-previous/package.nix {
-          inherit jj-bookmark-stacked;
-        };
-        jj-bookmark-push = pkgs.callPackage ../packages/jj-bookmark-push/package.nix {
-          inherit (unstablePkgs) jujutsu;
-        };
-        jj-bookmark-rebase = pkgs.callPackage ../packages/jj-bookmark-rebase/package.nix {
-          inherit (unstablePkgs) jujutsu;
-        };
-        jj-bookmark-select = pkgs.callPackage ../packages/jj-bookmark-select/package.nix { };
-        jj-ensure = pkgs.callPackage ../packages/jj-ensure/package.nix {
+        jjx = pkgs.callPackage ../packages/jjx/package.nix {
+          inherit commit-message;
           inherit (unstablePkgs) jujutsu;
         };
         pi-shepherd = pkgs.callPackage ../packages/pi-shepherd/package.nix {
@@ -72,18 +49,7 @@
         };
         herdr-worktree-bootstrap = pkgs.callPackage ../packages/herdr-worktree-bootstrap/package.nix {
           inherit (inputs.llm-agents.packages.${system}) herdr;
-          inherit jj-ensure;
-        };
-        jj-bookmark-land = pkgs.callPackage ../packages/jj-bookmark-land/package.nix {
-          inherit (unstablePkgs) jujutsu;
-        };
-        jj-description-format = pkgs.callPackage ../packages/jj-description-format/package.nix {
-          inherit commit-message;
-          inherit (unstablePkgs) jujutsu;
-        };
-        jj-worktree-add = pkgs.callPackage ../packages/jj-worktree-add/package.nix {
-          inherit jj-ensure;
-          inherit (unstablePkgs) jujutsu;
+          inherit jjx;
         };
         nix-cleanup = pkgs.callPackage ../packages/nix-cleanup/package.nix { };
         nvim-pack = pkgs.callPackage ../packages/nvim-pack/package.nix {

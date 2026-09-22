@@ -1,1 +1,0 @@
-"""Reformat jj revision descriptions."""

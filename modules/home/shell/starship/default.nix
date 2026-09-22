@@ -9,7 +9,7 @@ let
     name = "jj-starship-prompt";
     runtimeInputs = [
       pkgs.jujutsu
-      dotfilesPackages.jj-bookmark-nearest
+      dotfilesPackages.jjx
     ];
     text = builtins.readFile ./jj-starship-prompt.sh;
   };

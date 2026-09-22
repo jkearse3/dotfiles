@@ -67,7 +67,7 @@ describe("unified JJ review sources", function()
 			vim.env.JJ_CONFIG
 		)
 		command({ "git", "init", "--quiet" })
-		command({ "jj-ensure" })
+		command({ "jjx", "ensure" })
 		vim.fn.writefile({ "first" }, repo .. "/file.txt")
 		jj("describe", "-m", "base")
 		base = id()

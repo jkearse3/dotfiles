@@ -6,11 +6,8 @@
     "packages/direnv-worktree",
     "packages/nix-cleanup",
     "packages/nvim-pack",
-    "packages/jj-ensure",
+    "packages/jjx",
     "packages/pi-shepherd",
-    "packages/jj-bookmark-land",
-    "packages/jj-description-format",
-    "packages/jj-worktree-add",
     "packages/token-count"
   ],
   "executionEnvironments": [
@@ -26,20 +23,8 @@
       "extraPaths": ["packages/commit-message/src"]
     },
     {
-      "root": "packages/jj-ensure",
-      "extraPaths": ["packages/jj-ensure/src"]
-    },
-    {
-      "root": "packages/jj-bookmark-land",
-      "extraPaths": ["packages/jj-bookmark-land/src"]
-    },
-    {
-      "root": "packages/jj-description-format",
-      "extraPaths": ["packages/jj-description-format/src"]
-    },
-    {
-      "root": "packages/jj-worktree-add",
-      "extraPaths": ["packages/jj-worktree-add/src"]
+      "root": "packages/jjx",
+      "extraPaths": ["packages/jjx/src"]
     }
   ]
 }

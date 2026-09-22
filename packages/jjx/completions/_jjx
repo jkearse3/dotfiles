@@ -1,0 +1,148 @@
+#compdef jjx
+
+_jjx_bookmarks() {
+  local -a bookmarks
+  bookmarks=("${(@f)$(jj bookmark list --ignore-working-copy -T 'if(!remote && present, name ++ "\n")' 2>/dev/null)}")
+  compadd -a bookmarks
+}
+
+_jjx_all_bookmarks() {
+  local -a bookmarks
+  bookmarks=("${(@f)$(jj bookmark list --ignore-working-copy --all-remotes -T 'if(present, name ++ "\n")' 2>/dev/null | sort -u)}")
+  compadd -a bookmarks
+}
+
+_jjx_remotes() {
+  local -a remotes
+  remotes=("${(@f)$(jj git remote list --ignore-working-copy 2>/dev/null | cut -d ' ' -f 1)}")
+  compadd -a remotes
+}
+
+_jjx_revisions() {
+  local -a revisions
+  revisions=('@:Current revision' '@-:Parent revision')
+  _describe 'revision' revisions
+  _jjx_bookmarks
+}
+
+_jjx() {
+  local -a groups
+  groups=(
+    'bookmark:Commands for bookmarks'
+    'change:Commands for changes'
+    'description:Commands for descriptions'
+    'ensure:Ensure a Git checkout has compatible jj state'
+    'worktree:Commands for Git worktrees'
+  )
+
+  if (( CURRENT == 2 )); then
+    _describe 'command' groups
+    return
+  fi
+
+  if [[ $words[2] == ensure ]]; then
+    _arguments \
+      '(-h --help)'{-h,--help}'[show help]' \
+      '--dry-run[show the validated action without modifying the workspace]' \
+      '1:path:_files'
+    return
+  fi
+
+  if (( CURRENT == 3 )); then
+    case $words[2] in
+      bookmark)
+        _values 'bookmark command' \
+          'backup[Preserve remote bookmark history locally]' \
+          'current[Print the nearest current bookmark]' \
+          'default[Print the trunk bookmark]' \
+          'land[Land a linear bookmark stack]' \
+          'nearest[Query nearest matching bookmarks]' \
+          'previous[Print the previous stacked bookmark]' \
+          'push[Interactively push bookmarks]' \
+          'rebase[Interactively rebase bookmarks]' \
+          'select[Interactively select a bookmark]' \
+          'stacked[List bookmarks from the current change to trunk]'
+        ;;
+      change)
+        _values 'change command' 'select[Interactively select a change]'
+        ;;
+      description)
+        _values 'description command' 'format[Format a revision description]'
+        ;;
+      worktree)
+        _values 'worktree command' 'add[Create a detached Git worktree with independent jj state]'
+        ;;
+    esac
+    return
+  fi
+
+  case "$words[2] $words[3]" in
+    'bookmark backup')
+      _arguments \
+        '(-h --help)'{-h,--help}'[show help]' \
+        '--remote[source remote]:remote:_jjx_remotes' \
+        '1:bookmark:_jjx_all_bookmarks'
+      ;;
+    'bookmark current'|'bookmark default'|'bookmark previous'|'bookmark select'|'bookmark stacked'|'change select')
+      _arguments '(-h --help)'{-h,--help}'[show help]'
+      ;;
+    'bookmark rebase')
+      _arguments \
+        '(-h --help)'{-h,--help}'[show help]' \
+        '1:destination revset:_jjx_revisions'
+      ;;
+    'bookmark nearest')
+      _arguments \
+        '(-h --help)'{-h,--help}'[show help]' \
+        '1:revset:_jjx_revisions'
+      ;;
+    'bookmark push')
+      _arguments \
+        '(-h --help)'{-h,--help}'[show help]' \
+        '--remote[remote to push to]:remote:_jjx_remotes' \
+        '--allow-empty-description[allow empty descriptions]' \
+        '--allow-private[allow private commits]' \
+        '--allow-conflicts[allow conflicted commits]' \
+        '--dry-run[show changes without pushing]' \
+        '(-o --option)'{-o,--option}'[Git push option]:option:' \
+        '(-R --repository)'{-R,--repository}'[repository path]:path:_files -/' \
+        '--ignore-working-copy[do not snapshot the working copy]' \
+        '--no-integrate-operation[do not integrate the operation]' \
+        '--ignore-immutable[allow rewriting immutable commits]' \
+        '(--at-operation --at-op)'{--at-operation,--at-op}'[operation to load]:operation:' \
+        '--debug[enable debug logging]' \
+        '--color[color mode]:mode:(always never debug auto)' \
+        '--quiet[silence non-primary output]' \
+        '--no-pager[disable the pager]' \
+        '--config[additional configuration]:name=value:' \
+        '--config-file[additional configuration file]:path:_files'
+      ;;
+    'bookmark land')
+      _arguments \
+        '(-h --help)'{-h,--help}'[show help]' \
+        '(-d --destination)'{-d,--destination}'[destination bookmark]:bookmark:_jjx_bookmarks' \
+        '--forget[forget landed bookmarks]' \
+        '--dry-run[show the landing plan]' \
+        '1:stack-tip bookmark:_jjx_bookmarks'
+      ;;
+    'description format')
+      _arguments \
+        '(-h --help)'{-h,--help}'[show help]' \
+        '(-r --revision)'{-r,--revision}'[target revision]:revision:_jjx_revisions' \
+        '--dry-run[show the diff without writing]' \
+        '--subject-width[maximum subject width]:width:' \
+        '--body-width[maximum body line width]:width:'
+      ;;
+    'worktree add')
+      _arguments \
+        '(-h --help)'{-h,--help}'[show help]' \
+        '-r[revision revset]:revision:_jjx_revisions' \
+        '1:worktree name:'
+      ;;
+    *)
+      _arguments '(-h --help)'{-h,--help}'[show help]' '*:argument:_files'
+      ;;
+  esac
+}
+
+_jjx "$@"

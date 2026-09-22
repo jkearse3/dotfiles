@@ -38,4 +38,4 @@ checkout_path_resolved=true
 cd "$checkout_path"
 
 # Herdr runs bootstrap events asynchronously; the action retries every setup step.
-jj-ensure "$checkout_path"
+jjx ensure "$checkout_path"

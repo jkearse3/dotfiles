@@ -3,13 +3,13 @@
 ## Repository Mode
 
 Before other VCS operations, run
-`if test "$(git rev-parse --is-inside-work-tree 2>/dev/null)" = true; then jj-ensure; fi`.
+`if test "$(git rev-parse --is-inside-work-tree 2>/dev/null)" = true; then jjx ensure; fi`.
 Its documented local setup and repair have standing authorization, including for
 read-only work. Never invoke `jj git init` directly.
 
-After `jj-ensure` succeeds, use jj for repository mutation and do not mix
+After `jjx ensure` succeeds, use jj for repository mutation and do not mix
 mutation models. Use Git mutation only when jj is unavailable or unsupported, or
-Git is explicitly required. After any other `jj-ensure` failure, allow only
+Git is explicitly required. After any other `jjx ensure` failure, allow only
 read-only Git inspection.
 
 ## History And References

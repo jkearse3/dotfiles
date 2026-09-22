@@ -1,0 +1,15 @@
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "jjx"
+version = "0.0.0"
+description = "Additional commands for Jujutsu workflows"
+requires-python = ">=3.11"
+
+[project.scripts]
+jjx = "jjx.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]

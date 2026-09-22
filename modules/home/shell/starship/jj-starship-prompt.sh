@@ -11,7 +11,7 @@ COLOR_BOLD_RED=$'\033[1;31m'
 COLOR_BOLD_YELLOW=$'\033[1;33m'
 
 # Format the first bookmark with a (+Nb) suffix when additional bookmarks match.
-# Input: multi-line bookmark list from jj-bookmark-nearest.
+# Input: multi-line bookmark list from jjx bookmark nearest.
 # Outputs: "first_bookmark(+Nb)" or "first_bookmark" if only one.
 format_bookmark() {
 	local lines="$1"
@@ -47,7 +47,7 @@ count_changes_in_revset() {
 # Outputs: "bookmark distance_count direction" (space-delimited) or nothing.
 resolve_branch_distance() {
 	local lines bookmark count
-	lines=$(jj-bookmark-nearest 'roots(@:: & bookmarks())')
+	lines=$(jjx bookmark nearest 'roots(@:: & bookmarks())')
 	if [[ -n $lines ]]; then
 		bookmark=$(format_bookmark "$lines")
 		revset="roots(@:: & bookmarks()) & ~roots(@:: & bookmarks())"
@@ -55,7 +55,7 @@ resolve_branch_distance() {
 		echo "$bookmark $count ↓"
 		return
 	fi
-	lines=$(jj-bookmark-nearest 'heads(::@ & bookmarks())')
+	lines=$(jjx bookmark nearest 'heads(::@ & bookmarks())')
 	if [[ -n $lines ]]; then
 		bookmark=$(format_bookmark "$lines")
 		revset="heads(::@ & bookmarks())::@ & ~heads(::@ & bookmarks())"

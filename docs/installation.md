@@ -144,10 +144,10 @@ a new Nix installation:
 
 ```sh
 cd "$HOME/dotfiles"
-nix develop --accept-flake-config --command jj-ensure
+nix develop --accept-flake-config --command jjx ensure
 ```
 
-`jj-ensure` creates the colocated Jujutsu workspace required by `x.sh`.
+`jjx ensure` creates the colocated Jujutsu workspace required by `x.sh`.
 
 List the available blueprints:
 

@@ -1,7 +1,7 @@
 # Neovim regression tests
 
 From `modules/home/neovim/nvim`, with Plenary and fzf-lua already installed and
-`git`, `jj`, and `jj-ensure` on PATH:
+`git`, `jj`, and `jjx` on PATH:
 
 ```sh
 nvim --headless -u tests/minimal_init.lua -i NONE \
