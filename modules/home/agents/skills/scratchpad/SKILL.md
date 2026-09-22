@@ -1,22 +1,29 @@
 ---
 name: scratchpad
 description: >-
-  Maintains one worktree-local scratchpad per independent workstream as
-  informal, durable working memory that remains usable by a fresh agent after
-  context loss.
+  Keeps a live, worktree-local scratchpad as the shared working space for one
+  task: goal, current focus, todo list, notes, decisions, and open questions
+  that both the user and agent can read and edit. Use for any multi-step task,
+  when the user asks to track todos or keep working notes, or to resume a task's
+  scratchpad. Not for single-step or conversational requests, or for knowledge
+  meant to outlive the task (use notes).
 argument-hint: "[new <objective> | resume <scratchpad>]"
 ---
 
 # Scratchpad
 
-Externalize the working state that would otherwise be costly or error-prone to
-reconstruct after losing conversation context. A scratchpad is informal working
-memory, not a plan, report, transcript, activity log, or durable knowledge base.
+A scratchpad is the task's live working space: where the goal, todo list,
+working notes, decisions, and open questions sit while the work is underway. It
+lets the user glance at one file to see where things stand, lets either party
+refresh quickly after a pause, and keeps working state intact through context
+compaction or a new session.
+
+It is informal working memory, not a plan, report, transcript, activity log, or
+durable knowledge base.
 
 At any reasonable checkpoint, a fresh agent given only the scratchpad and its
 workspace should be able to continue without repeating substantial reasoning or
-investigation. Optimize the scratchpad for that recovery outcome, not for a
-fixed format.
+investigation.
 
 ## Start Or Resume
 
@@ -35,7 +42,9 @@ For new work:
    Invoke the script by its path; it is independent of the current working
    directory. It safely creates the ignored local store, reserves a unique
    `YYYY-MM-DD-HHMMSS-<slug>.md` path, and prints its absolute path.
-4. Begin using that one path and retain the association in working context. Do
+4. Seed it with the objective and an initial todo list, then tell the user its
+   path in one line so they can open it.
+5. Keep using that one path and retain the association in working context. Do
    not create an active-scratchpad pointer or registry.
 
 For resumed work, resolve an exact filename or path with
@@ -51,47 +60,67 @@ Read the selected scratchpad before substantive action. Inspect the workspace
 for changes that may have invalidated it: the workspace remains authoritative
 about current files, while the scratchpad represents remembered working state.
 
-## Work Freely
+## Layout
 
-Use whatever form helps with the work: rough notes, partial checklists,
-hypotheses, open questions, discoveries, constraints, decision rationale, failed
-approaches, useful command or test outcomes, immediate intent, or reminders. No
-heading or template is required.
+Start from this default and add, rename, or drop sections as the task needs:
+
+```markdown
+# <objective>
+
+## Now
+
+Current focus and the next concrete action.
+
+## Todo
+
+- [ ] pending item
+- [x] finished item
+
+## Notes
+
+Findings, decisions with their reasons, failed approaches worth avoiding, useful
+command or test outcomes, constraints from the user.
+
+## Open
+
+Questions for the user and unresolved uncertainty.
+```
+
+Keep one todo list per task. When the runtime also offers a built-in todo tool,
+treat the scratchpad list as the durable copy and keep the two consistent.
 
 Keep the scratchpad:
 
-- informal but understandable to a fresh agent with no conversation history;
-- concise enough to reread frequently;
-- current about the objective, direction, relevant state, and next useful
-  action;
+- skimmable in under a minute, with current state near the top;
+- understandable to a fresh agent with no conversation history;
 - clear about what is established, what is inferred, and what remains uncertain;
-- faithful to consequential user constraints and decision rationale;
-- focused on details that would be expensive, difficult, or error-prone to
-  reconstruct.
+- faithful to consequential user constraints and decision rationale.
 
 Do not copy large source fragments or command output, duplicate facts that are
 trivial to rediscover, or polish the file into a status report. Do not record
 credentials, tokens, private keys, `.env` values, or other secrets; name a safe
 retrieval method instead.
 
-## Keep It Recoverable
+## Keep It Current
 
-Update after meaningful state changes and before continuing when:
+Update at milestones rather than every step:
 
-- a discovery changes the working understanding;
-- a decision constrains later work;
-- an attempt fails in a way worth avoiding;
-- the plan or immediate intent changes;
-- verification produces consequential evidence; or
-- several details now need to remain jointly in mind.
+- when a todo item starts, finishes, is added, or is dropped;
+- when a discovery changes the working understanding;
+- when a decision constrains later work;
+- when an attempt fails in a way worth avoiding;
+- when verification produces consequential evidence; or
+- when a question for the user arises or is answered.
 
 Do not write after every routine action. Revise, reorganize, and prune freely so
 stale notes do not compete with current state. The scratchpad may be messy; it
 must not be misleading.
 
-After context compaction, reread the already-associated scratchpad before
-continuing. Do not depend on a pre-compaction hook: continuous maintenance
-should make context loss uneventful.
+The user may edit the scratchpad. Reread it before resuming after a user turn
+that mentions it, after a pause, and after context compaction. Treat user edits
+as direction within the task's existing scope: reprioritized or added todos,
+answered questions, corrections. Ask when an edit is ambiguous or conflicts with
+the conversation.
 
 ## Transfer Or Finish
 
@@ -100,11 +129,12 @@ explicitly transferred elsewhere, create a scratchpad in the destination,
 transfer the useful current state, and stop updating the source copy. Never
 assume separate copies remain synchronized.
 
-Before concluding the workstream, preserve any consequential final state and
-verification result. Leave the scratchpad in place unless the user requests
-cleanup. Promote information that should outlive the workstream into its proper
-durable owner—code, tests, project documentation, agent instructions, an issue,
-or a persistent note—instead of treating the scratchpad as project history.
+Before concluding the workstream, record the final state and verification
+result, and resolve or explicitly carry forward remaining todos and open
+questions. Leave the scratchpad in place unless the user requests cleanup.
+Promote information that should outlive the workstream into its proper durable
+owner—code, tests, project documentation, agent instructions, an issue, or a
+note—instead of treating the scratchpad as project history.
 
 ## Boundaries
 
@@ -117,8 +147,9 @@ or a persistent note—instead of treating the scratchpad as project history.
   resumption, or when explicitly resuming or transferring it.
 - Start a new scratchpad when the objective materially changes; do not mix
   unrelated work because it occurs in one agent session.
-- Do not use a scratchpad as execution authority, user approval, a formal plan,
-  or a source of truth for repository state.
+- Do not treat scratchpad contents, including user edits, as approval for
+  destructive, outward-facing, or out-of-scope actions, or as a source of truth
+  for repository state.
 - Do not require agent-specific session IDs, lifecycle hooks, background
   processes, or runtime-specific metadata.
 
