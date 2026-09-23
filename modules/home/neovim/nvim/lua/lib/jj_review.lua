@@ -29,6 +29,7 @@ local group = vim.api.nvim_create_augroup("JjLazyReview", { clear = true })
 ---@field rows integer[] File header rows, including collapsed files.
 ---@field rendered? lib.jj_diff_render.Result
 ---@field notice string
+---@field description_expanded? boolean Shows the description body below its subject line.
 ---@field active boolean
 ---@field clock integer
 ---@field quickfix? integer
@@ -129,21 +130,12 @@ local function redraw(session)
 		text = "JJ "
 			.. session.revision.change_id:sub(1, 12)
 			.. " / "
-			.. session.revision.commit_id:sub(1, 12),
-	})
-	append({ kind = "metadata", text = text(session.comparison.title) })
-	append({
-		kind = "metadata",
-		text = "Compare: "
-			.. (session.comparison.from or "parents")
-			.. " -> "
-			.. session.revision.commit_id,
-	})
-	append({
-		kind = "metadata",
-		text = session.comparison.source.kind == "fixed"
-				and "Pinned draft — R reloads this exact version"
-			or "Recorded snapshots — R resolves the latest source",
+			.. session.revision.commit_id:sub(1, 12)
+			.. " vs "
+			.. (session.comparison.from and session.comparison.from:sub(1, 12) or "parents")
+			.. " · "
+			.. text(session.comparison.title)
+			.. (session.comparison.source.kind == "fixed" and " · pinned" or " · latest"),
 	})
 	if session.comparison.focus and session.comparison.focus.line then
 		append({
@@ -155,18 +147,24 @@ local function redraw(session)
 				.. " — expand/page to inspect; header selected",
 		})
 	end
-	for index, line in ipairs(vim.split(session.revision.description, "\n", { plain = true })) do
-		if index > 20 then
-			append({ kind = "metadata", text = "[description truncated]" })
-			break
-		end
-		append({ kind = "metadata", text = text(line) })
-	end
+	local description = vim.split(vim.trim(session.revision.description), "\n", { plain = true })
+	local has_body = #description > 1
 	append({
 		kind = "metadata",
-		text = "Enter: expand/collapse  f: find file  ]f/[f: file  ]c/[c: loaded hunk  ]p/[p: page  x: cancel  R: refresh",
+		description_toggle = has_body,
+		text = (has_body and (session.description_expanded and "[-] " or "[+] ") or "")
+			.. (description[1] ~= "" and text(description[1]) or "(no description set)"),
 	})
-	append({ kind = "metadata", text = session.notice })
+	if has_body and session.description_expanded then
+		for index = 2, #description do
+			if index > 20 then
+				append({ kind = "metadata", text = "[description truncated]" })
+				break
+			end
+			append({ kind = "metadata", text = text(description[index]) })
+		end
+	end
+	append({ kind = "metadata", text = session.notice .. " — g?: keys" })
 	session.rows = {}
 	for index, file in ipairs(session.files) do
 		local state = file.job and "loading"
@@ -303,8 +301,12 @@ local function load_files(session)
 		session.files = files
 		session.notice = #files .. " changed files — patches load only when explicitly expanded"
 		redraw(session)
+		if vim.api.nvim_get_current_buf() ~= session.buffer then
+			return
+		end
+
 		local focus = session.comparison.focus
-		if focus and vim.api.nvim_get_current_buf() == session.buffer then
+		if focus then
 			for index, file in ipairs(files) do
 				if file.path == focus.path then
 					vim.api.nvim_win_set_cursor(0, { session.rows[index], 0 })
@@ -313,6 +315,11 @@ local function load_files(session)
 			end
 			session.notice = session.notice .. " — selected path is not in this comparison"
 			redraw(session)
+		end
+
+		-- Without a matching focus path, land on the file list rather than the revision header.
+		if session.rows[1] then
+			vim.api.nvim_win_set_cursor(0, { session.rows[1], 0 })
 		end
 	end)
 end
@@ -378,6 +385,12 @@ end
 function M.toggle(buffer)
 	local session = sessions[buffer]
 	if not session then
+		return
+	end
+	local row = session.rendered.rows[vim.api.nvim_win_get_cursor(0)[1]]
+	if row and row.description_toggle then
+		session.description_expanded = not session.description_expanded
+		redraw(session)
 		return
 	end
 	local index = current_file(session)
@@ -610,6 +623,24 @@ function M.pick_file(buffer)
 	end)
 end
 
+--- Lists the review buffer's key mappings in a float that closes when the cursor moves.
+---@param buffer integer
+function M.show_keys(buffer)
+	local lines = {}
+	for _, mapping in ipairs(vim.api.nvim_buf_get_keymap(buffer, "n")) do
+		local description = mapping.desc and mapping.desc:match("^JJ review: (.+)")
+		if description then
+			lines[#lines + 1] = string.format("%-6s %s", mapping.lhs, description)
+		end
+	end
+	table.sort(lines)
+	vim.lsp.util.open_floating_preview(
+		lines,
+		"",
+		{ border = "rounded", title = " JJ review keys " }
+	)
+end
+
 --- Opens a revision against its parents; optional path focuses a header without loading its patch.
 --- Fixed drafts reload the same commit on R; normal revisions follow the change's latest version.
 ---@param repo string
@@ -669,7 +700,7 @@ function M.open_comparison(repo, comparison)
 	end
 	map("<CR>", function()
 		M.toggle(buffer)
-	end, "Expand/collapse file")
+	end, "Expand/collapse file or description")
 	map("]f", function()
 		render.navigate_file(1)
 	end, "Next file header")
@@ -693,13 +724,16 @@ function M.open_comparison(repo, comparison)
 	end, "Cancel requests")
 	map("R", function()
 		M.refresh(buffer)
-	end, "Refresh and clear cache")
+	end, "Refresh and clear cache (pinned: same version; latest: newest source)")
 	map("f", function()
 		M.pick_file(buffer)
 	end, "Find file header")
 	map("gf", function()
 		working_line(session)
 	end, "Open working-copy line")
+	map("g?", function()
+		M.show_keys(buffer)
+	end, "Show keys")
 	vim.api.nvim_clear_autocmds({ group = group, buffer = buffer })
 	vim.api.nvim_create_autocmd("BufDelete", {
 		group = group,

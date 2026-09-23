@@ -259,12 +259,12 @@ describe("unified JJ review sources", function()
 		review.refresh(review_buffer)
 		wait_for("middle..feature")
 		wait_for("not loaded")
-		assert.matches("Compare: " .. middle .. " -> " .. target, text(), 1, true)
+		assert.matches(target:sub(1, 12) .. " vs " .. middle:sub(1, 12), text(), 1, true)
 		assert.is_nil(text():find("\nthird\n", 1, true))
 		jj("bookmark", "delete", "feature")
 		review.refresh(review_buffer)
 		wait_for("Refresh failed; retained pinned comparison")
-		assert.matches("Compare: " .. middle .. " -> " .. target, text(), 1, true)
+		assert.matches(target:sub(1, 12) .. " vs " .. middle:sub(1, 12), text(), 1, true)
 	end)
 
 	it(
@@ -329,7 +329,7 @@ describe("unified JJ review sources", function()
 			vim.api.nvim_win_set_cursor(0, { 1, 0 })
 			sources.open_line()
 			wait_for("not loaded")
-			assert.matches(base, text(), 1, true)
+			assert.matches(base:sub(1, 12) .. " vs parents", text(), 1, true)
 			assert.matches("Origin in this revision: file.txt:1", text(), 1, true)
 			assert.matches("[+]", vim.api.nvim_get_current_line(), 1, true)
 			assert.is_nil(text():find("\nfirst\n", 1, true))
@@ -605,7 +605,12 @@ describe("unified JJ review sources", function()
 			return not text():find("Resolving review source", 1, true)
 		end))
 		wait_for("not loaded")
-		assert.matches("Compare: parents -> " .. target, text(), 1, true)
+		assert.matches(
+			target:sub(1, 12) .. " vs parents · Pinned draft against parents · pinned",
+			text(),
+			1,
+			true
+		)
 		assert.is_nil(text():find("rewritten description", 1, true))
 	end)
 end)

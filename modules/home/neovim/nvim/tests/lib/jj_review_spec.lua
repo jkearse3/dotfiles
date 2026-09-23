@@ -109,6 +109,57 @@ describe("lazy JJ review", function()
 		end
 	)
 
+	it("lands on the first file header below a compact revision header", function()
+		assert.are.equal(1, vim.api.nvim_win_get_cursor(0)[1])
+		finish(1, files({ "a.lua", "b.lua" }))
+		assert.are.equal(4, row("M a.lua"))
+		assert.are.equal(row("M a.lua"), vim.api.nvim_win_get_cursor(0)[1])
+		assert.matches("JJ kkkkkkkkkkkk / aaaaaaaaaaaa vs parents", contents(), 1, true)
+		assert.matches("· latest", contents(), 1, true)
+
+		select_file("b.lua")
+		review.refresh(buffer)
+		finish(2, string.rep("c", 128))
+		finish(3, vim.json.encode(revision))
+		finish(4, files({ "a.lua", "b.lua" }))
+		assert.are.equal(row("M a.lua"), vim.api.nvim_win_get_cursor(0)[1])
+	end)
+
+	it("collapses the description body behind its subject line until toggled", function()
+		buffer = review.open(directory, {
+			commit_id = revision.commit_id,
+			change_id = revision.change_id,
+			description = "Subject line\n\nBody detail\n",
+		}, nil, true)
+		finish(2, files({ "a.lua" }))
+		assert.matches("pinned", contents(), 1, true)
+		assert.is_nil(contents():find("Body detail", 1, true))
+
+		vim.api.nvim_win_set_cursor(0, { row("[+] Subject line"), 0 })
+		review.toggle(buffer)
+		assert.are.equal(row("[-] Subject line"), vim.api.nvim_win_get_cursor(0)[1])
+		assert.matches("Body detail", contents(), 1, true)
+		assert.are.equal(2, #requests)
+
+		review.toggle(buffer)
+		assert.is_nil(contents():find("Body detail", 1, true))
+	end)
+
+	it("lists the review keys on g? instead of in the header", function()
+		finish(1, files({ "a.lua" }))
+		assert.is_nil(contents():find("Enter: expand/collapse", 1, true))
+		local open_floating_preview = vim.lsp.util.open_floating_preview
+		local shown
+		vim.lsp.util.open_floating_preview = function(lines)
+			shown = table.concat(lines, "\n")
+		end
+		local ok, err = pcall(vim.fn.maparg("g?", "n", false, true).callback)
+		vim.lsp.util.open_floating_preview = open_floating_preview
+		assert(ok, err)
+		assert.matches("<CR>   Expand/collapse file or description", shown, 1, true)
+		assert.matches("]f     Next file header", shown, 1, true)
+	end)
+
 	it("expands explicitly, pages a 100k-line file, and reopens from cache", function()
 		finish(1, files({ "a.lua", "b.lua" }))
 		select_file("a.lua")
