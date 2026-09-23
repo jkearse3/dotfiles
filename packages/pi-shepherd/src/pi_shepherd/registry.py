@@ -1,14 +1,11 @@
 """Two-table intent/inbox registry; SQLite constraints are the final race fence."""
 
-# sqlite3.Row is dynamic; constraints own its shape. Unused SQL cursors and
-# adjacent SQL literals are intentional at this concrete storage boundary.
-# pyright: reportAny=false, reportUnusedCallResult=false, reportImplicitStringConcatenation=false
-
 import os
 import sqlite3
 from dataclasses import asdict
 from datetime import datetime, timezone
 from pathlib import Path
+from typing import cast
 
 from .errors import TeamError, require
 from .ids import is_id, logical_name, new_id
@@ -76,20 +73,22 @@ class Registry:
 
     def initialize_schema(self) -> None:
         self.connection.row_factory = sqlite3.Row
-        self.connection.execute("PRAGMA foreign_keys = ON")
-        version = self.connection.execute("PRAGMA user_version").fetchone()[0]
+        _ = self.connection.execute("PRAGMA foreign_keys = ON")
+        version = cast(
+            int, self.connection.execute("PRAGMA user_version").fetchone()[0]
+        )
         tables = self.connection.execute(
             "SELECT name FROM sqlite_master WHERE type='table'"
         ).fetchall()
         require(
-            version == 1 or version == 0 and not tables,
+            version == 1 or version == 0 and len(tables) == 0,
             "registry_schema",
             "Unsupported registry; no migration is performed",
         )
         if version == 0:
-            self.connection.executescript("BEGIN IMMEDIATE;" + SCHEMA + "COMMIT;")
-        self.connection.execute("PRAGMA journal_mode = WAL")
-        self.connection.execute("PRAGMA synchronous = FULL")
+            _ = self.connection.executescript("BEGIN IMMEDIATE;" + SCHEMA + "COMMIT;")
+        _ = self.connection.execute("PRAGMA journal_mode = WAL")
+        _ = self.connection.execute("PRAGMA synchronous = FULL")
         require(
             {
                 row[0]
@@ -106,11 +105,11 @@ class Registry:
         self.connection.close()
 
     def get(self, teammate_id: str) -> Teammate:
-        row = self.connection.execute(
+        row: sqlite3.Row | None = self.connection.execute(
             "SELECT * FROM teammates WHERE teammate_id=?", (teammate_id,)
         ).fetchone()
         require(row is not None, "not_found", "Teammate not found")
-        return Teammate(**dict(row))
+        return Teammate(**dict(cast(sqlite3.Row, row)))
 
     def list(
         self, endpoint: str, workspace: str | None, include_closed: bool
@@ -131,14 +130,14 @@ class Registry:
                 "Teammate belongs to another endpoint",
             )
             return record
-        logical_name(reference)
+        _ = logical_name(reference)
         records = [
             r
             for r in self.list(endpoint, workspace, True)
             if r.logical_name == reference
         ]
         active = [r for r in records if r.phase != "closed"]
-        choices = active or records
+        choices = active if len(active) != 0 else records
         require(
             bool(choices),
             "not_found",
@@ -174,7 +173,7 @@ class Registry:
         )
         values = asdict(record)
         try:
-            self.connection.execute(
+            _ = self.connection.execute(
                 f"INSERT INTO teammates ({','.join(values)}) VALUES ({','.join('?' for _ in values)})",
                 tuple(values.values()),
             )
@@ -219,9 +218,11 @@ class Registry:
                 "updated_at=?,closed_at=? WHERE teammate_id=? AND revision=?",
                 (
                     phase,
-                    workspace or record.workspace_id,
-                    tab or record.tab_id,
-                    pane or record.pane_id,
+                    workspace
+                    if workspace is not None and workspace != ""
+                    else record.workspace_id,
+                    tab if tab is not None and tab != "" else record.tab_id,
+                    pane if pane is not None and pane != "" else record.pane_id,
                     timestamp,
                     timestamp if phase == "closed" else None,
                     record.teammate_id,
@@ -252,14 +253,14 @@ class Registry:
         )
 
     def slot(self, teammate_id: str) -> Request | None:
-        row = self.connection.execute(
+        row: sqlite3.Row | None = self.connection.execute(
             "SELECT * FROM requests WHERE teammate_id=?", (teammate_id,)
         ).fetchone()
         return Request(**dict(row)) if row is not None else None
 
     def request(self, request_id: str) -> Request:
         require(is_id(request_id, "rq_"), "invalid_id", "Invalid request ID")
-        row = self.connection.execute(
+        row: sqlite3.Row | None = self.connection.execute(
             "SELECT * FROM requests WHERE request_id=?", (request_id,)
         ).fetchone()
         require(
@@ -267,7 +268,7 @@ class Registry:
             "not_found",
             "Request is absent, cancelled, or acknowledged",
         )
-        return Request(**dict(row))
+        return Request(**dict(cast(sqlite3.Row, row)))
 
     def prepare(self, record: Teammate) -> Request:
         request_id = new_id("rq_")
@@ -290,7 +291,7 @@ class Registry:
         return self.request(request_id)
 
     def delivered(self, request_id: str, uncertain: bool) -> None:
-        self.connection.execute(
+        _ = self.connection.execute(
             "UPDATE requests SET delivery=? WHERE request_id=? AND delivery='prepared'",
             ("uncertain" if uncertain else "submitted", request_id),
         )

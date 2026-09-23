@@ -44,7 +44,7 @@ def checked_bytes(
     result = capture_bytes(command, error_type=error_type, cwd=cwd, stdin=stdin)
     if result.returncode != 0:
         detail = os.fsdecode(result.stderr).strip()
-        suffix = f": {detail}" if detail else ""
+        suffix = f": {detail}" if detail != "" else ""
         raise error_type(f"{shlex.join(command)} failed{suffix}")
     return result.stdout
 

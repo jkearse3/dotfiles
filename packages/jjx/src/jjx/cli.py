@@ -141,7 +141,7 @@ def _resolve_command(arguments: list[str]) -> tuple[Command | None, list[str]]:
 
 def _show_help_or_error(arguments: list[str]) -> int:
     """Print relevant command help, reporting unknown paths as usage errors."""
-    if not arguments or arguments in (["-h"], ["--help"]):
+    if len(arguments) == 0 or arguments in (["-h"], ["--help"]):
         _print_help()
         return 0
     if len(arguments) in {1, 2} and arguments[-1] in {"-h", "--help"}:
@@ -172,7 +172,9 @@ def _print_help(group: str | None = None, *, file: TextIO | None = None) -> None
             direct = next(
                 (command for command in COMMANDS if command.path == (name,)), None
             )
-            description = direct.description if direct else f"Commands for {name}s"
+            description = (
+                direct.description if direct is not None else f"Commands for {name}s"
+            )
             print(f"  {name:<12} {description}", file=output)
         print("\nRun 'jjx <command> --help' for more information.", file=output)
         return

@@ -28,7 +28,7 @@ def fish_candidates(commandline: str) -> set[str]:
         str(FISH_COMPLETION),
         commandline,
     )
-    return {line.partition("\t")[0] for line in result.stdout.splitlines() if line}
+    return {line.partition("\t")[0] for line in result.stdout.splitlines() if line != ""}
 
 
 @final

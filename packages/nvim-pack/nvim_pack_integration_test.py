@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# pyright: reportUninitializedInstanceVariable=false, reportUnusedCallResult=false
 
 from __future__ import annotations
 
@@ -15,7 +14,7 @@ from typing import final, override
 configured_program = os.environ.get("NVIM_PACK_PROGRAM")
 PROGRAM = (
     [configured_program]
-    if configured_program
+    if configured_program is not None and configured_program != ""
     else [sys.executable, str(Path(__file__).with_name("nvim_pack.py"))]
 )
 
@@ -46,12 +45,14 @@ class NvimPackIntegrationTest(unittest.TestCase):
     def create_plugin(self, relative_path: str, value: str = "1") -> Path:
         path = self.root / relative_path
         path.mkdir(parents=True)
-        self.run_command(["git", "init", "-q"], cwd=path)
-        self.run_command(["git", "config", "user.email", "test@example.com"], cwd=path)
-        self.run_command(["git", "config", "user.name", "Test"], cwd=path)
-        (path / "plugin.lua").write_text(f"return {value}\n", encoding="utf-8")
-        self.run_command(["git", "add", "plugin.lua"], cwd=path)
-        self.run_command(["git", "commit", "-qm", f"initial {path.name}"], cwd=path)
+        _ = self.run_command(["git", "init", "-q"], cwd=path)
+        _ = self.run_command(
+            ["git", "config", "user.email", "test@example.com"], cwd=path
+        )
+        _ = self.run_command(["git", "config", "user.name", "Test"], cwd=path)
+        _ = (path / "plugin.lua").write_text(f"return {value}\n", encoding="utf-8")
+        _ = self.run_command(["git", "add", "plugin.lua"], cwd=path)
+        _ = self.run_command(["git", "commit", "-qm", f"initial {path.name}"], cwd=path)
         return path
 
     def environment(self, **values: str) -> dict[str, str]:
@@ -68,7 +69,7 @@ class NvimPackIntegrationTest(unittest.TestCase):
 
     def write_config(self, plugin_variables: list[str]) -> None:
         specs = ",\n  ".join(f"{{ src = vim.env.{name} }}" for name in plugin_variables)
-        self.config.joinpath("init.lua").write_text(
+        _ = self.config.joinpath("init.lua").write_text(
             f"vim.pack.add({{\n  {specs},\n}}, {{ confirm = false }})\n",
             encoding="utf-8",
         )
@@ -108,15 +109,17 @@ class NvimPackIntegrationTest(unittest.TestCase):
             TEST_ALPHA_SRC=alpha.as_uri(),
             TEST_BETA_SRC=beta.as_uri(),
         )
-        self.run_command(["nvim", "--headless", "+qa"], environment=environment)
+        _ = self.run_command(["nvim", "--headless", "+qa"], environment=environment)
         self.assertEqual(
             self.run_nvim_pack(["list"], environment).stdout,
             "alpha\nbeta\n",
         )
 
         for plugin in (alpha, beta):
-            plugin.joinpath("plugin.lua").write_text("return 2\n", encoding="utf-8")
-            self.run_command(["git", "commit", "-qam", f"update {plugin.name}"], cwd=plugin)
+            _ = plugin.joinpath("plugin.lua").write_text("return 2\n", encoding="utf-8")
+            _ = self.run_command(
+                ["git", "commit", "-qam", f"update {plugin.name}"], cwd=plugin
+            )
 
         checked = self.run_nvim_pack(["check", "alpha"], environment).stdout
         self.assertIn("Can update 1 plugin: alpha", checked)
@@ -140,7 +143,7 @@ class NvimPackIntegrationTest(unittest.TestCase):
         new_plugin = self.create_plugin("new/plugin", "2")
         self.write_config(["TEST_PLUGIN_SRC"])
         old_environment = self.environment(TEST_PLUGIN_SRC=old_plugin.as_uri())
-        self.run_command(["nvim", "--headless", "+qa"], environment=old_environment)
+        _ = self.run_command(["nvim", "--headless", "+qa"], environment=old_environment)
 
         lock_path = self.config / "nvim-pack-lock.json"
         checkout = self.data / "nvim/site/pack/core/opt/plugin"
@@ -160,22 +163,22 @@ class NvimPackIntegrationTest(unittest.TestCase):
         plugin = self.create_plugin("plugin")
         self.write_config(["TEST_PLUGIN_SRC"])
         environment = self.environment(TEST_PLUGIN_SRC=plugin.as_uri())
-        self.run_command(["nvim", "--headless", "+qa"], environment=environment)
+        _ = self.run_command(["nvim", "--headless", "+qa"], environment=environment)
 
         initial_revision = self.run_command(["git", "rev-parse", "HEAD"], cwd=plugin).stdout.strip()
-        plugin.joinpath(".gitmodules").write_text(
+        _ = plugin.joinpath(".gitmodules").write_text(
             '[submodule "bad"]\n\tpath = bad\n'
             + "\turl = file:///definitely/missing/nvim-pack-submodule\n",
             encoding="utf-8",
         )
-        self.run_command(["git", "add", ".gitmodules"], cwd=plugin)
-        self.run_command(
+        _ = self.run_command(["git", "add", ".gitmodules"], cwd=plugin)
+        _ = self.run_command(
             ["git", "update-index", "--add", "--cacheinfo", f"160000,{initial_revision},bad"],
             cwd=plugin,
         )
-        self.run_command(["git", "commit", "-qm", "add broken submodule"], cwd=plugin)
+        _ = self.run_command(["git", "commit", "-qm", "add broken submodule"], cwd=plugin)
 
-        self.run_nvim_pack(["check", "plugin"], environment)
+        _ = self.run_nvim_pack(["check", "plugin"], environment)
         updated = self.run_nvim_pack(["update", "plugin"], environment, check=False)
         self.assertEqual(updated.returncode, 1)
         self.assertIn("plugin state may be partial", updated.stderr)

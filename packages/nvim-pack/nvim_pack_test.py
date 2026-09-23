@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# pyright: reportAny=false, reportImplicitRelativeImport=false, reportPrivateLocalImportUsage=false, reportUnknownArgumentType=false, reportUnusedCallResult=false
 
 from __future__ import annotations
 
@@ -11,7 +10,7 @@ import sys
 import unittest
 from pathlib import Path
 from types import SimpleNamespace
-from typing import final
+from typing import cast, final
 from unittest.mock import patch
 
 import nvim_pack
@@ -60,10 +59,11 @@ class NvimPackTest(unittest.TestCase):
             captured_command.extend(command)
             environment = kwargs["env"]
             assert isinstance(environment, dict)
+            environment = cast(dict[str, str], environment)
             request_path = Path(environment["NVIM_PACK_REQUEST"])
             response_path = Path(environment["NVIM_PACK_RESPONSE"])
             self.assertEqual(json.loads(request_path.read_text()), request)
-            response_path.write_text('{"names":["a.nvim"]}', encoding="utf-8")
+            _ = response_path.write_text('{"names":["a.nvim"]}', encoding="utf-8")
             return SimpleNamespace(returncode=0, stdout="plugin chatter", stderr="")
 
         with patch.object(nvim_pack.subprocess, "run", side_effect=run):
@@ -81,9 +81,9 @@ class NvimPackTest(unittest.TestCase):
         def run(_command: list[str], **kwargs: object) -> SimpleNamespace:
             environment = kwargs["env"]
             assert isinstance(environment, dict)
-            Path(environment["NVIM_PACK_RESPONSE"]).write_text(
-                '{"fatal_error":"broken adapter"}', encoding="utf-8"
-            )
+            _ = Path(
+                cast(dict[str, str], environment)["NVIM_PACK_RESPONSE"]
+            ).write_text('{"fatal_error":"broken adapter"}', encoding="utf-8")
             return SimpleNamespace(returncode=0, stdout="", stderr="")
 
         with patch.object(nvim_pack.subprocess, "run", side_effect=run):
@@ -102,7 +102,7 @@ class NvimPackTest(unittest.TestCase):
             report = nvim_pack.query_updates(True, ["a.nvim"], offline=True)
         self.assertEqual(report.updates, ["a.nvim"])
         self.assertEqual(
-            run.call_args.args[0],
+            cast(dict[str, object], run.call_args.args[0]),
             {
                 "apply": True,
                 "command": "update",
@@ -123,7 +123,7 @@ class NvimPackTest(unittest.TestCase):
             with self.assertRaisesRegex(nvim_pack.NvimPackError, "not active"):
                 _ = nvim_pack.query_updates(True, ["missing.nvim"])
 
-        base["selection_errors"] = []
+        base["selection_errors"] = list[str]()
         base["apply_errors"] = ["partial.nvim"]
         with patch.object(nvim_pack, "run_nvim", return_value=base):
             with self.assertRaisesRegex(nvim_pack.NvimPackError, "state may be partial"):
@@ -145,8 +145,8 @@ class NvimPackTest(unittest.TestCase):
                 nvim_pack.select_updates(["a.nvim", "b.nvim"]),
                 ["b.nvim", "a.nvim"],
             )
-        self.assertIn("--multi", run.call_args.args[0])
-        self.assertEqual(run.call_args.kwargs["input"], "a.nvim\nb.nvim\n")
+        self.assertIn("--multi", cast(list[str], run.call_args.args[0]))
+        self.assertEqual(cast(str, run.call_args.kwargs["input"]), "a.nvim\nb.nvim\n")
 
     def test_select_updates_treats_fzf_cancel_as_empty(self) -> None:
         completed = SimpleNamespace(stdout="", returncode=130)
@@ -221,7 +221,7 @@ class NvimPackTest(unittest.TestCase):
         ):
             self.assertEqual(nvim_pack.main(["prune", "--dry-run"]), 0)
         self.assertEqual(
-            run.call_args.args[0],
+            cast(dict[str, object], run.call_args.args[0]),
             {
                 "command": "prune",
                 "dry_run": True,

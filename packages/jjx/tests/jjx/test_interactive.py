@@ -1,5 +1,4 @@
 from __future__ import annotations
-# pyright: reportUninitializedInstanceVariable=false
 
 import json
 import os
@@ -46,7 +45,7 @@ class InteractiveIntegrationTests(unittest.TestCase):
         inherited_pythonpath = self.environment.get("PYTHONPATH")
         self.environment["PYTHONPATH"] = (
             source_root
-            if not inherited_pythonpath
+            if inherited_pythonpath is None or inherited_pythonpath == ""
             else f"{source_root}{os.pathsep}{inherited_pythonpath}"
         )
 

@@ -1,6 +1,7 @@
 import os
 import sqlite3
 import unittest
+from typing import cast
 
 from pi_shepherd.errors import TeamError
 from pi_shepherd.registry import Registry
@@ -14,14 +15,18 @@ class RegistryTests(TeamCase):
         self.assertEqual(
             {
                 r[0]
-                for r in self.registry.connection.execute(  # pyright: ignore[reportAny]
+                for r in self.registry.connection.execute(
                     "SELECT name FROM sqlite_master WHERE type='table'"
                 )
             },
             {"teammates", "requests"},
         )
         self.assertEqual(
-            self.registry.connection.execute("PRAGMA user_version").fetchone()[0], 1
+            cast(
+                int,
+                self.registry.connection.execute("PRAGMA user_version").fetchone()[0],
+            ),
+            1,
         )
         twin = self.create()
         self.assertIsNone(twin.profile)

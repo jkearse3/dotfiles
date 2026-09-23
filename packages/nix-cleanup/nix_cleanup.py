@@ -91,10 +91,10 @@ def parse_args(argv: list[str] | None = None) -> tuple[argparse.ArgumentParser, 
 
 def profiles() -> Profiles:
     state_home = os.environ.get("NIX_STATE_HOME")
-    if not state_home:
-        state_home = os.environ.get("XDG_STATE_HOME") or str(
-            Path.home() / ".local" / "state"
-        )
+    if state_home is None or state_home == "":
+        state_home = os.environ.get("XDG_STATE_HOME")
+        if state_home is None or state_home == "":
+            state_home = str(Path.home() / ".local" / "state")
         state_home = str(Path(state_home) / "nix")
     profiles_dir = Path(state_home) / "profiles"
     return Profiles(

@@ -1,6 +1,4 @@
 #!/usr/bin/env python3
-# pyright: reportImplicitRelativeImport=false, reportPrivateUsage=false
-# pyright: reportUninitializedInstanceVariable=false
 
 from __future__ import annotations
 
@@ -51,7 +49,7 @@ class RepositoryFixture(unittest.TestCase):
                 "XDG_CONFIG_HOME": str(self.repository / ".config"),
             },
         )
-        _ = cast(MutableMapping[str, str], self.enterContext(environment))
+        _ = self.enterContext(environment)
         _ = run("git", "config", "user.name", "Test User", cwd=self.repository)
         _ = run("git", "config", "user.email", "test@example.com", cwd=self.repository)
         _ = (self.repository / "tracked").write_text("initial\n")

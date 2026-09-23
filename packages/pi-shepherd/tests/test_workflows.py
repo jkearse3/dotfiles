@@ -24,10 +24,12 @@ class LifecycleTests(TeamCase):
         request = self.registry.prepare(record)
         pending = self.team.show(record.teammate_id)["request"]
         assert isinstance(pending, dict)
+        pending = cast(dict[str, object], pending)
         self.assertEqual(pending["request_status"], "pending")
         self.registry.reply(request.request_id, record.teammate_id, "retained")
         completed = self.team.show(record.teammate_id)["request"]
         assert isinstance(completed, dict)
+        completed = cast(dict[str, object], completed)
         self.assertEqual(completed["request_status"], "completed")
         _ = self.team.close(record.teammate_id, False)
         self.assertEqual(self.runtime.calls, ["create", "start", "close"])
@@ -96,7 +98,7 @@ class LifecycleTests(TeamCase):
             twin = self.create("twin")
             self.assertIsNone(twin.profile)
             self.assertEqual(
-                start.call_args.args[3],
+                cast(tuple[str, ...], start.call_args.args[3]),
                 (
                     "--provider",
                     "test-provider",
@@ -116,7 +118,10 @@ class LifecycleTests(TeamCase):
 
             configured = self.create_profile("configured")
             self.assertEqual(configured.profile, "configured")
-            self.assertEqual(start.call_args.args[3], ("--model", "configured-model"))
+            self.assertEqual(
+                cast(tuple[str, ...], start.call_args.args[3]),
+                ("--model", "configured-model"),
+            )
             profile_environment = cast(
                 tuple[tuple[str, str], ...], create_tab.call_args.args[3]
             )
@@ -320,7 +325,9 @@ class LifecycleTests(TeamCase):
                 ("MODE", "new"),
                 cast(tuple[tuple[str, str], ...], create_tab.call_args.args[3]),
             )
-            self.assertEqual(start.call_args.args[3], ("new-argument",))
+            self.assertEqual(
+                cast(tuple[str, ...], start.call_args.args[3]), ("new-argument",)
+            )
         self.assertNotEqual(replacement.teammate_id, record.teammate_id)
         self.assertNotEqual(replacement.tab_id, record.tab_id)
         self.assertEqual(replacement.logical_name, record.logical_name)

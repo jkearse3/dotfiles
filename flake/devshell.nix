@@ -13,7 +13,7 @@
           config.packages.jjx
 
           unstablePkgs.bash
-          unstablePkgs.basedpyright
+          unstablePkgs.pyrefly
           unstablePkgs.coreutils
           unstablePkgs.deadnix
           unstablePkgs.git

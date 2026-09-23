@@ -63,7 +63,7 @@ def _run_ok(
     result = _run(command, stdin=stdin, cwd=cwd)
     if result.returncode != 0:
         detail = os.fsdecode(result.stderr).strip()
-        suffix = f": {detail}" if detail else ""
+        suffix = f": {detail}" if detail != "" else ""
         raise DescriptionFormatError(f"{' '.join(command)} failed{suffix}")
     return result.stdout
 
@@ -87,7 +87,7 @@ def _resolve_revision(revision: str, *, cwd: Path | None = None) -> str:
             cwd=cwd,
         )
     ).splitlines()
-    if not matches:
+    if len(matches) == 0:
         raise DescriptionFormatError(f"revset matched no revisions: {revision}")
     if len(matches) > 1:
         raise DescriptionFormatError(
@@ -149,7 +149,7 @@ def reformat(
     """Reformat REVISION's description in place and return an exit status."""
     commit_id = _resolve_revision(revision, cwd=cwd)
     current = _read_description(commit_id, cwd=cwd)
-    if not current.strip():
+    if current.strip() == "":
         raise DescriptionFormatError(f"revision has no description: {revision}")
 
     # `commit-message format` output ends with exactly one newline, so the

@@ -4,7 +4,7 @@
 }:
 {
   home.packages = [
-    pkgs.basedpyright
+    pkgs.pyrefly
     pkgs.python3
     pkgs.ruff
   ];

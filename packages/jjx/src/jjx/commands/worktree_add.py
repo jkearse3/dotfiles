@@ -31,14 +31,14 @@ def _run(command: Sequence[str], *, cwd: Path | None = None) -> bytes:
 
 def _line(command: Sequence[str], *, cwd: Path | None = None) -> str:
     output = _run(command, cwd=cwd)
-    if not output.endswith(b"\n") or b"\n" in output[:-1] or not output[:-1]:
+    if not output.endswith(b"\n") or b"\n" in output[:-1] or output[:-1] == b"":
         raise WorktreeAddError(f"{' '.join(command)} returned invalid output")
     return os.fsdecode(output[:-1])
 
 
 def _validate_name(name: str) -> None:
     if (
-        not name
+        name == ""
         or name in {".", "..", ".gitignore"}
         or Path(name).name != name
         or any(ord(character) < 32 or ord(character) == 127 for character in name)
@@ -53,7 +53,7 @@ def _primary_worktree(start: Path) -> Path:
     first = output.split(b"\0\0", 1)[0]
     for field in first.split(b"\0"):
         key, separator, value = field.partition(b" ")
-        if key == b"worktree" and separator:
+        if key == b"worktree" and separator != b"":
             path = Path(os.fsdecode(value))
             if not path.is_absolute():
                 break
@@ -88,7 +88,7 @@ def _normalized_gitignore(original: bytes) -> bytes:
     lines = original.splitlines(keepends=True)
     if any(line.rstrip(b"\r\n") == IGNORE_RULE for line in lines):
         return original
-    if lines and not lines[-1].endswith((b"\n", b"\r")):
+    if len(lines) != 0 and not lines[-1].endswith((b"\n", b"\r")):
         lines[-1] += b"\n"
     lines.append(IGNORE_RULE + b"\n")
     return b"".join(lines)

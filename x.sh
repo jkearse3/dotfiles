@@ -482,7 +482,7 @@ cmd:lint-shell() {
 
 lint-python() {
 	echo "Checking Python types..."
-	basedpyright --project pyrightconfig.json --warnings
+	pyrefly check --min-severity warn
 }
 
 cmd:lint-python() {

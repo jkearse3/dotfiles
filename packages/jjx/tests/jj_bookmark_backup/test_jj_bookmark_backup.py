@@ -1,6 +1,4 @@
 #!/usr/bin/env python3
-# pyright: reportImplicitRelativeImport=false, reportPrivateUsage=false
-# pyright: reportUninitializedInstanceVariable=false
 
 from __future__ import annotations
 
@@ -61,7 +59,7 @@ class RepositoryFixture(unittest.TestCase):
         environment: AbstractContextManager[MutableMapping[str, str]] = patch.dict(
             os.environ, {"HOME": str(home), "XDG_CONFIG_HOME": str(home / ".config")}
         )
-        _ = cast(MutableMapping[str, str], self.enterContext(environment))
+        _ = self.enterContext(environment)
         _ = run("git", "init", "--bare", "-b", "main", str(self.remote), cwd=self.root)
         _ = run("git", "init", "-b", "main", str(seed), cwd=self.root)
         _ = run("git", "config", "user.name", "Test User", cwd=seed)

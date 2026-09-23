@@ -1,12 +1,10 @@
 """Protocol-22 wire shapes and invocation failures, independent of the domain fake."""
 
-# unittest mock interfaces are dynamically typed; wire data stays object-typed.
-# pyright: reportAny=false, reportUnusedCallResult=false, reportImplicitOverride=false
-
 import copy
 import json
 import subprocess
 import unittest
+from typing import cast
 from unittest.mock import patch
 
 from pi_shepherd.context import discover
@@ -77,10 +75,10 @@ class HerdrTests(unittest.TestCase):
             changed = copy.deepcopy(raw)
             del changed[field]
             with self.subTest(field=field), self.assertRaises(TeamError):
-                decode_snapshot(changed)
+                _ = decode_snapshot(changed)
 
     def test_duplicate_and_malformed_topology_fails_closed(self) -> None:
-        for patch_value in (
+        patches: tuple[dict[str, object], ...] = (
             {"panes": [pane_wire(), pane_wire()]},
             {"agents": [pane_wire(), pane_wire()]},
             {"agents": [{**pane_wire(), "terminal_id": "wrong"}]},
@@ -91,9 +89,10 @@ class HerdrTests(unittest.TestCase):
             {"protocol": HERDR_PROTOCOL - 1},
             {"panes": [{**pane_wire(), "agent_status": "new_unknown_status"}]},
             {"panes": [{**pane_wire(), "revision": -1}]},
-        ):
+        )
+        for patch_value in patches:
             with self.subTest(value=patch_value), self.assertRaises(TeamError):
-                decode_snapshot({**snapshot_wire(), **patch_value})
+                _ = decode_snapshot({**snapshot_wire(), **patch_value})
 
     def test_wrong_mutation_binding_is_uncertain_and_diagnostics_redacted(self) -> None:
         runtime = Herdr(environment={})
@@ -144,8 +143,8 @@ class HerdrTests(unittest.TestCase):
             with patch("pi_shepherd.herdr.subprocess.run", return_value=completed) as run:
                 result = runtime.wait_agent(pane, ("blocked",), 0.5)
             self.assertEqual(result.status if result is not None else None, expected)
-            self.assertIn("--timeout", run.call_args.args[0])
-            self.assertIn("500", run.call_args.args[0])
+            self.assertIn("--timeout", cast(list[str], run.call_args.args[0]))
+            self.assertIn("500", cast(list[str], run.call_args.args[0]))
 
         malformed_timeout = subprocess.CompletedProcess(
             [],
@@ -211,7 +210,7 @@ class HerdrTests(unittest.TestCase):
             ),
             self.assertRaises(TeamError),
         ):
-            discover(runtime)
+            _ = discover(runtime)
 
     def test_shell_ready_requires_positive_process_evidence(self) -> None:
         runtime = Herdr(environment={})
@@ -251,9 +250,10 @@ class HerdrTests(unittest.TestCase):
                     runtime.shell_ready(decode_pane(pane_wire())), expected
                 )
                 self.assertEqual(
-                    call.call_args.args[0], ("pane", "process-info", "--pane", "w1:p1")
+                    cast(tuple[str, ...], call.call_args.args[0]),
+                    ("pane", "process-info", "--pane", "w1:p1"),
                 )
 
 
 if __name__ == "__main__":
-    unittest.main()
+    _ = unittest.main()

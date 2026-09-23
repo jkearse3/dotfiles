@@ -43,7 +43,7 @@ def _run_ok(command: Sequence[str], *, cwd: Path | None = None) -> str:
     result = _run(command, cwd=cwd)
     if result.returncode != 0:
         detail = os.fsdecode(result.stderr).strip()
-        suffix = f": {detail}" if detail else ""
+        suffix = f": {detail}" if detail != "" else ""
         raise BookmarkBackupError(f"{' '.join(command)} failed{suffix}")
     return os.fsdecode(result.stdout)
 
@@ -70,7 +70,7 @@ def _bookmark_target(
     arguments.extend(["--template", template, "--", exact_string_pattern(bookmark)])
 
     target = _jj(*arguments, cwd=cwd).strip()
-    if not target:
+    if target == "":
         return None
     if target == "conflict":
         raise BookmarkBackupError(f"bookmark {display_name} is conflicted")
@@ -99,7 +99,7 @@ def _ensure_backup_name_available(backup: str, *, cwd: Path | None = None) -> No
         exact_string_pattern(backup),
         cwd=cwd,
     ).strip()
-    if existing:
+    if existing != "":
         raise BookmarkBackupError(f"bookmark {backup} already exists")
 
 
@@ -135,7 +135,7 @@ def _duplicate_remote_only_revisions(
     """Duplicate remote-only history and return its single new tip commit ID."""
     remote_only_revset = f"{local_target}..{remote_target}"
     remote_only_commits = _log_commit_ids(remote_only_revset, cwd=cwd)
-    if not remote_only_commits:
+    if len(remote_only_commits) == 0:
         return remote_target
 
     before_operation = _jj("op", "log", "--no-graph", "-n", "1", "-T", "id", cwd=cwd)
@@ -170,9 +170,9 @@ def create_backup(
     local bookmark defines which remote revisions need duplication; otherwise,
     the remote branch is duplicated relative to `trunk()`.
     """
-    if not bookmark:
+    if bookmark == "":
         raise BookmarkBackupError("bookmark must not be empty")
-    if not remote:
+    if remote == "":
         raise BookmarkBackupError("remote must not be empty")
 
     _ = _jj(
@@ -189,9 +189,15 @@ def create_backup(
     remote_target = _bookmark_target(bookmark, remote=remote, cwd=cwd)
     if remote_target is None:
         raise BookmarkBackupError(f"bookmark {bookmark}@{remote} does not exist")
-    comparison_target = local_target or _single_revision("trunk()", cwd=cwd)
+    comparison_target = (
+        local_target
+        if local_target is not None and local_target != ""
+        else _single_revision("trunk()", cwd=cwd)
+    )
 
-    backup = _backup_name(bookmark, created_at or datetime.now(UTC))
+    backup = _backup_name(
+        bookmark, created_at if created_at is not None else datetime.now(UTC)
+    )
     _ensure_backup_name_available(backup, cwd=cwd)
     backup_target = _duplicate_remote_only_revisions(
         comparison_target,

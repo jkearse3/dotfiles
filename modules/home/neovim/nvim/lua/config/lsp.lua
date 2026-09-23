@@ -6,7 +6,7 @@ function vim.lsp.util.open_floating_preview(contents, syntax, opts, ...)
 end
 
 vim.lsp.enable({
-	"basedpyright",
+	"pyrefly",
 	"bashls",
 	"buf_ls",
 	"gopls",

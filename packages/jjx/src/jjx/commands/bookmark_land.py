@@ -153,10 +153,10 @@ def land(
     bookmarks = [
         decode_json_string(name, error_type=LandError, context="bookmark name")
         for name in bookmarks
-        if name
+        if name != ""
     ]
     bookmarks = [name for name in bookmarks if name != into]
-    if not bookmarks:
+    if len(bookmarks) == 0:
         raise LandError(f"no bookmarks found between {into} and {tip}")
     if dry_run:
         return bookmarks

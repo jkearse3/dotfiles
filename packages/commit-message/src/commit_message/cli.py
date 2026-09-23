@@ -117,7 +117,7 @@ def unbreakable_spans(line: str) -> list[tuple[int, int]]:
 
     merged: list[tuple[int, int]] = []
     for start, end in spans:
-        if not merged or start >= merged[-1][1]:
+        if len(merged) == 0 or start >= merged[-1][1]:
             merged.append((start, end))
             continue
 
@@ -170,7 +170,7 @@ def wrap_line(
     ``width``; validation tolerates exactly that overrun.
     """
     words = split_unbreakable_words(text)
-    if not words:
+    if len(words) == 0:
         return [first_prefix.rstrip()]
 
     lines: list[str] = []
@@ -251,7 +251,7 @@ def absorbs_flush_left_text(paragraph: Paragraph) -> bool:
     gates prose on the same two characters.
     """
     marker = paragraph.first_prefix[:1]
-    if not marker:
+    if marker == "":
         return True
 
     return not marker.isspace() and marker not in "-+"
@@ -269,7 +269,7 @@ def paragraph_continuation_text(paragraph: Paragraph, line: str) -> str | None:
     if absorbs_flush_left_text(paragraph) and is_prose_continuation_line(line):
         return line
 
-    if not paragraph.continuation_prefix or not line.startswith(
+    if paragraph.continuation_prefix == "" or not line.startswith(
         paragraph.continuation_prefix
     ):
         return None
@@ -307,7 +307,7 @@ def format_body_line(line: str, *, width: int) -> list[str]:
     rejects as an opener, such as a line starting with ``*`` or ``-``,
     and it wraps flush left.
     """
-    if not line or len(line) <= width:
+    if line == "" or len(line) <= width:
         return [line]
 
     if (
@@ -332,8 +332,8 @@ def is_prose_line(line: str) -> bool:
     The first-character gate excludes markup, indented content, and
     diff/patch lines, which must keep their existing line structure.
     """
-    return bool(
-        line
+    return (
+        line != ""
         and line[0].isascii()
         and (line[0].isalnum() or line[0] in PROSE_OPENER_PUNCTUATION)
         and is_prose_continuation_line(line)
@@ -362,8 +362,8 @@ def is_prose_continuation_line(line: str) -> bool:
     a paragraph. The single-``-``/``+`` gate keeps bare patch lines out of
     prose; hunk and file headers before them are caught as preformatted.
     """
-    return bool(
-        line
+    return (
+        line != ""
         and not line[0].isspace()
         and not is_diff_marker_line(line)
         and LIST_RE.fullmatch(line) is None
@@ -424,7 +424,7 @@ def format_message(message: str, *, body_width: int) -> str:
     empty; non-empty output ends with exactly one newline.
     """
     normalized = message.rstrip("\r\n")
-    if not normalized:
+    if normalized == "":
         return ""
 
     lines = normalized.splitlines()
@@ -476,7 +476,7 @@ def format_message(message: str, *, body_width: int) -> str:
 
 def validate_subject(subject: str, *, subject_width: int) -> list[str]:
     """Return subject line errors; only presence and width are validated."""
-    if not subject:
+    if subject == "":
         return ["line 1: subject is required"]
     if len(subject) > subject_width:
         return [f"line 1: subject is {len(subject)} characters (max {subject_width})"]
@@ -491,7 +491,7 @@ def validate_body_lines(lines: list[str], *, body_width: int) -> list[str]:
     """
     errors: list[str] = []
     for line_number, line in enumerate(lines[1:], start=2):
-        if not line.strip() or len(line) <= body_width:
+        if line.strip() == "" or len(line) <= body_width:
             continue
         if has_allowed_unbreakable_overrun(line, body_width=body_width):
             continue
@@ -546,11 +546,11 @@ def validate_footer_lines(lines: list[str], *, required_footers: list[str]) -> l
         return [f"required footer is missing: {footer}" for footer in required_footers]
 
     final_line_index = len(lines) - 1
-    while final_line_index > 0 and not lines[final_line_index].strip():
+    while final_line_index > 0 and lines[final_line_index].strip() == "":
         final_line_index -= 1
 
     final_block_start = final_line_index
-    while final_block_start > 0 and lines[final_block_start - 1].strip():
+    while final_block_start > 0 and lines[final_block_start - 1].strip() != "":
         final_block_start -= 1
 
     candidate_indices = footer_candidate_indices(lines)
@@ -567,7 +567,7 @@ def validate_footer_lines(lines: list[str], *, required_footers: list[str]) -> l
             )
 
     footer_entries: list[str] = []
-    if final_candidates:
+    if len(final_candidates) != 0:
         footer_start = final_candidates[0]
         if footer_start != final_block_start or footer_start == 1:
             errors.append(
@@ -625,7 +625,7 @@ def validate_footer_lines(lines: list[str], *, required_footers: list[str]) -> l
                 continuation_style = "indented"
                 continue
 
-            if line[:1].isspace() and line.strip():
+            if line[:1].isspace() and line.strip() != "":
                 if continuation_style is None:
                     errors.append(
                         f"line {index + 1}: footer continuation has no preceding trailer"
@@ -660,7 +660,7 @@ def has_allowed_unbreakable_overrun(line: str, *, body_width: int) -> bool:
     long_spans = [
         span for span in unbreakable_spans(line) if span[1] - span[0] > body_width
     ]
-    if not long_spans:
+    if len(long_spans) == 0:
         return False
 
     reduced_parts: list[str] = []
@@ -739,7 +739,7 @@ def main(argv: list[str] | None = None) -> int:
         return 0
 
     lines = message.splitlines()
-    subject = lines[0] if lines else ""
+    subject = lines[0] if len(lines) != 0 else ""
     errors = validate_subject(subject, subject_width=cast(int, namespace.subject_width))
     errors.extend(validate_body_lines(lines, body_width=cast(int, namespace.body_width)))
     errors.extend(
@@ -749,7 +749,7 @@ def main(argv: list[str] | None = None) -> int:
         )
     )
 
-    if errors:
+    if len(errors) != 0:
         print_validation_errors(errors)
         return 1
     return 0

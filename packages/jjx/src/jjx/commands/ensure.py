@@ -157,7 +157,7 @@ def _run(command: Sequence[str], *, cwd: Path | None = None) -> bytes:
 def _line(command: Sequence[str], *, cwd: Path | None = None) -> str:
     """Run a command that must return exactly one non-empty newline-ended line."""
     output = _run(command, cwd=cwd)
-    if not output.endswith(b"\n") or b"\n" in output[:-1] or not output[:-1]:
+    if not output.endswith(b"\n") or b"\n" in output[:-1] or output[:-1] == b"":
         raise EnsureError(f"{' '.join(command)} returned invalid output")
     return os.fsdecode(output[:-1])
 
@@ -194,7 +194,7 @@ def _reject_git_lfs(checkout: GitCheckout) -> None:
     )
     if configured.returncode == 0:
         value = os.fsdecode(configured.stdout).strip()
-        if not value or "\n" in value:
+        if value == "" or "\n" in value:
             raise EnsureError("git config core.attributesFile returned invalid output")
         configured_path = Path(value).expanduser()
         attribute_files.append(
@@ -204,7 +204,7 @@ def _reject_git_lfs(checkout: GitCheckout) -> None:
         )
     elif configured.returncode != 1:
         detail = os.fsdecode(configured.stderr).strip()
-        suffix = f": {detail}" if detail else ""
+        suffix = f": {detail}" if detail != "" else ""
         raise EnsureError(f"could not inspect Git attribute configuration{suffix}")
     else:
         config_home = Path(os.environ.get("XDG_CONFIG_HOME", Path.home() / ".config"))
@@ -222,7 +222,11 @@ def _reject_git_lfs(checkout: GitCheckout) -> None:
             ) from error
         for line in lines:
             fields = line.split()
-            if fields and not fields[0].startswith("#") and "filter=lfs" in fields[1:]:
+            if (
+                len(fields) != 0
+                and not fields[0].startswith("#")
+                and "filter=lfs" in fields[1:]
+            ):
                 raise EnsureError(
                     f"Git LFS is not supported by jj; refusing checkout configured by {path}"
                 )
@@ -262,12 +266,12 @@ def _worktree_paths(root: Path) -> list[Path]:
     )
     paths: list[Path] = []
     for record in output.split(b"\0\0"):
-        if not record:
+        if record == b"":
             continue
         fields: dict[bytes, bytes] = {}
         for line in record.strip(b"\0").split(b"\0"):
             key, separator, value = line.partition(b" ")
-            if separator:
+            if separator != b"":
                 fields[key] = value
         try:
             path = Path(os.fsdecode(fields[b"worktree"]))
@@ -438,7 +442,7 @@ def _read_identity(checkout: GitCheckout) -> Path:
         raise EnsureError(
             "jjx ensure attachment identity is malformed; leaving .jj unchanged"
         ) from error
-    if not data or not git_dir.is_absolute():
+    if data == b"" or not git_dir.is_absolute():
         raise EnsureError(
             "jjx ensure attachment identity is malformed; leaving .jj unchanged"
         )
@@ -468,7 +472,7 @@ def _read_stale_target(checkout: GitCheckout) -> Path:
     except (UnicodeError, ValueError) as error:
         raise EnsureError("incompatible jj Git target is malformed") from error
     if (
-        not value
+        value == ""
         or data not in {os.fsencode(value), os.fsencode(value) + b"\n"}
         or not stale.is_absolute()
     ):
@@ -598,7 +602,7 @@ def _git_config_value(root: Path, key: str, *, boolean: bool = False) -> str | N
         return None
     if result.returncode != 0:
         detail = os.fsdecode(result.stderr).strip()
-        suffix = f": {detail}" if detail else ""
+        suffix = f": {detail}" if detail != "" else ""
         raise EnsureError(f"could not read git config {key}{suffix}")
     value = os.fsdecode(result.stdout)
     return value[:-1] if value.endswith("\n") else value
@@ -613,14 +617,20 @@ def _git_identity(checkout: GitCheckout) -> GitIdentity | None:
     """
     name = _git_config_value(checkout.root, "user.name")
     email = _git_config_value(checkout.root, "user.email")
-    if not name or not email:
+    if name is None or name == "" or email is None or email == "":
         return None
     signs = (
         _git_config_value(checkout.root, "commit.gpgSign", boolean=True) == "true"
         and _git_config_value(checkout.root, "gpg.format") == "ssh"
     )
     signing_key = _git_config_value(checkout.root, "user.signingKey") if signs else None
-    return GitIdentity(name=name, email=email, signing_key=signing_key or None)
+    if signing_key == "":
+        signing_key = None
+    return GitIdentity(
+        name=name,
+        email=email,
+        signing_key=signing_key,
+    )
 
 
 def _jj_config_set(checkout: GitCheckout, key: str, value: str) -> None:
@@ -744,12 +754,12 @@ def _remote_head_branch(root: Path, remote: str) -> str | None:
         return None
     if result.returncode != 0:
         detail = os.fsdecode(result.stderr).strip()
-        suffix = f": {detail}" if detail else ""
+        suffix = f": {detail}" if detail != "" else ""
         raise EnsureError(f"could not read remote HEAD for {remote}{suffix}")
     value = os.fsdecode(result.stdout).strip()
     prefix = f"refs/remotes/{remote}/"
     branch = value[len(prefix) :]
-    if not value.startswith(prefix) or not branch:
+    if not value.startswith(prefix) or branch == "":
         raise EnsureError(
             f"git returned an unexpected remote HEAD for {remote}: {value}"
         )
@@ -772,9 +782,10 @@ def _default_remote_bookmark(checkout: GitCheckout) -> str | None:
     heads = {
         remote: branch
         for remote in remotes
-        if (branch := _remote_head_branch(checkout.root, remote))
+        if (branch := _remote_head_branch(checkout.root, remote)) is not None
+        and branch != ""
     }
-    if not heads:
+    if len(heads) == 0:
         return None
     remote = (
         "origin"
@@ -839,7 +850,7 @@ def _track_default_bookmark(checkout: GitCheckout) -> None:
     )
     if result.returncode != 0:
         detail = os.fsdecode(result.stderr).strip()
-        suffix = f": {detail}" if detail else ""
+        suffix = f": {detail}" if detail != "" else ""
         print(
             f"warning: could not track default remote bookmark {symbol}{suffix}",
             file=sys.stderr,

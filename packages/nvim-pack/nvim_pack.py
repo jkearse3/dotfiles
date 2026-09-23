@@ -121,7 +121,7 @@ def parse_args(argv: list[str] | None = None) -> Args:
         if command == "check":
             return CheckArgs(plugins)
         select = cast(bool, namespace.select)
-        if select and plugins:
+        if select and len(plugins) != 0:
             create_parser().error("update --select cannot be combined with plugin names")
         return UpdateArgs(
             plugins=plugins,
@@ -144,7 +144,11 @@ def require_nvim() -> None:
 def lua_script_path() -> Path:
     """Return the packaged Lua adapter, with a sibling fallback for source runs."""
     configured = os.environ.get("NVIM_PACK_SCRIPT")
-    path = Path(configured) if configured else Path(__file__).with_suffix(".lua")
+    path = (
+        Path(configured)
+        if configured is not None and configured != ""
+        else Path(__file__).with_suffix(".lua")
+    )
     if not path.is_file():
         raise NvimPackError(f"nvim-pack Lua adapter was not found: {path}")
     return path
@@ -202,7 +206,8 @@ def run_nvim(request: dict[str, object]) -> dict[str, object]:
             raise NvimPackError(f"could not run nvim: {error}") from error
 
         if not response_path.is_file():
-            detail = completed.stderr.strip() or f"exit status {completed.returncode}"
+            stderr = completed.stderr.strip()
+            detail = stderr if stderr != "" else f"exit status {completed.returncode}"
             raise NvimPackError(f"nvim did not complete the vim.pack command: {detail}")
         try:
             response = cast(object, json.loads(response_path.read_text(encoding="utf-8")))
@@ -247,13 +252,13 @@ def query_updates(
         selection_errors=string_list(response, "selection_errors"),
         details=string_list(response, "details"),
     )
-    if report.selection_errors:
+    if len(report.selection_errors) != 0:
         names = ", ".join(report.selection_errors)
         raise NvimPackError(f"not active vim.pack plugins: {names}")
-    if report.errors:
+    if len(report.errors) != 0:
         names = ", ".join(report.errors)
         raise NvimPackError(f"could not check updates for: {names}")
-    if report.apply_errors:
+    if len(report.apply_errors) != 0:
         names = ", ".join(report.apply_errors)
         raise NvimPackError(
             f"updates did not finish cleanly for: {names}; plugin state may be partial"
@@ -295,7 +300,7 @@ def select_updates(names: Sequence[str]) -> list[str]:
 
 
 def format_update_result(names: list[str], apply: bool) -> str:
-    if not names:
+    if len(names) == 0:
         return "All selected vim.pack plugins are up to date."
     noun = "plugin" if len(names) == 1 else "plugins"
     verb = "Can update" if not apply else "Updated"
@@ -303,7 +308,7 @@ def format_update_result(names: list[str], apply: bool) -> str:
 
 
 def format_prune_result(names: list[str], dry_run: bool) -> str:
-    if not names:
+    if len(names) == 0:
         return "vim.pack is in sync; no orphaned plugins to prune."
     noun = "plugin" if len(names) == 1 else "plugins"
     verb = "Would prune" if dry_run else "Pruned"
@@ -319,7 +324,7 @@ def run_update(
     """Check or apply updates for selected active plugins."""
     report = query_updates(apply, plugins, offline=offline)
     print(format_update_result(report.updates, apply))
-    if not apply and report.details:
+    if not apply and len(report.details) != 0:
         print()
         print("\n".join(report.details))
     return 0
@@ -328,12 +333,12 @@ def run_update(
 def run_selected_update() -> int:
     """Check all plugins, select candidates with fzf, and apply from fetched refs."""
     candidates = query_updates(False, ()).updates
-    if not candidates:
+    if len(candidates) == 0:
         print(format_update_result([], False))
         return 0
 
     selected = select_updates(candidates)
-    if not selected:
+    if len(selected) == 0:
         print("No plugins selected; nothing updated.")
         return 0
     return run_update(True, selected, offline=True)
@@ -345,7 +350,7 @@ def main(argv: list[str] | None = None) -> int:
         require_nvim()
         if isinstance(args, ListArgs):
             names = string_list(run_nvim({"command": "list"}), "names")
-            if names:
+            if len(names) != 0:
                 print("\n".join(names))
             return 0
         if isinstance(args, CheckArgs):

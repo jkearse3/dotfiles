@@ -51,6 +51,13 @@ class FoundationTests(unittest.TestCase):
             ):
                 _ = parse_args(argv)
 
+    def test_command_is_required(self) -> None:
+        with (
+            contextlib.redirect_stderr(io.StringIO()),
+            self.assertRaises(SystemExit),
+        ):
+            _ = parse_args([])
+
     def test_valid_surface(self) -> None:
         for argv in (
             ["--skill"],

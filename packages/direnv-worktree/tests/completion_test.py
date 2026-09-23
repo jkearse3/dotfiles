@@ -34,7 +34,7 @@ def fish_candidates(commandline: str) -> set[str]:
         str(FISH_COMPLETION),
         commandline,
     )
-    return {line.partition("\t")[0] for line in result.stdout.splitlines() if line}
+    return {line.partition("\t")[0] for line in result.stdout.splitlines() if line != ""}
 
 
 def wait_for(path: Path, master: int, process: subprocess.Popen[bytes]) -> None:
@@ -44,8 +44,9 @@ def wait_for(path: Path, master: int, process: subprocess.Popen[bytes]) -> None:
             raise TimeoutError(f"zsh did not create {path}")
         if process.poll() is not None:
             raise RuntimeError(f"zsh exited with status {process.returncode}")
-        readable, _, _ = select.select([master], [], [], 0.1)
-        if readable:
+        empty_fds: list[int] = []
+        readable, _, _ = select.select([master], empty_fds, empty_fds, 0.1)
+        if len(readable) != 0:
             _ = os.read(master, 65536)
 
 

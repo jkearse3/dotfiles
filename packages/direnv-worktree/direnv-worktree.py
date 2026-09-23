@@ -28,7 +28,7 @@ def git(*arguments: str, cwd: Path | None = None) -> subprocess.CompletedProcess
 
 
 def write_stderr(output: bytes) -> None:
-    if output:
+    if len(output) != 0:
         _ = sys.stderr.buffer.write(output)
         _ = sys.stderr.buffer.flush()
 
@@ -44,7 +44,12 @@ def git_path(*arguments: str, cwd: Path | None = None, quiet: bool = False) -> P
 
 def repository_root(start: Path | None = None) -> Path:
     try:
-        return git_path("rev-parse", "--show-toplevel", cwd=start or Path.cwd(), quiet=True)
+        return git_path(
+            "rev-parse",
+            "--show-toplevel",
+            cwd=start if start is not None else Path.cwd(),
+            quiet=True,
+        )
     except HookError:
         raise HookError("not inside a non-bare Git worktree") from None
 
@@ -55,7 +60,7 @@ def primary_root(checkout: Path) -> Path:
     if result.returncode != 0:
         write_stderr(result.stderr)
         raise HookError("could not identify the primary Git worktree")
-    if not result.stdout:
+    if len(result.stdout) == 0:
         raise HookError("could not identify the primary Git worktree")
 
     entry = result.stdout.split(b"\0", 1)[0]
@@ -92,9 +97,9 @@ def validate_primary(primary: Path) -> None:
 
 
 def post_checkout(arguments: list[str]) -> None:
-    old_head = arguments[0] if arguments else ""
+    old_head = arguments[0] if len(arguments) != 0 else ""
     checkout_kind = arguments[2] if len(arguments) > 2 else ""
-    if not old_head or old_head.strip("0") or checkout_kind != "1":
+    if old_head == "" or old_head.strip("0") != "" or checkout_kind != "1":
         return
 
     try:
@@ -190,9 +195,13 @@ def main() -> int:
         elif command == "disable":
             disable()
     except HookError as error:
-        if error.args and error.args[0]:
+        if len(error.args) != 0 and bool(error.args[0]):
             print(f"direnv-worktree: {error.args[0]}", file=sys.stderr, flush=True)
-        if len(error.args) > 1 and isinstance(error.args[1], bytes) and error.args[1]:
+        if (
+            len(error.args) > 1
+            and isinstance(error.args[1], bytes)
+            and len(error.args[1]) != 0
+        ):
             write_stderr(error.args[1])
             if not error.args[1].endswith(b"\n"):
                 write_stderr(b"\n")

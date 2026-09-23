@@ -71,7 +71,7 @@ class Team:
         snapshot = initial_snapshot
         for _ in range(4):
             current = self.registry.get(record.teammate_id)
-            snapshot = snapshot or self.runtime.snapshot()
+            snapshot = snapshot if snapshot is not None else self.runtime.snapshot()
             health = derive(current, snapshot)
             if not health.automatic:
                 require(
@@ -88,8 +88,8 @@ class Team:
             record = self.registry.transition(
                 current,
                 phase=phase,
-                tab=health.tab.tab_id if health.tab else None,
-                pane=health.pane.pane_id if health.pane else None,
+                tab=health.tab.tab_id if health.tab is not None else None,
+                pane=health.pane.pane_id if health.pane is not None else None,
             )
             snapshot = None
         raise TeamError(
@@ -123,13 +123,15 @@ class Team:
             **asdict(record),
             "health": health.status,
             "runtime_status": health.pane.status
-            if health.pane and health.pane.kind
+            if health.pane is not None
+            and health.pane.kind is not None
+            and health.pane.kind != ""
             else None,
             "repair_action": health.action,
             "guidance": RECREATE_GUIDANCE
             if health.status in ("agent_missing", "launch_uncertain")
             else None,
-            "binding": asdict(health.pane) if health.pane else None,
+            "binding": asdict(health.pane) if health.pane is not None else None,
             "request": None
             if request is None
             else {
@@ -270,10 +272,10 @@ class Team:
                 "action": health.action,
                 "evidence": {
                     "revision": record.revision,
-                    "tab_id": health.tab.tab_id if health.tab else None,
-                    "pane_id": health.pane.pane_id if health.pane else None,
-                    "marker": health.tab.label if health.tab else None,
-                    "alias": health.pane.name if health.pane else None,
+                    "tab_id": health.tab.tab_id if health.tab is not None else None,
+                    "pane_id": health.pane.pane_id if health.pane is not None else None,
+                    "marker": health.tab.label if health.tab is not None else None,
+                    "alias": health.pane.name if health.pane is not None else None,
                 },
                 "applied": False,
                 "guidance": RECREATE_GUIDANCE

@@ -64,7 +64,7 @@ def _local_bookmarks() -> tuple[int, list[str]]:
             line, error_type=InteractiveCommandError, context="bookmark name"
         )
         for line in result.stdout.splitlines()
-        if line
+        if line != ""
     ]
     return result.returncode, bookmarks
 
@@ -104,7 +104,7 @@ def _bookmark_push(arguments: Sequence[str], *, prog: str) -> int:
     if status != 0:
         print(f"{prog}: failed to list bookmarks", file=sys.stderr)
         return 1
-    if not bookmarks:
+    if len(bookmarks) == 0:
         return 0
 
     picker = _run(
@@ -115,8 +115,8 @@ def _bookmark_push(arguments: Sequence[str], *, prog: str) -> int:
         return 0
     if picker.returncode != 0:
         return picker.returncode
-    selection = [line for line in picker.stdout.splitlines() if line]
-    if not selection:
+    selection = [line for line in picker.stdout.splitlines() if line != ""]
+    if len(selection) == 0:
         return 0
 
     bookmark_arguments = [
@@ -148,7 +148,7 @@ def _bookmark_rebase(arguments: Sequence[str], *, prog: str) -> int:
     if status != 0:
         print(f"{prog}: failed to list bookmarks", file=sys.stderr)
         return 1
-    if not bookmarks:
+    if len(bookmarks) == 0:
         return 0
 
     destination = cast("str | None", namespace.destination)
@@ -167,17 +167,16 @@ def _bookmark_rebase(arguments: Sequence[str], *, prog: str) -> int:
             return 0
         if picker.returncode != 0:
             return picker.returncode
-        destination_bookmark = (
-            picker.stdout.splitlines()[0] if picker.stdout.splitlines() else ""
-        )
-        if not destination_bookmark:
+        selected_lines = picker.stdout.splitlines()
+        destination_bookmark = selected_lines[0] if len(selected_lines) != 0 else ""
+        if destination_bookmark == "":
             return 0
         destination = bookmark_revset(destination_bookmark)
         candidates = [
             bookmark for bookmark in bookmarks if bookmark != destination_bookmark
         ]
         header = "Step 2 of 2: mark the bookmarks to rebase (Tab), then Enter"
-    if not candidates:
+    if len(candidates) == 0:
         return 0
 
     picker = _run(
@@ -193,8 +192,8 @@ def _bookmark_rebase(arguments: Sequence[str], *, prog: str) -> int:
         return 0
     if picker.returncode != 0:
         return picker.returncode
-    selection = [line for line in picker.stdout.splitlines() if line]
-    if not selection:
+    selection = [line for line in picker.stdout.splitlines() if line != ""]
+    if len(selection) == 0:
         return 0
 
     branches = [
@@ -235,7 +234,7 @@ def _bookmark_select(arguments: Sequence[str], *, prog: str) -> int:
     if result.returncode != 0:
         print("bookmark-select command failed", file=sys.stderr)
         return 1
-    if not result.stdout:
+    if result.stdout == "":
         return 0
     picker = _run(["fzf", "--ansi"], stdin=result.stdout)
     if picker.returncode in {1, 130}:
@@ -243,7 +242,7 @@ def _bookmark_select(arguments: Sequence[str], *, prog: str) -> int:
     if picker.returncode != 0:
         return picker.returncode
     fields = picker.stdout.split()
-    if fields:
+    if len(fields) != 0:
         print(fields[0])
     return 0
 
@@ -273,7 +272,7 @@ def _change_select(arguments: Sequence[str], *, prog: str) -> int:
     if result.returncode != 0:
         print("select command failed", file=sys.stderr)
         return 1
-    if not result.stdout:
+    if result.stdout == "":
         return 0
     picker = _run(["fzf", "--ansi"], stdin=result.stdout)
     if picker.returncode in {1, 130}:
@@ -281,6 +280,6 @@ def _change_select(arguments: Sequence[str], *, prog: str) -> int:
     if picker.returncode != 0:
         return picker.returncode
     change_id = picker.stdout.partition("\t")[0].strip()
-    if change_id:
+    if change_id != "":
         print(change_id)
     return 0

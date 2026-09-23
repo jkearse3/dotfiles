@@ -1,0 +1,19 @@
+preset = "all"
+project-includes = [
+  "modules/home/agents/skills/**/scripts",
+  "packages/commit-message",
+  "packages/direnv-worktree",
+  "packages/nix-cleanup",
+  "packages/nvim-pack",
+  "packages/jjx",
+  "packages/pi-shepherd",
+  "packages/token-count",
+]
+search-path = [
+  "packages/commit-message/src",
+  "packages/jjx/src",
+  "packages/nix-cleanup",
+  "packages/nvim-pack",
+  "packages/pi-shepherd/src",
+  "packages/pi-shepherd/tests",
+]

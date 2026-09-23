@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# pyright: reportUninitializedInstanceVariable=false
 
 from __future__ import annotations
 
@@ -130,7 +129,11 @@ esac
         self, *arguments: str, cwd: Path | None = None, check: bool = True
     ) -> subprocess.CompletedProcess[bytes]:
         return run(
-            str(self.command), *arguments, cwd=cwd or self.primary, check=check, env=self.env
+            str(self.command),
+            *arguments,
+            cwd=cwd if cwd is not None else self.primary,
+            check=check,
+            env=self.env,
         )
 
     def enroll(self) -> None:

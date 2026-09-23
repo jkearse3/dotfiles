@@ -1,7 +1,6 @@
 """One human/JSON command grammar; result acknowledgement follows successful output."""
 
 # argparse registration and stream writes intentionally discard library return values.
-# pyright: reportUnusedCallResult=false
 
 import argparse
 import json
@@ -70,8 +69,10 @@ def parser() -> argparse.ArgumentParser:
         prog="pi-shepherd",
         description="Persistent Pi teammates in Herdr workspaces",
     )
-    root.add_argument("--json", action="store_true", help="emit stable JSON")
-    root.add_argument("--skill", action="store_true", help="print the packaged skill")
+    _ = root.add_argument("--json", action="store_true", help="emit stable JSON")
+    _ = root.add_argument(
+        "--skill", action="store_true", help="print the packaged skill"
+    )
     commands = root.add_subparsers(dest="command")
 
     help_text = {
@@ -98,7 +99,7 @@ def parser() -> argparse.ArgumentParser:
             help=help_text[name],
             description=help_text[name],
         )
-        command.add_argument(
+        _ = command.add_argument(
             "--json",
             action="store_true",
             default=argparse.SUPPRESS,
@@ -106,15 +107,15 @@ def parser() -> argparse.ArgumentParser:
         )
         return command
 
-    subcommand("profiles")
+    _ = subcommand("profiles")
     create = subcommand("create")
-    create.add_argument("name")
-    create.add_argument("--profile")
-    create.add_argument("--cwd")
-    create.add_argument("--startup-timeout", type=integer(4, 300))
+    _ = create.add_argument("name")
+    _ = create.add_argument("--profile")
+    _ = create.add_argument("--cwd")
+    _ = create.add_argument("--startup-timeout", type=integer(4, 300))
     listing = subcommand("list")
-    listing.add_argument("--all", action="store_true")
-    listing.add_argument("--include-closed", action="store_true")
+    _ = listing.add_argument("--all", action="store_true")
+    _ = listing.add_argument("--include-closed", action="store_true")
     for name in (
         "show",
         "focus",
@@ -127,42 +128,42 @@ def parser() -> argparse.ArgumentParser:
         "request",
     ):
         command = subcommand(name)
-        command.add_argument("ref")
+        _ = command.add_argument("ref")
         if name in ("close", "forget"):
-            command.add_argument("--force", action="store_true")
+            _ = command.add_argument("--force", action="store_true")
         if name == "repair":
-            command.add_argument("--apply", action="store_true")
+            _ = command.add_argument("--apply", action="store_true")
         if name in ("wait", "request"):
-            command.add_argument("--timeout", type=integer(0, 86400))
+            _ = command.add_argument("--timeout", type=integer(0, 86400))
         if name == "wait":
-            command.add_argument("--until", choices=STATUSES)
+            _ = command.add_argument("--until", choices=STATUSES)
         if name == "read":
-            command.add_argument("--source", choices=READ_SOURCES)
-            command.add_argument("--lines", type=integer(1, 10000))
-            command.add_argument("--ansi", action="store_true")
+            _ = command.add_argument("--source", choices=READ_SOURCES)
+            _ = command.add_argument("--lines", type=integer(1, 10000))
+            _ = command.add_argument("--ansi", action="store_true")
         if name == "request":
             source = command.add_mutually_exclusive_group(required=True)
-            source.add_argument("--stdin", action="store_true")
-            source.add_argument("--prompt")
-            source.add_argument("--prompt-file")
-            command.add_argument("--wait", action="store_true")
-            command.add_argument(
+            _ = source.add_argument("--stdin", action="store_true")
+            _ = source.add_argument("--prompt")
+            _ = source.add_argument("--prompt-file")
+            _ = command.add_argument("--wait", action="store_true")
+            _ = command.add_argument(
                 "--ack",
                 action="store_true",
                 help="acknowledge a completed reply after successful output",
             )
-            command.add_argument("--allow-focused", action="store_true")
+            _ = command.add_argument("--allow-focused", action="store_true")
     for name in ("reply", "result", "cancel"):
         command = subcommand(name)
-        command.add_argument("request_id")
+        _ = command.add_argument("request_id")
         if name == "reply":
             source = command.add_mutually_exclusive_group(required=True)
-            source.add_argument("--stdin", action="store_true")
-            source.add_argument("--file")
+            _ = source.add_argument("--stdin", action="store_true")
+            _ = source.add_argument("--file")
         if name == "result":
-            command.add_argument("--wait", action="store_true")
-            command.add_argument("--timeout", type=integer(0, 86400))
-            command.add_argument("--ack", action="store_true")
+            _ = command.add_argument("--wait", action="store_true")
+            _ = command.add_argument("--timeout", type=integer(0, 86400))
+            _ = command.add_argument("--ack", action="store_true")
     return root
 
 
@@ -172,7 +173,7 @@ def parse_args(argv: Sequence[str]) -> Arguments:
     if args.skill:
         if list(argv) != ["--skill"]:
             root.error("--skill is exclusive")
-    elif not args.command:
+    elif args.command is None or args.command == "":
         root.error("a command is required")
     if args.command == "attach" and args.json:
         root.error("attach is interactive and rejects --json")
@@ -188,17 +189,17 @@ def emit(command: str, result: object, json_mode: bool) -> None:
         and command in ("read", "request", "result")
         and cast(Mapping[str, object], result).get("content") is not None
     ):
-        sys.stdout.write(str(cast(Mapping[str, object], result)["content"]))
+        _ = sys.stdout.write(str(cast(Mapping[str, object], result)["content"]))
     else:
         payload: object = (
             {
                 "schema_version": 2,
                 "ok": True,
                 "command": command,
-                "result": cast(object, result),
+                "result": result,
             }
             if json_mode
-            else cast(object, result)
+            else result
         )
         print(
             json.dumps(
@@ -208,7 +209,7 @@ def emit(command: str, result: object, json_mode: bool) -> None:
                 indent=None if json_mode else 2,
             )
         )
-    sys.stdout.flush()
+    _ = sys.stdout.flush()
 
 
 def dispatch(team: Team, args: Arguments) -> object:
@@ -232,8 +233,8 @@ def dispatch(team: Team, args: Arguments) -> object:
         return terminal.read(
             team,
             args.ref,
-            args.source or team.config.read_source,
-            args.lines or team.config.read_lines,
+            args.source if args.source is not None else team.config.read_source,
+            args.lines if args.lines is not None else team.config.read_lines,
             args.ansi,
         )
     if args.command == "wait":
@@ -262,11 +263,11 @@ def dispatch(team: Team, args: Arguments) -> object:
 def main(argv: Sequence[str] | None = None) -> int:
     args = parse_args(sys.argv[1:] if argv is None else argv)
     if args.skill:
-        sys.stdout.write(
+        _ = sys.stdout.write(
             files("pi_shepherd").joinpath("SKILL.md").read_text(encoding="utf-8")
         )
         return 0
-    os.umask(0o077)
+    _ = os.umask(0o077)
     registry: Registry | None = None
     acknowledgement: Request | None = None
     emitted = False
@@ -303,7 +304,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                     result["ack_outcome"] = "on_successful_output"
                     acknowledgement = request
             elif args.command == "cancel":
-                registry.request(args.request_id)
+                _ = registry.request(args.request_id)
                 registry.cancel(args.request_id)
                 result = {"request_id": args.request_id, "cancelled": True}
             else:
@@ -327,7 +328,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         emit(args.command, result, args.json)
         emitted = True
         if acknowledgement is not None and registry is not None:
-            registry.acknowledge(acknowledgement)
+            _ = registry.acknowledge(acknowledgement)
         return 0
     except (TeamError, OSError, UnicodeError, sqlite3.Error) as error:
         failure = (
@@ -348,7 +349,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         try:
             if args.json and not emitted and not isinstance(error, BrokenPipeError):
                 print(json.dumps(payload, sort_keys=True))
-                sys.stdout.flush()
+                _ = sys.stdout.flush()
             else:
                 print(f"{failure.code}: {failure.message}", file=sys.stderr)
         except OSError:

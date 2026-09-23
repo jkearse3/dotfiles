@@ -1,6 +1,4 @@
 #!/usr/bin/env python3
-# pyright: reportImplicitRelativeImport=false, reportPrivateUsage=false
-# pyright: reportUninitializedInstanceVariable=false
 
 from __future__ import annotations
 

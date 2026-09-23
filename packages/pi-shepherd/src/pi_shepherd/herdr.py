@@ -1,7 +1,6 @@
 """Small protocol-22 boundary. Decode only required fields and never echo wire data."""
 
 # Pure validators intentionally discard validated values not needed by the domain.
-# pyright: reportUnusedCallResult=false
 
 import json
 import math
@@ -75,7 +74,7 @@ def status(value: object) -> str:
 
 def decode_pane(value: object) -> Pane:
     raw = obj(value)
-    number(raw.get("revision"))
+    _ = number(raw.get("revision"))
     foreground = optional(raw.get("foreground_cwd"))
     cwd = optional(raw.get("cwd"))
     return Pane(
@@ -86,15 +85,15 @@ def decode_pane(value: object) -> Pane:
         focused=boolean(raw.get("focused")),
         status=status(raw.get("agent_status")),
         kind=optional(raw.get("agent")),
-        cwd=foreground or cwd,
+        cwd=foreground if foreground is not None and foreground != "" else cwd,
         name=optional(raw.get("name")),
     )
 
 
 def decode_tab(value: object) -> Tab:
     raw = obj(value)
-    number(raw.get("number"))
-    status(raw.get("agent_status"))
+    _ = number(raw.get("number"))
+    _ = status(raw.get("agent_status"))
     return Tab(
         tab_id=string(raw.get("tab_id")),
         workspace_id=string(raw.get("workspace_id")),
@@ -110,19 +109,19 @@ def unique(values: Sequence[str]) -> None:
 
 def decode_snapshot(value: object) -> Snapshot:
     raw = obj(value)
-    string(raw.get("version"))
+    _ = string(raw.get("version"))
     require(
         number(raw.get("protocol")) == HERDR_PROTOCOL,
         "protocol",
         "Unsupported Herdr protocol",
     )
-    array(raw.get("layouts"))
+    _ = array(raw.get("layouts"))
     workspaces: list[Workspace] = []
     for workspace_value in array(raw.get("workspaces")):
         workspace = obj(workspace_value)
-        number(workspace.get("number"))
-        string(workspace.get("label"))
-        status(workspace.get("agent_status"))
+        _ = number(workspace.get("number"))
+        _ = string(workspace.get("label"))
+        _ = status(workspace.get("agent_status"))
         workspaces.append(
             Workspace(
                 workspace_id=string(workspace.get("workspace_id")),
@@ -191,7 +190,7 @@ def decode_snapshot(value: object) -> Snapshot:
         [p.pane_id for p in panes if p.focused],
     )
     require(
-        all(not group for group in flagged)
+        all(len(group) == 0 for group in flagged)
         if focus == (None, None, None)
         else all(
             value is not None and group == [value]
@@ -277,11 +276,13 @@ class Herdr:
                 "Herdr client timed out; do not replay effects",
                 uncertain=mutation,
             ) from error
-        if result.returncode:
+        if result.returncode != 0:
             try:
-                failure_text = (result.stdout or result.stderr).decode("utf-8")
+                failure_text = (
+                    result.stdout if len(result.stdout) != 0 else result.stderr
+                ).decode("utf-8")
                 failure = obj(cast(object, json.loads(failure_text)))
-                string(failure.get("id"))
+                _ = string(failure.get("id"))
                 error_code = string(obj(failure.get("error")).get("code"))
             except (UnicodeError, ValueError, TeamError):
                 error_code = None
@@ -319,7 +320,7 @@ class Herdr:
         )
         try:
             payload = obj(cast(object, json.loads(text)))
-            string(payload.get("id"))
+            _ = string(payload.get("id"))
             require(
                 "error" not in payload, "protocol", "Unexpected Herdr error envelope"
             )
@@ -525,7 +526,7 @@ class Herdr:
             ) from error
 
     def close_tab(self, tab: Tab) -> None:
-        self.call(("tab", "close", tab.tab_id), "ok", mutation=True)
+        _ = self.call(("tab", "close", tab.tab_id), "ok", mutation=True)
 
     def shell_ready(self, pane: Pane) -> bool:
         result = self.call(

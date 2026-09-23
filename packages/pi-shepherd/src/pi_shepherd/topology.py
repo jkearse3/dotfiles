@@ -14,25 +14,25 @@ def derive(record: Teammate, snapshot: Snapshot) -> Health:
     if len(marked) > 1 or len(named) > 1:
         return Health("ambiguous")
     accepted_label = tab_label(record.teammate_id, record.logical_name)
-    if marked and marked[0].label != accepted_label:
+    if len(marked) != 0 and marked[0].label != accepted_label:
         return Health("marker_conflict")
-    agent = named[0] if named else None
+    agent = named[0] if len(named) != 0 else None
     if agent is not None and agent.kind != record.kind:
         return Health("kind_conflict")
-    if marked and agent and marked[0].tab_id != agent.tab_id:
+    if len(marked) != 0 and agent is not None and marked[0].tab_id != agent.tab_id:
         return Health("binding_conflict")
 
     if record.phase == "closed":
         return Health(
             "closed"
-            if not marked and not named and owned is None
+            if len(marked) == 0 and len(named) == 0 and owned is None
             else "closed_resource_present"
         )
-    if owned is None and not marked and agent is None:
+    if owned is None and len(marked) == 0 and agent is None:
         if record.phase in ("managed", "closing"):
             return Health("absent", action="finalize_closed", automatic=True)
         return Health("creation_uncertain")
-    candidate = marked[0] if marked else owned
+    candidate = marked[0] if len(marked) != 0 else owned
     if candidate is None:
         return Health("binding_conflict")
     panes = [pane for pane in snapshot.panes if pane.tab_id == candidate.tab_id]
@@ -48,7 +48,7 @@ def derive(record: Teammate, snapshot: Snapshot) -> Health:
         ):
             return Health("contaminated")
         pane = agent
-    elif agents or pane.kind is not None:
+    elif len(agents) != 0 or pane.kind is not None:
         return Health("contaminated")
 
     relocated = (
@@ -56,13 +56,13 @@ def derive(record: Teammate, snapshot: Snapshot) -> Health:
         or candidate.workspace_id != record.workspace_id
     )
     if record.tab_id is None:
-        if not marked or candidate.workspace_id != record.workspace_id:
+        if len(marked) == 0 or candidate.workspace_id != record.workspace_id:
             return Health("binding_conflict")
         return Health(
             "provisioning", action="bind", tab=candidate, pane=pane, automatic=True
         )
     if relocated:
-        if not marked or agent is None:
+        if len(marked) == 0 or agent is None:
             return Health("binding_conflict")
         return Health("relocated", action="accept_relocation", tab=candidate, pane=pane)
     if candidate.label != accepted_label:

@@ -28,8 +28,8 @@ def fish_completion_descriptions(commandline: str) -> dict[str, str]:
     completions: dict[str, str] = {}
     for line in result.stdout.splitlines():
         candidate, separator, description = line.partition("\t")
-        if candidate:
-            completions[candidate] = description if separator else ""
+        if candidate != "":
+            completions[candidate] = description if separator != "" else ""
     return completions
 
 
@@ -60,7 +60,7 @@ class CompletionTests(unittest.TestCase):
     def test_every_fish_command_has_its_cli_description(self) -> None:
         for command in COMMANDS:
             parent = " ".join(command.path[:-1])
-            commandline = f"jjx {parent} " if parent else "jjx "
+            commandline = f"jjx {parent} " if parent != "" else "jjx "
             descriptions = fish_completion_descriptions(commandline)
             with self.subTest(command=command.prog):
                 self.assertEqual(command.description, descriptions[command.path[-1]])

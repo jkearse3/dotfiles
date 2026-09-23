@@ -61,7 +61,7 @@ def table(value: object) -> dict[str, object]:
 def closed_keys(raw: Mapping[str, object], allowed: set[str]) -> None:
     unknown = sorted(set(raw) - allowed)
     require(
-        not unknown,
+        len(unknown) == 0,
         "configuration",
         "Unknown configuration key: " + ", ".join(unknown),
     )
@@ -77,7 +77,7 @@ def text(value: object, *, bounded: bool = False) -> str:
         require(
             len(value) <= 500
             and value == value.strip()
-            and not re.search(r"[\x00-\x1f\x7f]", value),
+            and re.search(r"[\x00-\x1f\x7f]", value) is None,
             "configuration",
             "Expected trimmed single-line text up to 500 characters",
         )
@@ -95,7 +95,7 @@ def pi_caller_value(environment: Mapping[str, str], key: str) -> str:
     require(
         len(value) <= 500
         and value == value.strip()
-        and not re.search(r"[\x00-\x1f\x7f]", value)
+        and re.search(r"[\x00-\x1f\x7f]", value) is None
         and not value.startswith("-"),
         "caller_context",
         f"Calling Pi configuration has invalid {key}",
@@ -180,7 +180,8 @@ def parse_config(raw: Mapping[str, object]) -> Config:
 def load_config(path: Path | None = None) -> Config:
     path = (
         path
-        or xdg_root("XDG_CONFIG_HOME", Path.home() / ".config")
+        if path is not None
+        else xdg_root("XDG_CONFIG_HOME", Path.home() / ".config")
         / "pi-shepherd/config.toml"
     )
     try:

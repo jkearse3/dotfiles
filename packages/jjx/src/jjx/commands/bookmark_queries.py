@@ -31,7 +31,7 @@ def nearest(revset: str) -> list[str]:
             line, error_type=BookmarkQueryError, context="bookmark name"
         )
         for line in output.splitlines()
-        if line
+        if line != ""
     ]
 
 
@@ -45,7 +45,7 @@ def current() -> str | None:
         if len(bookmarks) > 1:
             joined = "\n".join(bookmarks)
             raise BookmarkQueryError(f"multiple {direction} bookmarks found:\n{joined}")
-        if bookmarks:
+        if len(bookmarks) != 0:
             return bookmarks[0]
     return None
 
@@ -53,7 +53,7 @@ def current() -> str | None:
 def default() -> str:
     """Return the unique bookmark selected by trunk()."""
     bookmarks = nearest("trunk()")
-    if not bookmarks:
+    if len(bookmarks) == 0:
         raise BookmarkQueryError("no trunk bookmark found")
     if len(bookmarks) > 1:
         raise BookmarkQueryError(
@@ -75,11 +75,11 @@ def stacked() -> list[str]:
 def previous() -> str | None:
     """Return the sole bookmark at the preceding position in the current stack."""
     entries = _stack_entries()
-    if not entries:
+    if len(entries) == 0:
         return None
 
     selected = entries[1] if len(entries) > 1 else entries[0]
-    if not selected:
+    if len(selected) == 0:
         return None
     if len(selected) > 1:
         raise BookmarkQueryError("multiple bookmarks found:\n" + "\n".join(selected))
@@ -132,10 +132,10 @@ def _stack_entries() -> list[BookmarkStackEntry]:
                 name, error_type=BookmarkQueryError, context="bookmark name"
             )
             for name in line.split("\t")
-            if name
+            if name != ""
         )
         for line in output.splitlines()
-        if line
+        if line != ""
     ]
     if not any(trunk in entry for entry in entries):
         entries.append((trunk,))
@@ -180,6 +180,6 @@ def _emit_query(query: Callable[[], QueryResult]) -> int:
 
     if isinstance(result, str):
         print(result)
-    elif result:
+    elif result is not None and len(result) != 0:
         print("\n".join(result))
     return 0

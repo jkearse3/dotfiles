@@ -1,6 +1,4 @@
 #!/usr/bin/env python3
-# pyright: reportImplicitRelativeImport=false, reportPrivateUsage=false
-# pyright: reportUninitializedInstanceVariable=false
 
 from __future__ import annotations
 
@@ -51,7 +49,7 @@ class RepositoryFixture(unittest.TestCase):
                 "XDG_STATE_HOME": str(home / ".state"),
             },
         )
-        self.enterContext(environment)
+        _ = self.enterContext(environment)
         self.primary = self.root / "primary"
         self.primary.mkdir()
         _ = run("git", "init", str(self.primary))

@@ -34,7 +34,7 @@ def check_ancestors(path: Path) -> None:
         require(
             stat.S_ISDIR(metadata.st_mode)
             and metadata.st_uid in (0, os.geteuid())
-            and (not metadata.st_mode & 0o022 or sticky_system),
+            and (metadata.st_mode & 0o022 == 0 or sticky_system),
             "unsafe_path",
             "Unsafe private-state ancestor",
         )
@@ -49,7 +49,7 @@ def check_path(path: Path, *, directory: bool = False) -> None:
     require(
         correct_type
         and metadata.st_uid == os.geteuid()
-        and not metadata.st_mode & 0o077
+        and metadata.st_mode & 0o077 == 0
         and (directory or metadata.st_nlink == 1),
         "unsafe_path",
         "Unsafe private-state path",
@@ -72,7 +72,7 @@ def private_file(path: Path) -> int:
         require(
             stat.S_ISREG(metadata.st_mode)
             and metadata.st_uid == os.geteuid()
-            and not metadata.st_mode & 0o077
+            and metadata.st_mode & 0o077 == 0
             and metadata.st_nlink == 1,
             "unsafe_path",
             "Unsafe private-state file",

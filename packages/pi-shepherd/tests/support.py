@@ -1,8 +1,5 @@
 """Disposable domain fake: never discovers the user's environment or Herdr server."""
 
-# unittest initializes fixture attributes in setUp, not __init__.
-# pyright: reportUninitializedInstanceVariable=false
-
 import tempfile
 import unittest
 from collections.abc import Callable, Sequence
@@ -140,7 +137,7 @@ class FakeHerdr(Herdr):
     @override
     def prompt(self, pane: Pane, text: str) -> None:
         self.effect("prompt")
-        if self.after_prompt:
+        if self.after_prompt is not None:
             self.after_prompt(text)
 
     @override
@@ -188,7 +185,10 @@ class FakeHerdr(Herdr):
 
     def set_status(self, status: str) -> None:
         self.agents = [replace(p, status=status) for p in self.agents]
-        self.panes = [replace(p, status=status) if p.kind else p for p in self.panes]
+        self.panes = [
+            replace(p, status=status) if p.kind is not None and p.kind != "" else p
+            for p in self.panes
+        ]
 
 
 class TeamCase(unittest.TestCase):
