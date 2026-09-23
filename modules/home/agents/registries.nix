@@ -70,6 +70,7 @@ in
     sharedRuleOrder = lib.mkOption {
       type = lib.types.listOf lib.types.str;
       default = [
+        "shared/shell-environment"
         "shared/communication"
         "shared/reasoning"
         "shared/delegation"
