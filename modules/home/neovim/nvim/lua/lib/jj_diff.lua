@@ -2,6 +2,7 @@
 --- Query callers must supply a read-only runner; this module owns no jobs, buffers, or UI.
 ---@class lib.jj_diff
 local M = {}
+local jj_id = require("lib.jj_id")
 
 ---@alias lib.jj_diff.Runner fun(args: string[], cwd?: string): string?, string?
 
@@ -281,7 +282,7 @@ function M.revision_comparison(repo, revision)
 	return {
 		repo = repo,
 		target = revision.commit_id,
-		title = "jj revision " .. revision.change_id:sub(1, 12),
+		title = "jj revision " .. jj_id.short(revision.change_id),
 		description = revision.description,
 		source = { kind = "revision", name = revision.change_id },
 	}

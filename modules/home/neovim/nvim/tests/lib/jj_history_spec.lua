@@ -107,7 +107,7 @@ describe("read-only JJ history", function()
 			history.pick_stack()
 			local selected
 			for _, entry in ipairs(entries) do
-				if entry:find(first_commit:sub(1, 12), 1, true) then
+				if entry:find(first_commit:sub(1, 8), 1, true) then
 					selected = entry
 				end
 			end
@@ -242,7 +242,7 @@ describe("read-only JJ history", function()
 			"1",
 			"--no-graph",
 			"-T",
-			'predecessors.map(|p| p.commit_id().short()).join(", ")'
+			'predecessors.map(|p| format_short_commit_id(p.commit_id())).join(", ")'
 		)
 		assert.matches("Earlier draft(s): " .. predecessor, draft, 1, true)
 		options.actions()["ctrl-d"]({ entries[1] })
@@ -261,14 +261,14 @@ describe("read-only JJ history", function()
 		function()
 			history.pick_stack()
 			for _, entry in ipairs(entries) do
-				if entry:find(first_commit:sub(1, 12), 1, true) then
+				if entry:find(first_commit:sub(1, 8), 1, true) then
 					options.actions()["ctrl-e"]({ entry })
 					break
 				end
 			end
 			assert.are.equal("Previous drafts> ", options.prompt)
 			assert.matches(first_change, options.fzf_opts["--header"], 1, true)
-			assert.matches(first_commit:sub(1, 12), entries[1], 1, true)
+			assert.matches(first_commit:sub(1, 8), entries[1], 1, true)
 		end
 	)
 
@@ -305,7 +305,7 @@ describe("read-only JJ history", function()
 			end))
 			assert.matches("JJ file ", options.prompt, 1, true)
 			assert.are.equal(1, #entries)
-			assert.matches(target:sub(1, 12), entries[1], 1, true)
+			assert.matches(target:sub(1, 8), entries[1], 1, true)
 			options.actions().enter({ entries[1] })
 			wait_overview()
 			assert.matches(path, vim.api.nvim_get_current_line(), 1, true)
@@ -315,7 +315,7 @@ describe("read-only JJ history", function()
 			assert.is_false(vim.bo.modifiable)
 			options.actions()["ctrl-e"]({ entries[1] })
 			assert.are.equal("Previous drafts> ", options.prompt)
-			assert.matches(target:sub(1, 12), entries[1], 1, true)
+			assert.matches(target:sub(1, 8), entries[1], 1, true)
 			options.actions()["ctrl-d"]({ entries[1] })
 			wait_overview()
 			assert.matches("Pinned draft against parents", review_text(), 1, true)

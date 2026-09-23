@@ -1,4 +1,5 @@
 local M = {}
+local jj_id = require("lib.jj_id")
 
 ---@class lib.jj_history.Revision
 ---@field commit_id string Exact version, including hidden evolutionary predecessors.
@@ -111,7 +112,7 @@ local draft_template = table.concat({
 	' ++ "\\nRecorded: " ++ commit.committer().timestamp()',
 	' ++ "\\n" ++ if(predecessors.len() == 0, "No earlier recorded draft to compare.\\n",',
 	' "Comparison: earlier draft(s) -> selected draft\\nEarlier draft(s): "',
-	' ++ predecessors.map(|p| p.commit_id().short()).join(", ")',
+	' ++ predecessors.map(|p| format_short_commit_id(p.commit_id())).join(", ")',
 	' ++ "\\nRebase-only parent changes are excluded.\\n")',
 	' ++ "\\n" ++ commit.description() ++ "\\n"',
 })
@@ -212,8 +213,8 @@ function M.pick(repo, evolution, path, file_history)
 		local entry = string.format(
 			"%03d\t%s  %s  %s  %s",
 			index,
-			revision.change_id:sub(1, 12),
-			revision.commit_id:sub(1, 12),
+			jj_id.short(revision.change_id),
+			jj_id.short(revision.commit_id),
 			display(table.concat(revision.bookmarks, " ")),
 			display(revision.description)
 		)
@@ -223,7 +224,7 @@ function M.pick(repo, evolution, path, file_history)
 				index,
 				index == 1 and "[selected]" or "[earlier]",
 				display(revision.recorded_at or "time unavailable"),
-				revision.commit_id:sub(1, 12),
+				jj_id.short(revision.commit_id),
 				display(revision.description)
 			)
 		end

@@ -1,5 +1,6 @@
 --- Traces recorded file identity through conservative, metadata-only rename transitions.
 local M = {}
+local jj_id = require("lib.jj_id")
 
 ---@class lib.jj_file_history.Result
 ---@field revisions lib.jj_history.Revision[] Newest first; each carries its historical path.
@@ -142,7 +143,7 @@ function M.trace(path, run)
 			end
 			if #revision.parents ~= 1 then
 				result.boundary = "Partial history: stopped at merge "
-					.. revision.commit_id:sub(1, 12)
+					.. jj_id.short(revision.commit_id)
 					.. "; parent lineage is not inferred"
 				return result
 			end
@@ -162,13 +163,13 @@ function M.trace(path, run)
 				result.revisions[#result.revisions + 1] = revision
 				if selected.status == "added" then
 					result.boundary = "Added at "
-						.. revision.commit_id:sub(1, 12)
+						.. jj_id.short(revision.commit_id)
 						.. "; older identity (including undetected renames/copies) is not inferred"
 					return result
 				elseif selected.status == "renamed" then
 					if candidates ~= 1 then
 						result.boundary = "Partial history: competing rename sources at "
-							.. revision.commit_id:sub(1, 12)
+							.. jj_id.short(revision.commit_id)
 							.. "; older filename is not inferred"
 						return result
 					end
@@ -178,7 +179,7 @@ function M.trace(path, run)
 					result.boundary = "Partial history: stopped at "
 						.. selected.status
 						.. " transition "
-						.. revision.commit_id:sub(1, 12)
+						.. jj_id.short(revision.commit_id)
 					return result
 				end
 			end

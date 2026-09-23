@@ -2,6 +2,7 @@ local M = {}
 local process = require("lib.jj_review_process")
 local page = require("lib.jj_review_page")
 local render = require("lib.jj_diff_render")
+local jj_id = require("lib.jj_id")
 local sources = require("lib.jj_review_source")
 local group = vim.api.nvim_create_augroup("JjLazyReview", { clear = true })
 
@@ -128,11 +129,11 @@ local function redraw(session)
 	append({
 		kind = "metadata",
 		text = "JJ "
-			.. session.revision.change_id:sub(1, 12)
+			.. jj_id.short(session.revision.change_id)
 			.. " / "
-			.. session.revision.commit_id:sub(1, 12)
+			.. jj_id.short(session.revision.commit_id)
 			.. " vs "
-			.. (session.comparison.from and session.comparison.from:sub(1, 12) or "parents")
+			.. (session.comparison.from and jj_id.short(session.comparison.from) or "parents")
 			.. " · "
 			.. text(session.comparison.title)
 			.. (session.comparison.source.kind == "fixed" and " · pinned" or " · latest"),

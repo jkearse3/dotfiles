@@ -114,7 +114,7 @@ describe("lazy JJ review", function()
 		finish(1, files({ "a.lua", "b.lua" }))
 		assert.are.equal(4, row("M a.lua"))
 		assert.are.equal(row("M a.lua"), vim.api.nvim_win_get_cursor(0)[1])
-		assert.matches("JJ kkkkkkkkkkkk / aaaaaaaaaaaa vs parents", contents(), 1, true)
+		assert.matches("JJ kkkkkkkk / aaaaaaaa vs parents", contents(), 1, true)
 		assert.matches("· latest", contents(), 1, true)
 
 		select_file("b.lua")
