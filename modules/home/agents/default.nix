@@ -19,6 +19,7 @@ in
 {
   imports = [
     ./registries.nix
+    ./shell.nix
     ./claude
     ./codex
     ./opencode

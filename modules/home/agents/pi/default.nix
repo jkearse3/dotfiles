@@ -38,6 +38,9 @@ let
     defaultThinkingLevel = "medium";
     tuiMode = "fullscreen";
     lastChangelogVersion = "999.999.999";
+
+    # Without it pi runs `/bin/bash`, which is bash 3.2 on macOS.
+    shellPath = config.agents.shellPath;
   };
 
   seedFile = pkgs.writeText "pi-settings-seed.json" (builtins.toJSON seedSettings);

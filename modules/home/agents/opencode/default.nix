@@ -61,8 +61,14 @@ let
     buildInputs = [
       pkgs.makeWrapper
     ];
+    # `OPENCODE_CONFIG_CONTENT` layers the `shell` key over the global config,
+    # which stays a static file. Without it OpenCode takes `$SHELL`, and on
+    # macOS replaces fish with `/bin/zsh`.
     postBuild = ''
       wrapProgram $out/bin/opencode \
+        --set OPENCODE_CONFIG_CONTENT ${
+          lib.escapeShellArg (builtins.toJSON { shell = config.agents.shellPath; })
+        } \
         --set OPENCODE_DISABLE_AUTOUPDATE 1 \
         --set OPENCODE_ENABLE_EXA 1 \
         --set OPENCODE_DISABLE_EXTERNAL_SKILLS true \
@@ -91,6 +97,7 @@ in
     ../../nono
     ../../secrets
     ../registries.nix
+    ../shell.nix
   ];
 
   config = {
