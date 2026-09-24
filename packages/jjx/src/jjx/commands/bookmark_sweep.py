@@ -1,4 +1,4 @@
-"""Land a bookmarked linear jj stack into a destination bookmark."""
+"""Move a jj bookmark forward and remove the local bookmarks it passes."""
 
 from __future__ import annotations
 
@@ -13,13 +13,13 @@ from .process import checked_bytes
 from .revsets import bookmark_revset, decode_json_string, exact_string_pattern
 
 
-class LandError(Exception):
-    """A concise, user-facing landing failure."""
+class SweepError(Exception):
+    """A concise, user-facing sweep failure."""
 
 
 def _run(command: Sequence[str], *, cwd: Path | None = None) -> bytes:
     """Run COMMAND and return stdout, raising a user-facing error on failure."""
-    return checked_bytes(command, error_type=LandError, cwd=cwd)
+    return checked_bytes(command, error_type=SweepError, cwd=cwd)
 
 
 def _lines(command: Sequence[str], *, cwd: Path | None = None) -> list[str]:
@@ -44,7 +44,7 @@ def _resolve(revision: str, *, cwd: Path | None = None) -> str:
         cwd=cwd,
     )
     if len(commits) != 1:
-        raise LandError(f"revision must resolve to exactly one commit: {revision}")
+        raise SweepError(f"revision must resolve to exactly one commit: {revision}")
     return commits[0]
 
 
@@ -68,7 +68,7 @@ def _has_revisions(revset: str, *, cwd: Path | None = None) -> bool:
     )
 
 
-def _resolve_bookmark(name: str, role: str, *, cwd: Path | None = None) -> str:
+def _resolve_bookmark(name: str, *, cwd: Path | None = None) -> str:
     """Resolve one exact local bookmark name to its commit ID."""
     bookmarks = _lines(
         [
@@ -83,12 +83,12 @@ def _resolve_bookmark(name: str, role: str, *, cwd: Path | None = None) -> str:
     )
     names = [
         decode_json_string(
-            bookmark, error_type=LandError, context="bookmark name"
+            bookmark, error_type=SweepError, context="bookmark name"
         )
         for bookmark in bookmarks
     ]
     if names.count(name) != 1:
-        raise LandError(f"{role} must be a local bookmark: {name}")
+        raise SweepError(f"not a local bookmark: {name}")
     return _resolve(bookmark_revset(name), cwd=cwd)
 
 
@@ -113,29 +113,41 @@ def _move_bookmark(
     _ = _run(command, cwd=cwd)
 
 
-def land(
-    tip: str,
-    into: str,
+def sweep(
+    bookmark: str,
+    target: str,
     *,
     forget: bool = False,
     dry_run: bool = False,
     cwd: Path | None = None,
 ) -> list[str]:
-    """Land TIP into a bookmark and return the cleaned-up bookmark names."""
-    into_commit = _resolve_bookmark(into, "destination", cwd=cwd)
-    tip_commit = _resolve_bookmark(tip, "tip", cwd=cwd)
-    if into_commit == tip_commit:
-        raise LandError("destination and tip already point to the same revision")
-    if not _has_revisions(f"{into_commit} & ::{tip_commit}", cwd=cwd):
-        raise LandError(f"{tip} is not a descendant of {into}")
+    """Move BOOKMARK forward to TARGET, removing the local bookmarks it passes.
 
-    revisions = f"{into_commit}..{tip_commit}"
-    if _has_revisions(f"({revisions}) ~ first_ancestors({tip_commit})", cwd=cwd):
-        raise LandError("revisions to land do not form a first-parent stack")
+    BOOKMARK must name exactly one local bookmark. TARGET is any revset that
+    resolves to one commit descending from BOOKMARK through a merge-free
+    first-parent chain. Every other local bookmark on `BOOKMARK..TARGET`,
+    including one on TARGET itself, is deleted, or forgotten when FORGET is set.
+
+    Returns the swept bookmark names in stack order, which is empty when the
+    move passes no bookmarks. A dry run returns the same names without changing
+    the repository. Raises SweepError when validation fails, or when cleanup
+    fails after the move, in which case BOOKMARK is restored to its original
+    target when possible.
+    """
+    bookmark_commit = _resolve_bookmark(bookmark, cwd=cwd)
+    target_commit = _resolve(target, cwd=cwd)
+    if bookmark_commit == target_commit:
+        raise SweepError(f"{bookmark} already points to {target}")
+    if not _has_revisions(f"{bookmark_commit} & ::{target_commit}", cwd=cwd):
+        raise SweepError(f"{target} is not a descendant of {bookmark}")
+
+    revisions = f"{bookmark_commit}..{target_commit}"
+    if _has_revisions(f"({revisions}) ~ first_ancestors({target_commit})", cwd=cwd):
+        raise SweepError("revisions to sweep do not form a first-parent stack")
     if _has_revisions(f"({revisions}) & merges()", cwd=cwd):
-        raise LandError("the stack contains a merge revision")
+        raise SweepError("the swept range contains a merge revision")
 
-    bookmarks = _lines(
+    swept = _lines(
         [
             "jj",
             "--no-pager",
@@ -150,18 +162,19 @@ def land(
         ],
         cwd=cwd,
     )
-    bookmarks = [
-        decode_json_string(name, error_type=LandError, context="bookmark name")
-        for name in bookmarks
+    swept = [
+        decode_json_string(name, error_type=SweepError, context="bookmark name")
+        for name in swept
         if name != ""
     ]
-    bookmarks = [name for name in bookmarks if name != into]
-    if len(bookmarks) == 0:
-        raise LandError(f"no bookmarks found between {into} and {tip}")
+    swept = [name for name in swept if name != bookmark]
     if dry_run:
-        return bookmarks
+        return swept
 
-    _move_bookmark(into, tip_commit, cwd=cwd)
+    _move_bookmark(bookmark, target_commit, cwd=cwd)
+    if len(swept) == 0:
+        return swept
+
     action = "forget" if forget else "delete"
     try:
         _ = _run(
@@ -170,47 +183,47 @@ def land(
                 "bookmark",
                 action,
                 "--",
-                *map(exact_string_pattern, bookmarks),
+                *map(exact_string_pattern, swept),
             ],
             cwd=cwd,
         )
-    except LandError as cleanup_error:
+    except SweepError as cleanup_error:
         try:
-            _move_bookmark(into, into_commit, allow_backwards=True, cwd=cwd)
-        except LandError as rollback_error:
-            message = f"bookmark cleanup failed after moving {into}: {cleanup_error}; rollback also failed: {rollback_error}"
-            raise LandError(message) from cleanup_error
-        message = f"bookmark cleanup failed after moving {into}; restored its original target: {cleanup_error}"
-        raise LandError(message) from cleanup_error
-    return bookmarks
+            _move_bookmark(bookmark, bookmark_commit, allow_backwards=True, cwd=cwd)
+        except SweepError as rollback_error:
+            message = f"bookmark cleanup failed after moving {bookmark}: {cleanup_error}; rollback also failed: {rollback_error}"
+            raise SweepError(message) from cleanup_error
+        message = f"bookmark cleanup failed after moving {bookmark}; restored its original target: {cleanup_error}"
+        raise SweepError(message) from cleanup_error
+    return swept
 
 
-def create_parser(prog: str = "jjx bookmark land") -> argparse.ArgumentParser:
+def create_parser(prog: str = "jjx bookmark sweep") -> argparse.ArgumentParser:
     """Create the command-line argument parser."""
     parser = argparse.ArgumentParser(
         prog=prog,
         description=(
-            "Fast-forward a destination bookmark through a bookmarked linear stack and "
-            "remove every local bookmark in the landed range."
+            "Move a bookmark forward to a target revision, deleting the bookmarks "
+            "it passes."
         ),
     )
-    _ = parser.add_argument("tip", metavar="TIP", help="stack-tip bookmark")
+    _ = parser.add_argument("bookmark", metavar="BOOKMARK", help="bookmark to move")
     _ = parser.add_argument(
-        "-d",
-        "--destination",
+        "-t",
+        "--to",
         required=True,
-        metavar="BOOKMARK",
-        help="destination bookmark",
+        metavar="REVSET",
+        help="revision to move the bookmark to",
     )
     _ = parser.add_argument(
         "--forget",
         action="store_true",
-        help="forget landed bookmarks instead of recording remote deletions",
+        help="forget swept bookmarks instead of recording remote deletions",
     )
     _ = parser.add_argument(
         "--dry-run",
         action="store_true",
-        help="show the landing plan without changing it",
+        help="show the sweep plan without changing it",
     )
     return parser
 
@@ -218,17 +231,17 @@ def create_parser(prog: str = "jjx bookmark land") -> argparse.ArgumentParser:
 def main(
     arguments: Sequence[str] | None = None,
     *,
-    prog: str = "jjx bookmark land",
+    prog: str = "jjx bookmark sweep",
 ) -> int:
     """Run the command-line interface and return its exit status."""
     args = create_parser(prog).parse_args(arguments)
     try:
-        into = cast(str, args.destination)
-        tip = cast(str, args.tip)
+        bookmark = cast(str, args.bookmark)
+        target = cast(str, args.to)
         forget = cast(bool, args.forget)
         dry_run = cast(bool, args.dry_run)
-        bookmarks = land(tip, into, forget=forget, dry_run=dry_run)
-    except LandError as error:
+        swept = sweep(bookmark, target, forget=forget, dry_run=dry_run)
+    except SweepError as error:
         print(f"error: {error}", file=sys.stderr)
         return 1
 
@@ -241,8 +254,9 @@ def main(
         if forget
         else "Deleted"
     )
-    print(f"{'Would move' if dry_run else 'Moved'} {into} to {tip}")
-    print(f"{action} bookmarks: {', '.join(bookmarks)}")
+    print(f"{'Would move' if dry_run else 'Moved'} {bookmark} to {target}")
+    if len(swept) != 0:
+        print(f"{action} bookmarks: {', '.join(swept)}")
     return 0
 
 

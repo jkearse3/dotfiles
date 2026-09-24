@@ -67,9 +67,9 @@ function __jjx_ensure_needs_path
     return 0
 end
 
-function __jjx_land_needs_tip
+function __jjx_sweep_needs_bookmark
     set -l tokens (commandline -opc)
-    argparse --ignore-unknown 'd/destination=' forget dry-run -- $tokens[4..] 2>/dev/null
+    argparse --ignore-unknown 't/to=' forget dry-run -- $tokens[4..] 2>/dev/null
     and test (count $argv) -eq 0
 end
 
@@ -89,20 +89,20 @@ complete -c jjx -n __jjx_needs_group -a worktree -d 'Commands for Git worktrees'
 complete -c jjx -n '__jjx_needs_subcommand bookmark' -a backup -d 'Preserve remote bookmark history locally'
 complete -c jjx -n '__jjx_needs_subcommand bookmark' -a current -d 'Print the nearest current bookmark'
 complete -c jjx -n '__jjx_needs_subcommand bookmark' -a default -d 'Print the trunk bookmark'
-complete -c jjx -n '__jjx_needs_subcommand bookmark' -a land -d 'Land a linear bookmark stack'
 complete -c jjx -n '__jjx_needs_subcommand bookmark' -a nearest -d 'Query nearest matching bookmarks'
 complete -c jjx -n '__jjx_needs_subcommand bookmark' -a previous -d 'Print the previous stacked bookmark'
 complete -c jjx -n '__jjx_needs_subcommand bookmark' -a push -d 'Interactively push bookmarks'
 complete -c jjx -n '__jjx_needs_subcommand bookmark' -a rebase -d 'Interactively rebase bookmarks'
 complete -c jjx -n '__jjx_needs_subcommand bookmark' -a select -d 'Interactively select a bookmark'
 complete -c jjx -n '__jjx_needs_subcommand bookmark' -a stacked -d 'List bookmarks from the current change to trunk'
+complete -c jjx -n '__jjx_needs_subcommand bookmark' -a sweep -d 'Move a bookmark forward, deleting bookmarks it passes'
 complete -c jjx -n '__jjx_needs_subcommand change' -a select -d 'Interactively select a change'
 complete -c jjx -n '__jjx_needs_subcommand description' -a format -d 'Format a revision description'
 complete -c jjx -n '__jjx_needs_subcommand worktree' -a add -d 'Create a detached Git worktree with independent jj state'
 
 
 # Every leaf accepts help; leaf-specific declarations below add its full argument surface.
-complete -c jjx -n '__jjx_using bookmark backup; or __jjx_using bookmark current; or __jjx_using bookmark default; or __jjx_using bookmark land; or __jjx_using bookmark nearest; or __jjx_using bookmark previous; or __jjx_using bookmark push; or __jjx_using bookmark rebase; or __jjx_using bookmark select; or __jjx_using bookmark stacked; or __jjx_using change select; or __jjx_using description format; or __jjx_using ensure; or __jjx_using worktree add' -s h -l help -d 'Show help'
+complete -c jjx -n '__jjx_using bookmark backup; or __jjx_using bookmark current; or __jjx_using bookmark default; or __jjx_using bookmark nearest; or __jjx_using bookmark previous; or __jjx_using bookmark push; or __jjx_using bookmark rebase; or __jjx_using bookmark select; or __jjx_using bookmark stacked; or __jjx_using bookmark sweep; or __jjx_using change select; or __jjx_using description format; or __jjx_using ensure; or __jjx_using worktree add' -s h -l help -d 'Show help'
 
 complete -c jjx -n '__jjx_using bookmark nearest; and __jjx_needs_third_level_argument' -f -d 'Revset to search' -a '(__jjx_revisions)'
 complete -c jjx -n '__jjx_using bookmark rebase; and __jjx_needs_third_level_argument' -f -d 'Destination revset' -a '(__jjx_revisions)'
@@ -129,10 +129,10 @@ complete -c jjx -n '__jjx_using bookmark push' -l config-file -r -F -d 'Addition
 complete -c jjx -n '__jjx_using bookmark backup' -l remote -r -f -d 'Source remote' -a '(__jjx_remotes)'
 complete -c jjx -n '__jjx_using bookmark backup; and __jjx_backup_needs_bookmark' -f -d 'Bookmark to back up' -a '(__jjx_all_bookmarks)'
 
-complete -c jjx -n '__jjx_using bookmark land' -s d -l destination -r -f -d 'Destination bookmark' -a '(__jjx_bookmarks)'
-complete -c jjx -n '__jjx_using bookmark land' -l forget -d 'Forget landed bookmarks'
-complete -c jjx -n '__jjx_using bookmark land' -l dry-run -d 'Show the landing plan'
-complete -c jjx -n '__jjx_using bookmark land; and __jjx_land_needs_tip' -a '(__jjx_bookmarks)' -d 'Stack-tip bookmark'
+complete -c jjx -n '__jjx_using bookmark sweep' -s t -l to -r -f -d 'Target revision' -a '(__jjx_revisions)'
+complete -c jjx -n '__jjx_using bookmark sweep' -l forget -d 'Forget swept bookmarks'
+complete -c jjx -n '__jjx_using bookmark sweep' -l dry-run -d 'Show the sweep plan'
+complete -c jjx -n '__jjx_using bookmark sweep; and __jjx_sweep_needs_bookmark' -a '(__jjx_bookmarks)' -d 'Bookmark to move'
 
 complete -c jjx -n '__jjx_using description format' -s r -l revision -r -f -d 'Target revision' -a '(__jjx_revisions)'
 complete -c jjx -n '__jjx_using description format' -l dry-run -d 'Show the diff without writing'

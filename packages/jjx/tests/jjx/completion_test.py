@@ -73,28 +73,27 @@ class CompletionTests(unittest.TestCase):
                 "backup",
                 "current",
                 "default",
-                "land",
                 "nearest",
                 "previous",
                 "push",
                 "rebase",
                 "select",
                 "stacked",
+                "sweep",
             },
             candidates,
         )
 
     def test_leaf_arguments_do_not_repeat_command_names(self) -> None:
-        candidates = fish_candidates("jjx bookmark land ")
+        candidates = fish_candidates("jjx bookmark sweep ")
 
-        self.assertFalse({"backup", "land", "stacked"} & candidates)
+        self.assertFalse({"backup", "stacked", "sweep"} & candidates)
 
     def test_every_fish_leaf_declares_its_options(self) -> None:
         expected_options = {
             "bookmark backup": {"--help", "--remote"},
             "bookmark current": {"--help"},
             "bookmark default": {"--help"},
-            "bookmark land": {"--destination", "--dry-run", "--forget", "--help"},
             "bookmark nearest": {"--help"},
             "bookmark previous": {"--help"},
             "bookmark push": {
@@ -107,6 +106,7 @@ class CompletionTests(unittest.TestCase):
             "bookmark rebase": {"--help"},
             "bookmark select": {"--help"},
             "bookmark stacked": {"--help"},
+            "bookmark sweep": {"--dry-run", "--forget", "--help", "--to"},
             "change select": {"--help"},
             "description format": {
                 "--body-width", "--dry-run", "--help", "--revision", "--subject-width",
@@ -176,7 +176,7 @@ class CompletionTests(unittest.TestCase):
         script = (
             "function _arguments { print -rl -- $@; }; "
             "function _describe {}; function _values {}; "
-            "typeset -a words; words=(jjx bookmark land --); CURRENT=4; source $1"
+            "typeset -a words; words=(jjx bookmark sweep --); CURRENT=4; source $1"
         )
         result = subprocess.run(
             [
@@ -193,13 +193,13 @@ class CompletionTests(unittest.TestCase):
         )
 
         lines = result.stdout.splitlines()
-        self.assertIn("--forget[forget landed bookmarks]", lines)
-        self.assertIn("--dry-run[show the landing plan]", lines)
-        self.assertTrue(any("--destination" in line for line in lines))
+        self.assertIn("--forget[forget swept bookmarks]", lines)
+        self.assertIn("--dry-run[show the sweep plan]", lines)
+        self.assertTrue(any("--to" in line for line in lines))
 
     def test_leaf_completes_options(self) -> None:
-        candidates = fish_candidates("jjx bookmark land --")
+        candidates = fish_candidates("jjx bookmark sweep --")
 
         self.assertTrue(
-            {"--destination", "--dry-run", "--forget", "--help"} <= candidates
+            {"--dry-run", "--forget", "--help", "--to"} <= candidates
         )
