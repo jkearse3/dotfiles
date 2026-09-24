@@ -12,17 +12,27 @@ Manager rebuild.
 
 ## Transcript stamps
 
-The `transcript-stamps` extension adds dim, right-aligned rows with a one-column
-right margin after user messages and at the close of assistant turns (after any
-tool rows). Its fixed defaults are local 24-hour time with seconds and an
-explicit UTC offset, a date on the first stamp and at local day changes,
-first-content latency, assistant response and complete-turn duration, aggregate
-tool wall time/count/errors, and reported output-token throughput. A separate
-`agent … · N turns` row appears when Pi settles, measuring the full wall-clock
-busy period from the first agent start through retries, continuations, steers,
-and any queued follow-ups before settling. Aborted responses mark it
-interrupted; it is not a per-prompt attribution. Timing values are local Pi
-observations rather than provider telemetry.
+The `transcript-stamps` extension shows a dim, left-aligned local time after
+each user message and a single elapsed-time summary when the agent settles. Both
+rows keep a one-column right margin. Newly recorded stamps show the date and UTC
+offset on the first visible stamp and on local day changes; routine rows show
+only the time. The summary includes the settled clock time, agent wall time,
+turn count, and an interruption marker when applicable. Steers and queued
+follow-ups before settlement are part of the same busy period, not attributed to
+one prompt.
+
+```text
+2026-01-02 · 14:00:01 UTC-05:00
+14:02:15 · agent 2m 14s · 5 turns
+```
+
+Assistant turn timing sidecars remain persisted but hidden by default, including
+in older sessions. `/timings` toggles their original transcript rows on or off
+for the current Pi process. These rows show first-content latency, response and
+turn time, tool activity, and token throughput when observed. The command does
+not add a report or change model context. Pi may not repaint off-screen terminal
+scrollback immediately; newly rendered transcript rows follow the current
+toggle.
 
 Stamp entries persist in the session but remain outside model context. The
 extension performs no settings or network I/O, starts no timers or background

@@ -3,7 +3,7 @@ import test from "node:test";
 
 import {
   createTranscriptStamp,
-  findLatestTranscriptStampTime,
+  findLatestVisibleTranscriptStampTime,
   findLatestUnstampedTranscriptMessage,
   formatTranscriptStamp,
   isTranscriptStampData,
@@ -55,7 +55,7 @@ test("first stamp includes local date and subsequent same-day stamp stays compac
   );
   assert.equal(
     formatTranscriptStamp(createTranscriptStamp("user", second, first)),
-    `14:04:05 ${localUtcOffset(second)}`,
+    `14:04:05`,
   );
 });
 
@@ -81,7 +81,7 @@ test("assistant duration favors compact human-scale precision", () => {
         createdAt + 325,
       ),
     ),
-    `14:03:04 ${localUtcOffset(createdAt)} · response 325ms`,
+    `14:03:04 · response 325ms`,
   );
   assert.equal(
     formatTranscriptStamp(
@@ -92,7 +92,7 @@ test("assistant duration favors compact human-scale precision", () => {
         createdAt + 3_200,
       ),
     ),
-    `14:03:04 ${localUtcOffset(createdAt)} · response 3.2s`,
+    `14:03:04 · response 3.2s`,
   );
   assert.equal(
     formatTranscriptStamp(
@@ -103,7 +103,7 @@ test("assistant duration favors compact human-scale precision", () => {
         createdAt + 63_400,
       ),
     ),
-    `14:03:04 ${localUtcOffset(createdAt)} · response 1m 03s`,
+    `14:03:04 · response 1m 03s`,
   );
 });
 
@@ -127,7 +127,7 @@ test("assistant stamp distinguishes response and complete turn duration", () => 
   assert.equal(stamp.version, 3);
   assert.equal(
     formatTranscriptStamp(stamp),
-    `14:03:04 ${localUtcOffset(createdAt)} · response 3.2s · turn 8.4s`,
+    `14:03:04 · response 3.2s · turn 8.4s`,
   );
 });
 
@@ -159,7 +159,7 @@ test("assistant stamp summarizes latency, tools, and token throughput", () => {
 
   assert.equal(
     formatTranscriptStamp(stamp),
-    `14:03:04 ${localUtcOffset(createdAt)} · first 1.5s · response 3.5s · turn 9.0s · tools 4.0s×3/1err · 50 tok/s`,
+    `14:03:04 · first 1.5s · response 3.5s · turn 9.0s · tools 4.0s×3/1err · 50 tok/s`,
   );
 });
 
@@ -248,8 +248,37 @@ test("latest stamp lookup ignores unrelated and malformed session entries", () =
     },
   ];
 
-  assert.equal(findLatestTranscriptStampTime(entries), newer);
-  assert.equal(findLatestTranscriptStampTime(entries.slice(0, 1)), undefined);
+  assert.equal(findLatestVisibleTranscriptStampTime(entries), older);
+  assert.equal(
+    findLatestVisibleTranscriptStampTime(entries.slice(0, 1)),
+    undefined,
+  );
+});
+
+test("hidden assistant stamps do not consume visible day-change context", () => {
+  const previousUser = localTime(2, 23, 59, 0);
+  const nextDayAssistant = localTime(3, 0, 0, 5);
+  const nextUser = localTime(3, 1, 0, 0);
+  const entries = [
+    {
+      type: "custom",
+      customType: TRANSCRIPT_STAMP_ENTRY_TYPE,
+      data: createTranscriptStamp("user", previousUser),
+    },
+    {
+      type: "custom",
+      customType: TRANSCRIPT_STAMP_ENTRY_TYPE,
+      data: createTranscriptStamp("assistant", nextDayAssistant, previousUser),
+    },
+  ];
+  const previousVisibleAt = findLatestVisibleTranscriptStampTime(entries);
+  assert.equal(previousVisibleAt, previousUser);
+  assert.equal(
+    formatTranscriptStamp(
+      createTranscriptStamp("user", nextUser, previousVisibleAt),
+    ),
+    `2026-01-03 · 01:00:00 ${localUtcOffset(nextUser)}`,
+  );
 });
 
 test("unstamped terminal message is detected for clone reconciliation", () => {

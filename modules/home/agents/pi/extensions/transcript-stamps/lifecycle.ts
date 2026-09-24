@@ -6,7 +6,7 @@ import {
 } from "./agent-elapsed.ts";
 import {
   createTranscriptStamp,
-  findLatestTranscriptStampTime,
+  findLatestVisibleTranscriptStampTime,
   findLatestUnstampedTranscriptMessage,
   isTranscriptStampData,
   TRANSCRIPT_STAMP_ENTRY_TYPE,
@@ -45,7 +45,7 @@ export function registerTranscriptStampLifecycle(pi: ExtensionAPI): void {
     if (!tuiSessionActive || !isTranscriptStampData(stamp)) return;
 
     pi.appendEntry<TranscriptStampData>(TRANSCRIPT_STAMP_ENTRY_TYPE, stamp);
-    previousCreatedAt = stamp.createdAt;
+    if (stamp.role === "user") previousCreatedAt = stamp.createdAt;
   };
 
   const flushPendingUserStamps = (): void => {
@@ -84,7 +84,7 @@ export function registerTranscriptStampLifecycle(pi: ExtensionAPI): void {
     pendingUserCreatedAt = [];
     resetAgentElapsed();
     resetTurnPerformance();
-    previousCreatedAt = findLatestTranscriptStampTime(entries);
+    previousCreatedAt = findLatestVisibleTranscriptStampTime(entries);
 
     const unstampedMessage = findLatestUnstampedTranscriptMessage(entries);
     if (!unstampedMessage) return;
@@ -279,11 +279,14 @@ export function registerTranscriptStampLifecycle(pi: ExtensionAPI): void {
     if (!tuiSessionActive || startedAt === undefined) return;
 
     const data = {
-      version: 1 as const,
+      version: 2 as const,
       startedAt,
       settledAt: Date.now(),
       turnCount,
       interrupted,
+      ...(previousCreatedAt === undefined
+        ? {}
+        : { previousVisibleAt: previousCreatedAt }),
     };
     if (isAgentElapsedData(data)) {
       pi.appendEntry(AGENT_ELAPSED_ENTRY_TYPE, data);

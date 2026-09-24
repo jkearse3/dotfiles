@@ -10,10 +10,21 @@ export interface TranscriptStampTextLayout {
   measure(text: string): number;
 }
 
+/** Reuses the same inline stamp while its visibility changes at render time. */
+export function createToggleableTranscriptStamp(
+  stamp: TranscriptStampComponent,
+  isVisible: () => boolean,
+): TranscriptStampComponent {
+  return {
+    render: (width) => (isVisible() ? stamp.render(width) : []),
+    invalidate: () => stamp.invalidate(),
+  };
+}
+
 const TRANSCRIPT_STAMP_RIGHT_PADDING = 1;
 
-/** Creates a right-aligned stamp that reserves the final terminal column. */
-export function createRightAlignedTranscriptStamp(
+/** Creates a left-aligned stamp that reserves the final terminal column. */
+export function createLeftAlignedTranscriptStamp(
   label: string,
   style: (text: string) => string,
   textLayout: Readonly<TranscriptStampTextLayout>,
@@ -26,14 +37,13 @@ export function createRightAlignedTranscriptStamp(
       if (width < 1) return [];
       if (cachedWidth === width && cachedOutput) return cachedOutput;
 
-      const rightPadding = " ".repeat(TRANSCRIPT_STAMP_RIGHT_PADDING);
       const contentWidth = Math.max(0, width - TRANSCRIPT_STAMP_RIGHT_PADDING);
       const styledLabel = textLayout.truncate(style(label), contentWidth);
-      const leftPadding = " ".repeat(
-        Math.max(0, contentWidth - textLayout.measure(styledLabel)),
+      const trailingPadding = " ".repeat(
+        Math.max(0, width - textLayout.measure(styledLabel)),
       );
       cachedWidth = width;
-      cachedOutput = [`${leftPadding}${styledLabel}${rightPadding}`];
+      cachedOutput = [`${styledLabel}${trailingPadding}`];
       return cachedOutput;
     },
     invalidate() {
