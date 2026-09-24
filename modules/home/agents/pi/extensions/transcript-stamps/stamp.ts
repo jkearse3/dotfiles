@@ -218,40 +218,12 @@ export function isTranscriptStampData(
   return hasOnlyKeys(value, TRANSCRIPT_STAMP_V3_KEYS);
 }
 
-/** Formats a stamp using the extension's fixed local-time presentation. */
+/** Formats a stored stamp with complete diagnostics for the /timings command. */
 export function formatTranscriptStamp(
   stamp: Readonly<TranscriptStampData>,
 ): string | undefined {
   if (!isTranscriptStampData(stamp)) return undefined;
-
-  const created = new Date(stamp.createdAt);
-  const hour =
-    TRANSCRIPT_STAMP_DEFAULTS.hourCycle === "24h"
-      ? created.getHours()
-      : created.getHours() % 12 || 12;
-  const timeParts = [
-    String(hour).padStart(2, "0"),
-    String(created.getMinutes()).padStart(2, "0"),
-    ...(TRANSCRIPT_STAMP_DEFAULTS.showSeconds
-      ? [String(created.getSeconds()).padStart(2, "0")]
-      : []),
-  ];
-  const period =
-    TRANSCRIPT_STAMP_DEFAULTS.hourCycle === "12h"
-      ? created.getHours() < 12
-        ? " AM"
-        : " PM"
-      : "";
-  const timeZone = TRANSCRIPT_STAMP_DEFAULTS.showTimeZone
-    ? ` ${formatLocalUtcOffset(created)}`
-    : "";
-  const time = `${timeParts.join(":")}${period}${timeZone}`;
-  const date = [
-    created.getFullYear(),
-    String(created.getMonth() + 1).padStart(2, "0"),
-    String(created.getDate()).padStart(2, "0"),
-  ].join("-");
-  const label = shouldShowStampDate(stamp) ? `${date} · ${time}` : time;
+  const label = formatTranscriptTime(stamp.createdAt, stamp.previousCreatedAt);
 
   if (stamp.role !== "assistant") return label;
 
@@ -304,6 +276,45 @@ export function formatTranscriptStamp(
   return metrics.length > 0 ? `${label} · ${metrics.join(" · ")}` : label;
 }
 
+/** Formats a local clock, showing date and UTC offset on the first visible day. */
+export function formatTranscriptTime(
+  createdAt: number,
+  previousCreatedAt?: number,
+): string {
+  const created = new Date(createdAt);
+  const hour =
+    TRANSCRIPT_STAMP_DEFAULTS.hourCycle === "24h"
+      ? created.getHours()
+      : created.getHours() % 12 || 12;
+  const timeParts = [
+    String(hour).padStart(2, "0"),
+    String(created.getMinutes()).padStart(2, "0"),
+    ...(TRANSCRIPT_STAMP_DEFAULTS.showSeconds
+      ? [String(created.getSeconds()).padStart(2, "0")]
+      : []),
+  ];
+  const period =
+    TRANSCRIPT_STAMP_DEFAULTS.hourCycle === "12h"
+      ? created.getHours() < 12
+        ? " AM"
+        : " PM"
+      : "";
+  const showDate = shouldShowStampDate(createdAt, previousCreatedAt);
+  const timeZone =
+    showDate && TRANSCRIPT_STAMP_DEFAULTS.showTimeZone
+      ? ` ${formatLocalUtcOffset(created)}`
+      : "";
+  const time = `${timeParts.join(":")}${period}${timeZone}`;
+  if (!showDate) return time;
+
+  const date = [
+    created.getFullYear(),
+    String(created.getMonth() + 1).padStart(2, "0"),
+    String(created.getDate()).padStart(2, "0"),
+  ].join("-");
+  return `${date} · ${time}`;
+}
+
 /** Message sidecar missing from the active branch after clone or tree navigation. */
 export interface UnstampedTranscriptMessage {
   role: TranscriptStampData["role"];
@@ -348,8 +359,8 @@ export function findLatestUnstampedTranscriptMessage(
   return undefined;
 }
 
-/** Finds the latest compatible stamp time on the active session branch. */
-export function findLatestTranscriptStampTime(
+/** Finds the latest visible user stamp on the active session branch. */
+export function findLatestVisibleTranscriptStampTime(
   entries: readonly unknown[],
 ): number | undefined {
   for (let index = entries.length - 1; index >= 0; index -= 1) {
@@ -358,21 +369,24 @@ export function findLatestTranscriptStampTime(
     if (entry.type !== "custom") continue;
     if (entry.customType !== TRANSCRIPT_STAMP_ENTRY_TYPE) continue;
     if (!isTranscriptStampData(entry.data)) continue;
-
+    if (entry.data.role !== "user") continue;
     return entry.data.createdAt;
   }
 
   return undefined;
 }
 
-function shouldShowStampDate(stamp: Readonly<TranscriptStampData>): boolean {
+function shouldShowStampDate(
+  createdAt: number,
+  previousCreatedAt?: number,
+): boolean {
   if (TRANSCRIPT_STAMP_DEFAULTS.dateContext === "never") return false;
-  if (stamp.previousCreatedAt === undefined) {
+  if (previousCreatedAt === undefined) {
     return TRANSCRIPT_STAMP_DEFAULTS.dateContext === "first-and-day-change";
   }
 
-  const current = new Date(stamp.createdAt);
-  const previous = new Date(stamp.previousCreatedAt);
+  const current = new Date(createdAt);
+  const previous = new Date(previousCreatedAt);
   return (
     current.getFullYear() !== previous.getFullYear() ||
     current.getMonth() !== previous.getMonth() ||

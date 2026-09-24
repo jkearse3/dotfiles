@@ -12,6 +12,7 @@ import {
 import { registerTranscriptStampLifecycle } from "./lifecycle.ts";
 import {
   formatTranscriptStamp,
+  formatTranscriptTime,
   TRANSCRIPT_STAMP_ENTRY_TYPE,
   type TranscriptStampData,
 } from "./stamp.ts";
@@ -93,16 +94,6 @@ function withClock(observations: number[], run: () => void): void {
   }
 }
 
-function localUtcOffset(timestamp: number): string {
-  const offsetMinutes = -new Date(timestamp).getTimezoneOffset();
-  const sign = offsetMinutes < 0 ? "-" : "+";
-  const absoluteOffsetMinutes = Math.abs(offsetMinutes);
-  const hours = Math.floor(absoluteOffsetMinutes / 60);
-  const minutes = absoluteOffsetMinutes % 60;
-
-  return `UTC${sign}${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}`;
-}
-
 test("lifecycle stamps finalized queued messages and parallel tools", () => {
   const harness = createExtensionHarness();
   const base = new Date(2026, 0, 2, 14, 0, 0).getTime();
@@ -174,7 +165,7 @@ test("lifecycle stamps finalized queued messages and parallel tools", () => {
   assert.equal(harness.appended[2]?.createdAt, base + 2_200);
   assert.equal(
     formatTranscriptStamp(harness.appended[2]!),
-    `14:00:02 ${localUtcOffset(base + 2_200)} · first 500ms · response 1.8s · turn 3.0s · tools 900ms×2/1err · 13 tok/s`,
+    `14:00:02 · first 500ms · response 1.8s · turn 3.0s · tools 900ms×2/1err · 13 tok/s`,
   );
 });
 
@@ -210,14 +201,17 @@ test("agent elapsed covers multiple turns and steering until settled, once", () 
   });
   assert.deepEqual(harness.elapsed, [
     {
-      version: 1,
+      version: 2,
       startedAt: 1_000,
       settledAt: 5_000,
       turnCount: 2,
       interrupted: false,
     },
   ]);
-  assert.equal(formatAgentElapsed(harness.elapsed[0]!), "agent 4.0s · 2 turns");
+  assert.equal(
+    formatAgentElapsed(harness.elapsed[0]!),
+    `${formatTranscriptTime(5_000)} · agent 4.0s · 2 turns`,
+  );
 });
 
 test("agent elapsed marks aborted work and handles a run without assistant turns", () => {
@@ -234,11 +228,11 @@ test("agent elapsed marks aborted work and handles a run without assistant turns
   });
   assert.equal(
     formatAgentElapsed(harness.elapsed[0]!),
-    "agent 300ms · 0 turns · interrupted",
+    `${formatTranscriptTime(1_300)} · agent 300ms · 0 turns · interrupted`,
   );
   assert.equal(
     formatAgentElapsed(harness.elapsed[1]!),
-    "agent 500ms · 0 turns",
+    `${formatTranscriptTime(2_500)} · agent 500ms · 0 turns`,
   );
 });
 
@@ -257,7 +251,33 @@ test("a successful continuation clears the interrupted label", () => {
     });
     harness.emit("agent_settled");
   });
-  assert.equal(formatAgentElapsed(harness.elapsed[0]!), "agent 1.0s · 0 turns");
+  assert.equal(
+    formatAgentElapsed(harness.elapsed[0]!),
+    `${formatTranscriptTime(2_000)} · agent 1.0s · 0 turns`,
+  );
+});
+
+test("settled summary uses the last visible user stamp for date context", () => {
+  const harness = createExtensionHarness();
+  const userAt = new Date(2026, 0, 2, 23, 59, 59).getTime();
+  harness.startSession();
+  harness.emit("message_end", { message: { role: "user", timestamp: userAt } });
+  harness.branch = [
+    {
+      type: "message",
+      message: { role: "user", timestamp: userAt },
+    },
+  ];
+  withClock([userAt + 1_000, userAt + 3_000], () => {
+    harness.emit("agent_start");
+    harness.emit("agent_end");
+    harness.emit("agent_settled");
+  });
+  assert.equal(harness.elapsed[0]?.previousVisibleAt, userAt);
+  assert.match(
+    formatAgentElapsed(harness.elapsed[0]!)!,
+    /2026-01-03 · 00:00:02 UTC/,
+  );
 });
 
 test("tree navigation discards an active busy period", () => {
@@ -277,6 +297,15 @@ test("agent elapsed rejects malformed persisted sidecars", () => {
     turnCount: 1,
     interrupted: false,
   };
+  assert.equal(
+    isAgentElapsedData({ ...valid, version: 2, previousVisibleAt: 500 }),
+    true,
+  );
+  assert.equal(isAgentElapsedData({ ...valid, previousVisibleAt: 500 }), false);
+  assert.equal(
+    isAgentElapsedData({ ...valid, version: 2, previousVisibleAt: 2_001 }),
+    false,
+  );
   assert.equal(isAgentElapsedData(valid), true);
   assert.equal(isAgentElapsedData({ ...valid, settledAt: 999 }), false);
   assert.equal(isAgentElapsedData({ ...valid, turnCount: -1 }), false);
