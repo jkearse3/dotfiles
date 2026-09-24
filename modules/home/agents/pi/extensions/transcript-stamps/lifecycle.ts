@@ -1,6 +1,10 @@
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 
 import {
+  AGENT_ELAPSED_ENTRY_TYPE,
+  isAgentElapsedData,
+} from "./agent-elapsed.ts";
+import {
   createTranscriptStamp,
   findLatestTranscriptStampTime,
   findLatestUnstampedTranscriptMessage,
@@ -33,6 +37,9 @@ export function registerTranscriptStampLifecycle(pi: ExtensionAPI): void {
   let firstContentAt: number | undefined;
   let toolPerformance: ToolPerformanceObservation | undefined;
   const activeTools = new Map<string, ActiveToolObservation>();
+  let agentStartedAt: number | undefined;
+  let agentTurnCount = 0;
+  let agentInterrupted = false;
 
   const appendStamp = (stamp: TranscriptStampData): void => {
     if (!tuiSessionActive || !isTranscriptStampData(stamp)) return;
@@ -67,9 +74,15 @@ export function registerTranscriptStampLifecycle(pi: ExtensionAPI): void {
     toolPerformance = undefined;
     activeTools.clear();
   };
+  const resetAgentElapsed = (): void => {
+    agentStartedAt = undefined;
+    agentTurnCount = 0;
+    agentInterrupted = false;
+  };
 
   const synchronizeBranch = (entries: readonly unknown[]): void => {
     pendingUserCreatedAt = [];
+    resetAgentElapsed();
     resetTurnPerformance();
     previousCreatedAt = findLatestTranscriptStampTime(entries);
 
@@ -94,6 +107,11 @@ export function registerTranscriptStampLifecycle(pi: ExtensionAPI): void {
     synchronizeBranch(ctx.sessionManager.getBranch());
   });
 
+  pi.on("agent_start", () => {
+    if (tuiSessionActive && agentStartedAt === undefined) {
+      agentStartedAt = Date.now();
+    }
+  });
   pi.on("turn_start", () => {
     resetTurnPerformance();
     activeTurnStartedAt = tuiSessionActive ? Date.now() : undefined;
@@ -173,6 +191,9 @@ export function registerTranscriptStampLifecycle(pi: ExtensionAPI): void {
       return;
     }
     if (event.message.role !== "assistant") return;
+    if (agentStartedAt !== undefined) {
+      agentInterrupted = event.message.stopReason === "aborted";
+    }
 
     const responseCompletedAt = Date.now();
     pendingAssistantResponseCompletedAt =
@@ -189,6 +210,11 @@ export function registerTranscriptStampLifecycle(pi: ExtensionAPI): void {
     resetTurnPerformance();
 
     if (event.message.role !== "assistant") return;
+
+    if (agentStartedAt !== undefined) {
+      agentTurnCount += 1;
+      agentInterrupted = event.message.stopReason === "aborted";
+    }
 
     const createdAt = event.message.timestamp;
     const outputTokens = event.message.usage.output;
@@ -245,10 +271,29 @@ export function registerTranscriptStampLifecycle(pi: ExtensionAPI): void {
     resetTurnPerformance();
   });
 
+  pi.on("agent_settled", () => {
+    const startedAt = agentStartedAt;
+    const turnCount = agentTurnCount;
+    const interrupted = agentInterrupted;
+    resetAgentElapsed();
+    if (!tuiSessionActive || startedAt === undefined) return;
+
+    const data = {
+      version: 1 as const,
+      startedAt,
+      settledAt: Date.now(),
+      turnCount,
+      interrupted,
+    };
+    if (isAgentElapsedData(data)) {
+      pi.appendEntry(AGENT_ELAPSED_ENTRY_TYPE, data);
+    }
+  });
   pi.on("session_shutdown", (_event, ctx) => {
     flushFinalizedUserStamps(ctx.sessionManager.getBranch());
     pendingUserCreatedAt = [];
     resetTurnPerformance();
+    resetAgentElapsed();
     previousCreatedAt = undefined;
     tuiSessionActive = false;
   });

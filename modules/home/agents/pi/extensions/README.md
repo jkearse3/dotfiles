@@ -17,8 +17,12 @@ right margin after user messages and at the close of assistant turns (after any
 tool rows). Its fixed defaults are local 24-hour time with seconds and an
 explicit UTC offset, a date on the first stamp and at local day changes,
 first-content latency, assistant response and complete-turn duration, aggregate
-tool wall time/count/errors, and reported output-token throughput. Timing values
-are local Pi observations rather than provider telemetry.
+tool wall time/count/errors, and reported output-token throughput. A separate
+`agent … · N turns` row appears when Pi settles, measuring the full wall-clock
+busy period from the first agent start through retries, continuations, steers,
+and any queued follow-ups before settling. Aborted responses mark it
+interrupted; it is not a per-prompt attribution. Timing values are local Pi
+observations rather than provider telemetry.
 
 Stamp entries persist in the session but remain outside model context. The
 extension performs no settings or network I/O, starts no timers or background
