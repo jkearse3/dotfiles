@@ -7,7 +7,7 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 from typing import Protocol, TextIO
 
-from .commands import bookmark_backup, bookmark_land, bookmark_queries
+from .commands import bookmark_backup, bookmark_queries, bookmark_sweep
 from .commands import description_format, ensure, interactive, worktree_add
 
 
@@ -64,11 +64,6 @@ COMMANDS = (
         bookmark_queries.default_main,
     ),
     Command.define(
-        "bookmark land",
-        "Land a linear bookmark stack",
-        bookmark_land.main,
-    ),
-    Command.define(
         "bookmark nearest",
         "Query nearest matching bookmarks",
         bookmark_queries.nearest_main,
@@ -97,6 +92,11 @@ COMMANDS = (
         "bookmark stacked",
         "List bookmarks from the current change to trunk",
         bookmark_queries.stacked_main,
+    ),
+    Command.define(
+        "bookmark sweep",
+        "Move a bookmark forward, deleting bookmarks it passes",
+        bookmark_sweep.main,
     ),
     Command.define(
         "change select",
