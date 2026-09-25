@@ -249,7 +249,6 @@ let
       # `CLAUDE_CODE_SHELL` pins the Bash tool's shell; without it Claude Code
       # detects one from `$SHELL`, and fish is not a shell it accepts.
       wrapProgram $out/bin/claude \
-        --set CLAUDE_CODE_DISABLE_BACKGROUND_TASKS 1 \
         --set CLAUDE_CODE_SHELL ${config.agents.shellPath} \
         --set CLAUDE_CONFIG_DIR ${config.home.homeDirectory}/.claude
     '';
