@@ -342,6 +342,10 @@ in
       source = ./statusline.sh;
       executable = true;
     };
+    # Herdr claims ctrl+b as its prefix with no passthrough, which swallows
+    # both default `task:background` keys, so add a chord it leaves alone.
+    # Claude Code only reads this file, so a store symlink costs no writes.
+    ".claude/keybindings.json".source = ./keybindings.json;
 
     # The sandboxed `nono-claude` wrapper inherits claude's static fish-shipped completion via
     # `--wraps`. claude.fish is pure `complete -c claude` declarations with no binary invocation,
