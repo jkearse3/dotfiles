@@ -81,7 +81,6 @@
           config.allowUnfree = true;
           overlays = [
             (import inputs.rust-overlay)
-            (import ./overlays/direnv.nix)
             (import ./overlays/secretspec.nix)
           ];
         };
