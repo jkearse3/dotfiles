@@ -33,6 +33,7 @@ in
       packages = [
         dotfilesPackages.agent-interactive-denied
         dotfilesPackages.token-count
+        pkgs.tokscale
       ];
 
       extraBuilderCommands = ''
