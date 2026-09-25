@@ -118,6 +118,11 @@ COMMANDS = (
         "Create a detached Git worktree with independent jj state",
         worktree_add.main,
     ),
+    Command.define(
+        "worktree select",
+        "Interactively select a Git worktree",
+        interactive.worktree_select,
+    ),
 )
 
 

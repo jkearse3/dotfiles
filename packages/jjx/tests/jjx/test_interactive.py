@@ -234,3 +234,22 @@ class InteractiveIntegrationTests(unittest.TestCase):
                     env=self.environment,
                 ).stdout.strip()
                 self.assertEqual("main", parent)
+
+    def test_worktree_select_prints_the_chosen_linked_worktree(self) -> None:
+        self.initialize_repository()
+        linked = self.root / "linked worktree"
+        _ = run(
+            "git",
+            "-C",
+            str(self.repository),
+            "worktree",
+            "add",
+            "--detach",
+            str(linked),
+            env=self.environment,
+        )
+
+        selected = self.jjx("worktree", "select", filter_expression="linked")
+        self.assertEqual(0, selected.returncode, selected.stderr)
+        self.assertEqual(str(linked.resolve()), os.path.realpath(selected.stdout.removesuffix("\n")))
+        self.assertTrue(selected.stdout.endswith("\n"))

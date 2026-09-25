@@ -113,6 +113,7 @@ class CompletionTests(unittest.TestCase):
             },
             "ensure": {"--dry-run", "--help"},
             "worktree add": {"--help"},
+            "worktree select": {"--help"},
         }
         for leaf, expected in expected_options.items():
             with self.subTest(leaf=leaf):

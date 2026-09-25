@@ -70,7 +70,9 @@ _jjx() {
         _values 'description command' 'format[Format a revision description]'
         ;;
       worktree)
-        _values 'worktree command' 'add[Create a detached Git worktree with independent jj state]'
+        _values 'worktree command' \
+          'add[Create a detached Git worktree with independent jj state]' \
+          'select[Interactively select a Git worktree]'
         ;;
     esac
     return
@@ -83,7 +85,7 @@ _jjx() {
         '--remote[source remote]:remote:_jjx_remotes' \
         '1:bookmark:_jjx_all_bookmarks'
       ;;
-    'bookmark current'|'bookmark default'|'bookmark previous'|'bookmark select'|'bookmark stacked'|'change select')
+    'bookmark current'|'bookmark default'|'bookmark previous'|'bookmark select'|'bookmark stacked'|'change select'|'worktree select')
       _arguments '(-h --help)'{-h,--help}'[show help]'
       ;;
     'bookmark rebase')

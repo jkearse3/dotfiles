@@ -1,4 +1,4 @@
-"""Interactive bookmark and change selection workflows."""
+"""Interactive bookmark, change, and worktree selection workflows."""
 
 from __future__ import annotations
 
@@ -282,4 +282,44 @@ def _change_select(arguments: Sequence[str], *, prog: str) -> int:
     change_id = picker.stdout.partition("\t")[0].strip()
     if change_id != "":
         print(change_id)
+    return 0
+
+
+def worktree_select(arguments: Sequence[str], *, prog: str) -> int:
+    """Select and print one registered Git worktree path."""
+    return _report_launch_error(
+        lambda: _worktree_select(arguments, prog=prog),
+        prog=prog,
+    )
+
+
+def _worktree_select(arguments: Sequence[str], *, prog: str) -> int:
+    """Select and print one registered Git worktree path."""
+    _ = argparse.ArgumentParser(prog=prog).parse_args(arguments)
+    result = _run(["git", "worktree", "list", "--porcelain", "-z"])
+    if result.returncode != 0:
+        print(f"{prog}: failed to list worktrees", file=sys.stderr)
+        return 1
+
+    # Porcelain records are NUL-terminated attribute fields; each worktree
+    # starts with a `worktree <path>` field.
+    paths = [
+        field.removeprefix("worktree ")
+        for field in result.stdout.split("\0")
+        if field.startswith("worktree ")
+    ]
+    if len(paths) == 0:
+        return 0
+
+    picker = _run(
+        ["fzf", "--read0", "--prompt=Worktree> ", "--select-1", "--exit-0"],
+        stdin="\0".join(paths) + "\0",
+    )
+    if picker.returncode in {1, 130}:
+        return 0
+    if picker.returncode != 0:
+        return picker.returncode
+    path = picker.stdout.removesuffix("\n")
+    if path != "":
+        print(path)
     return 0
