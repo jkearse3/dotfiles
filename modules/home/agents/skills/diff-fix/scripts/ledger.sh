@@ -72,8 +72,17 @@ fi
 # the declared criteria and context every review receives, so a resumed session
 # cannot drop them. A `decision` without an `id` is a standing decision for the
 # whole run.
+#
+# Finding statuses change only along FINDING_TRANSITIONS: a new `design` or
+# `question` finding starts `pending-decision` so no fixer acts on it before the
+# user decides, any other new finding starts `open`, a `status` event follows
+# the table, a `land` moves `open` findings to `fixed`, and a finding decision
+# moves any finding to its effect. A finding a decision opened carries a user
+# request, so only another decision may settle or dispute it.
 # shellcheck disable=SC2016 # jq program, not shell expansion.
 RECORD_PROGRAM='
+($log | ledger_state) as $state
+|
 def fail($message): error("ledger: \($kind): \($message)");
 def need_string($key): if (.[$key] | type) == "string" and .[$key] != "" then . else fail("\($key) must be a non-empty string") end;
 def need_string_array($key): if (.[$key] | type) == "array" and all(.[$key][]; type == "string") then . else fail("\($key) must be an array of strings") end;
@@ -82,16 +91,29 @@ def finding_ids: [$log[] | select(.event == "finding") | .id];
 def need_finding($key): if (.[$key] as $id | finding_ids | index([$id])) then . else fail("\($key) names no recorded finding") end;
 def need_target_owner: if (.owner as $owner | $log[0].target | index([$owner])) then . else fail("owner is not a run target change ID: \(.owner)") end;
 def statuses: ["open", "fixed", "disputed", "pending-decision", "settled"];
+def recorded_finding($id): $state.findings[] | select(.id == $id);
+def need_initial_status:
+  (if .category == "design" or .category == "question" then "pending-decision" else "open" end) as $initial
+  | if .status == $initial then . else fail("a new \(.category) finding must start \($initial)") end;
+def open_ids: [$state.findings[] | select(.status == "open") | .id];
+def need_transition:
+  .id as $id
+  | .status as $to
+  | recorded_finding($id) as $finding
+  | if $finding.status == "open" and ($to == "settled" or $to == "disputed") and ($finding.decisions | last | .effect) == "open" then fail("a decision opened \($id); only another decision may move it to \($to)")
+    elif FINDING_TRANSITIONS[$finding.status] | index([$to]) then .
+    else fail("\($id) cannot move from \($finding.status) to \($to)")
+    end;
 
 if type != "object" then fail("event must be a JSON object")
 elif $kind != "run" and ($log | length) == 0 then fail("the first event must be run")
 elif $kind == "run" and ($log | length) > 0 then fail("run may be recorded only once")
 elif $kind == "run" then need_string_array("target") | need_string("base") | need_string("criteria")
 elif $kind == "review" then need_string_array("revisions") | need_enum("verdict"; ["pass", "non-pass", "blocked"])
-elif $kind == "finding" then need_string("owner") | need_target_owner | need_string("category") | need_string("priority") | need_string("location") | need_string("mechanism") | need_enum("status"; statuses)
-elif $kind == "status" then need_finding("id") | need_enum("status"; statuses) | need_string("evidence")
+elif $kind == "finding" then need_string("owner") | need_target_owner | need_string("category") | need_string("priority") | need_string("location") | need_string("mechanism") | need_enum("status"; ["open", "pending-decision"]) | need_initial_status
+elif $kind == "status" then need_finding("id") | need_enum("status"; statuses) | need_string("evidence") | need_transition
 elif $kind == "attempt" then need_finding("id") | need_enum("outcome"; ["fixed", "rejected", "escalated", "unverified"]) | need_string("summary")
-elif $kind == "land" then need_string("from") | need_string("to") | need_string_array("findings") | ((.findings - finding_ids) as $unknown | if $unknown == [] then . else fail("findings names no recorded finding: \($unknown | join(", "))") end)
+elif $kind == "land" then need_string("from") | need_string("to") | need_string_array("findings") | ((.findings - finding_ids) as $unknown | if $unknown == [] then . else fail("findings names no recorded finding: \($unknown | join(", "))") end) | ((.findings - open_ids) as $closed | if $closed == [] then . else fail("findings are not open: \($closed | join(", "))") end)
 elif $kind == "checkpoint" then need_string("summary")
 elif $kind == "decision" then need_string("decision") | if has("id") then need_finding("id") | need_enum("effect"; ["settled", "open"]) else . end
 else fail("unknown event kind")
@@ -101,11 +123,27 @@ end
     | del(.seq, .at, .event))
 '
 
-# Replay the log in order. A checkpoint resets the full-review count, and a
-# finding decision sets that finding's status.
+# The status changes a `status` event may make, keyed by the current status.
+# Re-raising a `fixed`, `disputed`, or `settled` finding asks the user; a
+# disputed finding the next reviewer does not re-raise, or an open one it
+# declines with a reason, settles; a settled conclusion whose evidence moved is
+# disputed again. `fixed` comes only from a `land`, and a `pending-decision`
+# finding leaves that status only through a decision.
+FINDING_TRANSITIONS='
+def FINDING_TRANSITIONS: {
+  "open": ["settled", "disputed", "pending-decision"],
+  "fixed": ["pending-decision"],
+  "disputed": ["settled", "pending-decision"],
+  "settled": ["disputed", "pending-decision"],
+  "pending-decision": []
+};
+'
+
+# Replay the log in order. A checkpoint resets the full-review count, a landing
+# marks its findings fixed, and a finding decision sets that finding's status.
 # shellcheck disable=SC2016 # jq program, not shell expansion.
-STATE_PROGRAM='
-reduce .[] as $event (
+LEDGER_STATE='
+def ledger_state: reduce .[] as $event (
   {
     run: null,
     full_reviews: 0,
@@ -136,6 +174,10 @@ reduce .[] as $event (
     .findings[$event.id].attempts += [$event | del(.at, .event, .id)]
   elif $event.event == "land" then
     .landings += [$event | del(.at, .event)]
+    | reduce $event.findings[] as $id (.;
+        .findings[$id].status = "fixed"
+        | .findings[$id].evidence = "landed in \($event.to)"
+      )
   elif $event.event == "checkpoint" then
     .checkpoints += 1
     | .full_reviews_since_checkpoint = 0
@@ -148,22 +190,30 @@ reduce .[] as $event (
 )
 | .findings = [.order[] as $id | .findings[$id]]
 | del(.order)
-| .status_counts = (.findings | group_by(.status) | map({key: .[0].status, value: length}) | from_entries)
+| .status_counts = (.findings | group_by(.status) | map({key: .[0].status, value: length}) | from_entries);
 '
 
-# A reviewer receives settled conclusions, disputed claims to arbitrate, open
-# findings carried from an earlier round as claims to confirm, and user
-# decisions. A fixer receives its owning revision's open findings with
-# their attempt history, every pending-decision finding so it can escalate a fix
-# that depends on one, settled conclusions, and user decisions. Finding IDs
-# given after the owner restrict the open findings to those IDs, so a fixer
-# re-dispatched after partial verification receives only the rest; each must
-# name an open finding of that owner. The owner must be a run target change ID,
-# so a mistyped owner fails rather than yielding an empty open list.
+# Both roles receive the run criteria. A reviewer receives settled conclusions,
+# disputed claims to arbitrate, open findings carried from an earlier round as
+# claims to confirm, and user decisions, each as a brief finding: its latest
+# attempt and its decisions without their history. A fixer receives its owning
+# revision's open findings in full with their attempt history, and briefly every
+# pending-decision finding so it can escalate a fix that depends on one, settled
+# conclusions, and user decisions. Finding IDs given after the owner restrict
+# the open findings to those IDs, so a fixer re-dispatched after partial
+# verification receives only the rest; each must name an open finding of that
+# owner. The owner must be a run target change ID, so a mistyped owner fails
+# rather than yielding an empty open list.
 # shellcheck disable=SC2016 # jq program, not shell expansion.
 CONTEXT_PROGRAM='
+def brief:
+  {id, owner, category, priority, location, mechanism, status}
+  + (if has("evidence") then {evidence} else {} end)
+  + (if .attempts != [] then {last_attempt: (.attempts | last | {outcome, summary})} else {} end)
+  + (if .decisions != [] then {decisions: [.decisions[] | {decision, effect}]} else {} end);
 def with_status($status): [.findings[] | select(.status == $status)];
-def decided: [.findings[] | select(.decisions != [])];
+def brief_with_status($status): [with_status($status)[] | brief];
+def decided: [.findings[] | select(.decisions != []) | brief];
 def owner_open: [with_status("open")[] | select(.owner == $owner)];
 def selected_open:
   $ARGS.positional as $ids
@@ -177,17 +227,19 @@ if $role == "fix" and ((.run.target // []) | index([$owner]) | not) then
   "ledger: context: owner is not a run target change ID: \($owner)\n" | halt_error(1)
 elif $role == "review" then
   {
-    settled: with_status("settled"),
-    disputed: with_status("disputed"),
-    open: with_status("open"),
+    criteria: .run.criteria,
+    settled: brief_with_status("settled"),
+    disputed: brief_with_status("disputed"),
+    open: brief_with_status("open"),
     decided: decided,
     standing_decisions: .standing_decisions
   }
 else
   {
+    criteria: .run.criteria,
     open: selected_open,
-    pending_decision: with_status("pending-decision"),
-    settled: with_status("settled"),
+    pending_decision: brief_with_status("pending-decision"),
+    settled: brief_with_status("settled"),
     decided: decided,
     standing_decisions: .standing_decisions
   }
@@ -206,7 +258,7 @@ record)
 		--arg now "$now" \
 		--slurpfile log "$ledger" \
 		--argjson input "$input" \
-		"\$input | $RECORD_PROGRAM" 2>&1) || {
+		"$FINDING_TRANSITIONS $LEDGER_STATE \$input | $RECORD_PROGRAM" 2>&1) || {
 		printf '%s\n' "${line#jq: error (at <unknown>): }" >&2
 		exit 1
 	}
@@ -214,10 +266,10 @@ record)
 	jq -r 'if .event == "finding" then .id else .seq end' <<<"$line"
 	;;
 state)
-	jq -s "$STATE_PROGRAM" "$ledger"
+	jq -s "$LEDGER_STATE ledger_state" "$ledger"
 	;;
 context)
-	jq -s "$STATE_PROGRAM" "$ledger" |
+	jq -s "$LEDGER_STATE ledger_state" "$ledger" |
 		jq --arg role "$role" --arg owner "$owner" "$CONTEXT_PROGRAM" --args "${finding_ids[@]}"
 	;;
 esac

@@ -70,63 +70,74 @@ views:
   after context loss.
 - `scripts/ledger.sh context <ledger> review` and
   `scripts/ledger.sh context <ledger> fix <owner> [<id>...]`: exactly what the
-  next reviewer or fixer receives from the ledger. Finding IDs restrict the
-  fixer's `open` findings to those named. Pass it unchanged.
+  next reviewer or fixer receives from the ledger, including `run.criteria`.
+  Finding IDs restrict the fixer's `open` findings to those named. Pass it
+  unchanged; never trim or paraphrase it.
 
-| Event        | Fields                                                                      | Record when                                          |
-| ------------ | --------------------------------------------------------------------------- | ---------------------------------------------------- |
-| `run`        | `target` (full change ID array), `base`, `criteria`, and any `bookmark`     | once, at preflight                                   |
-| `review`     | `revisions`, `verdict` (`pass`, `non-pass`, `blocked`)                      | each review returns                                  |
-| `finding`    | `owner`, `category`, `priority`, `location`, `mechanism`, `status`          | a reviewer raises a new finding                      |
-| `status`     | `id`, `status`, `evidence`                                                  | a finding changes status outside a decision          |
-| `attempt`    | `id`, `outcome` (`fixed`, `rejected`, `escalated`, `unverified`), `summary` | a fixer returns, or verification fails a claimed fix |
-| `land`       | `from`, `to` (commit IDs), `findings`                                       | a fix lands                                          |
-| `checkpoint` | `summary`                                                                   | the user answers an escalation                       |
-| `decision`   | `decision`, and `id` with `effect` (`settled`, `open`) for one finding      | the user decides a finding, or up front              |
+| Event        | Fields                                                                      | Record when                                            |
+| ------------ | --------------------------------------------------------------------------- | ------------------------------------------------------ |
+| `run`        | `target` (full change ID array), `base`, `criteria`, and any `bookmark`     | once, at preflight                                     |
+| `review`     | `revisions`, `verdict` (`pass`, `non-pass`, `blocked`)                      | each review returns                                    |
+| `finding`    | `owner`, `category`, `priority`, `location`, `mechanism`, `status`          | a reviewer raises a new finding                        |
+| `status`     | `id`, `status`, `evidence`                                                  | a finding changes status outside a landing or decision |
+| `attempt`    | `id`, `outcome` (`fixed`, `rejected`, `escalated`, `unverified`), `summary` | a fixer returns, or verification fails a claimed fix   |
+| `land`       | `from`, `to` (commit IDs), `findings`                                       | a fix or resolution lands; its findings become `fixed` |
+| `checkpoint` | `summary`                                                                   | the user answers an escalation                         |
+| `decision`   | `decision`, and `id` with `effect` (`settled`, `open`) for one finding      | the user decides a finding, or up front                |
 
-Finding statuses are `open`, `fixed`, `disputed`, `pending-decision`, and
-`settled`. Owners are full change IDs from `run.target`; `record` and
-`context fix` reject any other owner. Events may carry extra fields such as
-`suggested` or `checks`. `run.criteria` holds the criteria and context verbatim,
-or `none` when none were declared.
+Owners are full change IDs from `run.target`; `record` and `context fix` reject
+any other owner. Events may carry extra fields such as `suggested` or `checks`.
+`run.criteria` holds the criteria and context verbatim, or `none` when none were
+declared.
+
+### Finding Statuses
+
+Findings are `open`, `fixed`, `disputed`, `pending-decision`, or `settled`, and
+change status only as below; `record` rejects any other change. A finding a
+decision opened carries a user request, so a reviewer or fixer never settles or
+disputes it.
+
+| From               | When                                                               | To                 |
+| ------------------ | ------------------------------------------------------------------ | ------------------ |
+| new                | a `design` or `question` finding                                   | `pending-decision` |
+| new                | any other finding                                                  | `open`             |
+| `open`             | re-raised, or declined when a decision opened it                   | `open`             |
+| `open`             | declined with a reason, when no decision opened it                 | `settled`          |
+| `open`             | its fix lands (`land`)                                             | `fixed`            |
+| `open`             | an unverified fix, or a rejection without concrete evidence        | `open`             |
+| `open`             | an evidenced rejection, when no decision opened it                 | `disputed`         |
+| `open`             | an escalation, or an evidenced rejection when a decision opened it | `pending-decision` |
+| `fixed`            | re-raised                                                          | `pending-decision` |
+| `disputed`         | re-raised                                                          | `pending-decision` |
+| `disputed`         | not re-raised                                                      | `settled`          |
+| `settled`          | re-raised                                                          | `pending-decision` |
+| `settled`          | its evidence moved before a review                                 | `disputed`         |
+| `pending-decision` | re-raised                                                          | `pending-decision` |
+| any                | the user decides it, or a standing decision covers it (`decision`) | the effect         |
+
+Any status not listed for a trigger stays as it is; in particular a `fixed`
+finding stays `fixed` when not re-raised.
 
 ## Loop
 
 Repeat until a review passes or the run stops:
 
 1. **Review.** Re-resolve the target's change IDs to current commits, then
-   dispatch a fresh reviewer that follows the `diff-review` skill with the full
-   target, `run.criteria` from the ledger state, and `context review`. That
-   context holds settled findings as prior independent conclusions not to
-   re-raise unless their evidence moved, disputed findings as claims to
-   arbitrate, `open` findings carried from an earlier round as claims to
-   confirm, and user decisions. Ask the reviewer to re-raise each carried `open`
-   finding it confirms and give a reason for each it declines, and to state, for
-   each finding, its causal mechanism and its owning revision: the change ID of
-   the earliest target revision whose diff introduces the defect. Before
+   dispatch a fresh reviewer with the request in **Review Request**. Before
    sending, confirm each settled conclusion's evidence has not moved; record one
    whose evidence moved as `disputed`, citing the move, so the reviewer
-   arbitrates it and triage applies. `pass` ends the loop; `blocked` stops it
-   and is reported.
-2. **Triage.** Record each finding with the owner and mechanism the reviewer
-   reported; never infer them in this session. Resolve the reported owner with
-   jj to its full change ID in `run.target`. Treat a finding without an owner or
-   mechanism, a finding whose owner does not resolve into the target, or a
-   carried `open` finding neither re-raised nor declined with a reason, as an
-   incomplete review to return to that reviewer. Match a re-raised finding to
-   its entry by mechanism and location rather than wording:
-   - a re-raised `fixed`, `disputed`, or `settled` finding becomes
-     `pending-decision`, and a re-raised `pending-decision` or `open` finding
-     keeps its status;
-   - a `disputed` finding the reviewer did not re-raise becomes `settled`, and
-     so does an `open` one the reviewer declined with a reason, citing it,
-     unless a decision opened it;
-   - a finding a standing decision covers takes that decision's effect,
-     `settled` to leave the code as is or `open` to change it, recorded as a
-     `decision` event with the finding's `id` and `effect` that cites the
-     standing decision;
-   - any other `design` or `question` finding becomes `pending-decision`;
-   - everything else is `open`.
+   arbitrates it. `pass` ends the loop; `blocked` stops it and is reported.
+2. **Triage.** Record each new finding with the category, owner, and mechanism
+   the reviewer reported; never infer them in this session. Resolve the reported
+   owner with jj to its full change ID in `run.target`. Return an incomplete
+   review to that reviewer: a finding without one `diff-review` category, an
+   owner, or a mechanism, a finding whose owner does not resolve into the
+   target, or a carried `open` finding neither re-raised nor declined with a
+   reason. Match a re-raised finding to its entry by mechanism and location
+   rather than wording; a finding against the change a landed fix made re-raises
+   that fix's finding. Apply **Finding Statuses**, recording a covering standing
+   decision as a `decision` event with the finding's `id` and `effect` that
+   cites it.
 3. **Escalate** when a trigger in **Escalation** holds, before fixing, so a
    paused round shows its findings as the review left them.
 4. **Fix** each owning revision with `open` findings, earliest first, as below.
@@ -134,15 +145,35 @@ Repeat until a review passes or the run stops:
 Run subagents sequentially; never let two write concurrently. Delegates may not
 delegate further.
 
+### Review Request
+
+Send every reviewer the same request:
+
+- follow the `diff-review` skill, read-only: no file edits, no VCS mutation, no
+  scratch files inside the repository, and no further delegation;
+- the target's full change IDs, current commits, any bookmark, and the base;
+- `context review` unchanged. It holds the criteria, settled findings as prior
+  independent conclusions not to re-raise unless their evidence moved, disputed
+  findings as claims to arbitrate, `open` findings carried from an earlier round
+  as claims to confirm, and user decisions as the user's chosen design;
+- return the verdict and, per finding, exactly one `diff-review` category, a
+  priority, a `file:line` location, the causal mechanism with a failure
+  scenario, the owning revision (the change ID of the earliest target revision
+  whose diff introduces the defect), and any suggested fix;
+- re-raise each carried `open` finding it confirms and give a reason for each it
+  declines;
+- list the checks run and their results.
+
 ### Fix
 
 1. Create a fresh empty child of the owning revision as the working copy.
-2. Dispatch a fresh fixer with the target description and `context fix <owner>`:
-   that revision's `open` findings with their attempt history, every
-   `pending-decision` finding, settled findings, and user decisions. It follows
-   the `coding-style` skill, edits only the working copy, formats and checks
-   only the files it touched, performs no VCS mutation, and returns per finding
-   one of:
+2. Dispatch a fresh fixer with the target description and `context fix <owner>`
+   unchanged: the criteria, that revision's `open` findings with their attempt
+   history, every `pending-decision` finding, settled findings, and user
+   decisions. It follows the `coding-style` skill, edits only the working copy,
+   formats and checks only the files it touched, keeps the rules or behavior it
+   changes consistent with the code around them, performs no VCS mutation, and
+   returns per finding one of:
    - `fixed`, with the checks run and their results;
    - `rejected`, with concrete evidence such as file references, a trace, or a
      check result;
@@ -154,37 +185,39 @@ delegate further.
    the description itself is fixed the same way.
 
 3. Verify the fixer's diff: it addresses only its findings, stays within the
-   target's concern, and passes proportionate checks. Treat a rejection without
-   concrete evidence, or an unverified fix, as still `open`, and record the
-   failed attempt. When only some findings verify, keep the verified changes and
+   target's concern, and passes proportionate checks. Record an `attempt` for
+   each finding; an unverified fix or a rejection without concrete evidence
+   stays `open`. When only some findings verify, keep the verified changes and
    dispatch a fresh fixer on the same working copy with
    `context fix <owner> <id>...` naming the rest, marking the verified changes
    as kept. Re-dispatch at most once per batch; findings still `open` after it,
    or when none verify, carry to the next full review as claims to confirm.
    Before landing, every change in the working copy must be verified; revert
-   changes for findings still `open`, `disputed`, or `pending-decision`, and
-   skip landing only when neither a change nor a verified description
-   replacement remains.
-4. Land the fix through `finalize-changes`: squash any change into the owning
-   revision, apply any verified description replacement, keep the description
-   accurate, and inspect the rebased descendants. A description-only fix lands
-   the same way and is recorded as a landing. Stop when the landing conflicts
-   the owning revision. Leave an empty working copy above the target tip before
-   the next review.
+   changes for findings not landing, and skip landing only when neither a change
+   nor a verified description replacement remains.
+4. Land the verified change: note the working-copy commit and the owning
+   revision's commit, run
+   `jj squash --from @ --into <owner> --use-destination-message`, and apply any
+   verified description replacement through `finalize-changes`; a
+   description-only fix lands through `finalize-changes` alone. Confirm
+   `jj diff --from <noted working copy> --to <owner> --summary` is empty and
+   inspect the rebased descendants. Stop when the landing conflicts the owning
+   revision. Record the `land` with the owning revision's old and new commits
+   and the findings it fixes.
 5. Resolve conflicts the landing leaves in descendant target revisions, earliest
    first, before the next fix or review. Create a fresh empty child of the
-   conflicted revision and dispatch a fresh fixer under the rules above with
-   that revision's description and the landed fix's findings and diff. It
-   resolves the conflict so the revision keeps its own intent and carries the
-   landed fix's intent. Verify that the conflict is gone, the resolution changes
-   nothing else, and proportionate checks pass; stop when it fails. Squash it
-   into the conflicted revision through `finalize-changes`, record it as a
-   landing of the same findings, and repeat for any conflicted descendant. Then
-   stop when a descendant outside the target remains conflicted.
-6. Record each attempt, any landing, and the resulting status: `fixed`,
-   `disputed` for evidenced rejections, or `pending-decision` for escalations
-   and for evidenced rejections of a finding a decision opened, so the user
-   weighs the fixer's evidence.
+   conflicted revision as the working copy and dispatch a fresh fixer under the
+   rules above with that revision's description and the landed fix's findings
+   and diff. It resolves the conflict so the revision keeps its own intent and
+   carries the landed fix's intent. Verify that the conflict is gone, the
+   resolution changes nothing else, and proportionate checks pass; stop when it
+   fails. Land it as in step 4 with the conflicted revision as `<owner>`,
+   recording a `land` with empty `findings` since the landed fix already marked
+   them `fixed`, and repeat for any remaining conflicted descendant. Then stop
+   when a descendant outside the target remains conflicted.
+6. Run `jj new <target tip>` so an empty working copy sits above the target
+   before the next review, and record each rejection and escalation through
+   **Finding Statuses**.
 
 ## Escalation
 

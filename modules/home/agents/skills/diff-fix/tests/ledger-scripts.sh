@@ -209,15 +209,43 @@ assert_record_failure 'ledger: event must be one JSON value on stdin' \
 assert_record_failure 'ledger: event must be one JSON value on stdin' \
 	'two JSON values' checkpoint '{"summary":"a"} {"summary":"b"}'
 
+assert_record_failure 'ledger: finding: status must be one of open, pending-decision' \
+	'finding recorded in a later status' finding '{"owner":"a","category":"bug","priority":"low","location":"x:1","mechanism":"m","status":"fixed"}'
+assert_record_failure 'ledger: finding: a new design finding must start pending-decision' \
+	'design finding recorded open' finding '{"owner":"a","category":"design","priority":"low","location":"x:1","mechanism":"m","status":"open"}'
+assert_record_failure 'ledger: finding: a new question finding must start pending-decision' \
+	'question finding recorded open' finding '{"owner":"a","category":"question","priority":"low","location":"x:1","mechanism":"m","status":"open"}'
+assert_record_failure 'ledger: finding: a new bug finding must start open' \
+	'bug finding recorded pending-decision' finding '{"owner":"a","category":"bug","priority":"low","location":"x:1","mechanism":"m","status":"pending-decision"}'
+assert_record_failure 'ledger: status: F1 cannot move from open to fixed' \
+	'status fixed without a landing' status '{"id":"F1","status":"fixed","evidence":"e"}'
+
 # Findings for two owners in every status, so the context views can be told
 # apart.
 record attempt '{"id":"F1","outcome":"fixed","summary":"s"}' >/dev/null
-record status '{"id":"F1","status":"fixed","evidence":"e"}' >/dev/null
+record land '{"from":"a","to":"b","findings":["F1"]}' >/dev/null
 record finding '{"owner":"a","category":"design","priority":"low","location":"y:2","mechanism":"n","status":"pending-decision"}' >/dev/null
 record finding '{"owner":"a","category":"bug","priority":"low","location":"z:3","mechanism":"o","status":"open"}' >/dev/null
 record finding '{"owner":"b","category":"bug","priority":"low","location":"w:4","mechanism":"p","status":"open"}' >/dev/null
-record finding '{"owner":"a","category":"bug","priority":"low","location":"v:5","mechanism":"q","status":"disputed"}' >/dev/null
-record land '{"from":"a","to":"b","findings":["F1"]}' >/dev/null
+record finding '{"owner":"a","category":"bug","priority":"low","location":"v:5","mechanism":"q","status":"open"}' >/dev/null
+record attempt '{"id":"F5","outcome":"rejected","summary":"old"}' >/dev/null
+record attempt '{"id":"F5","outcome":"rejected","summary":"evidence"}' >/dev/null
+record status '{"id":"F5","status":"disputed","evidence":"e"}' >/dev/null
+assert_eq '{"status":"fixed","evidence":"landed in b"}' "$(state '.findings[0] | {status, evidence}')" \
+	'a landing marks its findings fixed'
+assert_record_failure 'ledger: land: findings are not open: F1' \
+	'land of a fixed finding' land '{"from":"b","to":"c","findings":["F1"]}'
+
+# A conflict resolution lands with no findings, since the fix it carries already
+# marked them fixed.
+record land '{"from":"b","to":"c","findings":[]}' >/dev/null
+assert_eq '{"landings":2,"F1":"landed in b","counts":{"disputed":1,"fixed":1,"open":2,"pending-decision":1}}' \
+	"$(state '{landings: (.landings | length), F1: .findings[0].evidence, counts: .status_counts}')" \
+	'a landing without findings is recorded and changes no status'
+assert_record_failure 'ledger: status: F1 cannot move from fixed to open' \
+	'status outside the transition table' status '{"id":"F1","status":"open","evidence":"e"}'
+assert_record_failure 'ledger: status: F2 cannot move from pending-decision to settled' \
+	'pending-decision settled without a decision' status '{"id":"F2","status":"settled","evidence":"e"}'
 assert_eq '{"full":1,"counts":{"disputed":1,"fixed":1,"open":2,"pending-decision":1}}' \
 	"$(state '{full: .full_reviews_since_checkpoint, counts: .status_counts}')" \
 	'state replays statuses and counts full reviews'
@@ -228,25 +256,28 @@ assert_eq '{"full":0,"F2":"settled","standing":["fix design findings too"]}' \
 	"$(state '{full: .full_reviews_since_checkpoint, F2: .findings[1].status, standing: [.standing_decisions[].decision]}')" \
 	'a checkpoint resets the review count and decisions set status'
 
-assert_eq '[["F2"],["F5"],["F3","F4"],["F2"],["fix design findings too"]]' "$(context review)" \
-	'a reviewer receives settled, disputed, open, and decided findings'
-assert_eq '[["F3"],[],["F2"],["F2"],["fix design findings too"]]' "$(context fix a)" \
+assert_eq '["none",["F2"],["F5"],["F3","F4"],["F2"],["fix design findings too"]]' "$(context review)" \
+	'a reviewer receives the criteria and settled, disputed, open, and decided findings'
+assert_eq '{"keys":["category","evidence","id","last_attempt","location","mechanism","owner","priority","status"],"last_attempt":{"outcome":"rejected","summary":"evidence"}}' \
+	"$("$LEDGER" context "$EVENTS" review | jq -c '.disputed[0] | {keys: keys, last_attempt}')" \
+	'a reviewer receives a brief finding with its latest attempt only'
+assert_eq '["none",["F3"],[],["F2"],["F2"],["fix design findings too"]]' "$(context fix a)" \
 	'a fixer receives only its owner'"'"'s open findings'
 
 # A fixer receives every pending-decision finding, whatever its owner, so it can
 # escalate a fix that depends on one.
 record finding '{"owner":"b","category":"design","priority":"low","location":"t:7","mechanism":"s","status":"pending-decision"}' >/dev/null
-assert_eq '[["F3"],["F6"],["F2"],["F2"],["fix design findings too"]]' "$(context fix a)" \
+assert_eq '["none",["F3"],["F6"],["F2"],["F2"],["fix design findings too"]]' "$(context fix a)" \
 	'a fixer receives pending-decision findings of every owner'
-assert_eq '[["F2"],["F5"],["F3","F4"],["F2"],["fix design findings too"]]' "$(context review)" \
+assert_eq '["none",["F2"],["F5"],["F3","F4"],["F2"],["fix design findings too"]]' "$(context review)" \
 	'a reviewer does not receive pending-decision findings'
 
 # Finding IDs after the owner restrict a fixer's open findings, for a fixer
 # re-dispatched with only the findings that failed verification.
 record finding '{"owner":"a","category":"bug","priority":"low","location":"u:6","mechanism":"r","status":"open"}' >/dev/null
-assert_eq '[["F3","F7"],["F6"],["F2"],["F2"],["fix design findings too"]]' "$(context fix a)" \
+assert_eq '["none",["F3","F7"],["F6"],["F2"],["F2"],["fix design findings too"]]' "$(context fix a)" \
 	'a fixer without finding IDs receives all its owner'"'"'s open findings'
-assert_eq '[["F7"],["F6"],["F2"],["F2"],["fix design findings too"]]' "$(context fix a F7)" \
+assert_eq '["none",["F7"],["F6"],["F2"],["F2"],["fix design findings too"]]' "$(context fix a F7)" \
 	'a fixer with finding IDs receives only those open findings'
 
 context_status=0
@@ -260,3 +291,15 @@ context_stderr=$("$LEDGER" context "$EVENTS" fix c 2>&1 >/dev/null) || context_s
 assert_eq 1 "$context_status" 'a fixer owner outside the run target exits 1'
 assert_eq 'ledger: context: owner is not a run target change ID: c' "$context_stderr" \
 	'a fixer owner outside the run target reports its cause'
+
+# A finding a decision opened carries a user request, so neither a reviewer's
+# decline nor a fixer's rejection settles or disputes it without the user.
+record finding '{"owner":"a","category":"design","priority":"low","location":"s:8","mechanism":"t","status":"pending-decision"}' >/dev/null
+record decision '{"id":"F8","decision":"rename it","effect":"open"}' >/dev/null
+assert_record_failure 'ledger: status: a decision opened F8; only another decision may move it to settled' \
+	'a declined decision-opened finding' status '{"id":"F8","status":"settled","evidence":"e"}'
+assert_record_failure 'ledger: status: a decision opened F8; only another decision may move it to disputed' \
+	'a rejected decision-opened finding' status '{"id":"F8","status":"disputed","evidence":"e"}'
+record status '{"id":"F8","status":"pending-decision","evidence":"e"}' >/dev/null
+assert_eq '"pending-decision"' "$(state '.findings[7].status')" \
+	'a rejected decision-opened finding returns to the user'
