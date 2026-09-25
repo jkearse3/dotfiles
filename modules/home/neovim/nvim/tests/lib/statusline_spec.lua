@@ -17,12 +17,12 @@ describe("statusline", function()
 		vim.api.nvim_buf_delete(buffer, { force = true })
 	end)
 
-	it("shows the mode letter, relative file name, and filetype in narrow windows", function()
+	it("shows the mode name, relative file name, and filetype in narrow windows", function()
 		vim.o.columns = 100
 		vim.bo[buffer].filetype = "lua"
 
 		assert.are.equal(
-			"%#StatusLineModeNormal# N %#StatusLineFilename# %f%m%r %<%=%#StatusLineFileinfo# lua ",
+			"%#StatusLineModeNormal# NORMAL %#StatusLineFilename# %f%m%r %<%=%#StatusLineFileinfo# lua ",
 			statusline.render()
 		)
 	end)
@@ -56,7 +56,7 @@ describe("statusline", function()
 		vim.o.columns = 100
 
 		assert.are.equal(
-			"%#StatusLineModeNormal# N %#StatusLineFilename# %f%m%r %<%=",
+			"%#StatusLineModeNormal# NORMAL %#StatusLineFilename# %f%m%r %<%=",
 			statusline.render()
 		)
 	end)
