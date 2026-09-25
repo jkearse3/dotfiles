@@ -19,12 +19,25 @@
             "--reversed"
           ];
         };
-        aliases.x = [
-          "util"
-          "exec"
-          "--"
-          "jjx"
-        ];
+        aliases = {
+          x = [
+            "util"
+            "exec"
+            "--"
+            "jjx"
+          ];
+          ss = [
+            "show"
+            "--stat"
+          ];
+          bs = [
+            "log"
+            "--stat"
+            "--reversed"
+            "-r"
+            "branch()"
+          ];
+        };
         git.private-commits = ''bookmarks(glob:"backup-*")'';
         revsets.bookmark-advance-to = "closest_pushable(@)";
         revset-aliases = {
