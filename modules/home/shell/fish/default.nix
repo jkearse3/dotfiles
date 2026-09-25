@@ -1,12 +1,5 @@
-{ dotfilesPackages, ... }:
-{
-  programs.fish = {
-    enable = true;
-    interactiveShellInit = # fish
-      ''
-        source ${dotfilesPackages.git-worktree-cd.shellInit.fish}
-      '';
-  };
+_: {
+  programs.fish.enable = true;
 
   # The `00-` prefix sorts ahead of `hm-session-vars.fish` in conf.d
   # alphabetical order, so brew runs first and HM's `home.sessionPath`

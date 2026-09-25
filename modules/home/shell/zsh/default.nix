@@ -1,7 +1,6 @@
 {
   lib,
   config,
-  dotfilesPackages,
   ...
 }:
 {
@@ -41,12 +40,7 @@
     # `typeset -U path cdpath fpath manpath` and ahead of every PATH write
     # in the rendered `~/.zshrc`. Must precede any PATH write so inherited
     # PATH (tmux panes, child shells) can't accumulate duplicates.
-    initContent = lib.mkMerge [
-      (lib.mkBefore "typeset -U path PATH\n")
-      (lib.mkAfter ''
-        source ${dotfilesPackages.git-worktree-cd.shellInit.zsh}
-      '')
-    ];
+    initContent = lib.mkBefore "typeset -U path PATH\n";
   };
 
   # Brew shellenv lands in `~/.zshenv` ahead of HM's stub `source` line

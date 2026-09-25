@@ -22,21 +22,6 @@
         direnv-worktree = pkgs.callPackage ../packages/direnv-worktree/package.nix {
           inherit (unstablePkgs) git;
         };
-        git-branch-checkout = pkgs.callPackage ../packages/git-branch-checkout/package.nix { };
-        git-branch-current = pkgs.callPackage ../packages/git-branch-current/package.nix { };
-        git-branch-default = pkgs.callPackage ../packages/git-branch-default/package.nix { };
-        git-branch-delete = pkgs.callPackage ../packages/git-branch-delete/package.nix { };
-        git-branch-next = pkgs.callPackage ../packages/git-branch-next/package.nix {
-          inherit git-branch-current;
-        };
-        git-branch-previous = pkgs.callPackage ../packages/git-branch-previous/package.nix {
-          inherit git-branch-stacked;
-        };
-        git-branch-stacked = pkgs.callPackage ../packages/git-branch-stacked/package.nix {
-          inherit git-branch-default;
-        };
-        git-worktree-cd = pkgs.callPackage ../packages/git-worktree-cd/package.nix { };
-        git-worktree-select = pkgs.callPackage ../packages/git-worktree-select/package.nix { };
         gh-pr-comments = pkgs.callPackage ../packages/gh-pr-comments/package.nix {
           inherit jjx;
         };

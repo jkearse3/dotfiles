@@ -1,15 +1,9 @@
 {
-  dotfilesPackages,
   pkgs,
   ...
 }:
 {
-  programs.bash = {
-    enable = true;
-    initExtra = ''
-      source ${dotfilesPackages.git-worktree-cd.shellInit.bash}
-    '';
-  };
+  programs.bash.enable = true;
 
   home.packages = [
     pkgs.bash-language-server

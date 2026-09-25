@@ -5,15 +5,6 @@
 {
   home.packages = [
     dotfilesPackages.direnv-worktree
-    dotfilesPackages.git-branch-checkout
-    dotfilesPackages.git-branch-current
-    dotfilesPackages.git-branch-default
-    dotfilesPackages.git-branch-delete
-    dotfilesPackages.git-branch-next
-    dotfilesPackages.git-branch-previous
-    dotfilesPackages.git-branch-stacked
-    dotfilesPackages.git-worktree-cd
-    dotfilesPackages.git-worktree-select
   ];
 
   programs.git = {
