@@ -1,4 +1,4 @@
---- Renders the global statusline: mode letter, file name, and file details.
+--- Renders the global statusline: mode name, file name, and file details.
 ---@class lib.statusline
 local M = {}
 
@@ -14,31 +14,31 @@ local CTRL_S = vim.api.nvim_replace_termcodes("<C-S>", true, true, true)
 local CTRL_V = vim.api.nvim_replace_termcodes("<C-V>", true, true, true)
 
 ---@class lib.statusline.ModeSection
----@field letter string
+---@field name string
 ---@field highlight string
 
 --- Mode sections keyed by the single-character `mode()` result.
 ---@type table<string, lib.statusline.ModeSection>
 -- stylua: ignore
 local mode_sections = {
-	n        = { letter = "N", highlight = "StatusLineModeNormal" },
-	v        = { letter = "V", highlight = "StatusLineModeVisual" },
-	V        = { letter = "V", highlight = "StatusLineModeVisual" },
-	[CTRL_V] = { letter = "V", highlight = "StatusLineModeVisual" },
-	s        = { letter = "S", highlight = "StatusLineModeVisual" },
-	S        = { letter = "S", highlight = "StatusLineModeVisual" },
-	[CTRL_S] = { letter = "S", highlight = "StatusLineModeVisual" },
-	i        = { letter = "I", highlight = "StatusLineModeInsert" },
-	R        = { letter = "R", highlight = "StatusLineModeReplace" },
-	c        = { letter = "C", highlight = "StatusLineModeCommand" },
-	r        = { letter = "P", highlight = "StatusLineModeOther" },
-	["!"]    = { letter = "S", highlight = "StatusLineModeOther" },
-	t        = { letter = "T", highlight = "StatusLineModeOther" },
+	n        = { name = "NORMAL",   highlight = "StatusLineModeNormal" },
+	v        = { name = "VISUAL",   highlight = "StatusLineModeVisual" },
+	V        = { name = "V-LINE",   highlight = "StatusLineModeVisual" },
+	[CTRL_V] = { name = "V-BLOCK",  highlight = "StatusLineModeVisual" },
+	s        = { name = "SELECT",   highlight = "StatusLineModeVisual" },
+	S        = { name = "S-LINE",   highlight = "StatusLineModeVisual" },
+	[CTRL_S] = { name = "S-BLOCK",  highlight = "StatusLineModeVisual" },
+	i        = { name = "INSERT",   highlight = "StatusLineModeInsert" },
+	R        = { name = "REPLACE",  highlight = "StatusLineModeReplace" },
+	c        = { name = "COMMAND",  highlight = "StatusLineModeCommand" },
+	r        = { name = "PROMPT",   highlight = "StatusLineModeOther" },
+	["!"]    = { name = "SHELL",    highlight = "StatusLineModeOther" },
+	t        = { name = "TERMINAL", highlight = "StatusLineModeOther" },
 }
 
 ---@type lib.statusline.ModeSection
 local unknown_mode_section = {
-	letter = "U",
+	name = "UNKNOWN",
 	highlight = "StatusLineModeOther",
 }
 
@@ -104,10 +104,13 @@ local function fileinfo_text()
 	return filetype .. " " .. details
 end
 
---- Installs the statusline globally and keeps its highlights in sync with the
---- colorscheme. Window-local 'statusline' values still take precedence.
+--- Installs the statusline globally, turns off 'showmode', and keeps its
+--- highlights in sync with the colorscheme. Window-local 'statusline' values
+--- still take precedence.
 function M.setup()
 	vim.go.statusline = M.option
+	-- The mode section replaces the command-line "-- INSERT --" indicator.
+	vim.o.showmode = false
 	-- Keep quickfix windows on this statusline instead of the qf ftplugin's.
 	vim.g.qf_disable_statusline = 1
 
@@ -131,7 +134,7 @@ function M.render()
 
 	local mode = mode_sections[vim.fn.mode()] or unknown_mode_section
 	return table.concat({
-		section(mode.highlight, mode.letter),
+		section(mode.highlight, mode.name),
 		section("StatusLineFilename", filename_text()),
 		"%<%=",
 		section("StatusLineFileinfo", fileinfo_text()),
