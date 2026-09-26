@@ -189,8 +189,9 @@ Send every reviewer the same request:
    concrete evidence is `unverified`, and a `rejected` summary carries the
    rejection's evidence for the next reviewer. When only some findings verify,
    keep the verified changes and dispatch a fresh fixer on the same working copy
-   with `context fix <owner> <id>...` naming the rest, marking the verified
-   changes as kept. Re-dispatch at most once per batch; findings still `open`
+   with `context fix <owner> <id>...` naming only the `unverified` ones, marking
+   the verified changes as kept; `rejected` and `escalated` findings are not
+   re-dispatched. Re-dispatch at most once per batch; findings still `open`
    after it, or when none verify, carry to the next full review as claims to
    confirm. Before landing, every change in the working copy must be verified;
    revert changes for findings not landing, and skip landing only when neither a
