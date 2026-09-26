@@ -78,7 +78,7 @@ fi
 # user decides, any other new finding starts `open`, a `status` event follows
 # the table, a `land` moves `open` findings to `fixed`, and a finding decision
 # moves any finding to its effect. A finding a decision opened carries a user
-# request, so only another decision may settle or dispute it.
+# request, so only another decision may settle it.
 # shellcheck disable=SC2016 # jq program, not shell expansion.
 RECORD_PROGRAM='
 ($log | ledger_state) as $state
@@ -90,7 +90,7 @@ def need_enum($key; $allowed): if (.[$key] as $value | $allowed | index([$value]
 def finding_ids: [$log[] | select(.event == "finding") | .id];
 def need_finding($key): if (.[$key] as $id | finding_ids | index([$id])) then . else fail("\($key) names no recorded finding") end;
 def need_target_owner: if (.owner as $owner | $log[0].target | index([$owner])) then . else fail("owner is not a run target change ID: \(.owner)") end;
-def statuses: ["open", "fixed", "disputed", "pending-decision", "settled"];
+def statuses: ["open", "fixed", "pending-decision", "settled"];
 def recorded_finding($id): $state.findings[] | select(.id == $id);
 def need_initial_status:
   (if .category == "design" or .category == "question" then "pending-decision" else "open" end) as $initial
@@ -100,7 +100,7 @@ def need_transition:
   .id as $id
   | .status as $to
   | recorded_finding($id) as $finding
-  | if $finding.status == "open" and ($to == "settled" or $to == "disputed") and ($finding.decisions | last | .effect) == "open" then fail("a decision opened \($id); only another decision may move it to \($to)")
+  | if $finding.status == "open" and $to == "settled" and ($finding.decisions | last | .effect) == "open" then fail("a decision opened \($id); only another decision may move it to \($to)")
     elif FINDING_TRANSITIONS[$finding.status] | index([$to]) then .
     else fail("\($id) cannot move from \($finding.status) to \($to)")
     end;
@@ -124,17 +124,15 @@ end
 '
 
 # The status changes a `status` event may make, keyed by the current status.
-# Re-raising a `fixed`, `disputed`, or `settled` finding asks the user; a
-# disputed finding the next reviewer does not re-raise, or an open one it
-# declines with a reason, settles; a settled conclusion whose evidence moved is
-# disputed again. `fixed` comes only from a `land`, and a `pending-decision`
+# Re-raising a `fixed` or `settled` finding, or an open one a fixer rejected
+# with evidence, asks the user; an open finding the next reviewer declines with
+# a reason settles. `fixed` comes only from a `land`, and a `pending-decision`
 # finding leaves that status only through a decision.
 FINDING_TRANSITIONS='
 def FINDING_TRANSITIONS: {
-  "open": ["settled", "disputed", "pending-decision"],
+  "open": ["settled", "pending-decision"],
   "fixed": ["pending-decision"],
-  "disputed": ["settled", "pending-decision"],
-  "settled": ["disputed", "pending-decision"],
+  "settled": ["pending-decision"],
   "pending-decision": []
 };
 '
@@ -193,19 +191,19 @@ def ledger_state: reduce .[] as $event (
 | .status_counts = (.findings | group_by(.status) | map({key: .[0].status, value: length}) | from_entries);
 '
 
-# Both roles receive the run criteria. A reviewer receives settled conclusions,
-# disputed claims to arbitrate, open findings carried from an earlier round as
-# claims to confirm, and user decisions, each as a brief finding: its latest
-# attempt and its decisions without their history. A fixer receives its owning
-# revision's open findings in full with their attempt history, and briefly every
-# pending-decision finding so it can escalate a fix that depends on one, settled
-# conclusions, and user decisions. Each finding appears once per context: a
-# listed finding carries its own decisions, and `decided` holds only decided
-# findings no other list includes. Finding IDs given after the owner restrict
-# the open findings to those IDs, so a fixer re-dispatched after partial
-# verification receives only the rest; each must name an open finding of that
-# owner. The owner must be a run target change ID, so a mistyped owner fails
-# rather than yielding an empty open list.
+# Both roles receive the run criteria. A reviewer receives settled conclusions
+# to re-check, open findings carried from an earlier round as claims to confirm,
+# including any a fixer rejected, and user decisions, each as a brief finding:
+# its latest attempt and its decisions without their history. A fixer receives
+# its owning revision's open findings in full with their attempt history, and
+# briefly every pending-decision finding so it can escalate a fix that depends
+# on one, settled conclusions, and user decisions. Each finding appears once
+# per context: a listed finding carries its own decisions, and `decided` holds
+# only decided findings no other list includes. Finding IDs given after the
+# owner restrict the open findings to those IDs, so a fixer re-dispatched after
+# partial verification receives only the rest; each must name an open finding
+# of that owner. The owner must be a run target change ID, so a mistyped owner
+# fails rather than yielding an empty open list.
 # shellcheck disable=SC2016 # jq program, not shell expansion.
 CONTEXT_PROGRAM='
 def brief:
@@ -233,7 +231,6 @@ elif $role == "review" then
   {
     criteria: .run.criteria,
     settled: brief_with_status("settled"),
-    disputed: brief_with_status("disputed"),
     open: brief_with_status("open")
   } as $listed
   | $listed + {

@@ -94,28 +94,26 @@ declared.
 
 ### Finding Statuses
 
-Findings are `open`, `fixed`, `disputed`, `pending-decision`, or `settled`, and
-change status only as below; `record` rejects any other change. A finding a
-decision opened carries a user request, so a reviewer or fixer never settles or
-disputes it.
+Findings are `open`, `fixed`, `pending-decision`, or `settled`, and change
+status only as below; `record` rejects any other change. A finding a decision
+opened carries a user request, so a reviewer or fixer never settles it. A
+`rejected` attempt is an evidenced rejection; a fixer that rejects without
+concrete evidence is recorded as `unverified`.
 
-| From               | When                                                               | To                 |
-| ------------------ | ------------------------------------------------------------------ | ------------------ |
-| new                | a `design` or `question` finding                                   | `pending-decision` |
-| new                | any other finding                                                  | `open`             |
-| `open`             | re-raised, or declined when a decision opened it                   | `open`             |
-| `open`             | declined with a reason, when no decision opened it                 | `settled`          |
-| `open`             | its fix lands (`land`)                                             | `fixed`            |
-| `open`             | an unverified fix, or a rejection without concrete evidence        | `open`             |
-| `open`             | an evidenced rejection, when no decision opened it                 | `disputed`         |
-| `open`             | an escalation, or an evidenced rejection when a decision opened it | `pending-decision` |
-| `fixed`            | re-raised                                                          | `pending-decision` |
-| `disputed`         | re-raised                                                          | `pending-decision` |
-| `disputed`         | not re-raised                                                      | `settled`          |
-| `settled`          | re-raised                                                          | `pending-decision` |
-| `settled`          | its evidence moved before a review                                 | `disputed`         |
-| `pending-decision` | re-raised                                                          | `pending-decision` |
-| any                | the user decides it, or a standing decision covers it (`decision`) | the effect         |
+| From               | When                                                                                     | To                 |
+| ------------------ | ---------------------------------------------------------------------------------------- | ------------------ |
+| new                | a `design` or `question` finding                                                         | `pending-decision` |
+| new                | any other finding                                                                        | `open`             |
+| `open`             | re-raised when its last attempt is not `rejected`, or declined when a decision opened it | `open`             |
+| `open`             | declined with a reason, when no decision opened it                                       | `settled`          |
+| `open`             | its fix lands (`land`)                                                                   | `fixed`            |
+| `open`             | an `unverified` attempt, or a `rejected` one when no decision opened it                  | `open`             |
+| `open`             | re-raised when its last attempt is `rejected`                                            | `pending-decision` |
+| `open`             | an escalation, or a `rejected` attempt when a decision opened it                         | `pending-decision` |
+| `fixed`            | re-raised                                                                                | `pending-decision` |
+| `settled`          | re-raised                                                                                | `pending-decision` |
+| `pending-decision` | re-raised                                                                                | `pending-decision` |
+| any                | the user decides it, or a standing decision covers it (`decision`)                       | the effect         |
 
 Any status not listed for a trigger stays as it is; in particular a `fixed`
 finding stays `fixed` when not re-raised.
@@ -125,10 +123,8 @@ finding stays `fixed` when not re-raised.
 Repeat until a review passes or the run stops:
 
 1. **Review.** Re-resolve the target's change IDs to current commits, then
-   dispatch a fresh reviewer with the request in **Review Request**. Before
-   sending, confirm each settled conclusion's evidence has not moved; record one
-   whose evidence moved as `disputed`, citing the move, so the reviewer
-   arbitrates it. `pass` ends the loop; `blocked` stops it and is reported.
+   dispatch a fresh reviewer with the request in **Review Request**. `pass` ends
+   the loop; `blocked` stops it and is reported.
 2. **Triage.** Record each new finding with the category, owner, and mechanism
    the reviewer reported; never infer them in this session. Resolve the reported
    owner with jj to its full change ID in `run.target`. Return an incomplete
@@ -154,10 +150,11 @@ Send every reviewer the same request:
 - follow the `diff-review` skill, read-only: no file edits, no VCS mutation, no
   scratch files inside the repository, and no further delegation;
 - the target's full change IDs, current commits, any bookmark, and the base;
-- `context review` unchanged. It holds the criteria, settled findings as prior
-  independent conclusions not to re-raise unless their evidence moved, disputed
-  findings as claims to arbitrate, `open` findings carried from an earlier round
-  as claims to confirm, and user decisions as the user's chosen design;
+- `context review` unchanged. It holds the criteria, settled findings as earlier
+  conclusions with their reasons, to re-raise only when the current code shows
+  the reason no longer holds, `open` findings carried from an earlier round as
+  claims to confirm, including any a fixer rejected with the evidence in its
+  last attempt, and user decisions as the user's chosen design;
 - return the verdict and, per finding, exactly one `diff-review` category, a
   priority, a `file:line` location, the causal mechanism with a failure
   scenario, the owning revision (the change ID of the earliest target revision
@@ -188,15 +185,16 @@ Send every reviewer the same request:
 
 3. Verify the fixer's diff: it addresses only its findings, stays within the
    target's concern, and passes proportionate checks. Record an `attempt` for
-   each finding; an unverified fix or a rejection without concrete evidence
-   stays `open`. When only some findings verify, keep the verified changes and
-   dispatch a fresh fixer on the same working copy with
-   `context fix <owner> <id>...` naming the rest, marking the verified changes
-   as kept. Re-dispatch at most once per batch; findings still `open` after it,
-   or when none verify, carry to the next full review as claims to confirm.
-   Before landing, every change in the working copy must be verified; revert
-   changes for findings not landing, and skip landing only when neither a change
-   nor a verified description replacement remains.
+   each finding: a claimed fix that fails verification or a rejection without
+   concrete evidence is `unverified`, and a `rejected` summary carries the
+   rejection's evidence for the next reviewer. When only some findings verify,
+   keep the verified changes and dispatch a fresh fixer on the same working copy
+   with `context fix <owner> <id>...` naming the rest, marking the verified
+   changes as kept. Re-dispatch at most once per batch; findings still `open`
+   after it, or when none verify, carry to the next full review as claims to
+   confirm. Before landing, every change in the working copy must be verified;
+   revert changes for findings not landing, and skip landing only when neither a
+   change nor a verified description replacement remains.
 4. Land the verified change with
    `scripts/land.sh --workspace <workspace> <ledger> <owner> <id>...`, naming
    the findings it fixes. For a verified description replacement, compose and
@@ -262,7 +260,8 @@ Lead with the outcome: `pass`, `stopped by user`, or `blocked`. Then include:
 - final revision IDs, rewritten revisions, and rebased descendants outside the
   target;
 - full reviews run;
-- fixed, disputed, and user-settled findings, and any unresolved findings;
+- fixed, reviewer-settled, and user-decided findings, and any unresolved
+  findings;
 - checks run and skipped, with reasons.
 
 ## Boundaries
