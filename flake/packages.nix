@@ -25,6 +25,7 @@
         gh-pr-comments = pkgs.callPackage ../packages/gh-pr-comments/package.nix {
           inherit jjx;
         };
+        hashline-mcp = pkgs.callPackage ../packages/hashline-mcp/package.nix { };
         jjx = pkgs.callPackage ../packages/jjx/package.nix {
           inherit commit-message;
           inherit (unstablePkgs) jujutsu;

@@ -1,0 +1,15 @@
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "hashline-mcp"
+version = "0.1.0"
+description = "Anchored line editing for coding agents over MCP"
+requires-python = ">=3.12"
+
+[project.scripts]
+hashline-mcp = "hashline_mcp.server:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]

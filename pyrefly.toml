@@ -3,6 +3,7 @@ project-includes = [
   "modules/home/agents/skills/**/scripts",
   "packages/commit-message",
   "packages/direnv-worktree",
+  "packages/hashline-mcp",
   "packages/nix-cleanup",
   "packages/nvim-pack",
   "packages/jjx",
@@ -11,6 +12,8 @@ project-includes = [
 ]
 search-path = [
   "packages/commit-message/src",
+  "packages/hashline-mcp/bench",
+  "packages/hashline-mcp/src",
   "packages/jjx/src",
   "packages/nix-cleanup",
   "packages/nvim-pack",

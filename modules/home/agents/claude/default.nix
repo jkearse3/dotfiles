@@ -255,6 +255,21 @@ let
     '';
   };
 
+  # `alwaysLoad` keeps the anchored tools out of tool search, so they sit
+  # beside Read and Edit in every session instead of behind a lookup. The
+  # command goes through the Home Manager profile rather than the store, so
+  # after a switch `/mcp` reconnect starts the new build in a running session.
+  hashlineMcpConfig = pkgs.writeText "claude-hashline-mcp.json" (
+    builtins.toJSON {
+      mcpServers.hashline = {
+        type = "stdio";
+        command = "${config.home.profileDirectory}/bin/hashline-mcp";
+        args = [ ];
+        alwaysLoad = true;
+      };
+    }
+  );
+
   # caffeinate stays outermost so its idle-sleep assertion covers the whole
   # session, wrapping both the direct binary and the sandbox entrypoint.
   mkClaude =
@@ -278,8 +293,18 @@ let
           ${lib.escapeShellArg machineSettingsPath} \
           ${lib.escapeShellArgs machineOverridablePaths}) || settings=${pinnedSettingsPath}
 
+        # `CLAUDE_HASHLINE=0` launches without the anchored editing tools, for
+        # comparing sessions with and without them; the `hashline` rule in
+        # CLAUDE.md applies only while they are available. `--mcp-config` is
+        # variadic, so it must precede another flag rather than the caller's
+        # arguments.
+        hashline=()
+        if [ "''${CLAUDE_HASHLINE:-1}" != 0 ]; then
+          hashline=(--mcp-config ${hashlineMcpConfig})
+        fi
+
         ${agentInteractivePolicy.shellExports}
-        exec ${preventIdleSleep}${command} --settings "$settings" "$@"
+        exec ${preventIdleSleep}${command} "''${hashline[@]}" --settings "$settings" "$@"
       '';
     };
 
@@ -309,6 +334,7 @@ in
     claude
     nono-claude
     dotfilesPackages.ccusage
+    dotfilesPackages.hashline-mcp
     (pkgs.writeShellScriptBin "claude-mcp-add-linear" ''
       exec claude mcp add linear-server -s local --transport http https://mcp.linear.app/mcp
     '')
@@ -327,6 +353,12 @@ in
     # own runtime writes and for machine-local overrides of unenforced keys.
 
     ".claude/skills" = renderSkillsDir { };
+    # The `claude` registry holds rules only Claude Code sessions need. Its
+    # `hashline` rule steers edits to the anchored tools, because server
+    # instructions alone lose to the auto-mode prompt, which invites Bash edits.
+    # Edits it routes to MCP tools are outside Claude Code's checkpoints and the
+    # path safeguards of its built-in file tools, leaving the auto-mode
+    # classifier and, under nono-claude, the nono sandbox as their gates.
     ".claude/CLAUDE.md".text = renderAgentsMarkdown {
       title = "Claude Code Instructions";
       registries = [
@@ -334,8 +366,14 @@ in
           name = "shared";
           sources = config.agents.sharedRules;
         }
+        {
+          name = "claude";
+          sources = {
+            hashline = ./rules/hashline.md;
+          };
+        }
       ];
-      order = config.agents.sharedRuleOrder;
+      order = config.agents.sharedRuleOrder ++ [ "claude/hashline" ];
     };
     # `statusLine.command` fails silently against a non-executable script, so
     # pin the bit rather than inheriting whatever mode the checkout carries.
