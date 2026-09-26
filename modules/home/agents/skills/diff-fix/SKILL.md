@@ -71,8 +71,10 @@ views:
 - `scripts/ledger.sh context <ledger> review` and
   `scripts/ledger.sh context <ledger> fix <owner> [<id>...]`: exactly what the
   next reviewer or fixer receives from the ledger, including `run.criteria`.
-  Finding IDs restrict the fixer's `open` findings to those named. Pass it
-  unchanged; never trim or paraphrase it.
+  Finding IDs restrict the fixer's `open` findings to those named. Each finding
+  appears once: a listed finding carries its own decisions, and `decided` holds
+  only decided findings no other list includes. Pass it unchanged; never trim or
+  paraphrase it.
 
 | Event        | Fields                                                                      | Record when                                            |
 | ------------ | --------------------------------------------------------------------------- | ------------------------------------------------------ |
@@ -195,29 +197,46 @@ Send every reviewer the same request:
    Before landing, every change in the working copy must be verified; revert
    changes for findings not landing, and skip landing only when neither a change
    nor a verified description replacement remains.
-4. Land the verified change: note the working-copy commit and the owning
-   revision's commit, run
-   `jj squash --from @ --into <owner> --use-destination-message`, and apply any
-   verified description replacement through `finalize-changes`; a
-   description-only fix lands through `finalize-changes` alone. Confirm
-   `jj diff --from <noted working copy> --to <owner> --summary` is empty and
-   inspect the rebased descendants. Stop when the landing conflicts the owning
-   revision. Record the `land` with the owning revision's old and new commits
-   and the findings it fixes.
-5. Resolve conflicts the landing leaves in descendant target revisions, earliest
-   first, before the next fix or review. Create a fresh empty child of the
-   conflicted revision as the working copy and dispatch a fresh fixer under the
-   rules above with that revision's description and the landed fix's findings
-   and diff. It resolves the conflict so the revision keeps its own intent and
-   carries the landed fix's intent. Verify that the conflict is gone, the
-   resolution changes nothing else, and proportionate checks pass; stop when it
-   fails. Land it as in step 4 with the conflicted revision as `<owner>`,
-   recording a `land` with empty `findings` since the landed fix already marked
-   them `fixed`, and repeat for any remaining conflicted descendant. Then stop
-   when a descendant outside the target remains conflicted.
+4. Land the verified change with
+   `scripts/land.sh --workspace <workspace> <ledger> <owner> <id>...`, naming
+   the findings it fixes. For a verified description replacement, compose and
+   validate it as `finalize-changes` describes, write it to a file outside the
+   repository, and add `--description-file <path>`; a description-only fix lands
+   the same way from the empty working copy. Before mutating, the script checks
+   the owner, that each named finding is open and owned by it, and that the
+   landing changes something; it then squashes the working copy into the owner,
+   confirms the owner holds exactly the verified tree and is not conflicted,
+   records the `land`, and prints each conflicted descendant as a
+   `target-conflict` or `outside-conflict` line. Stop when it fails.
+5. Resolve each `target-conflict` revision, earliest first, before the next fix
+   or review. Create a fresh empty child of it as the working copy and dispatch
+   a fresh fixer with the request in **Resolution Request**. Verify that no
+   conflict remains in the working copy, the resolution changes nothing beyond
+   carrying the landed fix into the revision, and proportionate checks pass;
+   stop when it fails. Land it with `scripts/land.sh` naming the conflicted
+   revision as `<owner>` and no findings, since the landed fix already marked
+   them `fixed`, and resolve any `target-conflict` it reports in turn. Then stop
+   when an `outside-conflict` revision remains conflicted.
 6. Run `jj new <target tip>` so an empty working copy sits above the target
    before the next review, and record each rejection and escalation through
    **Finding Statuses**.
+
+### Resolution Request
+
+Send every conflict resolver the same request:
+
+- the fixer rules from **Fix** step 2: follow `coding-style`, edit only the
+  working copy, format and check only touched files, and perform no VCS
+  mutation;
+- the conflicted revision's change ID and description, and its pre-rebase commit
+  so its intended diff can be read;
+- the landed fix: its owning revision, its `from` and `to` commits from the
+  `land` event, and its findings from `state`;
+- resolve every conflict so the revision keeps its own intent and carries the
+  landed fix's intent, and change nothing else;
+- return `fixed` with the checks run, or `escalated` with the decision needed
+  when the two intents cannot both hold, and report whether the revision's
+  description stays accurate, with replacement text when it does not.
 
 ## Escalation
 

@@ -5,6 +5,7 @@ set -euo pipefail
 SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 PREPARE_LEDGER="$SCRIPT_DIR/../scripts/prepare-ledger.sh"
 LEDGER="$SCRIPT_DIR/../scripts/ledger.sh"
+LAND="$SCRIPT_DIR/../scripts/land.sh"
 TMPDIR_ROOT=$(mktemp -d)
 TMPDIR_ROOT=$(cd "$TMPDIR_ROOT" && pwd -P)
 trap 'rm -rf "$TMPDIR_ROOT"' EXIT
@@ -256,28 +257,28 @@ assert_eq '{"full":0,"F2":"settled","standing":["fix design findings too"]}' \
 	"$(state '{full: .full_reviews_since_checkpoint, F2: .findings[1].status, standing: [.standing_decisions[].decision]}')" \
 	'a checkpoint resets the review count and decisions set status'
 
-assert_eq '["none",["F2"],["F5"],["F3","F4"],["F2"],["fix design findings too"]]' "$(context review)" \
-	'a reviewer receives the criteria and settled, disputed, open, and decided findings'
+assert_eq '["none",["F2"],["F5"],["F3","F4"],[],["fix design findings too"]]' "$(context review)" \
+	'a reviewer receives the criteria and settled, disputed, and open findings, each once'
 assert_eq '{"keys":["category","evidence","id","last_attempt","location","mechanism","owner","priority","status"],"last_attempt":{"outcome":"rejected","summary":"evidence"}}' \
 	"$("$LEDGER" context "$EVENTS" review | jq -c '.disputed[0] | {keys: keys, last_attempt}')" \
 	'a reviewer receives a brief finding with its latest attempt only'
-assert_eq '["none",["F3"],[],["F2"],["F2"],["fix design findings too"]]' "$(context fix a)" \
+assert_eq '["none",["F3"],[],["F2"],[],["fix design findings too"]]' "$(context fix a)" \
 	'a fixer receives only its owner'"'"'s open findings'
 
 # A fixer receives every pending-decision finding, whatever its owner, so it can
 # escalate a fix that depends on one.
 record finding '{"owner":"b","category":"design","priority":"low","location":"t:7","mechanism":"s","status":"pending-decision"}' >/dev/null
-assert_eq '["none",["F3"],["F6"],["F2"],["F2"],["fix design findings too"]]' "$(context fix a)" \
+assert_eq '["none",["F3"],["F6"],["F2"],[],["fix design findings too"]]' "$(context fix a)" \
 	'a fixer receives pending-decision findings of every owner'
-assert_eq '["none",["F2"],["F5"],["F3","F4"],["F2"],["fix design findings too"]]' "$(context review)" \
+assert_eq '["none",["F2"],["F5"],["F3","F4"],[],["fix design findings too"]]' "$(context review)" \
 	'a reviewer does not receive pending-decision findings'
 
 # Finding IDs after the owner restrict a fixer's open findings, for a fixer
 # re-dispatched with only the findings that failed verification.
 record finding '{"owner":"a","category":"bug","priority":"low","location":"u:6","mechanism":"r","status":"open"}' >/dev/null
-assert_eq '["none",["F3","F7"],["F6"],["F2"],["F2"],["fix design findings too"]]' "$(context fix a)" \
+assert_eq '["none",["F3","F7"],["F6"],["F2"],[],["fix design findings too"]]' "$(context fix a)" \
 	'a fixer without finding IDs receives all its owner'"'"'s open findings'
-assert_eq '["none",["F7"],["F6"],["F2"],["F2"],["fix design findings too"]]' "$(context fix a F7)" \
+assert_eq '["none",["F7"],["F6"],["F2"],[],["fix design findings too"]]' "$(context fix a F7)" \
 	'a fixer with finding IDs receives only those open findings'
 
 context_status=0
@@ -303,3 +304,90 @@ assert_record_failure 'ledger: status: a decision opened F8; only another decisi
 record status '{"id":"F8","status":"pending-decision","evidence":"e"}' >/dev/null
 assert_eq '"pending-decision"' "$(state '.findings[7].status')" \
 	'a rejected decision-opened finding returns to the user'
+assert_eq '["none",["F2"],["F5"],["F3","F4","F7"],["F8"],["fix design findings too"]]' "$(context review)" \
+	'a reviewer receives a decided finding no other list holds under decided'
+assert_eq '["none",["F3","F7"],["F6","F8"],["F2"],[],["fix design findings too"]]' "$(context fix a)" \
+	'a fixer receives a decided finding once, in the list that holds it'
+
+# Landing: a fixture stack A -> B -> C, with A and B in the target and C
+# stacked above it. A fix to A that rewrites the line B changes conflicts B, and
+# through it C.
+LAND_REPO="$TMPDIR_ROOT/land repo"
+LAND_EVENTS="$TMPDIR_ROOT/land.jsonl"
+: >"$LAND_EVENTS"
+jj git init --quiet "$LAND_REPO"
+
+land_jj() {
+	jj -R "$LAND_REPO" "$@"
+}
+
+change_id() {
+	land_jj log --no-graph -r "$1" -T change_id
+}
+
+land() {
+	"$LAND" --workspace "$LAND_REPO" "$@"
+}
+
+# Run the lander expecting failure, and assert its diagnostic and that the
+# repository did not change.
+assert_land_failure() {
+	local expected_diagnostic=$1
+	local description=$2
+	shift 2
+	local status=0
+	local stderr
+	local before
+
+	before=$(land_jj log --no-graph -r 'all()' -T 'commit_id ++ "\n"')
+	stderr=$(land "$@" 2>&1 >/dev/null) || status=$?
+	assert_eq 1 "$status" "$description exits 1"
+	assert_eq "$expected_diagnostic" "$stderr" "$description reports its cause"
+	assert_eq "$before" "$(land_jj log --no-graph -r 'all()' -T 'commit_id ++ "\n"')" \
+		"$description leaves the repository unchanged"
+}
+
+printf 'one\n' >"$LAND_REPO/f"
+land_jj describe --quiet -m A
+A=$(change_id @)
+land_jj new --quiet -m B
+printf 'two\n' >"$LAND_REPO/f"
+B=$(change_id @)
+land_jj new --quiet -m C
+printf 'c\n' >"$LAND_REPO/g"
+C=$(change_id @)
+
+"$LEDGER" record "$LAND_EVENTS" run <<<"{\"target\":[\"$A\",\"$B\"],\"base\":\"root()\",\"criteria\":\"none\"}" >/dev/null
+"$LEDGER" record "$LAND_EVENTS" finding <<<"{\"owner\":\"$A\",\"category\":\"bug\",\"priority\":\"low\",\"location\":\"f:1\",\"mechanism\":\"m\",\"status\":\"open\"}" >/dev/null
+"$LEDGER" record "$LAND_EVENTS" finding <<<"{\"owner\":\"$A\",\"category\":\"design\",\"priority\":\"low\",\"location\":\"f:1\",\"mechanism\":\"n\",\"status\":\"pending-decision\"}" >/dev/null
+"$LEDGER" record "$LAND_EVENTS" finding <<<"{\"owner\":\"$B\",\"category\":\"bug\",\"priority\":\"low\",\"location\":\"f:1\",\"mechanism\":\"o\",\"status\":\"open\"}" >/dev/null
+
+assert_land_failure "land: owner is not a run target change ID: $C" \
+	'a landing into a revision outside the target' "$LAND_EVENTS" "$C"
+assert_land_failure 'land: findings are not open: F2' \
+	'a landing of a finding that is not open' "$LAND_EVENTS" "$A" F1 F2
+assert_land_failure "land: findings are not owned by $A: F3" \
+	"a landing of another revision's finding" "$LAND_EVENTS" "$A" F1 F3
+assert_land_failure "land: the working copy is not a child of $A" \
+	'a landing from a working copy elsewhere' "$LAND_EVENTS" "$A" F1
+
+land_jj new --quiet "$A"
+assert_land_failure 'land: the working copy is empty and no description file is given' \
+	'a landing that changes nothing' "$LAND_EVENTS" "$A" F1
+printf 'zero\n' >"$LAND_REPO/f"
+landing=$(land "$LAND_EVENTS" "$A" F1)
+assert_eq "target-conflict $B
+outside-conflict $C" "$landing" 'a landing reports conflicted target and outside descendants'
+assert_eq 'zero' "$(land_jj file show -r "$A" root:f)" 'a landing squashes the working copy into its owner'
+assert_eq A "$(land_jj log --no-graph -r "$A" -T description | tr -d '\n')" 'a landing keeps the owner description'
+assert_eq '"fixed"' "$("$LEDGER" state "$LAND_EVENTS" | jq -c '.findings[0].status')" \
+	'a landing records its findings as fixed'
+
+# A description-only fix lands from an empty working copy with no findings.
+land_jj new --quiet "$A"
+printf 'A reworded\n' >"$TMPDIR_ROOT/description"
+land --description-file "$TMPDIR_ROOT/description" "$LAND_EVENTS" "$A" >/dev/null
+assert_eq 'A reworded' "$(land_jj log --no-graph -r "$A" -T description | tr -d '\n')" \
+	'a description-only landing rewords its owner'
+assert_eq 2 "$("$LEDGER" state "$LAND_EVENTS" | jq '.landings | length')" \
+	'a description-only landing is recorded'

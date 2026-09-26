@@ -199,7 +199,9 @@ def ledger_state: reduce .[] as $event (
 # attempt and its decisions without their history. A fixer receives its owning
 # revision's open findings in full with their attempt history, and briefly every
 # pending-decision finding so it can escalate a fix that depends on one, settled
-# conclusions, and user decisions. Finding IDs given after the owner restrict
+# conclusions, and user decisions. Each finding appears once per context: a
+# listed finding carries its own decisions, and `decided` holds only decided
+# findings no other list includes. Finding IDs given after the owner restrict
 # the open findings to those IDs, so a fixer re-dispatched after partial
 # verification receives only the rest; each must name an open finding of that
 # owner. The owner must be a run target change ID, so a mistyped owner fails
@@ -213,7 +215,9 @@ def brief:
   + (if .decisions != [] then {decisions: [.decisions[] | {decision, effect}]} else {} end);
 def with_status($status): [.findings[] | select(.status == $status)];
 def brief_with_status($status): [with_status($status)[] | brief];
-def decided: [.findings[] | select(.decisions != []) | brief];
+def decided_beyond($listed):
+  [$listed[] | arrays | .[].id] as $ids
+  | [.findings[] | select(.decisions != [] and (.id as $id | $ids | index([$id]) | not)) | brief];
 def owner_open: [with_status("open")[] | select(.owner == $owner)];
 def selected_open:
   $ARGS.positional as $ids
@@ -230,8 +234,10 @@ elif $role == "review" then
     criteria: .run.criteria,
     settled: brief_with_status("settled"),
     disputed: brief_with_status("disputed"),
-    open: brief_with_status("open"),
-    decided: decided,
+    open: brief_with_status("open")
+  } as $listed
+  | $listed + {
+    decided: decided_beyond($listed),
     standing_decisions: .standing_decisions
   }
 else
@@ -239,8 +245,10 @@ else
     criteria: .run.criteria,
     open: selected_open,
     pending_decision: brief_with_status("pending-decision"),
-    settled: brief_with_status("settled"),
-    decided: decided,
+    settled: brief_with_status("settled")
+  } as $listed
+  | $listed + {
+    decided: decided_beyond($listed),
     standing_decisions: .standing_decisions
   }
 end
