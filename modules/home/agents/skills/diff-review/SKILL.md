@@ -98,9 +98,11 @@ Apply only relevant lenses:
 
 Use scrutiny proportional to production, data, security, and compatibility
 impact. Require concrete present-day harm rather than general best practice, and
-prefer the smallest sufficient correction. Stop when more evidence cannot change
-a finding's existence, causal scope, priority, correction, a criterion verdict,
-or overall status.
+prefer the smallest sufficient correction. For each finding or criterion, stop
+gathering evidence when more cannot change its existence, causal scope,
+priority, correction, or verdict. Findings never end the review: once the status
+is `non-pass`, keep covering every changed hunk under every relevant lens and
+report every finding.
 
 ## Report
 
