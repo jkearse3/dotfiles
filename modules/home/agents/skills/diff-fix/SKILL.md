@@ -25,8 +25,8 @@ ID, never commit ID, because each squash rewrites commits.
 
 Take the declared criteria, context, and any user decisions from the request.
 Invoking this skill authorizes squashing fixes into target revisions and
-rebasing their descendants. It authorizes nothing outside the target and no
-publication.
+rebasing their descendants, and a user decision to reshape the target authorizes
+that reshape. It authorizes nothing outside the target and no publication.
 
 ## Findings
 
@@ -54,25 +54,38 @@ against the change a landed fix made re-raises that fix's finding.
    incomplete review to the reviewer. `pass` ends the run; `blocked` stops it.
 2. **Triage.** A finding a user decision covers takes that decision's effect. A
    reasoned decline settles a finding unless the user asked for that change.
-   `design` and `question` findings, findings owned outside the target,
-   re-raised `needs-decision` findings, and re-raises that meet the first Ask
-   trigger are `needs-decision`. Everything else is `open`.
+   `design` and `question` findings, findings owned outside the target, findings
+   whose fix requires reordering, splitting, or moving changes between target
+   revisions, re-raised `needs-decision` findings, and re-raises that meet the
+   first Ask trigger are `needs-decision`. Everything else is `open`.
 3. **Ask** the user when a trigger below holds, before fixing. Present the
    `needs-decision` findings with their history and any unsatisfied criteria,
    and offer: decide, continue, or stop. A decision calling for a change makes
-   the finding `open`; one to leave the code as is settles it. Triggers:
+   the finding `open`, unless it calls for reordering, splitting, or moving
+   changes between target revisions, which step 4 handles; one to leave the code
+   as is settles it. Triggers:
    - a reviewer re-raises a `fixed` or `settled` finding, or an `open` one whose
      latest attempt is an evidenced rejection, and no user decision covers it;
    - the review did not pass and nothing is `open`;
    - 5 reviews since the last user checkpoint have not passed, unless a user
      decision set another limit.
-4. **Fix.** For each owning revision with `open` findings, earliest first, run
+4. **Reshape.** When a user decision calls for reordering, splitting, or moving
+   changes between target revisions, follow `finalize-changes` before any fix
+   this round, with the target as its explicit mutable history set and the
+   decision as its boundary intent; it preserves the aggregate tree. Record the
+   target's commit IDs first. If it stops and those commit IDs are unchanged,
+   keep the finding `needs-decision` with its reason. If it stops after
+   rewriting any of them, end the run as `blocked` and report the reshaped
+   revisions, any conflicts, and the `finalize-changes` report, without further
+   fixes. Otherwise re-resolve the target from its base to the reshaped tip,
+   mark the finding `fixed`, and go to step 8.
+5. **Fix.** For each owning revision with `open` findings, earliest first, run
    `jj new <owner>` and dispatch a fresh fixer. It follows `coding-style`, edits
    only the working copy, performs no VCS mutation or delegation, and returns
    per finding `fixed` with checks run, `rejected` with concrete evidence, or
    `needs-decision` with the question. It also returns replacement text when the
    owner's description became inaccurate.
-5. **Land.** Confirm the diff addresses each `fixed` finding, changes nothing
+6. **Land.** Confirm the diff addresses each `fixed` finding, changes nothing
    else, and passes checks; otherwise abandon the working copy and keep those
    findings `open` as unverified. A rejection without evidence stays `open` as
    unverified; a rejection of a change the user asked for, or a `needs-decision`
@@ -81,15 +94,15 @@ against the change a landed fix made re-raises that fix's finding.
    `jj squash --from @ --into <owner>`, adding `--message "$desc"` for a
    replacement. A description-only fix squashes the empty working copy with a
    message. Mark the landed findings `fixed`.
-6. **Resolve conflicts** before the next fix. After each landing, list
+7. **Resolve conflicts** before the next fix. After each landing, list
    `jj log -r 'descendants(<owner>) & conflicts()' --reversed`. While a target
    revision is conflicted, run `jj new` on the earliest one and dispatch a fresh
-   fixer under the step 4 rules with its change ID, its description, and the
+   fixer under the step 5 rules with its change ID, its description, and the
    landed findings, to keep the revision's intent and carry the fix. Land its
    resolution the same way and list again. Stop and ask the user when a
    resolution fails verification or needs a decision. Then stop when a
    descendant outside the target is newly conflicted.
-7. After all fixes, run `jj new <target tip>` before the next review.
+8. After all fixes, run `jj new <target tip>` before the next review.
 
 ## Report
 

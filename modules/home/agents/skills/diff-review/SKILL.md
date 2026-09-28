@@ -42,9 +42,14 @@ block only the verdict or coverage it prevents and continue reachable work.
 
 For one revision, review its diff. For a stack, review the aggregate delta and
 also compare each revision's diff with its description, including changes later
-removed by the stack. Derive a stacked target's base from its ancestry, not a
-default bookmark. A fresh empty undescribed jj `@` means `@-`. An aggregate
-empty diff is valid only when at least one included revision diff is non-empty.
+removed by the stack. Also check that each revision is safe to land on its own,
+and report one that relies on a descendant revision to build, pass its
+applicable checks, preserve required behavior, or be safe to deploy and use, or
+that, without a declared breaking change, leaves its parent's interfaces
+unusable by consumers it cannot update or its parent's persisted state unusable
+and unmigrated. Derive a stacked target's base from its ancestry, not a default
+bookmark. A fresh empty undescribed jj `@` means `@-`. An aggregate empty diff
+is valid only when at least one included revision diff is non-empty.
 
 Read full revision descriptions as intent, never proof. Each must accurately
 account for its own diff; report a material mismatch. Run the resolved diff
