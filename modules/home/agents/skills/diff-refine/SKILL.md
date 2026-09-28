@@ -31,10 +31,11 @@ A proposal must:
 
 - serve one lens: **simplicity** (drop concepts, indirection, branches,
   parameters, or state the behavior does not need, or reuse existing code),
-  **naming** (a name misleads or breaks the domain vocabulary), **structure**
-  (placement, order, or coupling makes the code harder to find or change), or
-  **performance** (an evidenced algorithmic, I/O, or allocation cost on a
-  reachable path);
+  **naming** (a name misleads, no longer matches the final behavior, breaks the
+  domain vocabulary, or falls short of `coding-style`'s naming guidance),
+  **structure** (placement, order, or coupling makes the code harder to find or
+  change), or **performance** (an evidenced algorithmic, I/O, or allocation cost
+  on a reachable path);
 - stay in scope: code the target changes, plus unchanged code the target made
   redundant or inconsistent. Read further only to settle a proposal, such as
   finding an existing helper or checking callers;
@@ -44,7 +45,12 @@ A proposal must:
   revisions stay valid after the squash;
 - state its concrete gain: what it removes, merges, clarifies, or makes cheaper;
 - preserve observable behavior, including contracts, output, errors, and
-  persisted data;
+  persisted data. The one exception is renaming a contract or durable name the
+  target introduces, in the revision that introduced it, updating every use,
+  including migrations, together. A name that already exists in the target's
+  base is a note for `diff-review`. Rate such a rename `medium` risk once the
+  name has left the local machine, such as through a pushed bookmark or a
+  migration applied to a shared database;
 - follow the repository's established patterns and `coding-style`, not the
   proposer's taste, and add no generality nobody needs.
 

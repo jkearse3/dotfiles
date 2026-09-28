@@ -255,7 +255,13 @@ and report the completed pair without changing either plan.
    external effects, review boundaries, user intent, or later work depends on
    them. Use an optional `Design` section only when these choices cross work
    items or need explanation beyond a requirement. Leave inconsequential choices
-   unstated rather than enumerating executor discretion.
+   unstated rather than enumerating executor discretion. Settle each new durable
+   name before work that writes it: database tables, columns, and enum values;
+   serialized, API, and message fields; event, metric, and log keys;
+   configuration and environment keys; command-line flags; and exported public
+   symbols. Define the concept, compare credible alternatives, and ask the user
+   when the domain vocabulary is theirs to decide. Record settled names under
+   optional `Names`.
 6. Sequence the fewest coherent work concerns that produce the outcome. Give
    each concern exact targets and concrete changes. Add preserved behavior,
    dependencies, failure handling, and stage-gate validation only when they are
@@ -433,6 +439,12 @@ Workspace: <repository or system identity>; planned at `<absolute path>`
 <Optional: cross-cutting architecture, interfaces, data flow, ownership,
 migration, or sequencing decisions.>
 
+## Names
+
+- <Optional: `<durable name>`: one-sentence meaning, including null, empty, or
+  default semantics. Rejected: `<alternative>` (<why its natural reading
+  misleads>).>
+
 ## Work
 
 ### 1. <Coherent work concern>
@@ -521,7 +533,7 @@ only for `Blocked` when authoring or rebuilding a plan. A `Ready` plan omits
 both. A predecessor superseded from `Needs Reconciliation` retains its existing
 `Reconciliation Required` section as immutable audit content; that section does
 not describe its new lifecycle status. Never add an empty section or `None`
-placeholder.
+placeholder. `Names` is optional on the same terms as `Design`.
 
 ## Boundaries
 

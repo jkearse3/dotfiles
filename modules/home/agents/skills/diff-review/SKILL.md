@@ -95,6 +95,18 @@ Apply only relevant lenses:
   Without a governing pattern, report clarity only when a natural reading causes
   a wrong action or repository prose relies on unresolved session or planning
   context.
+- **Names:** a name is a finding only when it fails a concrete test: its natural
+  reading misstates the concept's meaning, units, or semantics; it no longer
+  matches the behavior; or it conflicts with the repository's established
+  vocabulary. Preferring another accurate name is not a finding. Apply these
+  tests even without a governing pattern to durable names the target introduces
+  or whose meaning it changes: database tables, columns, and enum values;
+  serialized, API, and message fields; event, metric, and log keys;
+  configuration and environment keys; command-line flags; and exported public
+  symbols. Rate a durable-name finding `high` while the target is not reachable
+  from the default branch, because renaming is cheapest then; after merge, the
+  correction is a migration or deprecation. Rate a misleading non-durable name
+  `low`.
 
 Use scrutiny proportional to production, data, security, and compatibility
 impact. Require concrete present-day harm rather than general best practice, and

@@ -27,7 +27,10 @@ behavior and risk, not change size.
 
 Before choosing names or moving code:
 
-1. Search for the repository's existing terms for the concept.
+1. Search the whole repository for its existing terms for the concept: schema,
+   public interfaces, code, tests, documentation, and user-facing text. Treat
+   that combined usage as the repository's vocabulary; where usages conflict,
+   follow the durable usage and report the conflict.
 2. Check candidate identifiers and filenames for unrelated collisions.
 3. Inspect neighboring source, tests, public interfaces, and conventions.
 4. Prefer established domain vocabulary over new synonyms.
@@ -35,8 +38,26 @@ Before choosing names or moving code:
 Do not rename unrelated code or broaden the requested change solely to improve
 discoverability.
 
-### Choose Searchable Names
+### Choose Names
 
+A name is a reader's first model of a concept. Choose it from what the concept
+means, then check that it is searchable.
+
+- Before naming a concept-bearing symbol, state what it is in one sentence. If
+  the sentence needs "and" or hedges, the concept may be two concepts or not yet
+  understood; resolve that before naming.
+- Name what a value means to its consumers, not how it is computed, where it
+  came from, or which change introduced it: `expiresAt`, not `createdPlusTtl`;
+  `billableSeats`, not `filteredUsers`.
+- Read the name where it is used: call sites, queries, serialized payloads, and
+  logs. A name that reads wrongly there is wrong.
+- Encode semantics the type does not carry: units (`timeoutMs`), time meaning
+  (an instant versus a calendar date), plurality, and whether a value is derived
+  or authoritative. Name booleans as predicates (`isArchived`,
+  `hasPaymentMethod`) whose true case is unambiguous.
+- Qualify generic nouns such as `data`, `info`, `type`, `status`, `state`,
+  `kind`, `value`, `item`, `manager`, `handler`, and `util` with the domain
+  question they answer: `approvalStatus`, not `status`.
 - Give symbols enough domain context to distinguish them from unrelated
   concepts. Public and widely used names need more context than short-lived
   locals.
@@ -51,6 +72,28 @@ discoverability.
   conventions. Do not repeat context that is already reliably visible.
 - Rename misleading identifiers when behavior changes and the requested scope
   permits the compatibility impact.
+
+### Treat Durable Names as Decisions
+
+Some names are expensive to change once they ship: database tables, columns, and
+enum values; serialized, API, and message fields; event, metric, and log keys;
+configuration and environment keys; command-line flags; and exported public
+symbols. Before writing a new durable name:
+
+1. Define the concept in one sentence, including what null, empty, or default
+   values mean.
+2. Compare at least two credible alternatives and keep the one whose natural
+   reading matches the definition in every consumer: schema, code, API, and user
+   interface.
+3. Check the name against the states, cardinality, and sibling concepts the
+   requested behavior already requires, so parallel names stay parallel.
+4. Ask the user when the right term depends on how they or the domain's owners
+   think about the concept rather than on repository evidence.
+5. Report each new durable name with its rejected alternatives in the task
+   summary so it can be reviewed before publication.
+
+When repository documentation defines domain terms, keep it consistent with each
+term the change introduces or changes.
 
 ### Improve Search Landings
 
@@ -259,6 +302,9 @@ For each materially changed concept:
 2. Confirm symbols covered by **Document Symbol Contracts** have concise,
    conventionally formatted documentation of their contracts.
 3. Confirm related behavior and checks use consistent, discoverable vocabulary.
+   List the identifiers the change introduced and rename any whose meaning no
+   longer matches the final behavior; names chosen early in a change often
+   describe an earlier understanding.
 4. Confirm declarations introduced or materially reworked use primary-first
    disclosure and contiguous supporting declarations without unrelated
    reordering.
