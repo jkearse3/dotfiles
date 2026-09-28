@@ -51,12 +51,18 @@ user-authored, pre-existing, or uncertain history without explicit authority.
    dependency order. Split independent concerns; combine partial steps and any
    change that would otherwise rely on a descendant revision. If a requested
    single target is incoherent, stop and ask to narrow it or permit multiple
-   revisions.
+   revisions. If no split, order, or combination makes every revision
+   independently valid, stop without mutation and report the failing
+   requirement; never add or change content to satisfy it. A breaking change the
+   user requested or approved counts as valid when its description declares it
+   or step 4 will.
 4. Only when creating or rewriting descriptions, read
    `references/revision-descriptions.md`, then compose and validate each
    complete description. The diff controls what changed; supplied context may
    explain why but must not invent unsupported content or expose workflow
-   internals.
+   internals. Declare a breaking change the user requested or approved with `!`
+   and a `BREAKING CHANGE:` footer, rewriting an existing description that lacks
+   them.
 5. Select and read exactly one procedure for the repository mode:
    - `procedures/jj.md` for a jj repository.
    - `procedures/git.md` for a Git repository without jj support.

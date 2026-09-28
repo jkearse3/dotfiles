@@ -33,8 +33,14 @@ evidence, not constraints.
 - A revision is coherent when one description explains it as one reviewable
   concern without unrelated clauses.
 - A revision is independently valid when it does not knowingly rely on a
-  descendant revision to build, pass its applicable checks, or preserve required
-  behavior.
+  descendant revision to build, pass its applicable checks, preserve required
+  behavior, or be safe to deploy and use if history stops there. Land internals
+  before the change that exposes them, add a replacement safeguard before
+  removing the original, keep interfaces usable by consumers the revision cannot
+  update, and keep persisted state the parent revision produced usable or
+  migrate it within the revision. A breaking change to interfaces or persisted
+  state is exempt from those two requirements only when the user requested or
+  approved it and the revision description declares it.
 - Split independent concerns and combine partial steps, tests, documentation,
   configuration, migrations, and revision-local fixes in the earliest revision
   whose concern requires them.

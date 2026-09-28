@@ -20,12 +20,22 @@ publication. Use `finalize-changes` for finalization and history shaping.
 Rewriting published, unrelated, user-authored, or uncertain-ownership history
 requires explicit authorization.
 
-Finalized revisions must be useful bisect points. Each revision must contain one
-coherent concern and must not knowingly rely on a descendant revision to build,
-pass its applicable checks, or preserve required behavior. Keep supporting
-tests, documentation, configuration, migrations, and revision-local fixes in the
-earliest revision whose concern requires them. Repair a known-failing revision;
-retaining one requires explicit user approval.
+Finalized revisions must be useful bisect points and safe to land on main
+individually: if history stops at any revision, the codebase must be safe to
+deploy and use as is. Each revision must contain one coherent concern and must
+not knowingly rely on a descendant revision to build, pass its applicable
+checks, preserve required behavior, or be safe to use. Prefer ordering over new
+mechanisms: land internals before the change that exposes them, add a
+replacement safeguard before removing the original, keep interfaces usable by
+consumers the revision cannot update, and keep persisted state the parent
+revision produced usable or migrate it within the revision. A breaking change to
+interfaces or persisted state is exempt from those two requirements only when
+the user requested or approved it and the revision description declares it. When
+compatibility costs more than it is worth, propose the break with that cost
+before implementing it. Keep supporting tests, documentation, configuration,
+migrations, and revision-local fixes in the earliest revision whose concern
+requires them. Repair a known-failing revision; retaining one requires explicit
+user approval.
 
 Before new work, establish a task-owned Git branch or jj bookmark for that
 change set. In jj, inspect `@` directly; bookmark an empty `@`, or create and
