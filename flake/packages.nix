@@ -66,7 +66,6 @@
           config.allowUnfree = true;
           overlays = [
             (import inputs.rust-overlay)
-            (import ./overlays/secretspec.nix)
             (import ./overlays/tokscale.nix)
           ];
         };
