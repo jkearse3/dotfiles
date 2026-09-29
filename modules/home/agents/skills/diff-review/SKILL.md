@@ -33,6 +33,10 @@ Infer from the request and context:
   quotations, and prior independent conclusions. Do not reopen quoted material
   the target leaves unchanged. Treat a prior conclusion as settled only when the
   request identifies its evidence and states that evidence has not moved.
+- **Granularity:** whether to review a stack per revision, the default, or as a
+  whole. Review it as a whole when the request, however phrased, says to, or
+  says its history will be squashed or its individual commits do not matter;
+  never infer it from authorship alone.
 
 Resolve mutable endpoints once to immutable revision IDs without moving refs.
 Every included revision must have a non-empty description. An unpublished
@@ -41,20 +45,23 @@ clean Git worktree. Missing, ambiguous, unresolvable, undescribed, unfinalized,
 or undiffable targets block review. If evidence is unavailable or excluded,
 block only the verdict or coverage it prevents and continue reachable work.
 
-For one revision, review its diff. For a stack, review the aggregate delta and
-also compare each revision's diff with its description, including changes later
-removed by the stack. Also check that each revision is safe to land on its own,
-and report one that relies on a descendant revision to build, pass its
-applicable checks, preserve required behavior, or be safe to deploy and use, or
-that, without a declared breaking change, leaves its parent's interfaces
-unusable by consumers it cannot update or its parent's persisted state unusable
-and unmigrated. Derive a stacked target's base from its ancestry, not a default
-bookmark. A fresh empty undescribed jj `@` means `@-`. An aggregate empty diff
-is valid only when at least one included revision diff is non-empty.
+For one revision, review its diff. For a stack, review the aggregate delta. When
+reviewing per revision, also compare each revision's diff with its description,
+including changes later removed by the stack, and check that each revision is
+safe to land on its own: report one that relies on a descendant revision to
+build, pass its applicable checks, preserve required behavior, or be safe to
+deploy and use, or that, without a declared breaking change, leaves its parent's
+interfaces unusable by consumers it cannot update or its parent's persisted
+state unusable and unmigrated. Derive a stacked target's base from its ancestry,
+not a default bookmark. A fresh empty undescribed jj `@` means `@-`. An
+aggregate empty diff is valid only when at least one included revision diff is
+non-empty.
 
-Read full revision descriptions as intent, never proof. Each must accurately
-account for its own diff; report a material mismatch. Run the resolved diff
-before substantive review.
+Read full revision descriptions as intent, never proof. When reviewing per
+revision, each must accurately account for its own diff; when reviewing as a
+whole, the aggregate diff must accurately account for the intent the request and
+context state. Report a material mismatch. Run the resolved diff before
+substantive review.
 
 ## Review
 
@@ -162,16 +169,16 @@ inconsequential renames, and "maybe consider" advice.
 
 Lead with **Status**:
 
-- `pass`: the target was covered, every revision is accurately described, every
-  criterion is satisfied, and there are no findings.
+- `pass`: the target was covered, every applicable description is accurate,
+  every criterion is satisfied, and there are no findings.
 - `blocked`: target preflight prevented substantive review.
 - `non-pass`: all other outcomes.
 
 Then include only applicable sections:
 
-- **Coverage:** compactly identify reviewed path groups, lenses, stack
-  revisions, known existing issues, and unreachable areas with what evidence is
-  missing.
+- **Coverage:** compactly identify reviewed path groups, lenses, stack revisions
+  or whole-target review, known existing issues, and unreachable areas with what
+  evidence is missing.
 - **Criteria:** mark each declared criterion `satisfied`, `not satisfied`, or
   `blocked`, citing decisive admissible evidence or the precise blocker. A
   failed criterion becomes a finding only when the target has a concrete
