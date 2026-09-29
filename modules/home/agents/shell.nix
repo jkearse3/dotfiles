@@ -10,8 +10,8 @@
   ...
 }:
 let
-  # The tools the rule promises. The home profile installs them from
-  # `modules/home/shell`; the assertion below keeps the lists agreeing.
+  # The tools the rule promises. Other home modules, mostly `modules/home/shell`,
+  # install them; the assertion below keeps the lists agreeing.
   gnuTools = [
     {
       package = pkgs.coreutils;
@@ -38,6 +38,26 @@ let
     {
       package = pkgs.ripgrep;
       commands = "rg (ripgrep)";
+    }
+    {
+      package = pkgs.fd;
+      commands = "fd";
+    }
+    {
+      package = pkgs.jq;
+      commands = "jq";
+    }
+    {
+      package = pkgs.yq-go;
+      commands = "yq (mikefarah's Go yq)";
+    }
+    {
+      package = pkgs.difftastic;
+      commands = "difft (difftastic)";
+    }
+    {
+      package = pkgs.tokei;
+      commands = "tokei";
     }
   ];
   missingTools = lib.filter (tool: !(lib.elem tool.package config.home.packages)) (
