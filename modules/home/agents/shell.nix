@@ -11,7 +11,8 @@
 }:
 let
   # The tools the rule promises. Other home modules, mostly `modules/home/shell`,
-  # install them; the assertion below keeps the lists agreeing.
+  # install them; the assertion below keeps the lists agreeing. A `version`
+  # names the wrapped tool's version for packages that do not carry one.
   gnuTools = [
     {
       package = pkgs.coreutils;
@@ -71,13 +72,25 @@ let
       package = pkgs.moreutils-without-parallel;
       commands = "sponge, ts, chronic (moreutils)";
     }
+    {
+      package = pkgs.nix-index-with-db;
+      commands = "nix-locate (nix-index)";
+      inherit (pkgs.nix-index-unwrapped) version;
+    }
+    {
+      package = pkgs.comma-with-db;
+      commands = ", (comma)";
+      inherit (pkgs.comma) version;
+    }
   ];
   missingTools = lib.filter (tool: !(lib.elem tool.package config.home.packages)) (
     gnuTools ++ otherTools
   );
 
   isDarwin = pkgs.stdenv.hostPlatform.isDarwin;
-  formatToolList = lib.concatMapStringsSep "\n" (tool: "- ${tool.commands} ${tool.package.version}");
+  formatToolList = lib.concatMapStringsSep "\n" (
+    tool: "- ${tool.commands} ${tool.version or tool.package.version}"
+  );
   gnuToolList = formatToolList gnuTools;
   otherToolList = formatToolList otherTools;
 
@@ -123,7 +136,7 @@ in
       {
         assertion = missingTools == [ ];
         message = "the shell-environment agent rule lists tools the home profile does not install: ${
-          lib.concatMapStringsSep ", " (tool: tool.package.pname) missingTools
+          lib.concatMapStringsSep ", " (tool: lib.getName tool.package) missingTools
         }";
       }
     ];
