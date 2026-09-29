@@ -10,8 +10,8 @@
   ...
 }:
 let
-  # The GNU tools the rule promises. The home profile installs them from
-  # `modules/home/shell`; the assertion below keeps the two lists agreeing.
+  # The tools the rule promises. The home profile installs them from
+  # `modules/home/shell`; the assertion below keeps the lists agreeing.
   gnuTools = [
     {
       package = pkgs.coreutils;
@@ -34,12 +34,20 @@ let
       commands = "find, xargs";
     }
   ];
-  missingGnuTools = lib.filter (tool: !(lib.elem tool.package config.home.packages)) gnuTools;
+  otherTools = [
+    {
+      package = pkgs.ripgrep;
+      commands = "rg (ripgrep)";
+    }
+  ];
+  missingTools = lib.filter (tool: !(lib.elem tool.package config.home.packages)) (
+    gnuTools ++ otherTools
+  );
 
   isDarwin = pkgs.stdenv.hostPlatform.isDarwin;
-  gnuToolList = lib.concatMapStringsSep "\n" (
-    tool: "- ${tool.commands} ${tool.package.version}"
-  ) gnuTools;
+  formatToolList = lib.concatMapStringsSep "\n" (tool: "- ${tool.commands} ${tool.package.version}");
+  gnuToolList = formatToolList gnuTools;
+  otherToolList = formatToolList otherTools;
 
   # Versions come from the packages the generation installs, so the rule
   # changes with them. `builtins.toFile` keeps the text out of a derivation,
@@ -56,12 +64,13 @@ let
     ${gnuToolList}
 
     Use GNU flags such as `sed -i`, `stat -c`, and `date -d`. When a flag's
-    availability matters, check `<tool> --version` first.
-    ${lib.optionalString isDarwin ''
-
+    availability matters, check `<tool> --version` first.${lib.optionalString isDarwin "\n\n${''
       On macOS these shadow the BSD versions in `/usr/bin`, so BSD forms such as
-      `sed -i '''`, `stat -f`, and `date -j` fail. `tar` remains BSD tar.
-    ''}'';
+      `sed -i '''`, `stat -f`, and `date -j` fail. `tar` remains BSD tar.''}"}
+
+    It also puts these tools on PATH:
+
+    ${otherToolList}'';
 in
 {
   options.agents.shellPath = lib.mkOption {
@@ -80,9 +89,9 @@ in
   config = {
     assertions = [
       {
-        assertion = missingGnuTools == [ ];
-        message = "the shell-environment agent rule lists GNU tools the home profile does not install: ${
-          lib.concatMapStringsSep ", " (tool: tool.package.pname) missingGnuTools
+        assertion = missingTools == [ ];
+        message = "the shell-environment agent rule lists tools the home profile does not install: ${
+          lib.concatMapStringsSep ", " (tool: tool.package.pname) missingTools
         }";
       }
     ];
