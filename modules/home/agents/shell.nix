@@ -59,6 +59,18 @@ let
       package = pkgs.tokei;
       commands = "tokei";
     }
+    {
+      package = pkgs.ast-grep;
+      commands = "ast-grep";
+    }
+    {
+      package = pkgs.hyperfine;
+      commands = "hyperfine";
+    }
+    {
+      package = pkgs.moreutils-without-parallel;
+      commands = "sponge, ts, chronic (moreutils)";
+    }
   ];
   missingTools = lib.filter (tool: !(lib.elem tool.package config.home.packages)) (
     gnuTools ++ otherTools

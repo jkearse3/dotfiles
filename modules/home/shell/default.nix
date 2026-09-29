@@ -22,6 +22,7 @@
   # BSD `tar` stays: it also extracts zip archives and preserves macOS extended
   # attributes, which GNU tar does not.
   home.packages = [
+    pkgs.ast-grep
     pkgs.bottom
     pkgs.coreutils
     pkgs.curl
@@ -35,8 +36,10 @@
     pkgs.gnused
     pkgs.hexyl
     pkgs.htop
+    pkgs.hyperfine
     pkgs.jless
     pkgs.jq
+    pkgs.moreutils-without-parallel
     pkgs.ripgrep
     pkgs.tokei
     pkgs.wget
