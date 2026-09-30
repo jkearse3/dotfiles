@@ -51,6 +51,32 @@ let
   packagesFile = pkgs.writeText "pi-packages.json" (builtins.toJSON cfg.packages);
   packagesStatePath = "state/pi-packages.json";
 
+  # Stock MCP rewrites enabled/exposure values, so deliver writable JSON with
+  # generation-owned defaults rather than a read-only Home Manager symlink.
+  mcpFile = ./mcp.json;
+  mcpStatePath = "state/pi-mcp.json";
+  piMcpMerge = pkgs.writeShellApplication {
+    name = "pi-mcp-merge";
+    runtimeInputs = [
+      pkgs.coreutils
+      pkgs.jq
+    ];
+    text = builtins.readFile ./pi-mcp-merge.sh;
+  };
+  piMcpMergeChecked =
+    pkgs.runCommandLocal "pi-mcp-merge-checked"
+      {
+        nativeBuildInputs = [
+          pkgs.bash
+          pkgs.coreutils
+          pkgs.jq
+        ];
+      }
+      ''
+        bash ${./pi-mcp-merge-test.sh} ${piMcpMerge}/bin/pi-mcp-merge ${mcpFile}
+        ln -s ${piMcpMerge} $out
+      '';
+
   piSettingsMerge = pkgs.writeShellApplication {
     name = "pi-settings-merge";
     runtimeInputs = [
@@ -203,7 +229,7 @@ let
   # Caffeinate stays outermost so its idle-sleep assertion covers the whole
   # session. Secret resolution stays inside it but outside nono so the sandbox
   # never needs access to the machine's provider. EXA_API_KEY is optional: when
-  # absent, the adapter's interpolated header is empty and Exa continues on its
+  # absent, the interpolated header is empty and Exa continues on its
   # anonymous free tier.
   mkPi =
     {
@@ -277,12 +303,6 @@ in
 
   config = {
     agents.pi.packages = [
-      # Pi has no MCP support of its own; this adds it. The shared agent module
-      # delivers Exa through `~/.agents/mcp.json`, which the adapter treats as a
-      # read-only input while keeping pi-specific overrides writable under
-      # `~/.pi/agent/mcp.json` and project `.pi/mcp.json` files.
-      "npm:pi-mcp-adapter@2.27.0"
-
       # Replace the built-in read/edit workflow with stable, session-owned line
       # anchors and reject edits when their previously read content is stale.
       "npm:pi-hashline-edit-pro@4.3.5"
@@ -297,6 +317,8 @@ in
       extraBuilderCommands = ''
         mkdir -p $out/state
         ln -s ${packagesFile} $out/${packagesStatePath}
+        ln -s ${mcpFile} $out/${mcpStatePath}
+        ln -s ${piMcpMergeChecked} $out/state/pi-mcp-merge-checked
         ln -s ${herdrPiIntegrationChecked} $out/state/pi-herdr-integration-checked
 
         ${lib.optionalString hasPiExtensions ''
@@ -306,8 +328,22 @@ in
         ''}
       '';
 
-      activation.piSettings =
+      activation.piMcp =
         lib.hm.dag.entryAfter [ "writeBoundary" ] # bash
+          ''
+            piPreviousMcp=""
+            if [[ -v oldGenPath ]]; then
+              piPreviousMcp="$oldGenPath/${mcpStatePath}"
+            fi
+            run ${piMcpMergeChecked}/bin/pi-mcp-merge \
+              "$HOME/.pi/agent/mcp.json" \
+              ${mcpFile} \
+              "$piPreviousMcp"
+            unset piPreviousMcp
+          '';
+
+      activation.piSettings =
+        lib.hm.dag.entryAfter [ "piMcp" ] # bash
           ''
             # Unset on a first activation, and pointing at a generation without
             # the state file on the first switch after this option existed. The

@@ -1,0 +1,19 @@
+{
+  "mcpServers": {
+    "exa": {
+      "url": "https://mcp.exa.ai/mcp",
+      "headers": {
+        "x-api-key": "${EXA_API_KEY}"
+      },
+      "timeout": 60,
+      "exposure": "hidden",
+      "toolExposure": {
+        "web_search_exa": "direct"
+      }
+    },
+    "linear": {
+      "url": "https://mcp.linear.app/mcp",
+      "exposure": "codemode"
+    }
+  }
+}
