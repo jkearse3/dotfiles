@@ -26,8 +26,8 @@ JSON
 
 # The paths declared machine-overridable for the fixtures below. The pin above
 # is synthetic, so this set exercises the overlay rather than mirroring
-# `default.nix`, which enforces `statusLine.command` as well: what matters here
-# is that some nested path is declared and some path is not.
+# `default.nix`: what matters here is that some nested path is declared and
+# some path is not.
 # `permissions.defaultMode` is left undeclared so the fixtures can check that an
 # enforced path survives a hostile machine-local file.
 overridable=(

@@ -1,0 +1,6 @@
+{
+  "name": "statusline",
+  "version": "0.1.0",
+  "description": "Shows the main loop's model and its context window fill under the prompt",
+  "types": "./types/index.d.ts"
+}

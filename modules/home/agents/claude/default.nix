@@ -52,30 +52,24 @@ let
   # capability rather than expressing a preference and `~/.claude/settings.json`
   # is writable from inside the `coding-agents` sandbox. Handing
   # `permissions.defaultMode` over would let an agent select `bypassPermissions`
-  # for the next launch. `statusLine.command` is worse: Claude Code runs it as a
-  # shell command on every refresh, gated on workspace trust alone rather than
-  # on any permission rule, so a machine-local write would execute at the next
-  # launch — outside the sandbox, since the plain `claude` wrapper is not
-  # sandboxed. Enforcing it also keeps the pin agreeing with the
-  # `~/.claude/statusline.sh` delivered below, which is why eval fails when it
-  # goes missing.
+  # for the next launch.
   #
   # `permissions` needs no entry beyond `defaultMode`: its `allow`, `deny`,
   # `ask`, and `additionalDirectories` are arrays, which a machine can only add
-  # to. `statusLine.type` stays overridable because it only turns the pinned
-  # command on or off.
+  # to.
   #
   # Enforcement reaches only leaves the pin carries. A capability leaf it
-  # does not pin — `apiKeyHelper`, an `env` entry — falls through to the
-  # machine-local file like any unpinned leaf, and entries a machine appends
-  # to `permissions.allow` or `additionalDirectories` take effect under
-  # array union. No settings layer can close those additive channels,
-  # `policySettings` included, because union and per-leaf merge only ever
-  # add; a sandbox rule on the file could, at the cost of its role as the
-  # runtime-write target. That residue is accepted.
+  # does not pin — `apiKeyHelper`, an `env` entry, `hooks`, or
+  # `statusLine.command`, which Claude Code runs outside the sandbox on every
+  # refresh — falls through to the machine-local file like any unpinned leaf,
+  # and entries a machine appends to `permissions.allow` or
+  # `additionalDirectories` take effect under array union. No settings layer
+  # can close those additive channels, `policySettings` included, because
+  # union and per-leaf merge only ever add; a sandbox rule on the file could,
+  # at the cost of its role as the runtime-write target. That residue is
+  # accepted.
   enforcedPaths = [
     "permissions.defaultMode"
-    "statusLine.command"
   ];
 
   # Pinned scalars the overlay hands to the machine-local file once that file
@@ -96,7 +90,6 @@ let
     "outputStyle"
     "promptSuggestionEnabled"
     "skipAutoPermissionPrompt"
-    "statusLine.type"
     "theme"
     "tui"
     "verbose"
@@ -355,12 +348,6 @@ in
         }
       ];
       order = config.agents.sharedRuleOrder;
-    };
-    # `statusLine.command` fails silently against a non-executable script, so
-    # pin the bit rather than inheriting whatever mode the checkout carries.
-    ".claude/statusline.sh" = {
-      source = ./statusline.sh;
-      executable = true;
     };
 
     # The sandboxed `nono-claude` wrapper inherits claude's static fish-shipped completion via
