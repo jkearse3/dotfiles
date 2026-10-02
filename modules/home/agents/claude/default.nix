@@ -9,6 +9,7 @@
   pkgs,
   lib,
   mkNonoWrapper,
+  mkSource,
   ...
 }:
 let
@@ -195,6 +196,13 @@ let
   # which pinned keys step aside for this machine.
   machineSettingsPath = "${config.home.homeDirectory}/.claude/settings.json";
 
+  # Mods are Claude Code plugins built from function hooks. Each child folder of
+  # `./mods` holding `.claude-plugin/plugin.json` loads at launch as a
+  # `--plugin-dir` would, and in editable mode the folder is a symlink into the
+  # working tree, so an interactive session hot-reloads a mod as it is saved. A
+  # new mod needs only a relaunch, not a Home Manager switch.
+  modsPath = "${config.home.homeDirectory}/.claude/mods";
+
   settingsOverlay = pkgs.writeShellApplication {
     name = "claude-settings-overlay";
     runtimeInputs = [ pkgs.jq ];
@@ -278,6 +286,16 @@ let
           ${lib.escapeShellArg machineSettingsPath} \
           ${lib.escapeShellArgs machineOverridablePaths}) || settings=${pinnedSettingsPath}
 
+        # Appended to rather than replaced, so a caller's own folders still load.
+        plugin_dirs=''${CLAUDE_CODE_PLUGIN_DIRS-}
+        for manifest in ${lib.escapeShellArg modsPath}/*/.claude-plugin/plugin.json; do
+          [ -f "$manifest" ] || continue
+          plugin_dirs=''${plugin_dirs:+$plugin_dirs:}''${manifest%/.claude-plugin/plugin.json}
+        done
+        if [ -n "$plugin_dirs" ]; then
+          export CLAUDE_CODE_PLUGIN_DIRS="$plugin_dirs"
+        fi
+
         ${agentInteractivePolicy.shellExports}
         exec ${preventIdleSleep}${command} --settings "$settings" "$@"
       '';
@@ -327,6 +345,7 @@ in
     # own runtime writes and for machine-local overrides of unenforced keys.
 
     ".claude/skills" = renderSkillsDir { };
+    ".claude/mods".source = mkSource ./mods;
     ".claude/CLAUDE.md".text = renderAgentsMarkdown {
       title = "Claude Code Instructions";
       registries = [
