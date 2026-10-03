@@ -51,8 +51,8 @@ extensions/
     └── helper.test.ts
 ```
 
-All extension sources must be TypeScript. `./x.sh lint-typescript` typechecks
-the working tree and runs its `*.test.ts` fixtures by building the
+All extension sources must be TypeScript. `./x.sh pi-extensions-check`
+typechecks the working tree and runs its `*.test.ts` fixtures by building the
 `pi-extensions-checked` package; the Home Manager build depends on the same
 package, so a failing check also fails the switch.
 

@@ -422,7 +422,7 @@ cmd:lint() {
 	lint-nix
 	lint-shell
 	lint-python
-	lint-typescript
+	lint-pi-extensions
 }
 
 lint-nix() {
@@ -491,14 +491,14 @@ cmd:lint-python() {
 
 # Builds the same derivation that gates the Home Manager build, so the working
 # tree is checked exactly as a switch would check it.
-lint-typescript() {
+lint-pi-extensions() {
 	echo "Checking pi extensions..."
 	load_private_override_args
 	nix build .#pi-extensions-checked --no-link --print-build-logs --accept-flake-config "${PRIVATE_OVERRIDE_ARGS[@]}"
 }
 
-cmd:lint-typescript() {
-	lint-typescript
+cmd:pi-extensions-check() {
+	lint-pi-extensions
 }
 
 cmd:python-check() {
