@@ -102,6 +102,31 @@ Home Manager build checks the integration identity, version marker, and source
 link target. Do not run `herdr integration install pi`; Home Manager owns the
 canonical path.
 
+## Types for Pi's modules
+
+Pi supplies its own modules to extensions at load, so they are not npm
+dependencies of this directory. Their declarations come from the
+`pi-extension-types` package, built from the Pi that Home Manager installs, and
+reach this directory as the Git-ignored `.pi-types` link:
+
+```text
+.pi-types/
+├── node_modules/     declarations for Pi and its dependency tree
+├── tsconfig.json     maps each importable Pi module to its declaration
+└── pi-modules.json   the same module list, read by the import check
+```
+
+`tsconfig.json` here extends `.pi-types/tsconfig.json`, so the modules an
+extension may import from Pi are listed once, in
+`packages/pi-extension-types/package.nix`. Change that list when a Pi release
+adds, renames, or removes a module; the package build fails if a listed
+declaration is missing. Do not add `paths` or `baseUrl` to `tsconfig.json` here,
+because either replaces the inherited mappings.
+
+The devshell creates the link on entry and refreshes it after a Pi version bump.
+The Home Manager build links the same package into its own copy of the sources,
+so it does not depend on the checkout's link.
+
 ## Add a runtime dependency
 
 All global extensions share this directory's npm dependency set. From any

@@ -504,8 +504,9 @@ lint-typescript() {
 	fi
 	# Pi declarations come from the devshell, separately from npm-owned runtime
 	# packages. Without them tsc cannot check extension API usage.
-	if [[ ! -e $root/.pi-types ]]; then
-		echo "error: $root/.pi-types is missing; enter the devshell first" >&2
+	local pi_modules="$root/.pi-types/pi-modules.json"
+	if [[ ! -e $pi_modules ]]; then
+		echo "error: $pi_modules is missing; enter the devshell to link $root/.pi-types" >&2
 		return 1
 	fi
 	local runtime_dependency_count
@@ -540,8 +541,8 @@ lint-typescript() {
 		return 1
 	fi
 	echo "Checking pi extension imports..."
-	NODE_PATH="$typescript_lib" bash "$agent_dir/extension-imports-check-test.sh" "$checker"
-	NODE_PATH="$typescript_lib" node "$checker" "$root"
+	NODE_PATH="$typescript_lib" bash "$agent_dir/extension-imports-check-test.sh" "$checker" "$pi_modules"
+	NODE_PATH="$typescript_lib" node "$checker" "$root" "$pi_modules"
 	echo "Checking TypeScript types..."
 	tsc -p "$root"
 	echo "Running pi extension fixtures..."

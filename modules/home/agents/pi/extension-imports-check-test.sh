@@ -4,16 +4,20 @@
 # import before it reaches a pi that cannot resolve it, so a gap here is a gap
 # that only shows up as a load failure on someone's machine.
 #
-# usage: extension-imports-check-test <path-to-extension-imports-check.mjs>
+# The cases run against the real pi module list, so they also pin the
+# specifiers the extensions rely on.
+#
+# usage: extension-imports-check-test <path-to-extension-imports-check.mjs> <pi-modules.json>
 
 set -euo pipefail
 
-if [[ $# -ne 1 ]]; then
-	echo "usage: extension-imports-check-test <path-to-extension-imports-check.mjs>" >&2
+if [[ $# -ne 2 ]]; then
+	echo "usage: extension-imports-check-test <path-to-extension-imports-check.mjs> <pi-modules.json>" >&2
 	exit 2
 fi
 
 checker=$1
+pi_modules=$2
 failures=0
 
 work=$(mktemp -d)
@@ -28,7 +32,7 @@ check() {
 	printf '%s\n' "$manifest" >"$root/package.json"
 	cat >"$root/an-extension/index.ts"
 	local output status=0
-	output=$(node "$checker" "$root" 2>&1) || status=$?
+	output=$(node "$checker" "$root" "$pi_modules" 2>&1) || status=$?
 	if [[ $status -ne $expected ]]; then
 		echo "FAIL $name: expected exit $expected, got $status" >&2
 		echo "$output" >&2
@@ -137,8 +141,8 @@ check "an unlisted subpath of a pi module is rejected" 1 "@earendil-works/pi-ai/
 import { thing } from "@earendil-works/pi-ai/nope";
 EOF
 
-# The declaration-only tree makes a type-only import typecheck, so it has to be
-# caught here or not at all.
+# A type-only import is erased at load, but it still ties the source to a
+# package the manifest does not declare.
 check "a type-only import of a dependency is rejected" 1 "zod" <<'EOF'
 import type { ZodType } from "zod";
 EOF
@@ -158,7 +162,7 @@ for rejected in js mjs cjs mts cts tsx; do
 	echo 'import { defineTool } from "@earendil-works/pi-coding-agent";' \
 		>"$rejected_root/an-extension/index.ts"
 	echo 'export * from "zod";' >"$rejected_root/an-extension/helper.$rejected"
-	if output=$(node "$checker" "$rejected_root" 2>&1); then
+	if output=$(node "$checker" "$rejected_root" "$pi_modules" 2>&1); then
 		echo "FAIL a .$rejected source is rejected: expected failure" >&2
 		failures=1
 	elif [[ $output != *"must be .ts sources"* ]]; then
@@ -176,7 +180,7 @@ echo 'import { helper } from "./helpers/helper.ts";' \
 	>"$nested_root/an-extension/index.ts"
 echo 'export * as YAML from "yaml";' \
 	>"$nested_root/an-extension/helpers/helper.ts"
-if output=$(node "$checker" "$nested_root" 2>&1); then
+if output=$(node "$checker" "$nested_root" "$pi_modules" 2>&1); then
 	echo "FAIL a nested source is scanned: expected failure" >&2
 	failures=1
 elif [[ $output != *"yaml"* ]]; then
@@ -189,12 +193,12 @@ fi
 empty_root="$work/empty"
 mkdir -p "$empty_root/an-extension"
 printf '{"dependencies":{}}\n' >"$empty_root/package.json"
-if node "$checker" "$empty_root" >/dev/null 2>&1; then
+if node "$checker" "$empty_root" "$pi_modules" >/dev/null 2>&1; then
 	echo "FAIL a tree with no sources is rejected: expected failure" >&2
 	failures=1
 fi
 
-# The devshell links a declaration-only tree in beside the sources.
+# Installed packages beside the sources are not extension source.
 vendored_root="$work/vendored"
 mkdir -p "$vendored_root/an-extension" "$vendored_root/node_modules/zod"
 printf '{"dependencies":{}}\n' >"$vendored_root/package.json"
@@ -202,10 +206,26 @@ echo 'import { spawn } from "node:child_process";' \
 	>"$vendored_root/an-extension/index.ts"
 echo 'export declare const z: unknown;' >"$vendored_root/node_modules/zod/index.d.ts"
 echo 'const z = require("zod");' >"$vendored_root/node_modules/zod/index.ts"
-if ! node "$checker" "$vendored_root" >/dev/null 2>&1; then
+if ! node "$checker" "$vendored_root" "$pi_modules" >/dev/null 2>&1; then
 	echo "FAIL node_modules is not scanned: expected success" >&2
 	failures=1
 fi
+
+# A list that cannot be read must not be mistaken for an empty allowlist.
+unreadable_root="$work/unreadable-list"
+mkdir -p "$unreadable_root/an-extension"
+printf '{"dependencies":{}}\n' >"$unreadable_root/package.json"
+echo 'import { spawn } from "node:child_process";' \
+	>"$unreadable_root/an-extension/index.ts"
+printf '[]\n' >"$work/empty-pi-modules.json"
+for bad_list in "$work/absent-pi-modules.json" "$work/empty-pi-modules.json"; do
+	status=0
+	node "$checker" "$unreadable_root" "$bad_list" >/dev/null 2>&1 || status=$?
+	if [[ $status -ne 2 ]]; then
+		echo "FAIL an unusable pi module list is rejected: expected exit 2, got $status" >&2
+		failures=1
+	fi
+done
 
 if [[ $failures -ne 0 ]]; then
 	echo "extension-imports-check-test: failures" >&2

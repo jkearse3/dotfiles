@@ -49,7 +49,7 @@
             if [ -d "$piExtensionTypes" ] && [ ! -L "$piExtensionTypes" ]; then
               rm -rf "$piExtensionTypes"
             fi
-            ln -sfn ${config.packages.pi-extension-types}/node_modules "$piExtensionTypes"
+            ln -sfn ${config.packages.pi-extension-types} "$piExtensionTypes"
             unset piExtensionTypes
           fi
           unset piRepoRoot

@@ -6,15 +6,19 @@
 // `dist/core/extensions/loader.js`). Anything outside that table falls through
 // to ordinary node resolution from the extension's own directory.
 //
-// That fallback is a trap here. Editable delivery points `~/.pi/agent/extensions`
-// at the checkout, where the devshell links a declaration-only `node_modules`
-// built from pi's `.d.ts` files. A new dependency would therefore typecheck
-// cleanly and then fail at load with a module-resolution error, which reads
-// like a broken install rather than a missing dependency.
+// That fallback is a trap here. `node_modules` beside the sources holds whatever
+// npm installed, including development-only and transitive packages. An import
+// of one of those typechecks and loads from the editable checkout, then breaks
+// once the package that pulled it in drops it, with a module-resolution error
+// that reads like a broken install rather than a missing dependency.
 //
 // So the manifest is the contract: extensions import node builtins, the
 // modules pi bundles, each other, and packages declared in the shared root
 // `dependencies`. Development-only packages never become runtime imports.
+//
+// The modules pi bundles are listed by the `pi-extension-types` package, which
+// also maps each one to its declarations for `tsc`; this checker reads that
+// list rather than keeping a second copy.
 //
 // Specifiers come from TypeScript's own parser rather than a pattern match,
 // because a pattern match reads one line at a time and prettier wraps a long
@@ -22,7 +26,7 @@
 // using `preProcessFile`, which reports `export * from` but not
 // `export * as ns from`.
 //
-// usage: NODE_PATH=<dir containing typescript> node extension-imports-check.mjs <extensions-dir>
+// usage: NODE_PATH=<dir containing typescript> node extension-imports-check.mjs <extensions-dir> <pi-modules.json>
 
 import { readdirSync, readFileSync } from "node:fs";
 import { builtinModules } from "node:module";
@@ -39,29 +43,39 @@ try {
   process.exit(2);
 }
 
-// Mirrors the pi module table named above, minus the `@mariozechner/*` aliases
-// it also carries. Those are the pre-rename spellings, kept upstream so older
-// extensions keep loading; new source here should use the current names.
-const PI_MODULES = [
-  "@earendil-works/pi-agent-core",
-  "@earendil-works/pi-ai",
-  "@earendil-works/pi-ai/compat",
-  "@earendil-works/pi-ai/oauth",
-  "@earendil-works/pi-ai/providers/all",
-  "@earendil-works/pi-coding-agent",
-  "@earendil-works/pi-tui",
-  "@sinclair/typebox",
-  "@sinclair/typebox/compile",
-  "@sinclair/typebox/value",
-  "typebox",
-  "typebox/compile",
-  "typebox/value",
-];
+const [, , extensionsDir, piModulesFile] = process.argv;
+if (!extensionsDir || !piModulesFile) {
+  console.error(
+    "usage: extension-imports-check.mjs <extensions-dir> <pi-modules.json>",
+  );
+  process.exit(2);
+}
+
+let piModules;
+try {
+  piModules = JSON.parse(readFileSync(piModulesFile, "utf8"));
+} catch (error) {
+  console.error(
+    `extension-imports-check: cannot read ${piModulesFile}: ${error}`,
+  );
+  process.exit(2);
+}
+// An empty list would reject every pi import and read like a source problem.
+if (
+  !Array.isArray(piModules) ||
+  piModules.length === 0 ||
+  !piModules.every((specifier) => typeof specifier === "string")
+) {
+  console.error(
+    `extension-imports-check: ${piModulesFile} must be a non-empty array of module specifiers`,
+  );
+  process.exit(2);
+}
 
 // Both spellings resolve: jiti hands an unaliased specifier to node, which
 // accepts a builtin with or without the prefix.
 const allowed = new Set([
-  ...PI_MODULES,
+  ...piModules,
   ...builtinModules,
   ...builtinModules.map((name) => `node:${name}`),
 ]);
@@ -93,12 +107,6 @@ function collect(dir, found = []) {
     }
   }
   return found;
-}
-
-const [, , extensionsDir] = process.argv;
-if (!extensionsDir) {
-  console.error("usage: extension-imports-check.mjs <extensions-dir>");
-  process.exit(2);
 }
 
 let manifest;
@@ -199,7 +207,7 @@ if (problems.length > 0) {
     "Extensions may import node builtins, the modules pi bundles, each other, and declared runtime dependencies.",
   );
   console.error(
-    "See the header of extension-imports-check.mjs before changing the allowlist.",
+    "See the header of extension-imports-check.mjs; the pi module list lives in packages/pi-extension-types.",
   );
   process.exit(1);
 }

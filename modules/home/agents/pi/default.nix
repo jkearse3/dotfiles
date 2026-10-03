@@ -144,6 +144,7 @@ let
   # type error, or a failing fixture fails the build and therefore the switch.
   # `./x.sh lint-typescript` runs the same three checks against the working tree
   # between commits.
+  piModules = "${dotfilesPackages.pi-extension-types}/pi-modules.json";
   piExtensionsChecked =
     pkgs.runCommandLocal "pi-extensions-checked"
       {
@@ -161,8 +162,8 @@ let
         # The import checker reads specifiers with the TypeScript preprocessor.
         export NODE_PATH=${pkgs.typescript_5}/lib/node_modules
 
-        bash ${./extension-imports-check-test.sh} ${./extension-imports-check.mjs}
-        node ${./extension-imports-check.mjs} ${./extensions}
+        bash ${./extension-imports-check-test.sh} ${./extension-imports-check.mjs} ${piModules}
+        node ${./extension-imports-check.mjs} ${./extensions} ${piModules}
 
         # Runtime dependencies and Pi's declaration-only module tree have
         # separate owners. Keeping them separate prevents npm from replacing Pi
@@ -171,7 +172,7 @@ let
         chmod -R u+w ./extensions
         rm -rf ./extensions/node_modules ./extensions/.pi-types
         ln -s ${dotfilesPackages.pi-extension-deps}/node_modules ./extensions/node_modules
-        ln -s ${dotfilesPackages.pi-extension-types}/node_modules ./extensions/.pi-types
+        ln -s ${dotfilesPackages.pi-extension-types} ./extensions/.pi-types
 
         tsc -p ./extensions
 
