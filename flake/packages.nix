@@ -56,8 +56,8 @@
           inherit pi-extension-deps pi-extension-types;
           inherit (unstablePkgs) nodejs;
           extensions = piExtensions;
-          # The import checker loads TypeScript's JavaScript API, which the
-          # TypeScript 7 native preview does not ship.
+          # The 5.x compiler the extensions are written against; the unstable
+          # default is the TypeScript 7 native preview.
           typescript = unstablePkgs.typescript_5;
         };
         playwright-cli = pkgs.callPackage ../packages/playwright-cli/package.nix { };

@@ -1,5 +1,10 @@
 # Gate for the pi extension sources: this builds only when every extension
-# imports modules pi can resolve, typechecks, and passes its fixtures.
+# typechecks and passes its fixtures.
+#
+# The typecheck is also what keeps an extension from importing a module pi
+# cannot load. It resolves imports against exactly what an extension has at
+# load: the modules pi provides, mapped by `pi-extension-types`, and the npm
+# packages built from the extensions' lockfile.
 #
 # Pi reads extensions through a symlink into the checkout, so no other
 # derivation looks at their contents. Home Manager links this one into each
@@ -19,9 +24,6 @@ pkgs.runCommandLocal "pi-extensions-checked"
       nodejs
       typescript
     ];
-
-    # The import checker parses sources with TypeScript's JavaScript API.
-    NODE_PATH = "${typescript}/lib/node_modules";
   }
   ''
     # An extension is a directory holding an `index.ts`. With none declared
@@ -46,15 +48,10 @@ pkgs.runCommandLocal "pi-extensions-checked"
     ln -s ${pi-extension-deps}/node_modules ./extensions/node_modules
     ln -s ${pi-extension-types} ./extensions/.pi-types
 
-    echo "Checking pi extension imports..."
-    piModules=./extensions/.pi-types/pi-modules.json
-    bash ${./extension-imports-check-test.sh} ${./extension-imports-check.mjs} "$piModules"
-    node ${./extension-imports-check.mjs} ./extensions "$piModules"
-
     echo "Checking TypeScript types..."
     tsc -p ./extensions
 
-    # The typecheck passing must mean pi can load every import, so it has to
+    # A passing typecheck must mean pi can load every import, so it has to
     # reject a module pi does not provide even when pi's own tree carries
     # declarations for it. Probe one specifier of each kind.
     unresolvableSpecifiers=(

@@ -51,8 +51,8 @@ extensions/
     └── helper.test.ts
 ```
 
-All extension sources must be TypeScript. `./x.sh lint-typescript` checks the
-working tree's imports, types, and `*.test.ts` fixtures by building the
+All extension sources must be TypeScript. `./x.sh lint-typescript` typechecks
+the working tree and runs its `*.test.ts` fixtures by building the
 `pi-extensions-checked` package; the Home Manager build depends on the same
 package, so a failing check also fails the switch.
 
@@ -114,8 +114,7 @@ reach this directory as the Git-ignored `.pi-types` link:
 ```text
 .pi-types/
 ├── node_modules/     declarations for Pi and its dependency tree
-├── tsconfig.json     maps each importable Pi module to its declaration
-└── pi-modules.json   the same module list, read by the import check
+└── tsconfig.json     maps each importable Pi module to its declaration
 ```
 
 `tsconfig.json` here extends `.pi-types/tsconfig.json`, so the modules an
@@ -149,6 +148,8 @@ locked dependency tree:
 npm ci --prefix ~/.pi/agent/extensions
 ```
 
-Only packages in `dependencies` are importable by extension source. Nix rebuilds
-the same lockfile independently for checks and locked Home Manager delivery, so
-local `node_modules` is never trusted as release input.
+Import only packages listed in `dependencies`. Nix rebuilds the same lockfile
+independently for the typecheck and for locked Home Manager delivery, so local
+`node_modules` is never trusted as release input, and an import that typechecks
+is one the delivered tree can load. The typecheck does not stop an import of a
+package that is installed only because another dependency pulls it in.

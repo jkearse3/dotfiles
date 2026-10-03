@@ -9,10 +9,10 @@
 # `@earendil-works/pi-coding-agent` is the monorepo root rather than a
 # `node_modules` entry, so it is installed from `pi.src` separately.
 #
-# The output also carries the two files that tell consumers which modules an
-# extension may import from pi, both generated from `moduleDeclarations` below:
-# `tsconfig.json` maps each specifier to its declaration for `tsc` and editors,
-# and `pi-modules.json` lists the specifiers for the extension import checker.
+# The output also carries a `tsconfig.json`, generated from `moduleDeclarations`
+# below, that maps each module an extension may import from pi to its
+# declaration. The extensions' own `tsconfig.json` extends it, so `tsc` and
+# editors resolve exactly those modules and no others from pi's tree.
 {
   nodejs,
   pi,
@@ -57,7 +57,6 @@ let
       ]) moduleDeclarations;
     }
   );
-  piModules = pkgs.writeText "pi-modules.json" (builtins.toJSON (lib.attrNames moduleDeclarations));
 in
 pkgs.runCommand "pi-extension-types-${pi.version}"
   {
@@ -101,7 +100,6 @@ pkgs.runCommand "pi-extension-types-${pi.version}"
       done
 
     install -Dm444 ${tsconfig} "$out/tsconfig.json"
-    install -Dm444 ${piModules} "$out/pi-modules.json"
 
     # A missing declaration would leave `tsc` reporting TS2307 for that import,
     # which reads like an editor misconfiguration rather than a build failure.
