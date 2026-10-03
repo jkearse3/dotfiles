@@ -22,9 +22,6 @@
         direnv-worktree = pkgs.callPackage ../packages/direnv-worktree/package.nix {
           inherit (unstablePkgs) git;
         };
-        gh-pr-comments = pkgs.callPackage ../packages/gh-pr-comments/package.nix {
-          inherit jjx;
-        };
         jjx = pkgs.callPackage ../packages/jjx/package.nix {
           inherit commit-message;
           inherit (unstablePkgs) jujutsu;
