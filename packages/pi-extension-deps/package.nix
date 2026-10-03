@@ -4,11 +4,12 @@
 # package-lock.json, so dependency updates need no second Nix hash. Install
 # scripts stay disabled in both editable npm installs and this Nix build.
 {
+  extensions,
   nodejs,
   pkgs,
 }:
 let
-  npmRoot = ../../modules/home/agents/pi/extensions;
+  npmRoot = extensions;
   manifest = pkgs.lib.importJSON (npmRoot + "/package.json");
 
   importedNodeModules = pkgs.importNpmLock.buildNodeModules {

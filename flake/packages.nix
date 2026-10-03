@@ -13,6 +13,11 @@
       unstablePkgs,
       ...
     }:
+    let
+      # The pi module delivers this directory to pi; the packages below build
+      # its npm dependencies and check its sources.
+      piExtensions = ../modules/home/agents/pi/extensions;
+    in
     {
       # `rec` lets package recipes explicitly inject sibling repository packages
       # instead of discovering them through the eventual flake output.
@@ -39,12 +44,21 @@
         };
         pi-extension-deps = pkgs.callPackage ../packages/pi-extension-deps/package.nix {
           inherit (unstablePkgs) nodejs;
+          extensions = piExtensions;
         };
         # The types must come from the same pi the home modules install, so this
         # takes the llm-agents package rather than the nixpkgs pi-coding-agent.
         pi-extension-types = pkgs.callPackage ../packages/pi-extension-types/package.nix {
           inherit (inputs.llm-agents.packages.${system}) pi;
           inherit (unstablePkgs) nodejs;
+        };
+        pi-extensions-checked = pkgs.callPackage ../packages/pi-extensions-checked/package.nix {
+          inherit pi-extension-deps pi-extension-types;
+          inherit (unstablePkgs) nodejs;
+          extensions = piExtensions;
+          # The import checker loads TypeScript's JavaScript API, which the
+          # TypeScript 7 native preview does not ship.
+          typescript = unstablePkgs.typescript_5;
         };
         playwright-cli = pkgs.callPackage ../packages/playwright-cli/package.nix { };
         ports = pkgs.callPackage ../packages/ports/package.nix { };

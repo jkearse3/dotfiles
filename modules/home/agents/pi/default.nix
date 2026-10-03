@@ -130,67 +130,6 @@ let
         ln -s ${herdrPiIntegration} $out
       '';
 
-  # A repository-authored extension is a directory holding an `index.ts`, so
-  # this is empty whenever none are declared. Herdr's release-owned root file is
-  # checked separately above; this flag gates checks requiring local fixtures.
-  piExtensionNames = lib.attrNames (
-    lib.filterAttrs (_: type: type == "directory") (builtins.readDir ./extensions)
-  );
-  hasPiExtensions = piExtensionNames != [ ];
-
-  # Editable delivery points `~/.pi/agent/extensions` at the checkout, so nothing
-  # forces a rebuild when a working-tree edit lands and no derivation ever sees
-  # that edit. This gates the committed sources instead: a rejected import, a
-  # type error, or a failing fixture fails the build and therefore the switch.
-  # `./x.sh lint-typescript` runs the same three checks against the working tree
-  # between commits.
-  piModules = "${dotfilesPackages.pi-extension-types}/pi-modules.json";
-  piExtensionsChecked =
-    pkgs.runCommandLocal "pi-extensions-checked"
-      {
-        nativeBuildInputs = [
-          pkgs.bash
-          pkgs.coreutils
-          pkgs.findutils
-          pkgs.nodejs
-          # The import checker loads TypeScript's JavaScript API, which the
-          # TypeScript 7 native preview does not ship.
-          pkgs.typescript_5
-        ];
-      }
-      ''
-        # The import checker reads specifiers with the TypeScript preprocessor.
-        export NODE_PATH=${pkgs.typescript_5}/lib/node_modules
-
-        bash ${./extension-imports-check-test.sh} ${./extension-imports-check.mjs} ${piModules}
-        node ${./extension-imports-check.mjs} ${./extensions} ${piModules}
-
-        # Runtime dependencies and Pi's declaration-only module tree have
-        # separate owners. Keeping them separate prevents npm from replacing Pi
-        # types and prevents declarations from masquerading as runtime packages.
-        cp -R ${./extensions} ./extensions
-        chmod -R u+w ./extensions
-        rm -rf ./extensions/node_modules ./extensions/.pi-types
-        ln -s ${dotfilesPackages.pi-extension-deps}/node_modules ./extensions/node_modules
-        ln -s ${dotfilesPackages.pi-extension-types} ./extensions/.pi-types
-
-        tsc -p ./extensions
-
-        # Node strips types natively, so the fixtures run straight from source
-        # with no build step and no resolver: `events.ts` imports pi for types
-        # only. An empty match would make this step silently vacuous.
-        readarray -t -d "" extensionTests < <(
-          find ./extensions -name '*.test.ts' -type f -print0 | sort -z
-        )
-        if [[ ''${#extensionTests[@]} -eq 0 ]]; then
-          echo "pi-extensions-checked: no extension fixtures found" >&2
-          exit 1
-        fi
-        node --test "''${extensionTests[@]}"
-
-        touch $out
-      '';
-
   # Locked mode cannot use the editable checkout's gitignored `node_modules`.
   # Build a complete immutable extension root from the same lockfile used by
   # editable npm installs. In normal mode mkSource points Pi directly at the
@@ -322,11 +261,9 @@ in
         ln -s ${piMcpMergeChecked} $out/state/pi-mcp-merge-checked
         ln -s ${herdrPiIntegrationChecked} $out/state/pi-herdr-integration-checked
 
-        ${lib.optionalString hasPiExtensions ''
-          # The extensions themselves are delivered by symlink, so the generation
-          # has no other reference to them and the check would never be built.
-          ln -s ${piExtensionsChecked} $out/state/pi-extensions-checked
-        ''}
+        # The extensions themselves are delivered by symlink, so the generation
+        # has no other reference to them and the check would never be built.
+        ln -s ${dotfilesPackages.pi-extensions-checked} $out/state/pi-extensions-checked
       '';
 
       activation.piMcp =

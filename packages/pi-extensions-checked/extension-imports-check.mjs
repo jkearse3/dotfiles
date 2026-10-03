@@ -207,7 +207,7 @@ if (problems.length > 0) {
     "Extensions may import node builtins, the modules pi bundles, each other, and declared runtime dependencies.",
   );
   console.error(
-    "See the header of extension-imports-check.mjs; the pi module list lives in packages/pi-extension-types.",
+    "See the header of extension-imports-check.mjs; the pi module list lives in packages/pi-extension-types/package.nix.",
   );
   process.exit(1);
 }

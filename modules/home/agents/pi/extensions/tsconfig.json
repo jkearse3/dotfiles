@@ -1,4 +1,7 @@
 {
+  // `.pi-types` links to the pi-extension-types package, which supplies the
+  // `paths` for the modules pi provides. Do not set `paths` or `baseUrl` here:
+  // either replaces the inherited mappings.
   "extends": "./.pi-types/tsconfig.json",
   "compilerOptions": {
     "target": "ES2022",

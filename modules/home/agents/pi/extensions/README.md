@@ -51,8 +51,10 @@ extensions/
     └── helper.test.ts
 ```
 
-All extension sources must be TypeScript. The repository checks imports, runs
-`tsc`, and executes every `*.test.ts` fixture.
+All extension sources must be TypeScript. `./x.sh lint-typescript` checks the
+working tree's imports, types, and `*.test.ts` fixtures by building the
+`pi-extensions-checked` package; the Home Manager build depends on the same
+package, so a failing check also fails the switch.
 
 ## Subscription usage
 
@@ -124,8 +126,8 @@ declaration is missing. Do not add `paths` or `baseUrl` to `tsconfig.json` here,
 because either replaces the inherited mappings.
 
 The devshell creates the link on entry and refreshes it after a Pi version bump.
-The Home Manager build links the same package into its own copy of the sources,
-so it does not depend on the checkout's link.
+Only editors read it: the `pi-extensions-checked` package links the same
+declarations into its own copy of the sources.
 
 ## Add a runtime dependency
 

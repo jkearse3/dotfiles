@@ -489,70 +489,12 @@ cmd:lint-python() {
 	lint-python
 }
 
+# Builds the same derivation that gates the Home Manager build, so the working
+# tree is checked exactly as a switch would check it.
 lint-typescript() {
-	local agent_dir="modules/home/agents/pi"
-	local root="$agent_dir/extensions"
-	# An extension is a directory holding an index.ts. With none declared there is
-	# nothing to check, and every step below would fail on the empty tree.
-	local extension_dirs=()
-	mapfile -t -d '' extension_dirs < <(
-		find "$root" -mindepth 1 -maxdepth 1 -type d -not -name node_modules -print0
-	)
-	if [[ ${#extension_dirs[@]} -eq 0 ]]; then
-		echo "No pi extensions declared"
-		return 0
-	fi
-	# Pi declarations come from the devshell, separately from npm-owned runtime
-	# packages. Without them tsc cannot check extension API usage.
-	local pi_modules="$root/.pi-types/pi-modules.json"
-	if [[ ! -e $pi_modules ]]; then
-		echo "error: $pi_modules is missing; enter the devshell to link $root/.pi-types" >&2
-		return 1
-	fi
-	local runtime_dependency_count
-	runtime_dependency_count="$(node -p "Object.keys(require('./$root/package.json').dependencies ?? {}).length")"
-	if [[ $runtime_dependency_count -gt 0 && ! -d $root/node_modules ]]; then
-		echo "error: $root/node_modules is missing; run npm ci --prefix $root" >&2
-		return 1
-	fi
-	# The same three checks the pi-extensions-checked derivation runs, against
-	# the working tree rather than the committed sources.
-	local checker="$agent_dir/extension-imports-check.mjs"
-	# The checker reads specifiers with the TypeScript preprocessor, so it needs
-	# the module, not the tsc wrapper. Nixpkgs puts the wrapper in <prefix>/bin
-	# and the module in <prefix>/lib/node_modules, which is what NODE_PATH wants;
-	# an npm-style install instead has the wrapper inside node_modules already.
-	local tsc_path tsc_real typescript_lib
-	# Resolved before use: under `set -e` an empty `command -v` would abort the
-	# script at the assignment, before any of the guards below could report why.
-	tsc_path="$(command -v tsc || true)"
-	if [[ -z $tsc_path ]]; then
-		echo "error: tsc is not on PATH; enter the devshell first" >&2
-		return 1
-	fi
-	tsc_real="$(readlink -f "$tsc_path")"
-	if [[ $tsc_real == */node_modules/* ]]; then
-		typescript_lib="${tsc_real%%/node_modules/*}/node_modules"
-	else
-		typescript_lib="$(dirname "$(dirname "$tsc_real")")/lib/node_modules"
-	fi
-	if [[ ! -d $typescript_lib/typescript ]]; then
-		echo "error: cannot locate the typescript module from $tsc_real" >&2
-		return 1
-	fi
-	echo "Checking pi extension imports..."
-	NODE_PATH="$typescript_lib" bash "$agent_dir/extension-imports-check-test.sh" "$checker" "$pi_modules"
-	NODE_PATH="$typescript_lib" node "$checker" "$root" "$pi_modules"
-	echo "Checking TypeScript types..."
-	tsc -p "$root"
-	echo "Running pi extension fixtures..."
-	local tests=()
-	mapfile -t -d '' tests < <(find "$root" -name '*.test.ts' -type f -print0 | sort -z)
-	if [[ ${#tests[@]} -eq 0 ]]; then
-		echo "error: no pi extension fixtures found under $root" >&2
-		return 1
-	fi
-	node --test "${tests[@]}"
+	echo "Checking pi extensions..."
+	load_private_override_args
+	nix build .#pi-extensions-checked --no-link --print-build-logs --accept-flake-config "${PRIVATE_OVERRIDE_ARGS[@]}"
 }
 
 cmd:lint-typescript() {
