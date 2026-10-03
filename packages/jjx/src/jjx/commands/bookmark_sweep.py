@@ -48,6 +48,17 @@ def _resolve(revision: str, *, cwd: Path | None = None) -> str:
     return commits[0]
 
 
+def _advance_target(*, cwd: Path | None = None) -> str:
+    """Return the revset `jj bookmark advance` moves bookmarks to by default."""
+    revsets = _lines(
+        ["jj", "config", "get", "revsets.bookmark-advance-to"],
+        cwd=cwd,
+    )
+    if len(revsets) != 1 or revsets[0] == "":
+        raise SweepError("revsets.bookmark-advance-to must be a one-line revset")
+    return revsets[0]
+
+
 def _has_revisions(revset: str, *, cwd: Path | None = None) -> bool:
     """Return whether REVSET contains at least one revision."""
     return bool(
@@ -204,16 +215,16 @@ def create_parser(prog: str = "jjx bookmark sweep") -> argparse.ArgumentParser:
         prog=prog,
         description=(
             "Move a bookmark forward to a target revision, deleting the bookmarks "
-            "it passes."
+            "it passes. The target defaults to revsets.bookmark-advance-to, the "
+            "revision `jj bookmark advance` moves to."
         ),
     )
     _ = parser.add_argument("bookmark", metavar="BOOKMARK", help="bookmark to move")
     _ = parser.add_argument(
         "-t",
         "--to",
-        required=True,
         metavar="REVSET",
-        help="revision to move the bookmark to",
+        help="revision to move the bookmark to [default: revsets.bookmark-advance-to]",
     )
     _ = parser.add_argument(
         "--forget",
@@ -237,7 +248,9 @@ def main(
     args = create_parser(prog).parse_args(arguments)
     try:
         bookmark = cast(str, args.bookmark)
-        target = cast(str, args.to)
+        target = cast("str | None", args.to)
+        if target is None:
+            target = _advance_target()
         forget = cast(bool, args.forget)
         dry_run = cast(bool, args.dry_run)
         swept = sweep(bookmark, target, forget=forget, dry_run=dry_run)

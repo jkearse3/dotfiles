@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+import contextlib
 from contextlib import AbstractContextManager
 from collections.abc import MutableMapping, Sequence
+import io
 import os
 import subprocess
 import unittest
@@ -251,14 +253,43 @@ class SweepTests(RepositoryFixture):
         self.assertEqual(cast(str, short_options.to), "feature")
         self.assertEqual(cast(str, long_options.to), "feature")
 
-    def test_requires_explicit_bookmark_and_target_arguments(self) -> None:
-        """The CLI does not infer the bookmark or target from repository state."""
+    def test_requires_an_explicit_bookmark_argument(self) -> None:
+        """The CLI does not infer the bookmark from repository state."""
         parser = cli.create_parser()
 
         with self.assertRaises(SystemExit):
             _ = parser.parse_args([])
-        with self.assertRaises(SystemExit):
-            _ = parser.parse_args(["main"])
+
+    def test_defaults_the_target_to_the_bookmark_advance_revset(self) -> None:
+        """Without --to, the CLI sweeps to jj's configured advance target."""
+        self.add_stack_commit("one")
+        tip = cli._resolve("one", cwd=self.repository)
+        _ = run("jj", "new", cwd=self.repository)
+        _ = run(
+            "jj", "config", "set", "--repo", "revsets.bookmark-advance-to", "@-",
+            cwd=self.repository,
+        )  # fmt: skip
+        self.enterContext(contextlib.chdir(self.repository))
+
+        with contextlib.redirect_stdout(io.StringIO()) as output:
+            self.assertEqual(cli.main(["main"]), 0)
+
+        self.assertEqual(cli._resolve("main", cwd=self.repository), tip)
+        self.assertEqual(self.bookmark_names(), ["main"])
+        self.assertIn("Moved main to @-", output.getvalue())
+
+    def test_explicit_target_overrides_the_bookmark_advance_revset(self) -> None:
+        """An explicit --to wins over jj's configured advance target."""
+        for bookmark in ("one", "two"):
+            self.add_stack_commit(bookmark)
+        first = cli._resolve("one", cwd=self.repository)
+        self.enterContext(contextlib.chdir(self.repository))
+
+        with contextlib.redirect_stdout(io.StringIO()):
+            self.assertEqual(cli.main(["main", "--to", "one"]), 0)
+
+        self.assertEqual(cli._resolve("main", cwd=self.repository), first)
+        self.assertEqual(self.bookmark_names(), ["main", "two"])
 
 
 @mock.patch.object(cli, "_resolve_bookmark", return_value="base")
