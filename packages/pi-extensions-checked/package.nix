@@ -54,6 +54,32 @@ pkgs.runCommandLocal "pi-extensions-checked"
     echo "Checking TypeScript types..."
     tsc -p ./extensions
 
+    # The typecheck passing must mean pi can load every import, so it has to
+    # reject a module pi does not provide even when pi's own tree carries
+    # declarations for it. Probe one specifier of each kind.
+    unresolvableSpecifiers=(
+      # Declared under `@types` in pi's tree.
+      semver
+      # A runtime dependency of pi itself.
+      chalk
+      # A subpath pi's module table does not list.
+      @earendil-works/pi-ai/models
+      # The pre-rename spelling pi still aliases for older extensions.
+      @mariozechner/pi-tui
+    )
+    mkdir ./extensions/unresolvable-import-probe
+    for index in "''${!unresolvableSpecifiers[@]}"; do
+      echo "import * as probe$index from \"''${unresolvableSpecifiers[index]}\";"
+    done > ./extensions/unresolvable-import-probe/index.ts
+    probeOutput="$(tsc -p ./extensions || true)"
+    for specifier in "''${unresolvableSpecifiers[@]}"; do
+      if ! grep -Fq "error TS2307: Cannot find module '$specifier'" <<< "$probeOutput"; then
+        echo "pi-extensions-checked: tsc resolved \"$specifier\", which pi cannot load for an extension" >&2
+        exit 1
+      fi
+    done
+    rm -r ./extensions/unresolvable-import-probe
+
     # Node strips types natively, so the fixtures run straight from source with
     # no build step. An empty match would make this step silently vacuous.
     echo "Running pi extension fixtures..."
