@@ -47,10 +47,7 @@
           inherit (unstablePkgs) nodejs;
         };
         playwright-cli = pkgs.callPackage ../packages/playwright-cli/package.nix { };
-        port-listeners-kill = pkgs.callPackage ../packages/port-listeners-kill/package.nix {
-          inherit port-listeners-list;
-        };
-        port-listeners-list = pkgs.callPackage ../packages/port-listeners-list/package.nix { };
+        ports = pkgs.callPackage ../packages/ports/package.nix { };
         token-count = pkgs.callPackage ../packages/token-count/package.nix { };
       };
 
