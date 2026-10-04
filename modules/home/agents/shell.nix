@@ -115,7 +115,14 @@ let
 
     It also puts these tools on PATH:
 
-    ${otherToolList}'';
+    ${otherToolList}
+
+    Never use `find`, `grep`, `fd`, `rg`, or an equivalent search tool with
+    `/nix/store` itself as the search root. Any top-level or recursive store scan
+    is extremely CPU-intensive. Resolve the relevant package path first with a
+    known path, Nix metadata, or `nix-locate`, then search only within that
+    package path. Direct access to a known file or a targeted package subtree is
+    allowed.'';
 in
 {
   options.agents.shellPath = lib.mkOption {
