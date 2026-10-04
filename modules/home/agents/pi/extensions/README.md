@@ -10,6 +10,153 @@ In editable Home Manager mode that path is a symlink into this checkout. Pi
 auto-discovers `*/index.ts`, and `/reload` applies source changes without a Home
 Manager rebuild.
 
+## Subagents
+
+The `subagent` tool is the preferred mechanism for new Pi delegation. Each call
+runs a short-lived Pi process in the foreground, streams live activity, waits
+for completion, and returns the final assistant response with model usage. Omit
+`conversationId` to create a durable conversation; pass a returned ID to spawn a
+new process that continues the same child message and tool history. The durable
+conversation is state, not a persistent agent or process. Interrupting a call
+stops its owned process group without rolling back source changes and preserves
+the last valid conversation checkpoint.
+
+Resume the same line of inquiry when prior findings, rejected hypotheses, or
+loaded files remain useful. Start fresh for independent, parallel, or unbiased
+work, materially changed scope, or stale/large context. Resumption avoids
+repeated discovery but sends the retained history again and continues consuming
+the model context window. For independent fan-out, issue multiple fresh subagent
+calls in the same turn; one conversation cannot execute concurrently and there
+is no background job API.
+
+```json
+{"label":"implement","prompt":"You own src/example.ts only. Implement the requested change, run applicable tests, and report the diff and limitations. Do not finalize or publish."}
+{"label":"find-auth","prompt":"Find authentication entry points. Report file paths, evidence, and limitations.","tools":["read","grep","find","ls"],"extensions":false,"skills":[]}
+{"label":"adversarial-review","prompt":"Use diff-review to review revision <revision>.","tools":["read","grep","find","ls","bash"],"extensions":false,"skills":["diff-review"]}
+```
+
+Conversation metadata is stored as branch-sensitive custom entries in the
+persisted parent Pi session and is excluded from model context. Full child Pi
+sessions live under a private `$XDG_STATE_HOME/pi/subagent-conversations`
+namespace. They survive extension reloads, switching away and back, and Pi
+restarts. `subagent_conversations` returns a bounded catalog for the active
+parent-session branch when an old ID is no longer visible; it never returns
+child transcripts or storage paths. Parents started with `--no-session` still
+run fresh ephemeral children but cannot create or resume durable conversations.
+
+Children use normal configured Pi capabilities by default, including shell,
+edit, write, extensions/MCP, and skills. Per-task capability controls are:
+
+- `tools`: optional active tool allowlist. Omit for configured defaults; `[]`
+  disables all tools. Built-in and configured extension tool names are accepted.
+  This selects active tools, not an OS permission boundary or a guarantee about
+  what extension code or tools calling other tools can do.
+- `extensions`: defaults to `true`. Set `false` to disable configured extensions
+  and MCP. A minimal coordinator guard is still explicitly loaded, but never
+  exposes delegation to children. Disable extensions as well as narrowing tools
+  for read-only tasks; extensions can execute code independently of tool calls.
+- `skills`: optional managed skill-name allowlist. Omit it for normal discovered
+  skills, pass `[]` for no skills, or name only the skills the child may use.
+  Unknown, duplicate, and malformed names fail before spawn. Explicit names
+  resolve under the managed user skill directory; project or package-specific
+  skills require normal discovery. A durable conversation keeps its original
+  skill selection; start fresh to change it so prior skill context cannot bypass
+  a narrower continuation. Conversations created by extension versions without
+  stored skill policies must be restarted fresh.
+
+The tool returns the requested capability settings for inspection. An omitted
+`tools` field means configured defaults, not a frozen copy of the parent's live
+tool selection. Tools enabled only through the parent's explicit CLI extensions
+or runtime changes are not automatically copied. Prompt templates and themes are
+unnecessary for headless tasks and remain disabled.
+
+The default model and thinking level match the caller. An explicit `model`
+overrides only the model; thinking remains the caller's selected level, clamped
+by Pi to the child's capabilities. Children receive context files, including
+repository instructions, but never the parent's conversation, runtime prompt
+changes, or extension state. A continuation receives only its own persisted
+child conversation. Project resources inherit the parent's trust only when the
+child's canonical cwd exactly matches the caller's; a different cwd is never
+automatically approved. Child processes cannot show interactive approval
+dialogs; they must report blockers. The `subagent` tool is excluded from child
+loadouts and guarded against nested calls. The `PI_SUBAGENT=1` marker identifies
+delegated processes cooperatively; it is not an authentication boundary.
+
+Capabilities are not authority. Write assignments must explicitly name
+nonoverlapping ownership and verification, preserve unrelated work, and leave
+review and repository finalization to the coordinator. Cancellation and shutdown
+do not undo source changes. Tool selection is not an OS sandbox: children
+inherit the process's credentials and OS permissions, including an existing
+sandbox. Parent Herdr and shell-session identity markers are removed from their
+environment.
+
+The TUI uses compact tool receipts instead of raw JSON. Ctrl+O expands the
+assignment, a chronological visible transcript, final Markdown outcome, task
+metadata, requested capabilities, and private artifact paths. The transcript
+includes assistant commentary, tool targets and statuses, and bounded output
+previews for shell and discovery tools. It excludes hidden reasoning, read
+contents, write/edit payloads, and arbitrary unknown-tool output. Running
+foreground blocks show elapsed time and up to four recent tool calls, refreshed
+on events and once a second. Each call updates in place from running to
+completed, failed, or cancelled. Completed receipts summarize input, output,
+cache-read, and cache-write tokens, the latest response's cache-hit rate, and
+estimated cost. Expanded results include exact token and cost breakdowns,
+overall and latest cache-hit rates, provider-reported reasoning and one-hour
+cache-write subsets, and whether compaction usage is included. These diagnostics
+cover the current foreground execution; Pi also attributes their native tool
+usage to the parent session's cumulative totals. Provider pricing or
+subscription semantics may make monetary cost zero or approximate. Usage
+rendering is excluded from tool content and structured output, like the visible
+transcript, so it does not enlarge coordinator model context. Previews show
+relative file paths, read ranges, search patterns and directories, or commands.
+Compact task metadata retains the eight most recent calls; expanded current
+results render up to 64 chronological transcript entries. Unknown tools show
+argument names only, not their values. Common credential patterns are redacted
+before previews are bounded to 600 characters; this is best-effort, not a
+guarantee that arbitrary commands contain no sensitive text. Reports include
+bounded `toolCalls` previews and result limits. The renderer receives up to 64
+UI-only transcript entries (4,000 characters per assistant entry and six
+lines/1,200 characters per eligible tool output); it reports omitted older
+entries. The transcript is excluded from tool content and structured output, so
+it does not enlarge the coordinator model's context. Older session entries
+without transcripts still render their activity summaries.
+
+Each child stays inside its tool block. Deeper monitoring is available through
+the task's private `events.jsonl` and `stderr.log` for the session lifetime.
+These logs may contain prompts, file contents, model thinking, or secrets. Tool
+previews omit file payloads and thinking but may expose paths, search terms, and
+commands. `reply.txt` contains the full final response; tool results are capped
+at 16,000 characters and identify truncation. Completion requires process exit,
+`agent_settled`, and a nonempty successful final assistant response. Partial
+text and JSON-mode exit status alone are not treated as success.
+
+At most four children run concurrently and 32 tasks may be created per parent
+runtime; there is no queue or runner-level retry. A branch catalog retains the
+32 most recently used conversations. Continuations reject child sessions larger
+than 64 MiB; unlocked storage becomes eligible for deletion after 30 days
+without use and uses exclusive cross-process locks. Unknown IDs, another parent
+branch, a changed canonical cwd, malformed state, and live or unverifiable locks
+fail closed rather than creating a blank conversation. Current model, thinking,
+capabilities, and project trust are reapplied on every continuation; persisted
+history is context, not authority. Pi's own provider retries still apply.
+
+Combined invocation logs are capped at 32 MiB per task and a single event at 8
+MiB; exceeding either fails and stops the task. Temporary task artifacts remain
+available until parent-session cleanup. Reloading, replacing the parent session,
+or shutting down stops remaining children and deletes those temporary
+directories while retaining durable conversations. A hard parent crash can leave
+a child or temporary artifacts behind. A later continuation refuses a still-live
+child and only recovers a confirmed lock when both recorded processes are
+definitely gone. A malformed or spawn-unconfirmed crash lock remains fail-closed
+rather than risking concurrent writers and may retain storage beyond normal
+expiry; source changes are never rolled back.
+
+In editable mode, `/reload` discovers this extension without a rebuild. The
+updated delegation instructions require Home Manager activation to reach the
+generated global `AGENTS.md`. The existing `pi-shepherd` package, skill, launch
+configuration, and sandbox grants remain installed for persistent teammate
+workflows during the transition.
+
 ## Transcript stamps
 
 The `transcript-stamps` extension shows a dim, left-aligned local time after

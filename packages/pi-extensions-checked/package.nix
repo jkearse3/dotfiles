@@ -13,6 +13,7 @@
 {
   extensions,
   nodejs,
+  pi,
   pi-extension-deps,
   pi-extension-types,
   pkgs,
@@ -87,7 +88,7 @@ pkgs.runCommandLocal "pi-extensions-checked"
       echo "pi-extensions-checked: no extension fixtures found" >&2
       exit 1
     fi
-    node --test "''${extensionTests[@]}"
+    PI_SUBAGENT_TEST_PI=${pi}/bin/pi node --test "''${extensionTests[@]}"
 
     touch $out
   ''

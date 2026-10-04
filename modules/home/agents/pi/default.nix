@@ -16,7 +16,7 @@ let
 
   renderAgentsMarkdown = import ../renderAgentsMarkdown.nix { inherit lib; };
   piRules = {
-    herdr-delegation = ./rules/herdr-delegation.md;
+    delegation = ./rules/delegation.md;
   };
 
   renderPiSkillsDir = import ../renderSkillsDir.nix {
@@ -306,7 +306,7 @@ in
               sources = piRules;
             }
           ];
-          order = config.agents.sharedRuleOrder ++ [ "pi/herdr-delegation" ];
+          order = config.agents.sharedRuleOrder ++ [ "pi/delegation" ];
         };
 
         # Pi auto-discovers `<dir>/index.ts` under its standard global directory,
