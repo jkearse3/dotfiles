@@ -10,7 +10,6 @@ let
     inherit lib pkgs;
     agentInteractiveDenied = dotfilesPackages.agent-interactive-denied;
   };
-  renderAgentsMarkdown = import ./renderAgentsMarkdown.nix { inherit lib; };
   renderSkillsDir = import ./renderSkillsDir.nix {
     inherit lib pkgs;
     skills = config.agents.skills;
@@ -21,7 +20,6 @@ in
     ./registries.nix
     ./shell.nix
     ./claude
-    ./codex
     ./opencode
     ./pi
   ];
@@ -42,16 +40,6 @@ in
       '';
 
       file = {
-        ".codex/AGENTS.md".text = renderAgentsMarkdown {
-          title = "Codex Instructions";
-          registries = [
-            {
-              name = "shared";
-              sources = config.agents.sharedRules;
-            }
-          ];
-          order = config.agents.sharedRuleOrder;
-        };
         ".agents/mcp.json".source = ./mcp.json;
         ".agents/skills" = renderSkillsDir { };
       };

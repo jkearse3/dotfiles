@@ -34,7 +34,6 @@ withSystem blueprint.system (
         inherit (llmAgents.${blueprint.system})
           ccusage
           claude-code
-          codex
           herdr
           hunk
           opencode
