@@ -5,13 +5,13 @@ dotfiles.
 
 ## Commands
 
-| Command | Purpose |
-| --- | --- |
-| `bookmark` | Query, select, back up, push, rebase, and sweep bookmarks. |
-| `change` | Interactively select a change. |
-| `description` | Format a revision description. |
-| `worktree` | Create or interactively select a Git worktree. |
-| `ensure` | Initialize or validate jj state in an existing Git checkout. |
+| Command       | Purpose                                                      |
+| ------------- | ------------------------------------------------------------ |
+| `bookmark`    | Query, select, back up, push, rebase, and sweep bookmarks.   |
+| `change`      | Interactively select a change.                               |
+| `description` | Format a revision description.                               |
+| `worktree`    | Create or interactively select a Git worktree.               |
+| `ensure`      | Initialize or validate jj state in an existing Git checkout. |
 
 Explore the command tree and preview description formatting:
 
