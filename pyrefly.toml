@@ -6,7 +6,6 @@ project-includes = [
   "packages/nix-cleanup",
   "packages/nvim-pack",
   "packages/jjx",
-  "packages/pi-shepherd",
   "packages/token-count",
 ]
 search-path = [
@@ -14,6 +13,4 @@ search-path = [
   "packages/jjx/src",
   "packages/nix-cleanup",
   "packages/nvim-pack",
-  "packages/pi-shepherd/src",
-  "packages/pi-shepherd/tests",
 ]

@@ -12,9 +12,9 @@ Manager rebuild.
 
 ## Subagents
 
-The `subagent` tool is the preferred mechanism for new Pi delegation. Each call
-runs a short-lived Pi process in the foreground, streams live activity, waits
-for completion, and returns the final assistant response with model usage. Omit
+The `subagent` tool is the sole Pi delegation mechanism. Each call runs a
+short-lived Pi process in the foreground, streams live activity, waits for
+completion, and returns the final assistant response with model usage. Omit
 `conversationId` to create a durable conversation; pass a returned ID to spawn a
 new process that continues the same child message and tool history. The durable
 conversation is state, not a persistent agent or process. Interrupting a call
@@ -153,9 +153,10 @@ expiry; source changes are never rolled back.
 
 In editable mode, `/reload` discovers this extension without a rebuild. The
 updated delegation instructions require Home Manager activation to reach the
-generated global `AGENTS.md`. The existing `pi-shepherd` package, skill, launch
-configuration, and sandbox grants remain installed for persistent teammate
-workflows during the transition.
+generated global `AGENTS.md`. The legacy `pi-shepherd` package, skill, launch
+configuration, and sandbox grants have been removed from managed configuration.
+Existing legacy runtime databases and unrelated live teammates are not migrated
+or deleted.
 
 ## Transcript stamps
 

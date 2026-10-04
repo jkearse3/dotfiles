@@ -1,12 +1,10 @@
 # Pi Delegation
 
 For a Pi session not itself delegated by another Pi session, standing delegation
-authorization includes the `subagent` tool and managed `pi-shepherd` teammates.
-Prefer `subagent` for new delegation. Existing persistent interactive teammate
-workflows may continue through the installed `pi-shepherd` skill. Do not invoke
-raw Herdr, ad hoc shell launches, or an in-process agent. If the selected
-managed path fails, stop rather than replaying work or silently switching
-mechanisms.
+authorization includes the `subagent` tool. Use it for all Pi delegation, not
+raw Herdr, ad hoc shell launches, an in-process agent, or a legacy teammate
+manager. If the tool is unavailable or fails, stop rather than replaying work or
+silently switching mechanisms.
 
 Supply bounded scope, necessary context, explicit authority, expected results,
 verification, and limitations. Children have normal configured Pi tools,

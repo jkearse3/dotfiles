@@ -31,9 +31,6 @@
           inherit commit-message;
           inherit (unstablePkgs) jujutsu;
         };
-        pi-shepherd = pkgs.callPackage ../packages/pi-shepherd/package.nix {
-          inherit (inputs.llm-agents.packages.${system}) herdr;
-        };
         herdr-worktree-bootstrap = pkgs.callPackage ../packages/herdr-worktree-bootstrap/package.nix {
           inherit (inputs.llm-agents.packages.${system}) herdr;
           inherit jjx;
