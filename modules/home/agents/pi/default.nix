@@ -242,12 +242,6 @@ in
   };
 
   config = {
-    agents.pi.packages = [
-      # Replace the built-in read/edit workflow with stable, session-owned line
-      # anchors and reject edits when their previously read content is stale.
-      "npm:pi-hashline-edit-pro@4.5.3"
-    ];
-
     home = {
       packages = [
         pi
