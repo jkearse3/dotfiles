@@ -250,7 +250,9 @@ function M.pick(repo, evolution, path, file_history)
 		fzf_opts = {
 			["--delimiter"] = "\t",
 			["--with-nth"] = "2..",
-			["--no-sort"] = true,
+			-- Rank by match score so ID prefixes beat scattered description hits; an empty
+			-- query and equal scores keep log order, with leading ID columns winning ties.
+			["--tiebreak"] = "begin,index",
 			["--header"] = evolution
 					and table.concat({
 						"Previous drafts of this change",

@@ -98,6 +98,24 @@ describe("read-only JJ history", function()
 		assert.is_true(#entries >= 2)
 	end)
 
+	it("ranks a typed change-ID prefix above earlier scattered description matches", function()
+		local prefix = first_change:sub(1, 4)
+		jj("describe", "-m", "decoy " .. table.concat(vim.split(prefix, ""), " "))
+		history.pick_stack()
+		local args = { "fzf", "--filter", prefix }
+		for flag, value in pairs(options.fzf_opts) do
+			if value ~= false then
+				args[#args + 1] = value == true and flag or (flag .. "=" .. value)
+			end
+		end
+		local result = vim.system(args, { stdin = entries, text = true }):wait()
+		assert.are.equal(0, result.code, result.stderr)
+		local matches = vim.split(vim.trim(result.stdout), "\n", { plain = true })
+		assert.is_true(#matches >= 2)
+		assert.are.equal(first_change, history.list(repo)[2].change_id)
+		assert.matches("^%d+\t" .. vim.pesc(prefix), matches[1])
+	end)
+
 	it(
 		"previews and opens patches without snapshotting dirty files or changing the operation log",
 		function()
