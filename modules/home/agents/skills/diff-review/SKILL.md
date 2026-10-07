@@ -99,9 +99,11 @@ Apply only relevant lenses:
   migrations, locking, integrity, dependencies, licenses, lockfiles, supply
   chain, portability, and generated consistency.
 - **Validation and claims:** meaningful success, failure, and edge checks;
-  assertions that fail without the claimed invariant; sibling behavior exposed
-  to the same regression; and accurate docs, comments, prompts, examples,
-  runbooks, and references.
+  assertions that fail without the claimed invariant; tautological checks that
+  pass whether or not the behavior is correct, such as mocks asserted to return
+  their configured values or expected values derived from the code under test;
+  sibling behavior exposed to the same regression; and accurate docs, comments,
+  prompts, examples, runbooks, and references.
 - **Artifact concerns:** design, coupling, visibility, accessibility, assets,
   responsive and theme behavior, prompt precedence and stops, parser contracts,
   naming, structure, and dead material under governing repository patterns.

@@ -273,8 +273,13 @@ Common cases include behavior that:
 
 Use the repository's existing check mechanism rather than introducing a new
 harness. Missing checks among immediate neighbors are not a reason to skip one;
-compare behavior with repository examples carrying similar risk. Do not add a
-check that merely restates a compiler, schema, or build guarantee.
+compare behavior with repository examples carrying similar risk.
+
+Do not add tautological checks, which pass whether or not the behavior is
+correct: restating a compiler, schema, or build guarantee; asserting a mock
+returns its configured value; deriving the expected value from the code under
+test; or asserting on unreviewed snapshots. Confirm each new check fails when
+the behavior it protects is broken.
 
 Durable checks must use repository fixtures, temporary files, in-memory state,
 explicitly provisioned disposable state, or sandboxed integrations. They must
@@ -312,7 +317,8 @@ For each materially changed concept:
 6. Confirm multi-field record construction uses one named field or property per
    line, including nested records.
 7. Confirm behavior covered by **Write Durable Checks** has the strongest
-   practical safe coverage, and report any remaining validation gap.
+   practical safe coverage, each new check fails when that behavior is broken,
+   and report any remaining validation gap.
 8. Run the project's formatter and focused type, lint, and test checks.
 9. Inspect the diff for unnecessary renaming, comments, modules, API changes,
    whitespace-only changes, and repository text that depends on internal
