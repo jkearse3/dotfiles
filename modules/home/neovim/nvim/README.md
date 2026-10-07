@@ -92,6 +92,22 @@ stale buffers are refused.
   success, and reload collapsed metadata. A failed source resolution retains the
   pinned view and completed caches. Historical drafts instead reload their exact
   commit.
+- **`c`**, visual **`c`:** comment on the cursor line, or edit its comment; in
+  visual mode, comment on the selected source lines of one file. The comment
+  opens in a Markdown split: `:w` saves it and saving it empty deletes it.
+- **`dc`**, **`]m` / `[m`**, **`C`:** delete, navigate, or list comments in the
+  location list.
+- **`gp` / `gP`:** copy an agent review prompt with the diff command, quoted
+  diff lines, and each comment to the clipboard; `gP` also includes stale
+  comments.
+
+Review comments are stored per repository and change ID under
+`stdpath("data")/jj-review/comments`, so they survive restarts, amends, and
+rebases. Each redraw re-anchors a comment to the nearest identical run of its
+quoted lines: comments on a rewritten change are marked carried, and comments
+whose lines are gone from a fully loaded file are marked stale and left out of
+`gp`. Comments in collapsed or paged files stay unverified and keep their
+original quote.
 
 Reviews stay pinned until explicit refresh. The source-line gutter, syntax
 highlighting, quickfix index, paging and navigation are shared across entry

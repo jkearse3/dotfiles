@@ -4,7 +4,9 @@ local page = require("lib.jj_review_page")
 local render = require("lib.jj_diff_render")
 local jj_id = require("lib.jj_id")
 local sources = require("lib.jj_review_source")
+local review_comments = require("lib.jj_review_comments")
 local group = vim.api.nvim_create_augroup("JjLazyReview", { clear = true })
+local comment_namespace = vim.api.nvim_create_namespace("jj-review-comments")
 
 ---@class lib.jj_review.File
 ---@field path string
@@ -26,6 +28,9 @@ local group = vim.api.nvim_create_augroup("JjLazyReview", { clear = true })
 ---@field revision lib.jj_history.Revision
 ---@field comparison lib.jj_review.Comparison
 ---@field files lib.jj_review.File[]
+---@field files_loaded? boolean The changed-file overview for this comparison has loaded.
+---@field comments lib.jj_review_comments.Comment[] Comments stored for the target change.
+---@field located lib.jj_review.LocatedComment[] Comments placed in the last redraw, in review order.
 ---@field jobs table<lib.jj_review.Job, boolean>
 ---@field rows integer[] File header rows, including collapsed files.
 ---@field rendered? lib.jj_diff_render.Result
@@ -35,6 +40,10 @@ local group = vim.api.nvim_create_augroup("JjLazyReview", { clear = true })
 ---@field clock integer
 ---@field quickfix? integer
 ---@field jump_job? lib.jj_review.Job
+
+---@class lib.jj_review.LocatedComment: lib.jj_review_comments.Located
+---@field row? integer Row a comment is listed and navigated at; nil before the overview loads.
+---@field order integer Store position, breaking ties between comments on the same line.
 
 ---@type table<integer, lib.jj_review.Session>
 local sessions = {}
@@ -105,6 +114,147 @@ local function current_file(session)
 	return file_at(session, vim.api.nvim_win_get_cursor(0)[1])
 end
 
+---@param session lib.jj_review.Session
+---@param result lib.jj_diff_render.Result
+---@return lib.jj_review_comments.View
+local function comment_view(session, result)
+	local view = {
+		commit_id = session.revision.commit_id,
+		rendered = result,
+	}
+	if not session.files_loaded then
+		return view
+	end
+
+	view.files = {}
+	for index, file in ipairs(session.files) do
+		local rows = {}
+		if file.expanded and file.body then
+			local last = session.rows[index + 1] and session.rows[index + 1] - 1 or #result.lines
+			for row = session.rows[index] + 1, last do
+				if review_comments.is_source_row(result.rows[row]) then
+					rows[#rows + 1] = row
+				end
+			end
+		end
+		view.files[file.path] = {
+			rows = rows,
+			complete = file.expanded and file.body ~= nil and file.page == 1 and not file.next,
+		}
+	end
+	return view
+end
+
+local comment_tags = {
+	carried = " (carried from an earlier version)",
+	stale = " (stale: commented code has changed)",
+	outside = " (stale: file is no longer in this diff)",
+}
+
+---@param item lib.jj_review.LocatedComment
+---@return table[] virt_lines
+local function comment_virt_lines(item)
+	local outdated = item.placement == "stale" or item.placement == "outside"
+	local highlight = outdated and "JjReviewCommentStale" or "JjReviewComment"
+	local lines = {}
+	if outdated then
+		lines[#lines + 1] = {
+			{
+				"  ▎ " .. text(item.comment.path) .. ":" .. review_comments.line_label(
+					item.lines
+				) .. comment_tags[item.placement],
+				highlight,
+			},
+		}
+		lines[#lines + 1] = { { "  ▎   was: " .. text(item.lines[1].text), highlight } }
+	elseif comment_tags[item.placement] then
+		lines[#lines + 1] = { { "  ▎" .. comment_tags[item.placement], highlight } }
+	end
+	for _, line in ipairs(vim.split(vim.trim(item.comment.body), "\n", { plain = true })) do
+		lines[#lines + 1] = { { "  ▎ " .. text(line), highlight } }
+	end
+	return lines
+end
+
+--- Places stored comments in the rendered review and draws them as virtual lines.
+---@param session lib.jj_review.Session
+---@param result lib.jj_diff_render.Result
+---@param notice_row integer Row that lists comments on files outside the comparison.
+local function show_comments(session, result, notice_row)
+	vim.api.nvim_set_hl(
+		0,
+		"JjReviewComment",
+		{ link = "DiagnosticVirtualTextInfo", default = true }
+	)
+	vim.api.nvim_set_hl(
+		0,
+		"JjReviewCommentStale",
+		{ link = "DiagnosticVirtualTextWarn", default = true }
+	)
+	vim.api.nvim_set_hl(0, "JjReviewCommentCount", { link = "DiagnosticInfo", default = true })
+	vim.api.nvim_buf_clear_namespace(session.buffer, comment_namespace, 0, -1)
+
+	local file_indexes = {}
+	for index, file in ipairs(session.files) do
+		file_indexes[file.path] = index
+	end
+	local located = review_comments.locate(session.comments, comment_view(session, result))
+	for order, item in ipairs(located) do
+		local index = file_indexes[item.comment.path]
+		item.row = item.first_row
+			or (index and session.rows[index])
+			or (item.placement == "outside" and notice_row or nil)
+		item.order = order
+	end
+	table.sort(located, function(a, b)
+		local a_index = file_indexes[a.comment.path] or math.huge
+		local b_index = file_indexes[b.comment.path] or math.huge
+		if a_index ~= b_index then
+			return a_index < b_index
+		end
+		local a_line, b_line = a.lines[1].line, b.lines[1].line
+		if a_line ~= b_line then
+			return a_line < b_line
+		end
+		return a.order < b.order
+	end)
+	session.located = located
+
+	local counts = {}
+	for _, item in ipairs(located) do
+		local count = counts[item.comment.path] or { total = 0, stale = 0 }
+		count.total = count.total + 1
+		if item.placement == "stale" then
+			count.stale = count.stale + 1
+		end
+		counts[item.comment.path] = count
+
+		local anchor_row = item.last_row or (item.placement ~= "unloaded" and item.row)
+		if anchor_row then
+			vim.api.nvim_buf_set_extmark(session.buffer, comment_namespace, anchor_row - 1, 0, {
+				virt_lines = comment_virt_lines(item),
+			})
+		end
+	end
+	for path, count in pairs(counts) do
+		local index = file_indexes[path]
+		if index and session.rows[index] then
+			local label = count.total
+				.. (count.total == 1 and " comment" or " comments")
+				.. (count.stale > 0 and (", " .. count.stale .. " stale") or "")
+			vim.api.nvim_buf_set_extmark(
+				session.buffer,
+				comment_namespace,
+				session.rows[index] - 1,
+				0,
+				{
+					virt_text = { { "  " .. label, "JjReviewCommentCount" } },
+				}
+			)
+		end
+	end
+end
+
 local function redraw(session)
 	if not session.active or not vim.api.nvim_buf_is_valid(session.buffer) then
 		return
@@ -167,7 +317,7 @@ local function redraw(session)
 			append({ kind = "metadata", text = text(description[index]) })
 		end
 	end
-	append({ kind = "metadata", text = session.notice .. " — g?: keys" })
+	local notice_row = append({ kind = "metadata", text = session.notice .. " — g?: keys" })
 	session.rows = {}
 	for index, file in ipairs(session.files) do
 		local state = file.job and "loading"
@@ -225,6 +375,7 @@ local function redraw(session)
 	vim.bo[session.buffer].readonly = true
 	session.rendered = result
 	render.decorate(session.buffer, result)
+	show_comments(session, result, notice_row)
 	render.set_review_state(
 		session.buffer,
 		"Pinned JJ review: " .. text(session.comparison.title),
@@ -276,6 +427,15 @@ local function capture(session, args, callback, limit)
 	return job
 end
 
+--- Replaces the session's comments with the target change's store, keeping none on read failure.
+local function load_comments(session)
+	local stored, err = review_comments.load(session.repo, session.revision.change_id)
+	session.comments = stored or {}
+	if err then
+		vim.notify(err, vim.log.levels.WARN)
+	end
+end
+
 local function load_files(session)
 	local template =
 		'"{\\"path\\":" ++ stringify(path).escape_json() ++ ",\\"display\\":" ++ display_diff_path.escape_json() ++ ",\\"status\\":" ++ status_char.escape_json() ++ "}\\n"'
@@ -304,7 +464,7 @@ local function load_files(session)
 			end
 			files[#files + 1] = file
 		end
-		session.files = files
+		session.files, session.files_loaded = files, true
 		session.notice = #files .. " changed files — patches load only when explicitly expanded"
 		redraw(session)
 		if vim.api.nvim_get_current_buf() ~= session.buffer then
@@ -528,8 +688,12 @@ function M.refresh(buffer)
 		if session.comparison.focus then
 			comparison.focus = { path = session.comparison.focus.path }
 		end
+		local change_id = session.revision.change_id
 		session.comparison, session.revision = comparison, comparison.revision
-		session.files, session.rows = {}, {}
+		session.files, session.rows, session.files_loaded = {}, {}, false
+		if session.revision.change_id ~= change_id then
+			load_comments(session)
+		end
 		session.notice = "Loading changed-file overview…"
 		redraw(session)
 		load_files(session)
@@ -651,14 +815,299 @@ function M.pick_file(buffer)
 	end)
 end
 
+--- Applies a change to a change's comment store as read from disk, so concurrent editors do not
+--- lose each other's comments, then redraws if the session still shows that change. Unreadable
+--- stores are never overwritten.
+---@param session lib.jj_review.Session
+---@param change_id string Change whose store to update, fixed when the edit began.
+---@param mutate fun(stored: lib.jj_review_comments.Comment[])
+---@return boolean saved
+local function update_comments(session, change_id, mutate)
+	local stored, err = review_comments.load(session.repo, change_id)
+	if not stored then
+		vim.notify(err, vim.log.levels.ERROR)
+		return false
+	end
+	mutate(stored)
+	err = review_comments.save(session.repo, change_id, stored)
+	if err then
+		vim.notify(err, vim.log.levels.ERROR)
+		return false
+	end
+	if session.revision.change_id == change_id then
+		session.comments = stored
+		redraw(session)
+	end
+	return true
+end
+
+---@param stored lib.jj_review_comments.Comment[]
+---@param id string
+---@return integer?
+local function comment_index(stored, id)
+	for index, comment in ipairs(stored) do
+		if comment.id == id then
+			return index
+		end
+	end
+end
+
+--- Returns comments drawn on a row: anchored ranges covering it, or outdated comments listed there.
+---@param session lib.jj_review.Session
+---@param row integer
+---@return lib.jj_review.LocatedComment[]
+local function comments_at(session, row)
+	local found = {}
+	for _, item in ipairs(session.located) do
+		local covers = item.first_row and item.first_row <= row and row <= item.last_row
+		local listed = not item.first_row and item.placement ~= "unloaded" and item.row == row
+		if covers or listed then
+			found[#found + 1] = item
+		end
+	end
+	return found
+end
+
+---@param items lib.jj_review.LocatedComment[]
+---@param prompt string
+---@param callback fun(item: lib.jj_review.LocatedComment)
+local function choose_comment(items, prompt, callback)
+	if #items == 1 then
+		callback(items[1])
+		return
+	end
+	vim.ui.select(items, {
+		prompt = prompt,
+		format_item = function(item)
+			return text(item.comment.path)
+				.. ":"
+				.. review_comments.line_label(item.lines)
+				.. " "
+				.. text(vim.split(vim.trim(item.comment.body), "\n", { plain = true })[1])
+		end,
+	}, function(item)
+		if item then
+			callback(item)
+		end
+	end)
+end
+
+--- Opens a Markdown buffer for a comment. `:w` saves it; saving it empty deletes it.
+---@param session lib.jj_review.Session
+---@param draft lib.jj_review_comments.Comment
+local function open_comment_editor(session, draft)
+	local change_id = session.revision.change_id
+	local editor = vim.api.nvim_create_buf(false, true)
+	vim.api.nvim_buf_set_name(editor, "jj-review-comment://" .. draft.id)
+	vim.bo[editor].buftype = "acwrite"
+	vim.bo[editor].bufhidden = "wipe"
+	vim.bo[editor].swapfile = false
+	vim.bo[editor].filetype = "markdown"
+	vim.api.nvim_buf_set_lines(editor, 0, -1, false, vim.split(draft.body, "\n", { plain = true }))
+	vim.bo[editor].modified = false
+
+	vim.api.nvim_create_autocmd("BufWriteCmd", {
+		group = group,
+		buffer = editor,
+		callback = function()
+			local body =
+				vim.trim(table.concat(vim.api.nvim_buf_get_lines(editor, 0, -1, false), "\n"))
+			local saved = update_comments(session, change_id, function(stored)
+				local index = comment_index(stored, draft.id)
+				if body == "" then
+					if index then
+						table.remove(stored, index)
+					end
+					return
+				end
+				local comment = vim.deepcopy(draft)
+				comment.body = body
+				stored[index or #stored + 1] = comment
+			end)
+			if saved then
+				vim.bo[editor].modified = false
+			end
+		end,
+	})
+
+	vim.cmd("botright 8split")
+	vim.api.nvim_win_set_buf(0, editor)
+	vim.wo.winbar = "Review comment on "
+		.. text(draft.path)
+		.. ":"
+		.. review_comments.line_label(draft.lines)
+		.. " — :w saves, empty deletes, :q closes"
+end
+
+--- Edits the comment on the selected rows, or starts one. Only normal-mode edits reuse an existing
+--- comment; a visual selection always starts a new comment over the selected source lines.
+---@param buffer integer
+---@param first_row integer
+---@param last_row integer
+---@param is_new? boolean
+function M.edit_comment(buffer, first_row, last_row, is_new)
+	local session = sessions[buffer]
+	if not session or not session.rendered then
+		return
+	end
+
+	local existing = not is_new and comments_at(session, first_row) or {}
+	if #existing > 0 then
+		choose_comment(existing, "Edit review comment", function(item)
+			local draft = vim.deepcopy(item.comment)
+			if item.first_row then
+				draft.lines, draft.commit_id = item.lines, session.revision.commit_id
+			end
+			open_comment_editor(session, draft)
+		end)
+		return
+	end
+
+	local rows = {}
+	for row = first_row, last_row do
+		rows[#rows + 1] = row
+	end
+	local lines, path, err = review_comments.anchor_lines(session.rendered.rows, rows)
+	if not lines then
+		vim.notify(err, vim.log.levels.WARN)
+		return
+	end
+	open_comment_editor(session, {
+		id = review_comments.new_id(),
+		path = path,
+		commit_id = session.revision.commit_id,
+		lines = lines,
+		body = "",
+	})
+end
+
+--- Deletes a comment drawn on the cursor row, asking which one when several are.
+---@param buffer integer
+function M.delete_comment(buffer)
+	local session = sessions[buffer]
+	if not session then
+		return
+	end
+	local items = comments_at(session, vim.api.nvim_win_get_cursor(0)[1])
+	if #items == 0 then
+		vim.notify("No review comment on this line", vim.log.levels.INFO)
+		return
+	end
+	choose_comment(items, "Delete review comment", function(item)
+		update_comments(session, session.revision.change_id, function(stored)
+			local index = comment_index(stored, item.comment.id)
+			if index then
+				table.remove(stored, index)
+			end
+		end)
+	end)
+end
+
+--- Moves to the next or previous row with a review comment.
+---@param buffer integer
+---@param direction integer
+function M.navigate_comment(buffer, direction)
+	local session = sessions[buffer]
+	if not session then
+		return
+	end
+	local cursor = vim.api.nvim_win_get_cursor(0)[1]
+	local target
+	for _, item in ipairs(session.located) do
+		local row = item.row
+		if row and (direction > 0 and row > cursor or direction < 0 and row < cursor) then
+			if
+				not target
+				or (direction > 0 and row < target)
+				or (direction < 0 and row > target)
+			then
+				target = row
+			end
+		end
+	end
+	if target then
+		vim.api.nvim_win_set_cursor(0, { target, 0 })
+	end
+end
+
+--- Lists the change's review comments in the window's location list.
+---@param buffer integer
+function M.list_comments(buffer)
+	local session = sessions[buffer]
+	if not session then
+		return
+	end
+	local items = {}
+	for _, item in ipairs(session.located) do
+		items[#items + 1] = {
+			bufnr = buffer,
+			lnum = item.row or 1,
+			text = text(item.comment.path)
+				.. ":"
+				.. review_comments.line_label(item.lines)
+				.. (item.placement == "current" and "" or " [" .. item.placement .. "]")
+				.. " "
+				.. text(vim.split(vim.trim(item.comment.body), "\n", { plain = true })[1]),
+		}
+	end
+	if #items == 0 then
+		vim.notify("No review comments on this change", vim.log.levels.INFO)
+		return
+	end
+	vim.fn.setloclist(0, {}, " ", { title = "JJ review comments", items = items })
+	vim.cmd.lopen()
+end
+
+--- Builds the agent review prompt for the change's comments, as last placed in the review.
+---@param buffer integer
+---@param include_stale? boolean Also include comments whose code has changed or left the diff.
+---@return string? prompt Nil when there is no session or no qualifying comment.
+function M.review_prompt(buffer, include_stale)
+	local session = sessions[buffer]
+	if not session then
+		return nil
+	end
+	return review_comments.compose_prompt({
+		change_id = session.revision.change_id,
+		commit_id = session.revision.commit_id,
+		diff_command = "jj " .. table.concat(comparison_args(session), " "),
+	}, session.located, include_stale)
+end
+
+--- Copies the agent review prompt to the clipboard, or the unnamed register without one.
+---@param buffer integer
+---@param include_stale? boolean
+function M.copy_review_prompt(buffer, include_stale)
+	local prompt = M.review_prompt(buffer, include_stale)
+	if not prompt then
+		vim.notify("No review comments to copy", vim.log.levels.INFO)
+		return
+	end
+	local register = vim.fn.has("clipboard") == 1 and "+" or '"'
+	vim.fn.setreg(register, prompt)
+	local _, count = prompt:gsub("\n## %d+%. ", "")
+	vim.notify(
+		"Copied review prompt with "
+			.. count
+			.. (count == 1 and " comment" or " comments")
+			.. (register == "+" and " to the clipboard" or " to the unnamed register")
+	)
+end
+
 --- Lists the review buffer's key mappings in a float that closes when the cursor moves.
 ---@param buffer integer
 function M.show_keys(buffer)
 	local lines = {}
-	for _, mapping in ipairs(vim.api.nvim_buf_get_keymap(buffer, "n")) do
-		local description = mapping.desc and mapping.desc:match("^JJ review: (.+)")
-		if description then
-			lines[#lines + 1] = string.format("%-6s %s", mapping.lhs, description)
+	for _, mode in ipairs({ "n", "x" }) do
+		for _, mapping in ipairs(vim.api.nvim_buf_get_keymap(buffer, mode)) do
+			local description = mapping.desc and mapping.desc:match("^JJ review: (.+)")
+			if description then
+				lines[#lines + 1] = string.format(
+					"%-6s %s",
+					(mode == "x" and "v_" or "") .. mapping.lhs,
+					description
+				)
+			end
 		end
 	end
 	table.sort(lines)
@@ -711,11 +1160,14 @@ function M.open_comparison(repo, comparison)
 		files = {},
 		jobs = {},
 		rows = {},
+		comments = {},
+		located = {},
 		notice = "Loading changed-file overview…",
 		active = true,
 		clock = 0,
 	}
 	sessions[buffer] = session
+	load_comments(session)
 	vim.bo[buffer].buftype = "nofile"
 	vim.bo[buffer].bufhidden = "hide"
 	vim.bo[buffer].swapfile = false
@@ -762,6 +1214,33 @@ function M.open_comparison(repo, comparison)
 	map("g?", function()
 		M.show_keys(buffer)
 	end, "Show keys")
+	map("c", function()
+		local row = vim.api.nvim_win_get_cursor(0)[1]
+		M.edit_comment(buffer, row, row)
+	end, "Add/edit review comment")
+	vim.keymap.set("x", "c", function()
+		local first, last = vim.fn.line("v"), vim.fn.line(".")
+		vim.api.nvim_feedkeys(vim.keycode("<Esc>"), "nx", false)
+		M.edit_comment(buffer, math.min(first, last), math.max(first, last), true)
+	end, { buffer = buffer, desc = "JJ review: Add review comment on selected lines" })
+	map("dc", function()
+		M.delete_comment(buffer)
+	end, "Delete review comment")
+	map("]m", function()
+		M.navigate_comment(buffer, 1)
+	end, "Next review comment")
+	map("[m", function()
+		M.navigate_comment(buffer, -1)
+	end, "Previous review comment")
+	map("C", function()
+		M.list_comments(buffer)
+	end, "List review comments")
+	map("gp", function()
+		M.copy_review_prompt(buffer)
+	end, "Copy review prompt")
+	map("gP", function()
+		M.copy_review_prompt(buffer, true)
+	end, "Copy review prompt with stale comments")
 	vim.api.nvim_clear_autocmds({ group = group, buffer = buffer })
 	vim.api.nvim_create_autocmd("BufDelete", {
 		group = group,

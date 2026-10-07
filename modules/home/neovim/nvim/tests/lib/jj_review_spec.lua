@@ -1,6 +1,7 @@
 local review = require("lib.jj_review")
 local process = require("lib.jj_review_process")
 local page = require("lib.jj_review_page")
+local review_comments = require("lib.jj_review_comments")
 
 local function write_raw(path, content)
 	local fd = assert(vim.uv.fs_open(path, "w", 384))
@@ -23,7 +24,7 @@ local function patch(count)
 end
 
 describe("lazy JJ review", function()
-	local directory, original_start, original_buf, original_win, requests, buffer
+	local directory, original_start, original_store, original_buf, original_win, requests, buffer
 	local revision = {
 		commit_id = string.rep("a", 40),
 		change_id = string.rep("k", 32),
@@ -61,6 +62,10 @@ describe("lazy JJ review", function()
 		vim.fn.mkdir(directory, "p")
 		original_buf, original_win = vim.api.nvim_get_current_buf(), vim.api.nvim_get_current_win()
 		original_start = process.start
+		original_store = review_comments.store_directory
+		review_comments.store_directory = function()
+			return directory .. "/comments"
+		end
 		requests = {}
 		process.start = function(repo, args, limit, complete)
 			local job = { path = directory .. "/" .. (#requests + 1), cancel = function() end }
@@ -79,6 +84,7 @@ describe("lazy JJ review", function()
 			vim.api.nvim_buf_delete(buffer, { force = true })
 		end
 		process.start = original_start
+		review_comments.store_directory = original_store
 		vim.api.nvim_set_current_win(original_win)
 		vim.api.nvim_win_set_buf(original_win, original_buf)
 		vim.fn.delete(directory, "rf")
@@ -372,6 +378,177 @@ describe("lazy JJ review", function()
 		select_file(paths[17])
 		review.cancel(buffer)
 		assert.matches("Requests cancelled", contents(), 1, true)
+	end)
+
+	local function new_file_patch(texts)
+		local lines = {
+			"diff --git a/a.lua b/a.lua",
+			"new file mode 100644",
+			"--- /dev/null",
+			"+++ b/a.lua",
+			"@@ -0,0 +1," .. #texts .. " @@",
+		}
+		for _, value in ipairs(texts) do
+			lines[#lines + 1] = "+" .. value
+		end
+		return table.concat(lines, "\n") .. "\n"
+	end
+	local function comment_marks()
+		local namespace = vim.api.nvim_get_namespaces()["jj-review-comments"]
+		local marks = {}
+		for _, mark in
+			ipairs(vim.api.nvim_buf_get_extmarks(buffer, namespace, 0, -1, { details = true }))
+		do
+			local row, details = mark[2] + 1, mark[4]
+			for _, virt_line in ipairs(details.virt_lines or {}) do
+				marks[#marks + 1] = { row = row, text = virt_line[1][1] }
+			end
+		end
+		return marks
+	end
+	local function marks_text()
+		local lines = {}
+		for _, mark in ipairs(comment_marks()) do
+			lines[#lines + 1] = mark.row .. ":" .. mark.text
+		end
+		return table.concat(lines, "\n")
+	end
+	local function write_comment(body)
+		local editor = vim.api.nvim_get_current_buf()
+		assert.matches("^jj%-review%-comment://", vim.api.nvim_buf_get_name(editor))
+		vim.api.nvim_buf_set_lines(editor, 0, -1, false, vim.split(body, "\n"))
+		vim.cmd.write()
+		vim.cmd.close()
+		assert.are.equal(buffer, vim.api.nvim_get_current_buf())
+	end
+	local function expand_a(number, texts)
+		select_file("a.lua")
+		review.toggle(buffer)
+		finish(number, new_file_patch(texts))
+	end
+
+	it("persists a visual multi-line comment and redraws it after reopening the change", function()
+		finish(1, files({ "a.lua" }))
+		expand_a(2, { "alpha", "beta", "gamma" })
+		vim.api.nvim_win_set_cursor(0, { row("alpha"), 0 })
+		vim.api.nvim_feedkeys("Vjc", "mx", false)
+		write_comment("Rename these.\nThey are unclear.")
+
+		assert.are.equal(1, #review_comments.load(directory, revision.change_id))
+		assert.are.same({
+			{ row = row("beta"), text = "  ▎ Rename these." },
+			{ row = row("beta"), text = "  ▎ They are unclear." },
+		}, comment_marks())
+
+		buffer = review.open(directory, revision)
+		finish(3, files({ "a.lua" }))
+		expand_a(4, { "alpha", "beta", "gamma" })
+		assert.are.equal(2, #comment_marks())
+		local prompt = review.review_prompt(buffer)
+		assert.matches(
+			"## 1. a.lua:1-2\n\n```diff\n+alpha\n+beta\n```\n\nRename these.\nThey are unclear.",
+			prompt,
+			1,
+			true
+		)
+		assert.matches("`jj diff -r " .. revision.commit_id .. "`", prompt, 1, true)
+	end)
+
+	it("edits the comment under the cursor and deletes it with its empty store", function()
+		finish(1, files({ "a.lua" }))
+		expand_a(2, { "alpha", "beta" })
+		vim.api.nvim_win_set_cursor(0, { row("beta"), 0 })
+		vim.fn.maparg("c", "n", false, true).callback()
+		write_comment("First")
+		vim.fn.maparg("c", "n", false, true).callback()
+		assert.are.same({ "First" }, vim.api.nvim_buf_get_lines(0, 0, -1, false))
+		write_comment("Second")
+		assert.matches("Second", marks_text(), 1, true)
+		assert.are.equal(1, #review_comments.load(directory, revision.change_id))
+
+		vim.fn.maparg("dc", "n", false, true).callback()
+		assert.are.equal("", marks_text())
+		assert.is_nil(vim.uv.fs_stat(review_comments.store_path(directory, revision.change_id)))
+	end)
+
+	it(
+		"carries comments across a rewrite and leaves vanished code out of the default prompt",
+		function()
+			finish(1, files({ "a.lua" }))
+			expand_a(2, { "alpha", "beta", "gamma" })
+			vim.api.nvim_win_set_cursor(0, { row("beta"), 0 })
+			vim.fn.maparg("c", "n", false, true).callback()
+			write_comment("Keep beta")
+			vim.api.nvim_win_set_cursor(0, { row("gamma"), 0 })
+			vim.fn.maparg("c", "n", false, true).callback()
+			write_comment("Drop gamma")
+
+			review.refresh(buffer)
+			finish(3, string.rep("c", 128))
+			finish(
+				4,
+				vim.json.encode(
+					vim.tbl_extend("force", revision, { commit_id = string.rep("b", 40) })
+				)
+			)
+			finish(5, files({ "a.lua" }))
+			assert.matches(
+				"2 comments",
+				vim.inspect(vim.api.nvim_buf_get_extmarks(buffer, -1, 0, -1, { details = true })),
+				1,
+				true
+			)
+			expand_a(6, { "new", "alpha", "beta" })
+
+			local marks = marks_text()
+			assert.matches(
+				row("beta") .. ":  ▎ (carried from an earlier version)",
+				marks,
+				1,
+				true
+			)
+			assert.matches(
+				row("M a.lua") .. ":  ▎ a.lua:3 (stale: commented code has changed)",
+				marks,
+				1,
+				true
+			)
+			assert.matches(row("M a.lua") .. ":  ▎   was: gamma", marks, 1, true)
+
+			local prompt = review.review_prompt(buffer)
+			assert.matches("## 1. a.lua:3\n\n```diff\n+beta\n```\n\nKeep beta", prompt, 1, true)
+			assert.is_nil(prompt:find("Drop gamma", 1, true))
+			assert.matches(
+				"## 2. a.lua:3 (outdated)\n\n```diff\n+gamma\n```\n\nDrop gamma",
+				review.review_prompt(buffer, true),
+				1,
+				true
+			)
+		end
+	)
+
+	it("refuses to overwrite a comment store it cannot read", function()
+		local path = review_comments.store_path(directory, revision.change_id)
+		vim.fn.mkdir(vim.fs.dirname(path), "p")
+		write_raw(path, "not json")
+		local notify, messages = vim.notify, {}
+		vim.notify = function(message)
+			messages[#messages + 1] = message
+		end
+		local ok, err = pcall(function()
+			buffer = review.open(directory, revision)
+			finish(2, files({ "a.lua" }))
+			expand_a(3, { "alpha" })
+			vim.api.nvim_win_set_cursor(0, { row("alpha"), 0 })
+			vim.fn.maparg("c", "n", false, true).callback()
+			vim.api.nvim_buf_set_lines(0, 0, -1, false, { "Lost?" })
+			vim.cmd.write()
+			vim.cmd("bwipeout!")
+		end)
+		vim.notify = notify
+		assert(ok, err)
+		assert.matches("Malformed review comments", table.concat(messages, "\n"), 1, true)
+		assert.are.equal("not json", table.concat(vim.fn.readfile(path, "b"), "\n"))
 	end)
 end)
 
