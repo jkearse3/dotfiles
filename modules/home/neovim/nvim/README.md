@@ -97,14 +97,16 @@ Reviews stay pinned until explicit refresh. The source-line gutter, syntax
 highlighting, quickfix index, paging and navigation are shared across entry
 points. Search and hunk navigation cover displayed pages, not unloaded text.
 
-Each page contains at most 400 patch lines / 128 KiB. File generation is
-asynchronous and cancellable, spooling privately to disk; pages render after
-generation finishes. Collapse retains the cache. At most eight files are
-expanded and sixteen file caches retained, with least-recently-used
-collapse/eviction.
+A file's patch renders whole when it fits in 10,000 patch lines / 2 MiB, with no
+page footer; larger patches page at that size, and their header says
+`large patch, cached page N`. File generation is asynchronous and cancellable,
+spooling privately to disk; pages render after generation finishes. Collapse
+retains the cache. Expanded files share a 10,000-row budget (and at most eight
+are expanded), and sixteen file caches are retained, with least-recently-used
+collapse/eviction. Syntax highlighting parses each loaded page once.
 
 Each request times out after 30 seconds. File spools are capped at 32 MiB;
-metadata at 2 MiB / 10,000 files; individual patch lines at 128 KiB. Line-origin
+metadata at 2 MiB / 10,000 files; individual patch lines at 2 MiB. Line-origin
 resolution analyzes only the selected file's origin and forward comparison
 patches, with a **1 MiB limit on each file-scoped analysis patch**. Unrelated
 repository changes do not consume that budget; oversized selected-file patches

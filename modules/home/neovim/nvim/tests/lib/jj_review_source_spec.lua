@@ -22,7 +22,7 @@ describe("unified JJ review sources", function()
 		return assert(history.run({ "op", "log", "--no-graph", "--limit", "1", "-T", "id" }, repo))
 	end
 	local function text()
-		return table.concat(vim.api.nvim_buf_get_lines(0, 0, -1, false), "\n")
+		return table.concat(vim.api.nvim_buf_get_lines(0, 0, -1, false), "\n") .. "\n"
 	end
 	local function wait_for(value)
 		assert.is_true(

@@ -30,7 +30,7 @@ describe("lazy JJ review", function()
 		description = "Review revision",
 	}
 	local function contents()
-		return table.concat(vim.api.nvim_buf_get_lines(buffer, 0, -1, false), "\n")
+		return table.concat(vim.api.nvim_buf_get_lines(buffer, 0, -1, false), "\n") .. "\n"
 	end
 	local function row(label)
 		for number, line in ipairs(vim.api.nvim_buf_get_lines(buffer, 0, -1, false)) do
@@ -160,6 +160,16 @@ describe("lazy JJ review", function()
 		assert.matches("]f     Next file header", shown, 1, true)
 	end)
 
+	it("shows a patch within the page limit whole, without a page footer", function()
+		finish(1, files({ "a.lua" }))
+		select_file("a.lua")
+		review.toggle(buffer)
+		finish(2, patch(page.max_lines - 5))
+		assert.matches("\nline " .. (page.max_lines - 5) .. "\n", contents(), 1, true)
+		assert.is_nil(contents():find("Page 1", 1, true))
+		assert.matches("[-] M a.lua  (cached)", contents(), 1, true)
+	end)
+
 	it("expands explicitly, pages a 100k-line file, and reopens from cache", function()
 		finish(1, files({ "a.lua", "b.lua" }))
 		select_file("a.lua")
@@ -168,7 +178,8 @@ describe("lazy JJ review", function()
 		assert.is_true(vim.tbl_contains(requests[2].args, "--git"))
 		finish(2, patch(100005))
 		assert.matches("line 1", contents(), 1, true)
-		assert.is_true(vim.api.nvim_buf_line_count(buffer) < 420)
+		assert.matches("large patch, cached page 1", contents(), 1, true)
+		assert.is_true(vim.api.nvim_buf_line_count(buffer) < page.max_lines + 20)
 		review.turn_page(buffer, 1)
 		assert.matches("Page 2", contents(), 1, true)
 		assert.is_nil(contents():find("\nline 1\n", 1, true))
@@ -179,7 +190,7 @@ describe("lazy JJ review", function()
 		review.toggle(buffer)
 		assert.matches("\nline 1\n", contents(), 1, true)
 		assert.are.equal(2, #requests)
-		assert.is_true(vim.api.nvim_buf_line_count(buffer) < 420)
+		assert.is_true(vim.api.nvim_buf_line_count(buffer) < page.max_lines + 20)
 	end)
 
 	it("ignores cancelled callbacks and cleans caches on replacement and deletion", function()
@@ -309,7 +320,7 @@ describe("lazy JJ review", function()
 		for index = 1, 8 do
 			select_file(paths[index])
 			review.toggle(buffer)
-			finish(#requests, patch(450))
+			finish(#requests, patch(page.max_lines + 50))
 		end
 		select_file(paths[1])
 		review.turn_page(buffer, 1)
@@ -318,6 +329,23 @@ describe("lazy JJ review", function()
 		finish(#requests, patch(2))
 		assert.matches("[-] M file1.lua", contents(), 1, true)
 		assert.matches("[+] M file2.lua", contents(), 1, true)
+	end)
+
+	it("collapses older expanded files when loaded rows exceed the redraw budget", function()
+		finish(1, files({ "a.lua", "b.lua", "c.lua" }))
+		for index, path in ipairs({ "a.lua", "b.lua", "c.lua" }) do
+			select_file(path)
+			review.toggle(buffer)
+			finish(index + 1, patch(4000))
+		end
+		assert.matches("[+] M a.lua", contents(), 1, true)
+		assert.matches("[-] M b.lua", contents(), 1, true)
+		assert.matches("[-] M c.lua", contents(), 1, true)
+		select_file("a.lua")
+		review.toggle(buffer)
+		assert.are.equal(4, #requests)
+		assert.matches("[-] M a.lua", contents(), 1, true)
+		assert.matches("[+] M b.lua", contents(), 1, true)
 	end)
 
 	it("bounds expanded pages and evicts the least recently used disk cache", function()
@@ -345,12 +373,12 @@ describe("bounded JJ patch pages", function()
 		"preserves source line numbers across pages and leaves deleted lines without jump targets",
 		function()
 			local spool = vim.fn.tempname()
-			write_raw(spool, patch(1000))
+			write_raw(spool, patch(page.max_lines + 600))
 			local first, next_position =
 				page.read(spool, "a.lua", false, { offset = 0, old = 0, new = 0, hunk = false })
-			assert.are.equal(395, first.rows[400].new_line)
+			assert.are.equal(page.max_lines - 5, first.rows[page.max_lines].new_line)
 			local second = assert(page.read(spool, "a.lua", false, next_position))
-			assert.are.equal(396, second.rows[1].location.line)
+			assert.are.equal(page.max_lines - 4, second.rows[1].location.line)
 			write_raw(
 				spool,
 				"diff --git a/a.lua b/a.lua\n--- a/a.lua\n+++ /dev/null\n@@ -1,1 +0,0 @@\n-gone\n"
@@ -365,11 +393,11 @@ describe("bounded JJ patch pages", function()
 
 	it("refuses an oversized single line rather than silently truncating it", function()
 		local spool = vim.fn.tempname()
-		write_raw(spool, string.rep("x", 140000))
+		write_raw(spool, string.rep("x", page.max_bytes + 1000))
 		local rendered, _, err =
 			page.read(spool, "large.txt", false, { offset = 0, old = 0, new = 0, hunk = false })
 		vim.fn.delete(spool)
 		assert.is_nil(rendered)
-		assert.matches("exceeds 128 KiB", err, 1, true)
+		assert.matches("exceeds 2048 KiB", err, 1, true)
 	end)
 end)

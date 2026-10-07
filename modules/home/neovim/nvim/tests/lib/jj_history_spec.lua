@@ -16,7 +16,7 @@ describe("read-only JJ history", function()
 	end
 
 	local function review_text()
-		return table.concat(vim.api.nvim_buf_get_lines(0, 0, -1, false), "\n")
+		return table.concat(vim.api.nvim_buf_get_lines(0, 0, -1, false), "\n") .. "\n"
 	end
 	local function wait_overview()
 		assert.is_true(vim.wait(5000, function()
@@ -147,7 +147,7 @@ describe("read-only JJ history", function()
 			assert.is_true(vim.bo.readonly)
 			local buffer = vim.api.nvim_get_current_buf()
 			local function content()
-				return table.concat(vim.api.nvim_buf_get_lines(buffer, 0, -1, false), "\n")
+				return table.concat(vim.api.nvim_buf_get_lines(buffer, 0, -1, false), "\n") .. "\n"
 			end
 			assert.is_true(
 				vim.wait(5000, function()
@@ -466,7 +466,7 @@ describe("read-only JJ history", function()
 		local review = require("lib.jj_review")
 		local buffer = review.open(repo, revision)
 		local function content()
-			return table.concat(vim.api.nvim_buf_get_lines(buffer, 0, -1, false), "\n")
+			return table.concat(vim.api.nvim_buf_get_lines(buffer, 0, -1, false), "\n") .. "\n"
 		end
 		assert.is_true(
 			vim.wait(5000, function()
@@ -483,7 +483,9 @@ describe("read-only JJ history", function()
 			end),
 			content()
 		)
-		assert.is_true(vim.api.nvim_buf_line_count(buffer) < 420)
+		assert.is_true(
+			vim.api.nvim_buf_line_count(buffer) < require("lib.jj_review_page").max_lines + 20
+		)
 		review.turn_page(buffer, 1)
 		assert.matches("Page 2", content(), 1, true)
 		jj("describe", "-m", "refreshed revision")
@@ -510,7 +512,7 @@ describe("read-only JJ history", function()
 			local review = require("lib.jj_review")
 			local buffer = review.open(repo, revision)
 			local function content()
-				return table.concat(vim.api.nvim_buf_get_lines(buffer, 0, -1, false), "\n")
+				return table.concat(vim.api.nvim_buf_get_lines(buffer, 0, -1, false), "\n") .. "\n"
 			end
 			assert.is_true(vim.wait(5000, function()
 				return content():find("not loaded", 1, true) ~= nil

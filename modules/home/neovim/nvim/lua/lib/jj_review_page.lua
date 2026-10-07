@@ -1,13 +1,17 @@
 local M = {}
 local process = require("lib.jj_review_process")
 
+-- Most patches render whole; larger ones page so redraws and highlighting stay responsive.
+M.max_lines = 10000
+M.max_bytes = 2 * 1024 * 1024
+
 ---@class lib.jj_review.Position
 ---@field offset integer Byte offset in the cached patch.
 ---@field old integer Next old-side line number.
 ---@field new integer Next new-side line number.
 ---@field hunk boolean Whether the offset lies inside a text hunk.
 
---- Renders at most 400 patch lines / 128 KiB, preserving hunk counters across pages.
+--- Renders at most max_lines patch lines / max_bytes, preserving hunk counters across pages.
 --- Uses the retained review renderer's row model and syntax fragments, without parsing the
 --- entire file or retaining all preceding pages. Oversized individual lines fail explicitly.
 ---@param spool string
@@ -18,7 +22,7 @@ local process = require("lib.jj_review_process")
 ---@return lib.jj_review.Position? next_position
 ---@return string? error
 function M.read(spool, path, deleted, position)
-	local content, err = process.read(spool, 131072, position.offset)
+	local content, err = process.read(spool, M.max_bytes, position.offset)
 	if not content then
 		return nil, nil, err
 	end
@@ -34,7 +38,7 @@ function M.read(spool, path, deleted, position)
 	local old_fragment = { path = path, lines = {}, rows = {} }
 	local new_fragment = { path = path, lines = {}, rows = {} }
 	local consumed = 0
-	for _ = 1, 400 do
+	for _ = 1, M.max_lines do
 		if consumed == #content then
 			break
 		end
@@ -43,7 +47,12 @@ function M.read(spool, path, deleted, position)
 			local size = assert(vim.uv.fs_stat(spool)).size
 			if position.offset + #content < size then
 				if consumed == 0 then
-					return nil, nil, "Patch line exceeds 128 KiB; inspect this file externally"
+					return nil,
+						nil,
+						string.format(
+							"Patch line exceeds %d KiB; inspect this file externally",
+							M.max_bytes / 1024
+						)
 				end
 				break
 			end

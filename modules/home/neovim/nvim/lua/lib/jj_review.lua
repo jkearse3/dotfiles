@@ -40,6 +40,8 @@ local group = vim.api.nvim_create_augroup("JjLazyReview", { clear = true })
 local sessions = {}
 local buffer_name = "jj-review://revision"
 local patch_limit = 32 * 1024 * 1024
+-- Every redraw re-renders all expanded files, so their combined rows bound toggle latency.
+local expanded_rows_limit = 10000
 local metadata_limit = 2 * 1024 * 1024
 
 local function text(value)
@@ -170,7 +172,8 @@ local function redraw(session)
 	for index, file in ipairs(session.files) do
 		local state = file.job and "loading"
 			or file.error
-			or file.spool and ("cached page " .. (file.page or 1))
+			or file.spool and file.positions[2] and ("large patch, cached page " .. (file.page or 1))
+			or file.spool and "cached"
 			or "not loaded"
 		local row = append({
 			kind = "file",
@@ -204,13 +207,15 @@ local function redraw(session)
 				result.syntax_fragments[#result.syntax_fragments + 1] =
 					{ path = fragment.path, lines = fragment.lines, rows = rows }
 			end
-			append({
-				kind = "metadata",
-				text = "  Page "
-					.. file.page
-					.. (file.next and " — ]p: next page" or " — end of patch")
-					.. (file.page > 1 and " — [p: previous page" or ""),
-			})
+			if file.next or file.page > 1 then
+				append({
+					kind = "metadata",
+					text = "  Page "
+						.. file.page
+						.. (file.next and " — ]p: next page" or " — end of patch")
+						.. (file.page > 1 and " — [p: previous page" or ""),
+				})
+			end
 		end
 	end
 	vim.bo[session.buffer].readonly = false
@@ -325,6 +330,27 @@ local function load_files(session)
 	end)
 end
 
+--- Collapses the least recently used other expanded files until loaded rows fit the limit.
+local function fit_expanded_rows(session, selected)
+	local expanded, total = {}, #selected.body.lines
+	for _, file in ipairs(session.files) do
+		if file ~= selected and file.expanded and file.body then
+			expanded[#expanded + 1] = file
+			total = total + #file.body.lines
+		end
+	end
+	table.sort(expanded, function(a, b)
+		return (a.touched or 0) < (b.touched or 0)
+	end)
+	for _, file in ipairs(expanded) do
+		if total <= expanded_rows_limit then
+			return
+		end
+		file.expanded = false
+		total = total - #file.body.lines
+	end
+end
+
 local function read_page(session, file, number)
 	local body, next_position, err =
 		page.read(file.spool, file.path, file.status == "D", file.positions[number])
@@ -337,6 +363,7 @@ local function read_page(session, file, number)
 		if next_position then
 			file.positions[number + 1] = next_position
 		end
+		fit_expanded_rows(session, file)
 	end
 	redraw(session)
 end
