@@ -379,53 +379,73 @@ local function apply_line_highlights(buffer, rendered)
 	end
 end
 
-local function apply_syntax_fragment(buffer, fragment)
+-- Captures keyed by a fragment's line list, which survives re-renders that only shift its rows.
+local syntax_captures = setmetatable({}, { __mode = "k" })
+
+--- Parses a fragment once and returns its highlight captures in fragment line coordinates.
+---@return { line: integer, start_col: integer, end_col: integer, group: string, priority: integer }[]
+local function fragment_captures(fragment)
+	local cached = syntax_captures[fragment.lines]
+	if cached then
+		return cached
+	end
+	local captures = {}
+	syntax_captures[fragment.lines] = captures
 	local filetype = vim.filetype.match({ filename = fragment.path })
 	local language = filetype and vim.treesitter.language.get_lang(filetype)
 	if not language or not pcall(vim.treesitter.language.inspect, language) then
-		return
+		return captures
 	end
 
 	local source = table.concat(fragment.lines, "\n")
 	local ok, parser = pcall(vim.treesitter.get_string_parser, source, language)
 	if not ok then
-		return
+		return captures
 	end
 	local trees = parser:parse()
 	local query = vim.treesitter.query.get(language, "highlights")
 	if not trees[1] or not query then
-		return
+		return captures
 	end
 
 	for capture, node, metadata in query:iter_captures(trees[1]:root(), source, 0, -1) do
 		local capture_metadata = metadata and metadata[capture]
 		local range = vim.treesitter.get_range(node, source, capture_metadata)
 		local start_row, start_col, end_row, end_col = range[1], range[2], range[4], range[5]
+		local priority = tonumber(
+			metadata and (metadata.priority or capture_metadata and capture_metadata.priority)
+		) or vim.hl.priorities.treesitter
 		for source_row = start_row, end_row do
-			local render_row = fragment.rows[source_row + 1]
-			if render_row then
-				local line = fragment.lines[source_row + 1] or ""
-				local capture_start = source_row == start_row and start_col or 0
-				local capture_end = source_row == end_row and end_col or #line
-				if capture_start < capture_end then
-					local priority = tonumber(
-						metadata
-							and (
-								metadata.priority
-								or capture_metadata and capture_metadata.priority
-							)
-					) or vim.hl.priorities.treesitter
-					add_highlight(
-						buffer,
-						render_row,
-						capture_start,
-						capture_end,
-						"@" .. query.captures[capture],
-						priority,
-						false
-					)
-				end
+			local line = fragment.lines[source_row + 1] or ""
+			local capture_start = source_row == start_row and start_col or 0
+			local capture_end = source_row == end_row and end_col or #line
+			if capture_start < capture_end then
+				captures[#captures + 1] = {
+					line = source_row + 1,
+					start_col = capture_start,
+					end_col = capture_end,
+					group = "@" .. query.captures[capture],
+					priority = priority,
+				}
 			end
+		end
+	end
+	return captures
+end
+
+local function apply_syntax_fragment(buffer, fragment)
+	for _, capture in ipairs(fragment_captures(fragment)) do
+		local render_row = fragment.rows[capture.line]
+		if render_row then
+			add_highlight(
+				buffer,
+				render_row,
+				capture.start_col,
+				capture.end_col,
+				capture.group,
+				capture.priority,
+				false
+			)
 		end
 	end
 end
