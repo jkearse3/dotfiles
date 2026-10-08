@@ -312,23 +312,30 @@ describe("lazy JJ review", function()
 	end)
 
 	it("treats paging as recent use when choosing which expanded file to collapse", function()
-		local paths = {}
-		for index = 1, 9 do
-			paths[index] = "file" .. index .. ".lua"
-		end
-		finish(1, files(paths))
-		for index = 1, 8 do
-			select_file(paths[index])
+		-- Multi-page patches at the full page size exceed the expanded-row budget on their own.
+		local max_lines = page.max_lines
+		page.max_lines = 100
+		local ok, err = pcall(function()
+			local paths = {}
+			for index = 1, 9 do
+				paths[index] = "file" .. index .. ".lua"
+			end
+			finish(1, files(paths))
+			for index = 1, 8 do
+				select_file(paths[index])
+				review.toggle(buffer)
+				finish(#requests, patch(page.max_lines + 50))
+			end
+			select_file(paths[1])
+			review.turn_page(buffer, 1)
+			select_file(paths[9])
 			review.toggle(buffer)
-			finish(#requests, patch(page.max_lines + 50))
-		end
-		select_file(paths[1])
-		review.turn_page(buffer, 1)
-		select_file(paths[9])
-		review.toggle(buffer)
-		finish(#requests, patch(2))
-		assert.matches("[-] M file1.lua", contents(), 1, true)
-		assert.matches("[+] M file2.lua", contents(), 1, true)
+			finish(#requests, patch(2))
+			assert.matches("[-] M file1.lua", contents(), 1, true)
+			assert.matches("[+] M file2.lua", contents(), 1, true)
+		end)
+		page.max_lines = max_lines
+		assert(ok, err)
 	end)
 
 	it("collapses older expanded files when loaded rows exceed the redraw budget", function()
