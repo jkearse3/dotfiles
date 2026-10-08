@@ -29,6 +29,7 @@ file. There is no mandatory file-scope picker.
 | `<leader>jf` | Rename-aware file history; Enter reviews the whole revision, focusing its historical filename.     |
 | `<leader>ja` | Recorded origin of the current line; focus its historical file header in the responsible revision. |
 | `<leader>jr` | Resume the retained overview without refreshing or loading patches.                                |
+| `<leader>jc` | Changes with review comments; Enter reviews one, Ctrl-X deletes its comments.                      |
 | `<leader>jx` | Cancel pending source lookup and outstanding review requests, including from a source-file buffer. |
 
 The former `gdb` and `gdl` routes are now `jb` and `ja`. `gds` is removed: use
@@ -108,6 +109,13 @@ quoted lines: comments on a rewritten change are marked carried, and comments
 whose lines are gone from a fully loaded file are marked stale and left out of
 `gp`. Comments in collapsed or paged files stay unverified and keep their
 original quote.
+
+`<leader>jc` (`:JjReviewComments`) lists every change in the repository that has
+review comments, marked open, landed (now immutable), gone (abandoned or
+squashed away), or unreadable. `:JjReviewCommentsPrune` deletes the comments of
+gone changes after confirmation; `:JjReviewCommentsPrune!` also deletes those of
+landed changes. Comments on a squashed-away change are not moved to the change
+that absorbed it. Unreadable stores are only deleted from the picker.
 
 Reviews stay pinned until explicit refresh. The source-line gutter, syntax
 highlighting, quickfix index, paging and navigation are shared across entry

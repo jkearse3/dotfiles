@@ -122,6 +122,22 @@ local jj_review = require("lib.jj_review")
 vim.keymap.set("n", "<leader>jb", jj_sources.pick_bookmark, { desc = "JJ: Bookmark range" })
 vim.keymap.set("n", "<leader>ja", jj_sources.open_line, { desc = "JJ: Inspect line origin" })
 vim.keymap.set("n", "<leader>jr", jj_review.resume, { desc = "JJ: Resume review" })
+local jj_comment_inventory = require("lib.jj_review_comment_inventory")
+vim.keymap.set(
+	"n",
+	"<leader>jc",
+	jj_comment_inventory.pick_current,
+	{ desc = "JJ: Commented changes" }
+)
+vim.api.nvim_create_user_command("JjReviewComments", jj_comment_inventory.pick_current, {
+	desc = "Browse JJ changes with review comments",
+})
+vim.api.nvim_create_user_command("JjReviewCommentsPrune", function(opts)
+	jj_comment_inventory.prune_current(opts.bang)
+end, {
+	bang = true,
+	desc = "Delete review comments of gone changes; ! also deletes landed changes",
+})
 vim.keymap.set("n", "<leader>jx", function()
 	jj_review.cancel()
 end, { desc = "JJ: Cancel inspection" })

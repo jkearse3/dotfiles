@@ -54,13 +54,20 @@ function M.store_directory()
 	return vim.fs.joinpath(vim.fn.stdpath("data"), "jj-review", "comments")
 end
 
+--- Returns the directory holding a repository's comment stores, one file per change.
+---@param repo string Repository root.
+---@return string
+function M.repo_store_directory(repo)
+	local key = vim.fs.basename(repo):gsub("[^%w._-]", "_") .. "-" .. vim.fn.sha256(repo):sub(1, 12)
+	return vim.fs.joinpath(M.store_directory(), key)
+end
+
 --- Returns the comment store file for a repository's change.
 ---@param repo string Repository root.
 ---@param change_id string
 ---@return string
 function M.store_path(repo, change_id)
-	local key = vim.fs.basename(repo):gsub("[^%w._-]", "_") .. "-" .. vim.fn.sha256(repo):sub(1, 12)
-	return vim.fs.joinpath(M.store_directory(), key, change_id .. ".json")
+	return vim.fs.joinpath(M.repo_store_directory(repo), change_id .. ".json")
 end
 
 local function valid_store(store)

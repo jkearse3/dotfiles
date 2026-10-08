@@ -1267,6 +1267,18 @@ function M.resume()
 	vim.api.nvim_win_set_buf(0, buffer)
 end
 
+--- Rereads a change's comments in any review showing it, after its store changed elsewhere.
+---@param repo string
+---@param change_id string
+function M.reload_comments(repo, change_id)
+	for _, session in pairs(sessions) do
+		if session.repo == repo and session.revision.change_id == change_id then
+			load_comments(session)
+			redraw(session)
+		end
+	end
+end
+
 vim.api.nvim_create_autocmd("VimLeavePre", {
 	group = group,
 	callback = function()
