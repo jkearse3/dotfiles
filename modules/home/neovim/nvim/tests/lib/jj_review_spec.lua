@@ -151,6 +151,24 @@ describe("lazy JJ review", function()
 		assert.is_nil(contents():find("Body detail", 1, true))
 	end)
 
+	it("shows every description body line when expanded", function()
+		local body = {}
+		for index = 1, 40 do
+			body[index] = "Body line " .. index
+		end
+		buffer = review.open(directory, {
+			commit_id = revision.commit_id,
+			change_id = revision.change_id,
+			description = "Subject line\n\n" .. table.concat(body, "\n"),
+		}, nil, true)
+		finish(2, files({ "a.lua" }))
+
+		vim.api.nvim_win_set_cursor(0, { row("[+] Subject line"), 0 })
+		review.toggle(buffer)
+		assert.matches("Body line 40", contents(), 1, true)
+		assert.is_nil(contents():find("[description truncated]", 1, true))
+	end)
+
 	it("lists the review keys on g? instead of in the header", function()
 		finish(1, files({ "a.lua" }))
 		assert.is_nil(contents():find("Enter: expand/collapse", 1, true))

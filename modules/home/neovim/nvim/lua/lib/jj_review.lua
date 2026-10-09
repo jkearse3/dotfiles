@@ -310,10 +310,6 @@ local function redraw(session)
 	})
 	if has_body and session.description_expanded then
 		for index = 2, #description do
-			if index > 20 then
-				append({ kind = "metadata", text = "[description truncated]" })
-				break
-			end
 			append({ kind = "metadata", text = text(description[index]) })
 		end
 	end
