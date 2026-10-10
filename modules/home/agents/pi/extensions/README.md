@@ -158,16 +158,15 @@ configuration, and sandbox grants have been removed from managed configuration.
 Existing legacy runtime databases and unrelated live teammates are not migrated
 or deleted.
 
-## Transcript stamps
+## Timings
 
-The `transcript-stamps` extension shows a dim, left-aligned local time after
-each user message and a single elapsed-time summary when the agent settles. Both
-rows keep a one-column right margin. Newly recorded stamps show the date and UTC
-offset on the first visible stamp and on local day changes; routine rows show
-only the time. The summary includes the settled clock time, agent wall time,
-turn count, and an interruption marker when applicable. Steers and queued
-follow-ups before settlement are part of the same busy period, not attributed to
-one prompt.
+The `timings` extension shows a dim, left-aligned local time after each user
+message and a single elapsed-time summary when the agent settles. Both rows keep
+a one-column right margin. Newly recorded stamps show the date and UTC offset on
+the first visible stamp and on local day changes; routine rows show only the
+time. The summary includes the settled clock time, agent wall time, turn count,
+and an interruption marker when applicable. Steers and queued follow-ups before
+settlement are part of the same busy period, not attributed to one prompt.
 
 ```text
 2026-01-02 · 14:00:01 UTC-05:00

@@ -27,7 +27,7 @@ import { createInlineTimingsState, registerTimingsCommand } from "./timings.ts";
  * Shows user stamps and agent summaries by default; /timings toggles stored
  * assistant turn timing rows without adding content to model context.
  */
-export default function transcriptStampsExtension(pi: ExtensionAPI): void {
+export default function timingsExtension(pi: ExtensionAPI): void {
   const timings = createInlineTimingsState();
   pi.registerEntryRenderer(
     TRANSCRIPT_STAMP_ENTRY_TYPE,
