@@ -93,7 +93,7 @@ complete -c jjx -n '__jjx_needs_subcommand bookmark' -a nearest -d 'Query neares
 complete -c jjx -n '__jjx_needs_subcommand bookmark' -a previous -d 'Print the previous stacked bookmark'
 complete -c jjx -n '__jjx_needs_subcommand bookmark' -a push -d 'Interactively push bookmarks'
 complete -c jjx -n '__jjx_needs_subcommand bookmark' -a rebase -d 'Interactively rebase bookmarks'
-complete -c jjx -n '__jjx_needs_subcommand bookmark' -a select -d 'Interactively select a bookmark'
+complete -c jjx -n '__jjx_needs_subcommand bookmark' -a select -d 'Interactively select bookmarks'
 complete -c jjx -n '__jjx_needs_subcommand bookmark' -a stacked -d 'List bookmarks from the current change to trunk'
 complete -c jjx -n '__jjx_needs_subcommand bookmark' -a sweep -d 'Move a bookmark forward, deleting bookmarks it passes'
 complete -c jjx -n '__jjx_needs_subcommand change' -a select -d 'Interactively select a change'

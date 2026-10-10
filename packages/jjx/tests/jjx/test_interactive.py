@@ -154,6 +154,34 @@ class InteractiveIntegrationTests(unittest.TestCase):
             ['feature-"two', "feature-one", "feature-é"], sorted(references)
         )
 
+    def test_bookmark_select_prints_multiple_bookmarks_on_separate_lines(self) -> None:
+        self.initialize_repository()
+        for bookmark in ("feature-one", "feature-two"):
+            _ = run(
+                "git",
+                "-C",
+                str(self.repository),
+                "branch",
+                bookmark,
+                env=self.environment,
+            )
+        _ = run(
+            "jj",
+            "git",
+            "init",
+            "--colocate",
+            str(self.repository),
+            env=self.environment,
+        )
+
+        selected = self.jjx("bookmark", "select", filter_expression="feature-")
+
+        self.assertEqual(0, selected.returncode, selected.stderr)
+        self.assertEqual(
+            ["feature-one", "feature-two"],
+            sorted(selected.stdout.splitlines()),
+        )
+
     def test_rebase_handles_bookmark_names_that_require_revset_quoting(self) -> None:
         self.initialize_repository()
         for bookmark, filename in (

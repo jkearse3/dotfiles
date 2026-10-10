@@ -59,7 +59,7 @@ _jjx() {
           'previous[Print the previous stacked bookmark]' \
           'push[Interactively push bookmarks]' \
           'rebase[Interactively rebase bookmarks]' \
-          'select[Interactively select a bookmark]' \
+          'select[Interactively select bookmarks]' \
           'stacked[List bookmarks from the current change to trunk]' \
           'sweep[Move a bookmark forward, deleting bookmarks it passes]'
         ;;

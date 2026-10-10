@@ -208,7 +208,7 @@ def _bookmark_rebase(arguments: Sequence[str], *, prog: str) -> int:
 
 
 def bookmark_select(arguments: Sequence[str], *, prog: str) -> int:
-    """Select and print one bookmark name."""
+    """Select and print local bookmark names, one per line."""
     return _report_launch_error(
         lambda: _bookmark_select(arguments, prog=prog),
         prog=prog,
@@ -216,34 +216,32 @@ def bookmark_select(arguments: Sequence[str], *, prog: str) -> int:
 
 
 def _bookmark_select(arguments: Sequence[str], *, prog: str) -> int:
-    """Select and print one bookmark name."""
+    """Select and print local bookmark names, one per line."""
     _ = argparse.ArgumentParser(prog=prog).parse_args(arguments)
-    result = _run(
-        [
-            "jj",
-            "log",
-            "--no-graph",
-            "-r",
-            "bookmarks()",
-            "-T",
-            'coalesce(local_bookmarks) ++ "\\n"',
-            "--color",
-            "always",
-        ]
-    )
-    if result.returncode != 0:
-        print("bookmark-select command failed", file=sys.stderr)
+    status, bookmarks = _local_bookmarks()
+    if status != 0:
+        print(f"{prog}: failed to list bookmarks", file=sys.stderr)
         return 1
-    if result.stdout == "":
+    if len(bookmarks) == 0:
         return 0
-    picker = _run(["fzf", "--ansi"], stdin=result.stdout)
+
+    picker = _run(
+        [
+            "fzf",
+            "--multi",
+            "--prompt=Bookmarks> ",
+            "--header=Mark bookmarks with Tab, then press Enter",
+        ],
+        stdin="\n".join(bookmarks) + "\n",
+    )
     if picker.returncode in {1, 130}:
         return 0
     if picker.returncode != 0:
         return picker.returncode
-    fields = picker.stdout.split()
-    if len(fields) != 0:
-        print(fields[0])
+
+    selection = [line for line in picker.stdout.splitlines() if line != ""]
+    if len(selection) != 0:
+        print("\n".join(selection))
     return 0
 
 

@@ -85,7 +85,7 @@ COMMANDS = (
     ),
     Command.define(
         "bookmark select",
-        "Interactively select a bookmark",
+        "Interactively select bookmarks",
         interactive.bookmark_select,
     ),
     Command.define(
