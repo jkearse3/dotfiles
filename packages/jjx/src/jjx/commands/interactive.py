@@ -12,6 +12,15 @@ from .process import capture_text, run_status
 from .revsets import bookmark_revset, decode_json_string, exact_string_pattern
 
 
+_BOOKMARK_CANDIDATE_TEMPLATE = (
+    'if(!remote, json(name) ++ "\\t" ++ '
+    'if(self.conflict(), "conflicted\\tconflicted\\tconflicted bookmark", '
+    'self.normal_target().change_id().short(8) ++ "\\t" ++ '
+    'self.normal_target().commit_id().short(8) ++ "\\t" ++ '
+    'self.normal_target().description().first_line()) ++ "\\n")'
+)
+
+
 PUSH_SELECTOR_OPTIONS = {
     "-b",
     "--bookmark",
@@ -67,6 +76,40 @@ def _local_bookmarks() -> tuple[int, list[str]]:
         if line != ""
     ]
     return result.returncode, bookmarks
+
+
+def _local_bookmark_candidates() -> tuple[int, list[str]]:
+    """List aligned fzf rows with hidden bookmark names and revision metadata."""
+    result = _run(
+        [
+            "jj",
+            "bookmark",
+            "list",
+            "--color=never",
+            "--template",
+            _BOOKMARK_CANDIDATE_TEMPLATE,
+        ]
+    )
+    if result.returncode != 0:
+        return result.returncode, []
+
+    rows = [line for line in result.stdout.split("\n") if line != ""]
+    records = []
+    for row in rows:
+        encoded_name, change_id, commit_id, description = row.split("\t", 3)
+        name = decode_json_string(
+            encoded_name,
+            error_type=InteractiveCommandError,
+            context="bookmark name",
+        )
+        records.append((encoded_name, name, change_id, commit_id, description))
+
+    name_width = max((len(name) for _, name, _, _, _ in records), default=0)
+    candidates = [
+        f"{encoded_name}\t{name:<{name_width}}  {change_id}  {commit_id}  {description}"
+        for encoded_name, name, change_id, commit_id, description in records
+    ]
+    return result.returncode, candidates
 
 
 def _is_push_selector(argument: str) -> bool:
@@ -218,30 +261,39 @@ def bookmark_select(arguments: Sequence[str], *, prog: str) -> int:
 def _bookmark_select(arguments: Sequence[str], *, prog: str) -> int:
     """Select and print local bookmark names, one per line."""
     _ = argparse.ArgumentParser(prog=prog).parse_args(arguments)
-    status, bookmarks = _local_bookmarks()
+    status, candidates = _local_bookmark_candidates()
     if status != 0:
         print(f"{prog}: failed to list bookmarks", file=sys.stderr)
         return 1
-    if len(bookmarks) == 0:
+    if len(candidates) == 0:
         return 0
 
     picker = _run(
         [
             "fzf",
             "--multi",
-            "--prompt=Bookmarks> ",
-            "--header=Mark bookmarks with Tab, then press Enter",
+            "--delimiter=\\t",
+            "--with-nth=2",
+            "--prompt=Bookmark / revision> ",
         ],
-        stdin="\n".join(bookmarks) + "\n",
+        stdin="\n".join(candidates) + "\n",
     )
     if picker.returncode in {1, 130}:
         return 0
     if picker.returncode != 0:
         return picker.returncode
 
-    selection = [line for line in picker.stdout.splitlines() if line != ""]
-    if len(selection) != 0:
-        print("\n".join(selection))
+    selection = [line for line in picker.stdout.split("\n") if line != ""]
+    bookmarks = [
+        decode_json_string(
+            line.partition("\t")[0],
+            error_type=InteractiveCommandError,
+            context="selected bookmark name",
+        )
+        for line in selection
+    ]
+    if len(bookmarks) != 0:
+        print("\n".join(bookmarks))
     return 0
 
 

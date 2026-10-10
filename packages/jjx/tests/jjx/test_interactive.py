@@ -154,7 +154,7 @@ class InteractiveIntegrationTests(unittest.TestCase):
             ['feature-"two', "feature-one", "feature-é"], sorted(references)
         )
 
-    def test_bookmark_select_prints_multiple_bookmarks_on_separate_lines(self) -> None:
+    def test_bookmark_select_filters_multiple_bookmarks_by_revision(self) -> None:
         self.initialize_repository()
         for bookmark in ("feature-one", "feature-two"):
             _ = run(
@@ -174,11 +174,23 @@ class InteractiveIntegrationTests(unittest.TestCase):
             env=self.environment,
         )
 
-        selected = self.jjx("bookmark", "select", filter_expression="feature-")
+        revision = run(
+            "jj",
+            "-R",
+            str(self.repository),
+            "log",
+            "--no-graph",
+            "-r",
+            'bookmarks(exact:"feature-one")',
+            "-T",
+            "change_id.short(8)",
+            env=self.environment,
+        ).stdout.strip()
+        selected = self.jjx("bookmark", "select", filter_expression=revision)
 
         self.assertEqual(0, selected.returncode, selected.stderr)
         self.assertEqual(
-            ["feature-one", "feature-two"],
+            ["feature-one", "feature-two", "main"],
             sorted(selected.stdout.splitlines()),
         )
 

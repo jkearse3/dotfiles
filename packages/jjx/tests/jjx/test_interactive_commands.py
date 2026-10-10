@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import io
+import json
 import subprocess
 import unittest
 from contextlib import redirect_stderr, redirect_stdout
@@ -15,7 +16,12 @@ class InteractiveCommandTests(unittest.TestCase):
     """Verify cancellation, failure, and launch-error status contracts."""
 
     def test_single_selectors_treat_only_fzf_cancellation_as_success(self) -> None:
-        bookmarks = subprocess.CompletedProcess([], 0, '"candidate"\n', "")
+        bookmarks = subprocess.CompletedProcess(
+            [],
+            0,
+            '"candidate"\tabcdefgh\t12345678\tdescription\n',
+            "",
+        )
         changes = subprocess.CompletedProcess([], 0, "candidate\tdescription\n", "")
         worktrees = subprocess.CompletedProcess([], 0, "worktree /repo\0HEAD abc\0\0", "")
         for selector, listed in (
@@ -33,13 +39,22 @@ class InteractiveCommandTests(unittest.TestCase):
                     self.assertEqual(23, selector([], prog=f"jjx {selector.__name__}"))
 
     def test_bookmark_select_offers_and_prints_each_bookmark_separately(self) -> None:
-        listed = subprocess.CompletedProcess(
-            [],
-            0,
-            '"feature-one"\n"feature-two"\n',
-            "",
+        bookmarks = [
+            ('feature-"one', "description"),
+            ("feature-é", "description with\N{LINE SEPARATOR}separator"),
+        ]
+        bookmark_names = [name for name, _ in bookmarks]
+        listed_rows = "".join(
+            f"{json.dumps(name)}\tabcdefgh\t12345678\t{description}\n"
+            for name, description in bookmarks
         )
-        picked = subprocess.CompletedProcess([], 0, "feature-one\nfeature-two\n", "")
+        name_width = max(len(name) for name in bookmark_names)
+        candidate_rows = "".join(
+            f"{json.dumps(name)}\t{name:<{name_width}}  abcdefgh  12345678  {description}\n"
+            for name, description in bookmarks
+        )
+        listed = subprocess.CompletedProcess([], 0, listed_rows, "")
+        picked = subprocess.CompletedProcess([], 0, candidate_rows, "")
         output = io.StringIO()
         with (
             patch.object(interactive, "_run", side_effect=[listed, picked]) as run,
@@ -48,9 +63,15 @@ class InteractiveCommandTests(unittest.TestCase):
             status = interactive.bookmark_select([], prog="jjx bookmark select")
 
         self.assertEqual(0, status)
-        self.assertIn("--multi", run.call_args_list[1].args[0])
-        self.assertEqual("feature-one\nfeature-two\n", run.call_args_list[1].kwargs["stdin"])
-        self.assertEqual("feature-one\nfeature-two\n", output.getvalue())
+        picker_command = run.call_args_list[1].args[0]
+        self.assertIn("--multi", picker_command)
+        self.assertIn("--with-nth=2", picker_command)
+        self.assertNotIn(
+            "--header=BOOKMARK  CHANGE  COMMIT  DESCRIPTION (Tab marks)",
+            picker_command,
+        )
+        self.assertEqual(candidate_rows, run.call_args_list[1].kwargs["stdin"])
+        self.assertEqual("\n".join(bookmark_names) + "\n", output.getvalue())
 
     def test_launch_failure_becomes_a_concise_integer_status(self) -> None:
         error = io.StringIO()
