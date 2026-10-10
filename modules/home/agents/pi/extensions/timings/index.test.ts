@@ -40,6 +40,7 @@ function createExtensionHarness(): ExtensionHarness {
       assert.ok(handler, `missing ${event} handler`);
       handler(value, {
         mode: "tui",
+        ui: { setWorkingMessage() {} },
         sessionManager: { getBranch: () => harness.branch },
       });
     },

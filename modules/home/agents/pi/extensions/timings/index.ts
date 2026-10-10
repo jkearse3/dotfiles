@@ -24,8 +24,8 @@ import {
 import { createInlineTimingsState, registerTimingsCommand } from "./timings.ts";
 
 /**
- * Shows user stamps and agent summaries by default; /timings toggles stored
- * assistant turn timing rows without adding content to model context.
+ * Shows live agent timing, user stamps, and settled summaries; /timings toggles
+ * stored assistant diagnostics without adding content to model context.
  */
 export default function timingsExtension(pi: ExtensionAPI): void {
   const timings = createInlineTimingsState();

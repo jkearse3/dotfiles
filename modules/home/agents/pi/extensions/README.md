@@ -173,6 +173,15 @@ settlement are part of the same busy period, not attributed to one prompt.
 14:02:15 · agent 2m 14s · 5 turns
 ```
 
+The same busy-period lifecycle controls a live timer inline in Pi's working
+spinner: `Working… (0.0s)`, updating every tenth of a second (for example,
+`Working… (2m 14.3s)`). The live display uses a monotonic clock; persisted
+stamps retain local wall-clock observations. Settlement restores the default
+working label, and each new busy period starts at zero. The timer is visible
+whenever Pi shows the working spinner. Session navigation, reload, and shutdown
+dispose it. Non-TUI sessions start no timer. In editable mode, `/reload` applies
+changes without a Home Manager rebuild.
+
 Assistant turn timing sidecars remain persisted but hidden by default, including
 in older sessions. `/timings` toggles their original transcript rows on or off
 for the current Pi process. These rows show first-content latency, response and
@@ -182,8 +191,8 @@ scrollback immediately; newly rendered transcript rows follow the current
 toggle.
 
 Stamp entries persist in the session but remain outside model context. The
-extension performs no settings or network I/O, starts no timers or background
-work, and caches rendered output by terminal width.
+extension performs no settings or network I/O, runs its refresh timer only while
+the agent is busy in the TUI, and caches transcript output by terminal width.
 
 ## Create an extension
 

@@ -4,6 +4,7 @@ import {
   AGENT_ELAPSED_ENTRY_TYPE,
   isAgentElapsedData,
 } from "./agent-elapsed.ts";
+import { createLiveAgentTimer } from "./live-agent-timer.ts";
 import {
   createTranscriptStamp,
   findLatestVisibleTranscriptStampTime,
@@ -27,8 +28,9 @@ interface ToolPerformanceObservation {
 
 const MAX_TRACKED_TOOLS_PER_TURN = 256;
 
-/** Persists timestamp and performance sidecars for interactive transcript turns. */
+/** Controls live busy-period timing and persists interactive transcript sidecars. */
 export function registerTranscriptStampLifecycle(pi: ExtensionAPI): void {
+  const liveAgentTimer = createLiveAgentTimer();
   let tuiSessionActive = false;
   let previousCreatedAt: number | undefined;
   let pendingUserCreatedAt: number[] = [];
@@ -75,6 +77,7 @@ export function registerTranscriptStampLifecycle(pi: ExtensionAPI): void {
     activeTools.clear();
   };
   const resetAgentElapsed = (): void => {
+    liveAgentTimer.stop();
     agentStartedAt = undefined;
     agentTurnCount = 0;
     agentInterrupted = false;
@@ -107,9 +110,10 @@ export function registerTranscriptStampLifecycle(pi: ExtensionAPI): void {
     synchronizeBranch(ctx.sessionManager.getBranch());
   });
 
-  pi.on("agent_start", () => {
+  pi.on("agent_start", (_event, ctx) => {
     if (tuiSessionActive && agentStartedAt === undefined) {
       agentStartedAt = Date.now();
+      liveAgentTimer.start(ctx.ui);
     }
   });
   pi.on("turn_start", () => {
