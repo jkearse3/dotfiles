@@ -76,12 +76,19 @@ let
     identity:
     if identity.signingKey == null then
       {
-        signing.backend = "none";
+        signing = {
+          behavior = "drop";
+          backend = "none";
+        };
         git.sign-on-push = false;
       }
     else
       {
+        # Sign own-authored commits as they are written so a push never has to
+        # rewrite them and reset their committer timestamps. Push signing
+        # remains only as a fallback for own commits that are still unsigned.
         signing = {
+          behavior = "own";
           backend = "ssh";
           key = identity.signingKey;
         };

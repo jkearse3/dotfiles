@@ -80,9 +80,19 @@ the authentication selector, and `IdentitiesOnly yes`. GitHub's successful
 
 Create a disposable Git commit and confirm its raw object contains an SSH
 signature. Repeat with `SSH_AUTH_SOCK` unset to confirm the signing wrapper uses
-the normalized socket. Jujutsu should leave ordinary rewrites unsigned and sign
-own-authored mutable commits before push. The user selects a disposable remote,
-pushes the test commit, and confirms GitHub displays `Verified`.
+the normalized socket. Jujutsu should sign own-authored commits as it writes
+them, so a push leaves their commit IDs and committer timestamps unchanged, and
+sign any own-authored mutable commit that is still unsigned before push. The
+user selects a disposable remote, pushes the test commit, and confirms GitHub
+displays `Verified`.
+
+Because Jujutsu signs every commit it writes, including working-copy snapshots,
+the first `jj` command that records a change from an application 1Password has
+not yet approved asks for approval, and any such command fails while 1Password
+is locked or the request is denied. Unattended work therefore needs 1Password to
+stay unlocked. Tooling that runs `jj` in the background, such as a prompt or
+editor integration, must pass `--ignore-working-copy` so it never snapshots and
+never signs.
 
 ## Additional GitHub Accounts
 
