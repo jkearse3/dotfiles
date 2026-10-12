@@ -65,8 +65,8 @@ In 1Password and GitHub:
 4. Register the authentication key with the GitHub account that can read
    `jkearse3/dotfiles-private`.
 5. Register the signing key with GitHub as a signing key.
-6. Configure 1Password to approve keys per application and terminal session.
-   Never choose **Approve for all applications**.
+6. Configure 1Password to approve keys per application. Never choose **Approve
+   for all applications**.
 
 Create `~/.config/1Password/ssh/agent.toml` with the machine vault UUID:
 

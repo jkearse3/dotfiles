@@ -38,8 +38,9 @@ contents must not enter Git or the Nix store.
 4. Register the authentication key with GitHub as an authentication key and the
    signing key as a signing key.
 5. Save their public keys to the selector paths above.
-6. Configure 1Password to approve per application and terminal session. Never
-   choose **Approve for all applications**.
+6. Configure 1Password to approve per application, so one approval covers every
+   tab of a terminal and an agent working unattended in a new tab is not blocked
+   on a prompt. Never choose **Approve for all applications**.
 7. Create machine-local `agent.toml` with the machine vault's UUID:
 
    ```toml
