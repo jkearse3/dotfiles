@@ -46,4 +46,5 @@ blueprint's result.
 - [Secrets](docs/secrets.md)
 - [SSH and commit signing](docs/ssh.md)
 - [Direnv in linked worktrees](packages/direnv-worktree/README.md)
+- [Copying local files into worktrees](packages/worktree-include/README.md)
 - [Nix cheatsheet](docs/cheatsheets/nix.md)

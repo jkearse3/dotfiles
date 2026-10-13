@@ -61,6 +61,9 @@
         playwright-cli = pkgs.callPackage ../packages/playwright-cli/package.nix { };
         ports = pkgs.callPackage ../packages/ports/package.nix { };
         token-count = pkgs.callPackage ../packages/token-count/package.nix { };
+        worktree-include = pkgs.callPackage ../packages/worktree-include/package.nix {
+          inherit (unstablePkgs) git;
+        };
       };
 
       # flake-parts makes this argument available to dev-shell and configuration

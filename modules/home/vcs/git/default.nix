@@ -5,6 +5,7 @@
 {
   home.packages = [
     dotfilesPackages.direnv-worktree
+    dotfilesPackages.worktree-include
   ];
 
   programs.git = {
