@@ -18,12 +18,13 @@ PROGRAM = Path(
 
 
 def run(
-    *arguments: str, cwd: Path, check: bool = True
+    *arguments: str, cwd: Path, check: bool = True, env: dict[str, str] | None = None
 ) -> subprocess.CompletedProcess[str]:
     return subprocess.run(
         arguments,
         check=check,
         cwd=cwd,
+        env=env,
         capture_output=True,
         text=True,
     )
@@ -251,6 +252,135 @@ class WorktreeIncludeTests(unittest.TestCase):
         self.assertEqual(1, len(result.stderr.splitlines()), result.stderr)
         self.assertNotIn("Traceback", result.stderr)
         self.assertEqual("SECRET=2\n", (self.linked / ".env").read_text())
+
+
+@final
+class PostCheckoutHookTests(unittest.TestCase):
+    """Drive `--post-checkout` through real Git commands with the hook
+    configured in an isolated global Git configuration."""
+
+    root: Path
+    primary: Path
+    env: dict[str, str]
+
+    @override
+    def setUp(self) -> None:
+        temporary_directory = TemporaryDirectory()
+        self.addCleanup(temporary_directory.cleanup)
+        self.root = Path(temporary_directory.name).resolve()
+        self.primary = self.root / "primary"
+
+        global_config = self.root / "global.gitconfig"
+        _ = global_config.write_text(
+            "[hook \"worktree-include\"]\n"
+            f"\tcommand = {PROGRAM} --post-checkout\n"
+            "\tevent = post-checkout\n"
+            "[user]\n"
+            "\tname = t\n"
+            "\temail = t@t\n"
+        )
+        self.env = {
+            **os.environ,
+            "GIT_CONFIG_GLOBAL": str(global_config),
+            "GIT_CONFIG_NOSYSTEM": "1",
+        }
+
+        self.primary.mkdir()
+        _ = self.git("init", "-q", "-b", "main")
+        _ = (self.primary / ".gitignore").write_text(".env\n")
+        _ = self.git("add", ".gitignore")
+        _ = self.git("commit", "-qm", "init")
+        _ = (self.primary / ".env").write_text("SECRET=1\n")
+
+    def git(
+        self, *arguments: str, cwd: Path | None = None, check: bool = True
+    ) -> subprocess.CompletedProcess[str]:
+        return run(
+            "git",
+            *arguments,
+            cwd=cwd if cwd is not None else self.primary,
+            check=check,
+            env=self.env,
+        )
+
+    def include(self) -> None:
+        _ = (self.primary / ".worktreeinclude").write_text(".env\n")
+
+    def test_worktree_add_populates_the_new_worktree(self) -> None:
+        self.include()
+        linked = self.root / "linked"
+
+        result = self.git("worktree", "add", "-q", "-b", "feature", str(linked))
+
+        self.assertEqual("SECRET=1\n", (linked / ".env").read_text())
+        self.assertIn("copied .env", result.stdout + result.stderr)
+
+    def test_detached_worktree_add_populates_the_new_worktree(self) -> None:
+        self.include()
+        linked = self.root / "linked"
+
+        _ = self.git("worktree", "add", "-q", "--detach", str(linked))
+
+        self.assertEqual("SECRET=1\n", (linked / ".env").read_text())
+
+    def test_is_silent_without_an_include_file(self) -> None:
+        linked = self.root / "linked"
+
+        result = self.git("worktree", "add", "-q", "--detach", str(linked))
+
+        self.assertEqual("", result.stdout + result.stderr)
+        self.assertFalse((linked / ".env").exists())
+
+    def test_ignores_clones(self) -> None:
+        self.include()
+        _ = self.git("add", "-f", ".worktreeinclude")
+        _ = self.git("commit", "-qm", "include")
+        clone = self.root / "clone"
+
+        result = self.git("clone", "-q", str(self.primary), str(clone), cwd=self.root)
+
+        self.assertEqual("", result.stdout + result.stderr)
+        self.assertFalse((clone / ".env").exists())
+
+    def test_ignores_ordinary_checkouts_in_linked_worktrees(self) -> None:
+        linked = self.root / "linked"
+        _ = self.git("worktree", "add", "-q", "--detach", str(linked))
+        self.include()
+
+        result = self.git("checkout", "-q", "-b", "other", cwd=linked)
+
+        self.assertEqual("", result.stdout + result.stderr)
+        self.assertFalse((linked / ".env").exists())
+
+    def test_copy_failure_fails_the_hook(self) -> None:
+        if os.geteuid() == 0:
+            self.skipTest("root ignores file permissions")
+        self.include()
+        secret = self.primary / ".env"
+        secret.chmod(0o000)
+        self.addCleanup(secret.chmod, 0o600)
+        linked = self.root / "linked"
+
+        result = self.git("worktree", "add", "-q", "--detach", str(linked), check=False)
+
+        self.assertNotEqual(0, result.returncode)
+        self.assertIn("worktree-include: could not copy", result.stderr)
+        self.assertNotIn("Traceback", result.stderr)
+
+    def test_rejects_other_arguments_with_post_checkout(self) -> None:
+        result = run(
+            str(PROGRAM),
+            "--dry-run",
+            "--post-checkout",
+            "0" * 40,
+            "0" * 40,
+            "1",
+            cwd=self.primary,
+            check=False,
+        )
+
+        self.assertEqual(2, result.returncode)
+        self.assertIn("cannot be combined", result.stderr)
 
 
 if __name__ == "__main__":

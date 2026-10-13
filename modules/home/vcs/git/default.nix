@@ -17,6 +17,13 @@
         editor = "vim";
       };
       init.defaultBranch = "main";
+      # Git runs hooks in config order and Home Manager writes these sections
+      # alphabetically, so this name must sort before direnv-worktree: a new
+      # worktree's .envrc may source the local files this copies.
+      hook.copy-worktree-includes = {
+        command = "${dotfilesPackages.worktree-include}/bin/worktree-include --post-checkout";
+        event = "post-checkout";
+      };
       hook.direnv-worktree = {
         command = "${dotfilesPackages.direnv-worktree}/bin/direnv-worktree post-checkout";
         event = "post-checkout";

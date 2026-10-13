@@ -5,6 +5,10 @@ A file is copied only when it matches a pattern in the source checkout's
 `.worktreeinclude` (gitignore syntax) and the source checkout's own ignore rules
 also ignore it. Tracked and merely untracked files are never copied, and existing
 destination files are never overwritten.
+
+With `--post-checkout`, the command runs as Git's post-checkout hook and
+populates a newly added linked worktree from the primary worktree, staying
+silent wherever there is nothing to do.
 """
 
 from __future__ import annotations
@@ -52,22 +56,58 @@ def main() -> int:
     arguments = parse_arguments(sys.argv[1:])
     clear_git_environment()
     try:
-        checkouts = resolve_checkouts(arguments.source, arguments.destination)
-        include_patterns = checkouts.source / INCLUDE_FILE
-        if not include_patterns.is_file():
-            print(
-                f"worktree-include: no {INCLUDE_FILE} in {checkouts.source}; nothing to copy",
-                file=sys.stderr,
-            )
-            return 0
-
-        for relative_path in included_ignored_files(checkouts.source, include_patterns):
-            outcome = copy_included_file(checkouts, relative_path, dry_run=arguments.dry_run)
-            report(outcome, relative_path)
+        if arguments.post_checkout is not None:
+            post_checkout(*arguments.post_checkout)
+        else:
+            copy_into(arguments.source, arguments.destination or Path.cwd(), dry_run=arguments.dry_run)
     except IncludeError as error:
         print(f"worktree-include: {error}", file=sys.stderr)
         return 1
     return 0
+
+
+def copy_into(source: Path | None, destination: Path, *, dry_run: bool) -> None:
+    """Copy into DESTINATION from SOURCE, or from the primary worktree when
+    SOURCE is None, noting on stderr when there is no include file."""
+    checkouts = resolve_checkouts(source, destination)
+    if not (checkouts.source / INCLUDE_FILE).is_file():
+        print(
+            f"worktree-include: no {INCLUDE_FILE} in {checkouts.source}; nothing to copy",
+            file=sys.stderr,
+        )
+        return
+    copy_included_files(checkouts, dry_run=dry_run)
+
+
+def post_checkout(previous_head: str, new_head: str, checkout_kind: str) -> None:
+    """Handle Git's post-checkout hook, which runs in the checked-out worktree.
+
+    Only a branch checkout from the null commit into a linked worktree, which is
+    what `git worktree add` performs, is populated. Clones, ordinary checkouts,
+    bare primary repositories, and repositories without an include file are
+    silently ignored.
+    """
+    del new_head
+    if checkout_kind != "1" or previous_head.strip("0") != "":
+        return
+
+    destination = worktree_root(Path.cwd())
+    if absolute_git_dir(destination).samefile(common_dir(destination)):
+        return
+    source = primary_worktree(destination)
+    if source is None:
+        return
+
+    checkouts = resolve_checkouts(source, destination)
+    if (checkouts.source / INCLUDE_FILE).is_file():
+        copy_included_files(checkouts, dry_run=False)
+
+
+def copy_included_files(checkouts: Checkouts, *, dry_run: bool) -> None:
+    include_patterns = checkouts.source / INCLUDE_FILE
+    for relative_path in included_ignored_files(checkouts.source, include_patterns):
+        outcome = copy_included_file(checkouts, relative_path, dry_run=dry_run)
+        report(outcome, relative_path)
 
 
 def parse_arguments(argv: Sequence[str]) -> argparse.Namespace:
@@ -82,7 +122,6 @@ def parse_arguments(argv: Sequence[str]) -> argparse.Namespace:
         "destination",
         nargs="?",
         type=Path,
-        default=Path.cwd(),
         help="worktree to populate (default: the current directory's worktree)",
     )
     _ = parser.add_argument(
@@ -95,14 +134,31 @@ def parse_arguments(argv: Sequence[str]) -> argparse.Namespace:
         action="store_true",
         help="report what would be copied without writing anything",
     )
-    return parser.parse_args(argv)
+    _ = parser.add_argument(
+        "--post-checkout",
+        nargs=3,
+        metavar=("PREVIOUS_HEAD", "NEW_HEAD", "CHECKOUT_KIND"),
+        help="run as Git's post-checkout hook, populating newly added linked worktrees",
+    )
+    arguments = parser.parse_args(argv)
+    if arguments.post_checkout is not None and (
+        arguments.destination is not None or arguments.source is not None or arguments.dry_run
+    ):
+        parser.error("--post-checkout cannot be combined with other arguments")
+    return arguments
 
 
 def resolve_checkouts(source: Path | None, destination: Path) -> Checkouts:
     """Resolve both paths to worktree roots and require them to be distinct
     worktrees sharing one repository."""
     destination_root = worktree_root(destination)
-    source_root = worktree_root(source) if source is not None else primary_worktree(destination_root)
+    if source is not None:
+        source_root = worktree_root(source)
+    else:
+        primary = primary_worktree(destination_root)
+        if primary is None:
+            raise IncludeError("the primary worktree is bare; pass --source")
+        source_root = primary
 
     if not common_dir(source_root).samefile(common_dir(destination_root)):
         raise IncludeError(f"{source_root} and {destination_root} are different repositories")
@@ -121,14 +177,19 @@ def common_dir(checkout: Path) -> Path:
     return Path(git_line("rev-parse", "--path-format=absolute", "--git-common-dir", cwd=checkout))
 
 
-def primary_worktree(checkout: Path) -> Path:
-    """Return the first worktree Git lists, which is the primary checkout."""
+def absolute_git_dir(checkout: Path) -> Path:
+    return Path(git_line("rev-parse", "--path-format=absolute", "--absolute-git-dir", cwd=checkout))
+
+
+def primary_worktree(checkout: Path) -> Path | None:
+    """Return the first worktree Git lists, which is the primary checkout, or
+    None when the repository is bare and has no primary checkout."""
     output = git("worktree", "list", "--porcelain", "-z", cwd=checkout)
     fields = output.split(b"\0\0", 1)[0].split(b"\0")
     if not fields[0].startswith(b"worktree "):
         raise IncludeError("could not identify the primary Git worktree")
     if b"bare" in fields:
-        raise IncludeError("the primary worktree is bare; pass --source")
+        return None
     return worktree_root(Path(os.fsdecode(fields[0].removeprefix(b"worktree "))))
 
 

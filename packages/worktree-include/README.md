@@ -44,8 +44,20 @@ repository.
   destination worktree, and a destination path whose parent is blocked by a file
   or dangling symlink fails before anything is written for it.
 
-Nothing runs this automatically: neither Git nor jj copies ignored files when
-creating a worktree or workspace, so call it after creation.
+## Running automatically on `git worktree add`
+
+Home Manager registers `worktree-include --post-checkout` as a global Git
+`post-checkout` hook, so every `git worktree add`, including one run by a tool
+such as `jjx worktree add`, populates the new worktree from the primary one. The
+hook acts only on a branch checkout from the null commit into a linked worktree;
+clones, ordinary checkouts, bare repositories, and repositories without a
+`.worktreeinclude` are left alone silently. A copy failure makes
+`git worktree add` exit nonzero after Git has already created the worktree; fix
+the cause and rerun `worktree-include` inside it.
+
+The hook runs before `direnv-worktree`, so a new worktree's `.envrc` can rely on
+the copied files. `jj workspace add` runs no Git hooks, so a jj workspace still
+needs a manual `worktree-include` after creation.
 
 ## Development
 
