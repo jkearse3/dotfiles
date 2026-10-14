@@ -22,7 +22,8 @@ the single action execution would take without modifying anything.
 
 Each run selects exactly one action:
 
-- **Nothing** — the checkout already has a compatible jj workspace.
+- **Nothing** — the checkout already has a compatible jj workspace, including a
+  [shared workspace](#shared-workspaces) created by `jj workspace add`.
 - **Initialize a primary checkout** — no `.jj` exists, so the repository is
   initialized with `jj git init --colocate`.
 - **Initialize a linked worktree** — no `.jj` exists in a `git worktree add`
@@ -63,6 +64,26 @@ exclusively (an existing marker is never overwritten) and advances only after a
 successful relocation repair. Its purpose is to let a later run prove that a
 stale jj target belongs to this workspace rather than to some unrelated
 repository.
+
+## Shared workspaces
+
+`jj workspace add` in a colocated repository creates a linked Git worktree whose
+jj workspace shares the original workspace's jj repository: one operation log,
+one set of bookmarks, one repository config. jj marks such a workspace by making
+`.jj/repo` a regular file that points at the shared repository instead of a
+directory. The repository keeps the Git backend of the workspace that owns it:
+the Git common directory when that is the primary checkout, or the owning linked
+worktree's private Git directory when `jj workspace add` ran in a linked
+workspace, rather than the new worktree's private one.
+
+`jjx ensure` treats a `.jj/repo` file as a shared workspace and accepts it
+unchanged once jj reports the checkout as its root and a backend whose Git
+common directory is this checkout's. Anything else, such as a pointer to a
+repository backed by a different Git repository, fails validation. A shared
+workspace gets no identity marker, because relocation repair does not apply to
+it, and no identity mirroring, because its repository-local jj config is the
+shared repository's config, which `jjx ensure` mirrors whenever it runs in the
+workspace that owns the repository.
 
 ## Relocation repair
 

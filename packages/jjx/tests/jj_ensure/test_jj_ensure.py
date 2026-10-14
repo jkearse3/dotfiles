@@ -115,6 +115,12 @@ class RepositoryFixture(unittest.TestCase):
         )
         return clone, head.rsplit("/", 1)[-1]
 
+    def workspace(self, name: str) -> Path:
+        _ = cli.ensure(self.primary)
+        path = self.root / name
+        _ = run("jj", "-R", str(self.primary), "workspace", "add", str(path))
+        return path
+
     def tracked(self, path: Path) -> str:
         return run(
             "jj", "-R", str(path), "bookmark", "list", "--tracked"
@@ -218,6 +224,41 @@ class EnsureBehaviorTests(RepositoryFixture):
         self.assertIn("post-write validation not run", output)
         self.assertEqual(target.read_bytes(), stale)
         self.assertEqual(marker.read_bytes(), marker_before)
+
+    def test_accepts_shared_workspace_without_jj_writes(self) -> None:
+        workspace = self.workspace("workspace")
+        _ = run(
+            "git", "-C", str(self.primary), "config", "user.email", "moved@example.com"
+        )
+        operation = self.operation(self.primary)
+        nested = workspace / "nested"
+        nested.mkdir()
+        self.assertEqual(cli.ensure(nested), workspace)
+        self.assertEqual(self.operation(self.primary), operation)
+        self.assertEqual(self.jj_config(self.primary, "user.email"), "test@example.com")
+        self.assertFalse((self.private_git(workspace) / "jj-ensure-target").exists())
+        self.assertTrue((workspace / ".jj" / "repo").is_file())
+
+    def test_dry_run_reports_shared_workspace_without_mirroring(self) -> None:
+        workspace = self.workspace("workspace")
+        output = self.dry_run(workspace)
+        self.assertIn("shares the jj repository backed by", output)
+        self.assertNotIn("would mirror", output)
+
+    def test_accepts_shared_workspace_owned_by_linked_workspace(self) -> None:
+        linked = self.linked("linked")
+        _ = cli.ensure(linked)
+        workspace = self.root / "workspace"
+        _ = run("jj", "-R", str(linked), "workspace", "add", str(workspace))
+        operation = self.operation(linked)
+
+        self.assertEqual(cli.ensure(workspace), workspace)
+        self.assertEqual(self.operation(linked), operation)
+        self.assertFalse((self.private_git(workspace) / "jj-ensure-target").exists())
+        self.assertIn(
+            f"shares the jj repository backed by {self.private_git(linked)}",
+            self.dry_run(workspace),
+        )
 
     def test_initializes_primary_from_subdirectory_and_is_idempotent(self) -> None:
         nested = self.primary / "nested"
@@ -528,6 +569,19 @@ class EnsureSafetyTests(RepositoryFixture):
         with self.assertRaises(cli.EnsureError):
             _ = cli.ensure(linked)
         self.assertEqual(marker.read_bytes(), b"safe")
+
+    def test_rejects_shared_workspace_backed_by_another_repository(self) -> None:
+        workspace = self.workspace("workspace")
+        other = self.root / "other"
+        _ = run("jj", "git", "init", "--colocate", str(other))
+        pointer = workspace / ".jj" / "repo"
+        foreign = os.fsencode(other / ".jj" / "repo")
+        _ = pointer.write_bytes(foreign)
+        with self.assertRaisesRegex(
+            cli.EnsureError, "does not use this repository's Git directory"
+        ):
+            _ = cli.ensure(workspace)
+        self.assertEqual(pointer.read_bytes(), foreign)
 
     def test_rejects_unregistered_linked_worktree_before_initialization(self) -> None:
         linked = self.linked("linked")

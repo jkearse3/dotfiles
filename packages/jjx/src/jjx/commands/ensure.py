@@ -8,6 +8,15 @@ This is an unsupported jj compatibility mechanism, so this module validates
 the relationship conservatively instead of treating path names as proof of
 identity.
 
+A linked worktree created by ``jj workspace add`` is instead a shared
+workspace: its ``.jj/repo`` is a file pointing at another workspace's jj
+repository, which is backed by that workspace's Git directory rather than the
+new worktree's private one. Such a workspace is accepted unchanged once jj
+confirms its root and a backend belonging to this Git repository. It needs no
+identity marker, because nothing about it can be repaired here, and no identity
+mirroring, because repository-local jj config is shared by every workspace of
+the repository and is mirrored in the workspace that owns it.
+
 The normal path through :func:`ensure` preserves an existing compatible
 ``.jj`` and the working copy. A compatible legacy linked workspace may gain
 the identity marker described below, but its jj state is not reinitialized.
@@ -109,16 +118,23 @@ class Action(Enum):
     INITIALIZE_PRIMARY = "would initialize colocated jj workspace at {root}"
     INITIALIZE_LINKED = "would initialize linked jj workspace at {root} using {git_dir}"
     ENROLL = "would create linked-worktree identity marker {identity}"
+    SHARED_WORKSPACE = "no changes: jj workspace at {root} shares the jj repository backed by {backend_git_dir}"
     REPAIR = "would repair eligible stale jj target from {stale} to {git_dir}; post-write validation not run"
 
 
 @dataclass(frozen=True)
 class Inspection:
-    """A validated checkout and the mutation required to ensure its jj state."""
+    """A validated checkout and the mutation required to ensure its jj state.
+
+    ``stale`` is set only for a repair, and ``backend_git_dir`` only for a
+    shared workspace, where it is the Git directory backing the shared jj
+    repository.
+    """
 
     checkout: GitCheckout
     action: Action
     stale: Path | None = None
+    backend_git_dir: Path | None = None
 
 
 @dataclass(frozen=True)
@@ -128,6 +144,7 @@ class Plan:
     checkout: GitCheckout
     action: Action
     stale: Path | None = None
+    backend_git_dir: Path | None = None
     git_identity: GitIdentity | None = None
     track: str | None = None
 
@@ -136,6 +153,7 @@ class Plan:
         text = self.action.value.format(
             root=self.checkout.root,
             git_dir=self.checkout.git_dir,
+            backend_git_dir=self.backend_git_dir,
             identity=_identity_file(self.checkout),
             stale=self.stale,
         )
@@ -342,6 +360,59 @@ def _validate(checkout: GitCheckout) -> None:
         checkout.git_dir,
         "jj repository does not use this checkout's Git directory",
     )
+
+
+def _is_shared_workspace(checkout: GitCheckout) -> bool:
+    """Return whether the checkout's jj workspace uses another workspace's repository.
+
+    jj stores a workspace's repository as the ``.jj/repo`` directory in the
+    workspace that created it, and as a regular file holding a path to that
+    directory in every workspace ``jj workspace add`` creates.
+    """
+    try:
+        mode = (checkout.root / ".jj" / "repo").lstat().st_mode
+    except FileNotFoundError:
+        return False
+    except OSError as error:
+        raise EnsureError(f"could not inspect jj repository pointer: {error}") from error
+    return stat.S_ISREG(mode)
+
+
+def _validate_shared_workspace(checkout: GitCheckout) -> Path:
+    """Require jj to use this checkout root and a Git directory of this repository.
+
+    The shared jj repository belongs to the workspace that created it, so its
+    Git backend is the Git common directory when that is the primary checkout
+    and a linked worktree's private Git directory otherwise. Either is
+    accepted when its Git common directory is this checkout's.
+
+    Returns the canonical Git directory backing the shared jj repository.
+    """
+    _same_file(
+        _jj_path(checkout.root, "root"),
+        checkout.root,
+        "jj root does not match Git checkout",
+    )
+
+    backend_git_dir = _jj_path(checkout.root, "git", "root")
+    backend_common_git_dir = _existing_path(
+        _line(
+            [
+                "git",
+                f"--git-dir={backend_git_dir}",
+                "rev-parse",
+                "--path-format=absolute",
+                "--git-common-dir",
+            ]
+        ),
+        relative_to=backend_git_dir,
+    )
+    _same_file(
+        backend_common_git_dir,
+        checkout.common_git_dir,
+        "shared jj workspace does not use this repository's Git directory",
+    )
+    return backend_git_dir
 
 
 def _git_target(checkout: GitCheckout) -> Path:
@@ -874,6 +945,11 @@ def inspect(start: Path | None = None) -> Inspection:
 
     if not stat.S_ISDIR(mode) or stat.S_ISLNK(mode):
         raise EnsureError("pre-existing .jj is not a compatible directory")
+    if _is_shared_workspace(checkout):
+        backend_git_dir = _validate_shared_workspace(checkout)
+        return Inspection(
+            checkout, Action.SHARED_WORKSPACE, backend_git_dir=backend_git_dir
+        )
     try:
         _validate(checkout)
     except EnsureError:
@@ -899,11 +975,15 @@ def plan(start: Path | None = None) -> Plan:
         if inspection.action in {Action.INITIALIZE_PRIMARY, Action.INITIALIZE_LINKED}
         else None
     )
+    git_identity = (
+        None if inspection.action is Action.SHARED_WORKSPACE else _git_identity(checkout)
+    )
     return Plan(
         checkout,
         inspection.action,
         inspection.stale,
-        git_identity=_git_identity(checkout),
+        backend_git_dir=inspection.backend_git_dir,
+        git_identity=git_identity,
         track=track,
     )
 
@@ -911,12 +991,14 @@ def plan(start: Path | None = None) -> Plan:
 def ensure(start: Path | None = None) -> Path:
     """Ensure ``start`` belongs to a compatible jj-backed Git checkout.
 
-    Existing compatible workspaces are preserved. An incompatible existing
-    workspace is eligible only for the narrowly authenticated relocation
-    repair; otherwise the command fails without replacing it. If no ``.jj``
-    exists, initialization uses colocated mode for the primary checkout and
-    the private Git directory for a linked worktree. Initialization failures
-    remove only the ``.jj`` state created by this invocation.
+    Existing compatible workspaces are preserved, and a shared workspace
+    created by ``jj workspace add`` is returned without any jj writes. An
+    incompatible existing workspace is eligible only for the narrowly
+    authenticated relocation repair; otherwise the command fails without
+    replacing it. If no ``.jj`` exists, initialization uses colocated mode for
+    the primary checkout and the private Git directory for a linked worktree.
+    Initialization failures remove only the ``.jj`` state created by this
+    invocation.
 
     Returns the canonical Git worktree root.
     """
@@ -924,6 +1006,8 @@ def ensure(start: Path | None = None) -> Path:
     checkout = inspection.checkout
     jj_dir = checkout.root / ".jj"
 
+    if inspection.action is Action.SHARED_WORKSPACE:
+        return checkout.root
     if inspection.action is Action.REPAIR:
         _repair(checkout)
         fresh_init = False
@@ -972,7 +1056,8 @@ def create_parser(prog: str = "jjx ensure") -> argparse.ArgumentParser:
             "Linked Git worktrees use jj's unsupported private-Git-directory compatibility "
             "mechanism. Retest jjx ensure after jj upgrades. After moving a primary repository, "
             "run 'git worktree repair' first; jjx ensure can then repair the linked workspace's "
-            "stale jj target without replacing its operation history."
+            "stale jj target without replacing its operation history. Workspaces created by "
+            "'jj workspace add' share their repository and are accepted unchanged."
         ),
     )
     _ = parser.add_argument("path", metavar="PATH", nargs="?", default=".")
