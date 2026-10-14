@@ -32,6 +32,7 @@ _jjx() {
     'change:Commands for changes'
     'description:Commands for descriptions'
     'ensure:Ensure a Git checkout has compatible jj state'
+    'workspace:Commands for jj workspaces'
     'worktree:Commands for Git worktrees'
   )
 
@@ -68,6 +69,10 @@ _jjx() {
         ;;
       description)
         _values 'description command' 'format[Format a revision description]'
+        ;;
+      workspace)
+        _values 'workspace command' \
+          'add[Create a jj workspace and prepare it like a new Git worktree]'
         ;;
       worktree)
         _values 'worktree command' \
@@ -134,6 +139,17 @@ _jjx() {
         '--dry-run[show the diff without writing]' \
         '--subject-width[maximum subject width]:width:' \
         '--body-width[maximum body line width]:width:'
+      ;;
+    'workspace add')
+      _arguments \
+        '(-h --help)'{-h,--help}'[show help]' \
+        '--name[workspace name]:name:' \
+        '*'{-r,--revision}'[parent revision]:revision:_jjx_revisions' \
+        '(-m --message)'{-m,--message}'[change description]:message:' \
+        '(--no-colocate)--colocate[create a Git worktree]' \
+        '(--colocate)--no-colocate[do not create a Git worktree]' \
+        '--sparse-patterns[sparse pattern handling]:mode:(copy full empty)' \
+        '1:destination:_files -/'
       ;;
     'worktree add')
       _arguments \

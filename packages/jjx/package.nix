@@ -1,14 +1,18 @@
 {
   commit-message,
+  direnv-worktree,
   jujutsu,
   pkgs,
+  worktree-include,
 }:
 let
   runtimePath = pkgs.lib.makeBinPath [
     pkgs.fzf
     pkgs.git
     commit-message
+    direnv-worktree
     jujutsu
+    worktree-include
   ];
 in
 pkgs.python3Packages.buildPythonApplication {
@@ -51,7 +55,7 @@ pkgs.python3Packages.buildPythonApplication {
     fish -n completions/jjx.fish
     zsh -n completions/_jjx
     "$out/bin/jjx" --help >/dev/null
-    for group in bookmark change description worktree; do
+    for group in bookmark change description workspace worktree; do
       "$out/bin/jjx" "$group" --help >/dev/null
     done
 

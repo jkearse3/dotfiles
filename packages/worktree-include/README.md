@@ -6,6 +6,7 @@ a new Git worktree or colocated jj workspace starts with them.
 
 ```console
 $ worktree-include [--source PATH] [--dry-run] [DESTINATION]
+$ worktree-include --prepare [DESTINATION]
 ```
 
 `DESTINATION` defaults to the current directory's worktree and `--source` to the
@@ -56,8 +57,14 @@ clones, ordinary checkouts, bare repositories, and repositories without a
 the cause and rerun `worktree-include` inside it.
 
 The hook runs before `direnv-worktree`, so a new worktree's `.envrc` can rely on
-the copied files. `jj workspace add` runs no Git hooks, so a jj workspace still
-needs a manual `worktree-include` after creation.
+the copied files.
+
+Tools that create linked worktrees without running Git's hooks can run the same
+preparation afterwards with `worktree-include --prepare [DESTINATION]`. Like the
+hook, it does nothing for a primary checkout, a bare primary worktree, or a
+repository without a `.worktreeinclude`, and it fails on copy errors.
+`jj workspace add` never runs this hook, so create jj workspaces with
+`jjx workspace add`, which runs `worktree-include --prepare` afterwards.
 
 ## Development
 

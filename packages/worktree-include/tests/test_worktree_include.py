@@ -253,6 +253,63 @@ class WorktreeIncludeTests(unittest.TestCase):
         self.assertNotIn("Traceback", result.stderr)
         self.assertEqual("SECRET=2\n", (self.linked / ".env").read_text())
 
+    def test_prepare_populates_a_linked_worktree(self) -> None:
+        self.include(".env")
+        _ = self.write(".env", "SECRET=1\n")
+
+        result = self.worktree_include("--prepare", str(self.linked), cwd=self.root)
+
+        self.assertEqual("copied .env\n", result.stdout)
+        self.assertEqual("SECRET=1\n", (self.linked / ".env").read_text())
+
+    def test_prepare_skips_the_primary_checkout_silently(self) -> None:
+        self.include(".env")
+        _ = self.write(".env", "SECRET=1\n")
+
+        result = self.worktree_include("--prepare", cwd=self.primary)
+
+        self.assertEqual("", result.stdout + result.stderr)
+
+    def test_prepare_is_silent_without_an_include_file(self) -> None:
+        _ = self.write(".env", "SECRET=1\n")
+
+        result = self.worktree_include("--prepare")
+
+        self.assertEqual("", result.stdout + result.stderr)
+        self.assertFalse((self.linked / ".env").exists())
+
+    def test_prepare_skips_a_bare_primary_worktree_silently(self) -> None:
+        bare = self.root / "bare.git"
+        bare_linked = self.root / "bare-linked"
+        self.git("clone", "-q", "--bare", str(self.primary), str(bare), cwd=self.root)
+        self.git("worktree", "add", "-q", "--detach", str(bare_linked), cwd=bare)
+
+        result = self.worktree_include("--prepare", str(bare_linked), cwd=self.root)
+
+        self.assertEqual("", result.stdout + result.stderr)
+
+    def test_prepare_fails_on_copy_errors(self) -> None:
+        self.include(".env.d/")
+        _ = self.write(".env.d/settings", "SECRET=1\n")
+        (self.linked / ".env.d").symlink_to("missing")
+
+        result = self.worktree_include("--prepare", check=False)
+
+        self.assertEqual(1, result.returncode)
+        self.assertIn("is not a directory", result.stderr)
+
+    def test_prepare_rejects_source_dry_run_and_post_checkout(self) -> None:
+        for arguments in (
+            ("--prepare", "--source", str(self.primary)),
+            ("--prepare", "--dry-run"),
+            ("--prepare", "--post-checkout", "0" * 40, "0" * 40, "1"),
+        ):
+            with self.subTest(arguments=arguments):
+                result = self.worktree_include(*arguments, check=False)
+
+                self.assertEqual(2, result.returncode)
+                self.assertIn("cannot be combined", result.stderr)
+
 
 @final
 class PostCheckoutHookTests(unittest.TestCase):

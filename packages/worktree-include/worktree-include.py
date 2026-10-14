@@ -8,7 +8,8 @@ destination files are never overwritten.
 
 With `--post-checkout`, the command runs as Git's post-checkout hook and
 populates a newly added linked worktree from the primary worktree, staying
-silent wherever there is nothing to do.
+silent wherever there is nothing to do. `--prepare` does the same for a given
+worktree, for tools that create worktrees without running Git's hooks.
 """
 
 from __future__ import annotations
@@ -58,6 +59,8 @@ def main() -> int:
     try:
         if arguments.post_checkout is not None:
             post_checkout(*arguments.post_checkout)
+        elif arguments.prepare:
+            prepare(arguments.destination or Path.cwd())
         else:
             copy_into(arguments.source, arguments.destination or Path.cwd(), dry_run=arguments.dry_run)
     except IncludeError as error:
@@ -82,23 +85,33 @@ def copy_into(source: Path | None, destination: Path, *, dry_run: bool) -> None:
 def post_checkout(previous_head: str, new_head: str, checkout_kind: str) -> None:
     """Handle Git's post-checkout hook, which runs in the checked-out worktree.
 
-    Only a branch checkout from the null commit into a linked worktree, which is
-    what `git worktree add` performs, is populated. Clones, ordinary checkouts,
-    bare primary repositories, and repositories without an include file are
-    silently ignored.
+    Only a branch checkout from the null commit, which is what `git worktree
+    add` performs, is prepared; clones and ordinary checkouts are silently
+    ignored. See `prepare` for what preparing the worktree means.
     """
     del new_head
     if checkout_kind != "1" or previous_head.strip("0") != "":
         return
+    prepare(Path.cwd())
 
-    destination = worktree_root(Path.cwd())
-    if absolute_git_dir(destination).samefile(common_dir(destination)):
+
+def prepare(destination: Path) -> None:
+    """Populate the newly added linked worktree containing DESTINATION from the
+    primary worktree, as the post-checkout hook does after `git worktree add`.
+
+    A primary checkout, a repository whose primary worktree is bare, and a
+    repository without an include file are silently left alone. Raises
+    IncludeError when DESTINATION is not inside a Git worktree or a selected
+    file cannot be copied.
+    """
+    destination_root = worktree_root(destination)
+    if absolute_git_dir(destination_root).samefile(common_dir(destination_root)):
         return
-    source = primary_worktree(destination)
+    source = primary_worktree(destination_root)
     if source is None:
         return
 
-    checkouts = resolve_checkouts(source, destination)
+    checkouts = resolve_checkouts(source, destination_root)
     if (checkouts.source / INCLUDE_FILE).is_file():
         copy_included_files(checkouts, dry_run=False)
 
@@ -140,11 +153,25 @@ def parse_arguments(argv: Sequence[str]) -> argparse.Namespace:
         metavar=("PREVIOUS_HEAD", "NEW_HEAD", "CHECKOUT_KIND"),
         help="run as Git's post-checkout hook, populating newly added linked worktrees",
     )
+    _ = parser.add_argument(
+        "--prepare",
+        action="store_true",
+        help=(
+            "populate DESTINATION as a newly added linked worktree, as the post-checkout "
+            "hook does, silently skipping primary checkouts, bare primary worktrees, "
+            f"and repositories without {INCLUDE_FILE}"
+        ),
+    )
     arguments = parser.parse_args(argv)
     if arguments.post_checkout is not None and (
-        arguments.destination is not None or arguments.source is not None or arguments.dry_run
+        arguments.destination is not None
+        or arguments.source is not None
+        or arguments.dry_run
+        or arguments.prepare
     ):
         parser.error("--post-checkout cannot be combined with other arguments")
+    if arguments.prepare and (arguments.source is not None or arguments.dry_run):
+        parser.error("--prepare cannot be combined with --source or --dry-run")
     return arguments
 
 

@@ -8,7 +8,8 @@ from dataclasses import dataclass
 from typing import Protocol, TextIO
 
 from .commands import bookmark_backup, bookmark_queries, bookmark_sweep
-from .commands import description_format, ensure, interactive, worktree_add
+from .commands import description_format, ensure, interactive, workspace_add
+from .commands import worktree_add
 
 
 class CommandHandler(Protocol):
@@ -112,6 +113,11 @@ COMMANDS = (
         "ensure",
         "Ensure a Git checkout has compatible jj state",
         ensure.main,
+    ),
+    Command.define(
+        "workspace add",
+        "Create a jj workspace and prepare it like a new Git worktree",
+        workspace_add.main,
     ),
     Command.define(
         "worktree add",

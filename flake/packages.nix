@@ -28,7 +28,7 @@
           inherit (unstablePkgs) git;
         };
         jjx = pkgs.callPackage ../packages/jjx/package.nix {
-          inherit commit-message;
+          inherit commit-message direnv-worktree worktree-include;
           inherit (unstablePkgs) jujutsu;
         };
         herdr-worktree-bootstrap = pkgs.callPackage ../packages/herdr-worktree-bootstrap/package.nix {

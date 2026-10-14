@@ -49,6 +49,7 @@ class CompletionTests(unittest.TestCase):
             "change": "Commands for changes",
             "description": "Commands for descriptions",
             "ensure": "Ensure a Git checkout has compatible jj state",
+            "workspace": "Commands for jj workspaces",
             "worktree": "Commands for Git worktrees",
         }
 
@@ -112,6 +113,10 @@ class CompletionTests(unittest.TestCase):
                 "--body-width", "--dry-run", "--help", "--revision", "--subject-width",
             },
             "ensure": {"--dry-run", "--help"},
+            "workspace add": {
+                "--colocate", "--help", "--message", "--name", "--no-colocate",
+                "--revision", "--sparse-patterns",
+            },
             "worktree add": {"--help"},
             "worktree select": {"--help"},
         }
