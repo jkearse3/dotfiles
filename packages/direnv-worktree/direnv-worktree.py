@@ -8,6 +8,7 @@ import os
 import subprocess
 import sys
 from pathlib import Path
+from typing import cast
 
 
 OPT_IN_KEY = "direnv.worktreeAutoAllow"
@@ -104,6 +105,22 @@ def post_checkout(arguments: list[str]) -> None:
 
     try:
         target = repository_root()
+    except HookError:
+        return
+    prepare(target)
+
+
+def prepare(target: Path) -> None:
+    """Authorize and evaluate the new linked worktree TARGET's .envrc.
+
+    This is what the post-checkout hook does after `git worktree add`, for
+    tools that create worktrees without running Git's hooks. Primary
+    checkouts, repositories that have not opted in, and worktrees without an
+    .envrc are left alone silently. Raises HookError when the primary
+    environment is unusable, the .envrc files differ, or TARGET's environment
+    fails to evaluate, in which case its new authorization is revoked.
+    """
+    try:
         git_dir = git_path("rev-parse", "--path-format=absolute", "--absolute-git-dir", cwd=target)
         common_dir = git_path("rev-parse", "--path-format=absolute", "--git-common-dir", cwd=target)
     except HookError:
@@ -167,7 +184,7 @@ def clear_git_environment() -> None:
         write_stderr(result.stderr)
 
 
-def parse_arguments() -> tuple[str, list[str]]:
+def parse_arguments() -> tuple[str, list[str], argparse.Namespace]:
     parser = argparse.ArgumentParser(prog="direnv-worktree")
     subparsers = parser.add_subparsers(dest="command", required=True)
     _ = subparsers.add_parser(
@@ -180,16 +197,27 @@ def parse_arguments() -> tuple[str, list[str]]:
         "post-checkout", help="handle Git's post-checkout hook"
     )
     _ = post_checkout_parser.add_argument("hook_arguments", nargs="*")
-    _ = parser.parse_args()
-    return sys.argv[1], sys.argv[2:]
+    prepare_parser = subparsers.add_parser(
+        "prepare", help="prepare a new linked worktree as the post-checkout hook does"
+    )
+    _ = prepare_parser.add_argument(
+        "path", nargs="?", default=".", help="worktree to prepare (default: the current directory)"
+    )
+    namespace = parser.parse_args()
+    return sys.argv[1], sys.argv[2:], namespace
 
 
 def main() -> int:
     clear_git_environment()
-    command, arguments = parse_arguments()
+    command, arguments, namespace = parse_arguments()
     try:
         if command == "post-checkout":
             post_checkout(arguments)
+        elif command == "prepare":
+            path = Path(cast(str, namespace.path))
+            if not path.is_dir():
+                raise HookError(f"not a directory: {path}")
+            prepare(repository_root(path))
         elif command == "enable":
             enable()
         elif command == "disable":

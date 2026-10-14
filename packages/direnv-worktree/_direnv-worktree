@@ -2,7 +2,7 @@
 
 _arguments -C \
   '(-h --help)'{-h,--help}'[show help]' \
-  '1:command:((enable\:enable\ automatic\ direnv\ preparation\ for\ linked\ worktrees disable\:disable\ automatic\ direnv\ preparation\ for\ linked\ worktrees post-checkout\:handle\ Git\x27s\ post-checkout\ hook))' \
+  '1:command:((enable\:enable\ automatic\ direnv\ preparation\ for\ linked\ worktrees disable\:disable\ automatic\ direnv\ preparation\ for\ linked\ worktrees post-checkout\:handle\ Git\x27s\ post-checkout\ hook prepare\:prepare\ a\ new\ linked\ worktree\ as\ the\ post-checkout\ hook\ does))' \
   '*::argument:->arguments'
 
 if [[ $state == arguments ]]; then
@@ -14,6 +14,11 @@ if [[ $state == arguments ]]; then
       _arguments \
         '(-h --help)'{-h,--help}'[show help]' \
         '*:hook argument:'
+      ;;
+    prepare)
+      _arguments \
+        '(-h --help)'{-h,--help}'[show help]' \
+        '1:worktree:_directories'
       ;;
   esac
 fi

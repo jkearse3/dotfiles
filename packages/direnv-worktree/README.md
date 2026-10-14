@@ -17,6 +17,18 @@ returns. Both branch-backed and detached linked worktrees are supported. Clones,
 primary worktrees, ordinary checkouts, and repositories without `.envrc` are
 ignored.
 
+Tools that create linked worktrees without running Git's hooks, such as
+`jj workspace add`, can run the same preparation afterwards:
+
+```console
+$ direnv-worktree prepare <worktree>
+```
+
+`<worktree>` defaults to the current directory. Like the hook, it does nothing
+for a primary checkout, an unenrolled repository, or a worktree without
+`.envrc`, and it fails with the same diagnostics when the environments differ or
+fail to evaluate.
+
 Disable future automatic approvals without changing any existing direnv
 approvals:
 

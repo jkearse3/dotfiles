@@ -124,21 +124,36 @@ def zsh_completion(commandline: str, index: int) -> tuple[int, str]:
 class CompletionTests(unittest.TestCase):
     def test_fish_completes_subcommands_and_help_without_paths(self) -> None:
         self.assertEqual(
-            {"enable", "disable", "post-checkout"},
+            {"enable", "disable", "post-checkout", "prepare"},
             fish_candidates("direnv-worktree "),
         )
         self.assertIn("--help", fish_candidates("direnv-worktree --"))
         self.assertEqual(
             {"--help"}, fish_candidates("direnv-worktree enable --")
         )
+        self.assertEqual(
+            {"--help"}, fish_candidates("direnv-worktree prepare --")
+        )
+
+    def test_prepare_completes_directories_only(self) -> None:
+        with TemporaryDirectory(dir=PROJECT_ROOT) as directory:
+            name = Path(directory).name
+            for candidates in (
+                fish_candidates(f"direnv-worktree prepare {name[:4]}"),
+                zsh_candidates(f"direnv-worktree prepare {name[:4]}"),
+            ):
+                self.assertIn(f"{name}/", candidates)
+            self.assertNotIn(
+                "README.md", fish_candidates("direnv-worktree prepare README")
+            )
 
     def test_zsh_completes_subcommands_and_help_without_paths(self) -> None:
         self.assertEqual(
-            {"enable", "disable", "post-checkout"},
+            {"enable", "disable", "post-checkout", "prepare"},
             zsh_candidates("direnv-worktree "),
         )
         self.assertIn("--help", zsh_candidates("direnv-worktree --"))
-        for command in ("enable", "disable", "post-checkout"):
+        for command in ("enable", "disable", "post-checkout", "prepare"):
             with self.subTest(command=command):
                 self.assertEqual(
                     {"--help"}, zsh_candidates(f"direnv-worktree {command} --")

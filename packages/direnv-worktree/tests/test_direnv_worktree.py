@@ -289,6 +289,61 @@ class HookTests(RepositoryFixture):
 
 
 @final
+class PrepareTests(RepositoryFixture):
+    @override
+    def setUp(self) -> None:
+        super().setUp()
+        _ = run("git", "config", "--global", "--unset", "hook.direnv-worktree.event", env=self.env)
+
+    def test_prepares_worktree_added_without_hooks(self) -> None:
+        self.enroll()
+        target = self.root / "unhooked"
+        _ = self.add_worktree("unhooked", "--detach")
+        self.assertEqual(self.calls(), [])
+        result = self.invoke("prepare", cwd=target)
+        self.assertEqual(result.returncode, 0)
+        self.assertTrue((target / ".direnv-authorized").exists())
+        self.assertEqual(self.calls(), [f"exec {self.primary}", f"allow {target}/.envrc", f"exec {target}"])
+
+    def test_prepares_path_argument(self) -> None:
+        self.enroll()
+        target = self.root / "argument"
+        _ = self.add_worktree("argument", "--detach")
+        _ = self.invoke("prepare", str(target))
+        self.assertTrue((target / ".direnv-authorized").exists())
+
+    def test_primary_and_disabled_repository_are_noops(self) -> None:
+        target = self.root / "disabled"
+        _ = self.add_worktree("disabled", "--detach")
+        _ = self.invoke("prepare", str(target))
+        self.enroll()
+        _ = self.invoke("prepare", str(self.primary))
+        self.assertEqual(self.calls(), [])
+
+    def test_mismatched_envrc_fails(self) -> None:
+        self.enroll()
+        target = self.root / "mismatch"
+        _ = self.add_worktree("mismatch", "--detach")
+        _ = (target / ".envrc").write_bytes(b"export TEST=changed\n")
+        result = self.invoke("prepare", str(target), check=False)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn(b"target .envrc differs", result.stderr)
+        self.assertFalse((target / ".direnv-authorized").exists())
+
+    def test_rejects_missing_and_non_worktree_paths(self) -> None:
+        outside = self.root / "outside"
+        outside.mkdir()
+        for path, message in (
+            (self.root / "missing", b"not a directory"),
+            (outside, b"not inside a non-bare Git worktree"),
+        ):
+            with self.subTest(path=path):
+                result = self.invoke("prepare", str(path), check=False)
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn(message, result.stderr)
+
+
+@final
 class EnrollmentTests(RepositoryFixture):
     def test_installed_enable_ignores_exported_git_function(self) -> None:
         marker = self.root / "shadowed-git"
