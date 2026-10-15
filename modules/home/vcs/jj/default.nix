@@ -48,6 +48,23 @@
           # it (stacking-aware). Falls back to trunk() when no base bookmark exists.
           "branch(rev)" = "heads((::(closest_bookmark(rev-)-) & bookmarks()) | trunk())..rev";
           "branch()" = "branch(@)";
+          # jj's default trunk() without its root() fallback, then a local
+          # main, master, or trunk bookmark for repositories without a remote.
+          # Cloned repositories set their own trunk() and are unaffected.
+          "trunk()" = ''
+            coalesce(
+              latest(
+                remote_bookmarks(exact:"main", exact:"origin") |
+                remote_bookmarks(exact:"master", exact:"origin") |
+                remote_bookmarks(exact:"trunk", exact:"origin") |
+                remote_bookmarks(exact:"main", exact:"upstream") |
+                remote_bookmarks(exact:"master", exact:"upstream") |
+                remote_bookmarks(exact:"trunk", exact:"upstream")
+              ),
+              latest(bookmarks(exact:"main") | bookmarks(exact:"master") | bookmarks(exact:"trunk")),
+              root()
+            )
+          '';
         };
       };
     };
