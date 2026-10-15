@@ -44,6 +44,18 @@ base. Reuse a reference only for the same change set and keep it at the
 change-set tip. Treat reference-helper output as discovery; verify exact
 attachment and stack ownership before mutation.
 
+## Shared jj Workspaces
+
+A checkout whose `.jj/repo` is a file is a jj workspace that shares its
+repository, operation log, and bookmarks with the repository's other workspaces,
+each with its own `@`. Treat another workspace's working-copy commit, shown as
+`<name>@`, and its ancestors outside trunk and your task-owned stack as owned by
+that workspace; rewriting, abandoning, or moving bookmarks on them requires
+explicit authorization. So do repository-wide operation commands such as
+`jj op restore` and any `--allow-cross-workspace` override. When jj reports a
+stale working copy, run `jj workspace update-stale` only if the rewritten
+revisions belong to your task-owned stack; otherwise stop and report it.
+
 ## Publication
 
 Publish references, push, create or merge pull requests, or close remote
