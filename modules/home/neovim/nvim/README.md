@@ -37,10 +37,10 @@ The former `gdb` and `gdl` routes are now `jb` and `ja`. `gds` is removed: use
 standalone `je` are also absent. Git mappings remain separate; JJ failures never
 silently switch comparison semantics to Git.
 
-Revision and file-history pickers show metadata, not patches. Both list at most
-200 revisions; Enter opens the shared overview, Ctrl-E opens previous drafts of
-the selected change, and Ctrl-Y copies its change ID. Unnamed and non-file
-buffers are rejected for file/line inspection.
+Revision and file-history pickers show metadata and changed files, not patches.
+Both list at most 200 revisions; Enter opens the shared overview, Ctrl-E opens
+previous drafts of the selected change, and Ctrl-Y copies its change ID. Unnamed
+and non-file buffers are rejected for file/line inspection.
 
 `jf` traces the recorded file backward through single-parent commits and
 detected renames, including rename-plus-edit and repeated renames. Each row and

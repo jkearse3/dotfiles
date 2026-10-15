@@ -136,12 +136,10 @@ describe("read-only JJ history", function()
 				end,
 				set_preview_buf = function() end,
 			}, selected)
-			assert.matches(
-				"first revision",
-				table.concat(vim.api.nvim_buf_get_lines(preview, 0, -1, false), "\n"),
-				1,
-				true
-			)
+			local preview_text =
+				table.concat(vim.api.nvim_buf_get_lines(preview, 0, -1, false), "\n")
+			assert.matches("first revision", preview_text, 1, true)
+			assert.matches("Changed files:\nA file.txt\n", preview_text, 1, true)
 			options.actions().enter({ selected })
 			assert.is_false(vim.bo.modifiable)
 			assert.is_true(vim.bo.readonly)

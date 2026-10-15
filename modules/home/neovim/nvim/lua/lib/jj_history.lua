@@ -162,6 +162,15 @@ function M.patch(repo, revision, evolution, path)
 	return M.run({ "show", "--git", revision.commit_id }, repo)
 end
 
+--- Lists changed paths with status letters (M/A/D/R/C) against the revision's parents.
+---@param repo string
+---@param revision lib.jj_history.Revision
+---@return string? summary
+---@return string? error
+function M.changed_files(repo, revision)
+	return M.run({ "diff", "--summary", "-r", revision.commit_id }, repo)
+end
+
 local function notify(err)
 	vim.notify(err, vim.log.levels.WARN)
 end
@@ -234,6 +243,17 @@ function M.pick(repo, evolution, path, file_history)
 		entries[#entries + 1] = entry
 		lookup[entry] = revision
 	end
+	-- fzf re-renders the preview on every cursor move; summarize each revision once per picker.
+	local changed_files = {}
+	local function changed_files_text(revision)
+		if not changed_files[revision.commit_id] then
+			local summary, summary_err = M.changed_files(repo, revision)
+			changed_files[revision.commit_id] = summary
+					and (vim.trim(summary) ~= "" and vim.trim(summary) or "(no changed files)")
+				or summary_err
+		end
+		return changed_files[revision.commit_id]
+	end
 	local function selected_action(action)
 		return function(selected)
 			local revision = lookup[selected[1]]
@@ -279,6 +299,8 @@ function M.pick(repo, evolution, path, file_history)
 						or ""
 					)
 						.. revision.description
+						.. "\n\nChanged files:\n"
+						.. changed_files_text(revision)
 						.. "\n\nEnter: file overview (patches remain unloaded)\nCtrl-E: previous drafts of this change  Ctrl-Y: change ID"
 				else
 					content, preview_err = M.patch(repo, revision, evolution, path)
