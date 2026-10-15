@@ -12,3 +12,17 @@ navigate_workspace_up = ["up", "k"]
 navigate_workspace_down = ["down", "j"]
 open_worktree = "prefix+shift+o"
 remove_worktree = "prefix+shift+q"
+
+# jj workspace counterparts of new_worktree and remove_worktree, from the
+# dotfiles.jj-workspaces plugin.
+[[keys.command]]
+key = "prefix+ctrl+g"
+type = "plugin_action"
+command = "dotfiles.jj-workspaces.add"
+description = "new jj workspace"
+
+[[keys.command]]
+key = "prefix+ctrl+q"
+type = "plugin_action"
+command = "dotfiles.jj-workspaces.remove"
+description = "remove jj workspace"
