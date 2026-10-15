@@ -100,12 +100,13 @@ complete -c jjx -n '__jjx_needs_subcommand bookmark' -a sweep -d 'Move a bookmar
 complete -c jjx -n '__jjx_needs_subcommand change' -a select -d 'Interactively select a change'
 complete -c jjx -n '__jjx_needs_subcommand description' -a format -d 'Format a revision description'
 complete -c jjx -n '__jjx_needs_subcommand workspace' -a add -d 'Create a jj workspace and prepare it like a new Git worktree'
+complete -c jjx -n '__jjx_needs_subcommand workspace' -a remove -d 'Remove a jj workspace created by jj workspace add'
 complete -c jjx -n '__jjx_needs_subcommand worktree' -a add -d 'Create a detached Git worktree with independent jj state'
 complete -c jjx -n '__jjx_needs_subcommand worktree' -a select -d 'Interactively select a Git worktree'
 
 
 # Every leaf accepts help; leaf-specific declarations below add its full argument surface.
-complete -c jjx -n '__jjx_using bookmark backup; or __jjx_using bookmark current; or __jjx_using bookmark default; or __jjx_using bookmark nearest; or __jjx_using bookmark previous; or __jjx_using bookmark push; or __jjx_using bookmark rebase; or __jjx_using bookmark select; or __jjx_using bookmark stacked; or __jjx_using bookmark sweep; or __jjx_using change select; or __jjx_using description format; or __jjx_using ensure; or __jjx_using workspace add; or __jjx_using worktree add; or __jjx_using worktree select' -s h -l help -d 'Show help'
+complete -c jjx -n '__jjx_using bookmark backup; or __jjx_using bookmark current; or __jjx_using bookmark default; or __jjx_using bookmark nearest; or __jjx_using bookmark previous; or __jjx_using bookmark push; or __jjx_using bookmark rebase; or __jjx_using bookmark select; or __jjx_using bookmark stacked; or __jjx_using bookmark sweep; or __jjx_using change select; or __jjx_using description format; or __jjx_using ensure; or __jjx_using workspace add; or __jjx_using workspace remove; or __jjx_using worktree add; or __jjx_using worktree select' -s h -l help -d 'Show help'
 
 complete -c jjx -n '__jjx_using bookmark nearest; and __jjx_needs_third_level_argument' -f -d 'Revset to search' -a '(__jjx_revisions)'
 complete -c jjx -n '__jjx_using bookmark rebase; and __jjx_needs_third_level_argument' -f -d 'Destination revset' -a '(__jjx_revisions)'
@@ -152,5 +153,8 @@ complete -c jjx -n '__jjx_using workspace add' -l colocate -d 'Create a Git work
 complete -c jjx -n '__jjx_using workspace add' -l no-colocate -d 'Do not create a Git worktree'
 complete -c jjx -n '__jjx_using workspace add' -l sparse-patterns -r -f -a 'copy full empty' -d 'Sparse pattern handling'
 complete -c jjx -n '__jjx_using workspace add; and not string match -q -- "-*" (commandline -ct)' -a '(__fish_complete_directories)'
+
+complete -c jjx -n '__jjx_using workspace remove' -l dry-run -d 'Validate the workspace and report what would be removed'
+complete -c jjx -n '__jjx_using workspace remove; and not string match -q -- "-*" (commandline -ct)' -a '(__fish_complete_directories)'
 
 complete -c jjx -n '__jjx_using worktree add' -f -s r -r -d 'Revision revset' -a '(__jjx_revisions)'

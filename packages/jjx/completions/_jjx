@@ -72,7 +72,8 @@ _jjx() {
         ;;
       workspace)
         _values 'workspace command' \
-          'add[Create a jj workspace and prepare it like a new Git worktree]'
+          'add[Create a jj workspace and prepare it like a new Git worktree]' \
+          'remove[Remove a jj workspace created by jj workspace add]'
         ;;
       worktree)
         _values 'worktree command' \
@@ -150,6 +151,12 @@ _jjx() {
         '(--colocate)--no-colocate[do not create a Git worktree]' \
         '--sparse-patterns[sparse pattern handling]:mode:(copy full empty)' \
         '1:destination:_files -/'
+      ;;
+    'workspace remove')
+      _arguments \
+        '(-h --help)'{-h,--help}'[show help]' \
+        '--dry-run[validate the workspace and report what would be removed]' \
+        '1:path:_files -/'
       ;;
     'worktree add')
       _arguments \

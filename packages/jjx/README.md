@@ -10,7 +10,7 @@ dotfiles.
 | `bookmark`    | Query, select, back up, push, rebase, and sweep bookmarks.   |
 | `change`      | Interactively select a change.                               |
 | `description` | Format a revision description.                               |
-| `workspace`   | Create a jj workspace prepared like a new Git worktree.      |
+| `workspace`   | Create prepared jj workspaces and remove them.               |
 | `worktree`    | Create or interactively select a Git worktree.               |
 | `ensure`      | Initialize or validate jj state in an existing Git checkout. |
 
@@ -52,5 +52,12 @@ authorize the workspace's `.envrc` when the repository has enabled it. It prints
 the workspace root on stdout. If a step fails, the workspace is kept and the
 error names the commands to rerun. A workspace created with `--no-colocate` has
 no Git worktree and is not prepared.
+
+`jjx workspace remove [PATH]` removes the workspace containing `PATH` with
+`jj workspace remove`, which snapshots its working copy into a commit and then
+deletes its Git worktree and directory, including ignored files. It refuses
+anything `jjx ensure` does not recognize as a workspace created by
+`jj workspace add`, such as the primary checkout or a `jjx worktree add`
+worktree. `--dry-run` reports what would be removed.
 
 `jjx worktree add` still creates worktrees with independent jj state.

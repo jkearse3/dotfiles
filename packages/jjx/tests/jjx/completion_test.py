@@ -117,6 +117,7 @@ class CompletionTests(unittest.TestCase):
                 "--colocate", "--help", "--message", "--name", "--no-colocate",
                 "--revision", "--sparse-patterns",
             },
+            "workspace remove": {"--dry-run", "--help"},
             "worktree add": {"--help"},
             "worktree select": {"--help"},
         }
