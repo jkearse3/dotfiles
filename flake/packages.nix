@@ -82,6 +82,7 @@
             (import inputs.rust-overlay)
             inputs.nix-index-database.overlays.nix-index
             (import ./overlays/moreutils.nix)
+            (import ./overlays/nix-output-monitor.nix)
             (import ./overlays/tokscale.nix)
           ];
         };
