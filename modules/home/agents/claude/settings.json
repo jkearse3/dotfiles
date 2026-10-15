@@ -113,6 +113,7 @@
   "promptSuggestionEnabled": false,
   "tui": "fullscreen",
   "autoMemoryEnabled": false,
+  "idleCompaction": false,
   "theme": "dark-ansi",
   "outputStyle": "Concise",
   "editorMode": "vim",

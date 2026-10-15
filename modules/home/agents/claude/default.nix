@@ -85,6 +85,7 @@ let
     "autoMemoryEnabled"
     "disableAgentView"
     "editorMode"
+    "idleCompaction"
     "model"
     "modelSettings.claude-opus-5-5.effortLevel"
     "outputStyle"
