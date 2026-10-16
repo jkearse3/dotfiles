@@ -31,6 +31,7 @@ in
   home = {
     packages = [
       dotfilesPackages.herdr
+      dotfilesPackages.herdr-jj-workspaces.cli
       completions
     ];
     file.".config/herdr/config.toml".source = mkSource ./config.toml;
