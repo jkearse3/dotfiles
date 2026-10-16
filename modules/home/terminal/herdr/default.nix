@@ -62,5 +62,6 @@ in
   };
   agents.extraSkills = {
     herdr = skill;
+    herdr-jj-workspace = dotfilesPackages.herdr-jj-workspaces.skill;
   };
 }

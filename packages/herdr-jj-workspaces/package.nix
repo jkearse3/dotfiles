@@ -91,7 +91,10 @@ pkgs.runCommand "herdr-jj-workspaces-plugin"
       herdr
       pkgs.jq
     ];
-    passthru = { inherit cli pluginId; };
+    passthru = {
+      inherit cli pluginId;
+      skill = ./skill;
+    };
   }
   ''
     install -Dm644 ${manifest} "$out/herdr-plugin.toml"
