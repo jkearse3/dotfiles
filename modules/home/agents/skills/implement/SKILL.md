@@ -25,10 +25,11 @@ $ARGUMENTS
 ```
 
 Accept the input in whatever form it arrives: the request itself, a file, an
-issue, a note, a plan, or the conversation. Take from it the outcome, explicit
-criteria, exclusions, and settled decisions, and preserve their wording. Read a
-referenced artifact only as far as needed to hand it on; do not explore the
-codebase here.
+issue, a note, a plan, a spec, or the conversation. Take from it the outcome,
+explicit criteria, exclusions, settled decisions, and binding requirements such
+as constraints and prescribed implementation details, and preserve their
+wording. Read a referenced artifact only as far as needed to hand it on; do not
+explore the codebase here.
 
 Require a jj repository with an empty `@` and no unrelated working changes.
 Record `@-` as the stack base, establish a task-owned bookmark on `@` before the
@@ -44,10 +45,11 @@ that prove it, and the briefs it depends on. Its status is `pending`, `done`
 with its change ID, `skipped` with the user's reason, or `blocked` with the
 question or evidence.
 
-Every subagent receives the input's outcome, criteria, exclusions, and settled
-decisions verbatim, plus the briefs before and after its own. Those are earlier
-conclusions, reopened only when the current code shows their reason no longer
-holds. Every planner also receives the `Brief Size` rules verbatim.
+Every subagent receives the input's outcome, criteria, exclusions, settled
+decisions, and binding requirements verbatim, plus the briefs before and after
+its own. Those are earlier conclusions, reopened only when the current code
+shows their reason no longer holds. Every planner also receives the `Brief Size`
+rules verbatim.
 
 ## Brief Size
 
@@ -99,7 +101,8 @@ it or state why it cannot be split.
 5. **Rebrief.** On a `rebrief` return, or when a landed revision shows later
    briefs are wrong, dispatch a fresh planner with the brief list and the
    evidence to revise only the `pending` briefs. A rebrief that changes the
-   outcome, criteria, or a settled decision needs the user.
+   outcome, criteria, a settled decision, or a binding requirement needs the
+   user.
 6. **Ask** the user when a brief is `blocked`, and offer: decide, skip, or stop.
    A decision updates the brief and makes it `pending`. A skip makes it
    `skipped` and rebriefs the `pending` briefs that depend on it, or skips them
@@ -109,11 +112,11 @@ it or state why it cannot be split.
 ## Converge
 
 Once no brief is `pending` and at least one is `done`, follow `diff-fix` on the
-new stack, from the stack base to the bookmark, with the input's criteria as its
-criteria and its exclusions as context. Pass as user decisions the input's
-settled decisions and every answer and ruling the user gave during the run,
-including each `skipped` brief with the user's reason. Skip this step when the
-user asked not to review.
+new stack, from the stack base to the bookmark, with the input's criteria and
+binding requirements verbatim as its criteria and its exclusions as context.
+Pass as user decisions the input's settled decisions and every answer and ruling
+the user gave during the run, including each `skipped` brief with the user's
+reason. Skip this step when the user asked not to review.
 
 ## Report
 
