@@ -12,9 +12,11 @@ description: >-
 # Diff Fix
 
 Drive a finalized jj target to a literal `diff-review` `pass` by alternating
-fresh reviewer and fresh fixer subagents. This session coordinates: it keeps the
-findings list, verifies and lands fixes, and asks the user. It never reviews or
-fixes itself; if the host cannot start fresh agents, stop and report.
+reviews by a fresh reviewer and verifier with fresh fixer subagents. This
+session coordinates: it keeps the findings list, coordinates each review,
+verifies and lands fixes, and asks the user. It never reviews or fixes itself
+beyond coordinating `diff-review`; if the host cannot start fresh agents, stop
+and report.
 
 ## Target
 
@@ -33,11 +35,12 @@ that reshape. It authorizes nothing outside the target and no publication.
 Keep a findings list in the conversation. Each finding has its mechanism, its
 location from the latest review, its owning revision, a status (`open`, `fixed`,
 `settled`, or `needs-decision`), and its latest attempt or ruling with the
-evidence or reason. A finding stays `open` until its fix lands, a reviewer
+evidence or reason. A finding stays `open` until its fix lands, a verifier
 declines it with a reason, it needs a decision, or the user decides it.
 
-Every reviewer and fixer receives the criteria, context, and user decisions
-verbatim, plus the findings list. Settled findings and user decisions are
+The reviewer and every fixer receive the criteria, context, and user decisions
+verbatim, plus the findings list; the verifier receives them plus, for each
+candidate, the entry it matches, if any. Settled findings and user decisions are
 earlier conclusions, re-raised only when the current code shows their reason no
 longer holds.
 
@@ -46,12 +49,14 @@ against the change a landed fix made re-raises that fix's finding.
 
 ## Loop
 
-1. **Review.** Dispatch a fresh reviewer to follow `diff-review` read-only: no
-   edits, VCS mutation, scratch files in the repository, or delegation. Per
-   finding it returns category, location, mechanism, and owning revision (the
-   earliest target revision whose diff introduces the defect), and it confirms
-   or declines with a reason each `open` finding it was given. Return an
-   incomplete review to the reviewer. `pass` ends the run; `blocked` stops it.
+1. **Review.** Follow `diff-review` in this session as one that must stay
+   independent of the target, so one fresh reviewer and one fresh verifier
+   review and this session reviews no hunk itself. Pass the findings list as
+   earlier findings, and add each `open` finding to the candidates under Verify:
+   the verifier confirms it is still present or declines it with a reason. Per
+   finding the review returns category, location, mechanism, and owning revision
+   (the earliest target revision whose diff introduces the defect). `pass` ends
+   the run; `blocked` stops it.
 2. **Triage.** A finding a user decision covers takes that decision's effect. A
    reasoned decline settles a finding unless the user asked for that change.
    `design` and `question` findings, findings owned outside the target, findings
@@ -64,7 +69,7 @@ against the change a landed fix made re-raises that fix's finding.
    the finding `open`, unless it calls for reordering, splitting, or moving
    changes between target revisions, which step 4 handles; one to leave the code
    as is settles it. Triggers:
-   - a reviewer re-raises a `fixed` or `settled` finding, or an `open` one whose
+   - the review re-raises a `fixed` or `settled` finding, or an `open` one whose
      latest attempt is an evidenced rejection, and no user decision covers it;
    - the review did not pass and nothing is `open`;
    - 5 reviews since the last user checkpoint have not passed, unless a user
