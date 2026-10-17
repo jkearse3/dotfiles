@@ -85,9 +85,10 @@ fix or reshape them here.
    `jj op restore <recorded operation ID>`, which keeps earlier owners'
    refinements; otherwise leave the state as is and report it.
 
-4. **Check.** Run `jj new <target tip>`. Unless Apply stopped, dispatch one
-   fresh `diff-review` of the target and report its verdict. Do not fix its
-   findings; suggest `diff-fix` when it does not pass.
+4. **Check.** Run `jj new <target tip>`. Unless Apply stopped, follow
+   `diff-review` on the target in this session as one that must stay independent
+   of the target, and report its verdict. Do not fix its findings; suggest
+   `diff-fix` when it does not pass.
 
 ## Report
 
