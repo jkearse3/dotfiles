@@ -13,8 +13,8 @@ CLI = os.environ["HERDR_JJ_WORKSPACE"]
 
 # Records each call, one per line; answers worktree list with $HERDR_STUB_SOURCE,
 # or fails as Herdr does outside a repository when it is unset, worktree open
-# with workspace w2 and pane w2:p1, and workspace list with
-# $HERDR_STUB_WORKSPACES.
+# with workspace w2 and pane w2:p1, refusing as Herdr does to open from the
+# linked workspace w2, and workspace list with $HERDR_STUB_WORKSPACES.
 HERDR_STUB = """\
 #!/bin/sh
 printf '%s\\n' "$*" >> "$HERDR_STUB_LOG"
@@ -23,6 +23,7 @@ case "$1 $2" in
     [ -n "${HERDR_STUB_SOURCE:-}" ] || exit 1
     printf '{"result":{"source":%s}}\\n' "$HERDR_STUB_SOURCE" ;;
   "worktree open")
+    [ "$4" != w2 ] || exit 1
     printf '{"result":{"workspace":{"workspace_id":"w2"},"root_pane":{"pane_id":"w2:p1"}}}\\n' ;;
   "workspace list")
     printf '%s\\n' "$HERDR_STUB_WORKSPACES" ;;
@@ -59,7 +60,9 @@ class HerdrJjWorkspaceTests(unittest.TestCase):
             "JJ_EMAIL": "test@example.com",
             "HERDR_BIN_PATH": str(stub),
             "HERDR_STUB_LOG": str(self.log),
-            "HERDR_STUB_SOURCE": json.dumps({"repo_root": str(self.repo), "repo_name": "repo"}),
+            "HERDR_STUB_SOURCE": json.dumps(
+                {"repo_root": str(self.repo), "repo_name": "repo", "source_workspace_id": "w1"}
+            ),
             "HERDR_STUB_WORKSPACES": json.dumps(
                 {
                     "result": {
@@ -142,7 +145,31 @@ class HerdrJjWorkspaceTests(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(
             self.herdr_calls(),
-            ["worktree list --workspace w7", f"worktree open --workspace w7 --path {self.workspace} --focus"],
+            ["worktree list --workspace w7", f"worktree open --workspace w1 --path {self.workspace} --focus"],
+        )
+
+    def test_add_from_jj_workspace_opens_from_primary_checkout(self) -> None:
+        self.add_feature()
+        result = self.run_cli("add", "second", HERDR_WORKSPACE_ID="w2")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        second = self.workspace.parent / "second"
+        self.assertEqual(
+            json.loads(result.stdout),
+            {"path": str(second), "workspace_id": "w2", "pane_id": "w2:p1"},
+        )
+        self.assertEqual(sorted(self.workspace_names()), ["default", "feature", "second"])
+        self.assertEqual(
+            self.herdr_calls(),
+            ["worktree list --workspace w2", f"worktree open --workspace w1 --path {second} --no-focus"],
+        )
+
+    def test_add_without_reported_parent_opens_from_caller(self) -> None:
+        source = json.dumps({"repo_root": str(self.repo), "repo_name": "repo"})
+        result = self.run_cli("add", "feature", "--workspace", "w7", HERDR_STUB_SOURCE=source)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(
+            self.herdr_calls(),
+            ["worktree list --workspace w7", f"worktree open --workspace w7 --path {self.workspace} --no-focus"],
         )
 
     def test_add_outside_herdr_needs_workspace(self) -> None:

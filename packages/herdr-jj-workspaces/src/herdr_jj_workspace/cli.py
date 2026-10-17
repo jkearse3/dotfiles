@@ -2,8 +2,9 @@
 
 Herdr's own worktree commands manage only Git worktrees. ``add`` creates a jj
 workspace with ``jjx workspace add`` in Herdr's worktree directory and opens it
-in Herdr, grouped under the workspace it was created from; ``remove`` removes
-one with ``jjx workspace remove`` and closes its Herdr workspace. Both target
+in Herdr, grouped under the repository's primary checkout even when started
+from another of its workspaces; ``remove`` removes one with
+``jjx workspace remove`` and closes its Herdr workspace. Both target
 the calling pane's Herdr workspace unless ``--workspace`` names another, and
 neither moves the user's focus unless ``--focus`` is given.
 
@@ -36,9 +37,13 @@ class WorkspaceError(Exception):
 
 @dataclass(frozen=True)
 class Source:
-    """The repository of the Herdr workspace a new jj workspace is created from."""
+    """The repository of the Herdr workspace a new jj workspace is created from.
 
-    workspace_id: str
+    PARENT_WORKSPACE_ID is the Herdr workspace showing the repository's primary
+    checkout, which Herdr requires new worktree workspaces to be opened from.
+    """
+
+    parent_workspace_id: str
     repo_root: Path
     repo_name: str
 
@@ -56,7 +61,8 @@ def resolve_source(workspace_id: str) -> Source:
     """Return the repository Herdr places WORKSPACE_ID in.
 
     Herdr resolves it from the workspace's checkout or pane directory, including
-    workspaces it has not yet marked as Git workspaces.
+    workspaces it has not yet marked as Git workspaces, and resolves a linked
+    worktree such as another jj workspace to its primary checkout.
     """
     try:
         response = _herdr_json("worktree", "list", "--workspace", workspace_id)
@@ -67,11 +73,16 @@ def resolve_source(workspace_id: str) -> Source:
     source = _object(_object(response.get("result")).get("source"))
     repo_root = _string(source.get("repo_root"))
     repo_name = _string(source.get("repo_name"))
+    # Herdr names the parent even for a linked worktree, and refuses to close
+    # the parent while linked ones are open; the fallback covers older reports.
+    parent_workspace_id = _string(source.get("source_workspace_id"))
+    if parent_workspace_id == "":
+        parent_workspace_id = workspace_id
     if repo_root == "" or repo_name == "":
         raise WorkspaceError(f"Herdr reported no repository for workspace {workspace_id}")
     if not (Path(repo_root) / ".jj").is_dir():
         raise WorkspaceError(f"{repo_root} has no jj repository; run jjx ensure there first")
-    return Source(workspace_id, Path(repo_root), repo_name)
+    return Source(parent_workspace_id, Path(repo_root), repo_name)
 
 
 def validate_name(name: str) -> None:
@@ -101,14 +112,14 @@ def create(source: Source, name: str, *, focus: bool) -> dict[str, str]:
         raise WorkspaceError("jjx workspace add failed; see its output above")
     root = result.stdout.removesuffix("\n")
 
-    # Opening from the source workspace groups the new one under it, as Herdr's
-    # own new_worktree does.
+    # Opening from the parent workspace groups the new one under it, as Herdr's
+    # own new_worktree does; Herdr refuses to open from a linked worktree.
     try:
         response = _herdr_json(
             "worktree",
             "open",
             "--workspace",
-            source.workspace_id,
+            source.parent_workspace_id,
             "--path",
             root,
             "--focus" if focus else "--no-focus",
@@ -310,8 +321,9 @@ def _parser() -> argparse.ArgumentParser:
         help="create a jj workspace from trunk and open it in Herdr",
         description=(
             "Create jj workspace NAME from trunk() in ~/.herdr/worktrees/REPO/NAME "
-            "for the repository of a Herdr workspace, and open it in Herdr grouped "
-            "under that workspace. Prints the new checkout's path and the Herdr "
+            "for the repository of a Herdr workspace, which may show any of its "
+            "checkouts, and open it in Herdr grouped under the primary checkout's "
+            "workspace. Prints the new checkout's path and the Herdr "
             "workspace_id and pane_id showing it as JSON."
         ),
     )

@@ -21,8 +21,10 @@ herdr-jj-workspace add NAME
 
 - NAME is one path component, such as `fix-login`; pick a short, descriptive
   name from the request when the user gave none.
-- The repository is the one shown by the calling pane's Herdr workspace; pass
-  `--workspace ID` to use another Herdr workspace's repository.
+- The repository is the one shown by the calling pane's Herdr workspace, which
+  may be the primary checkout or any of its jj workspaces; pass `--workspace ID`
+  to use another Herdr workspace's repository. The new Herdr workspace is
+  grouped under the primary checkout's.
 - The workspace starts from `trunk()` in `~/.herdr/worktrees/REPO/NAME`.
 - Progress goes to stderr. Stdout is one JSON object:
   `{"path": ..., "workspace_id": ..., "pane_id": ...}`.
