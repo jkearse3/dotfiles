@@ -10,6 +10,7 @@ let
     inherit lib pkgs;
     agentInteractiveDenied = dotfilesPackages.agent-interactive-denied;
   };
+  agentLauncher = import ./launcher.nix { inherit lib pkgs; };
   renderSkillsDir = import ./renderSkillsDir.nix {
     inherit lib pkgs;
     skills = config.agents.skills;
@@ -25,7 +26,9 @@ in
   ];
 
   config = {
-    _module.args.agentInteractivePolicy = agentInteractivePolicy;
+    _module.args = {
+      inherit agentInteractivePolicy agentLauncher;
+    };
 
     home = {
       packages = [

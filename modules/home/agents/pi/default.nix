@@ -1,5 +1,6 @@
 {
   agentInteractivePolicy,
+  agentLauncher,
   config,
   dotfilesPackages,
   dotfilesSource,
@@ -12,7 +13,6 @@
 }:
 let
   cfg = config.agents.pi;
-  preventIdleSleep = lib.optionalString pkgs.stdenv.hostPlatform.isDarwin "/usr/bin/caffeinate -i ";
 
   renderAgentsMarkdown = import ../renderAgentsMarkdown.nix { inherit lib; };
   piRules = {
@@ -187,7 +187,7 @@ let
     pkgs.writeShellApplication {
       inherit name;
       text = ''
-        exec ${preventIdleSleep}${lib.getExe secretEnvironment} "$@"
+        ${agentLauncher { commandLine = ''${lib.getExe secretEnvironment} "$@"''; }}
       '';
     };
 

@@ -4,6 +4,7 @@
 # `settings-overlay.sh` for how the machine-local file overrides the pin.
 {
   agentInteractivePolicy,
+  agentLauncher,
   config,
   dotfilesPackages,
   pkgs,
@@ -18,7 +19,6 @@ let
     skills = config.agents.skills;
   };
   renderAgentsMarkdown = import ../renderAgentsMarkdown.nix { inherit lib; };
-  preventIdleSleep = lib.optionalString pkgs.stdenv.hostPlatform.isDarwin "/usr/bin/caffeinate -i ";
 
   pinnedSettings = builtins.fromJSON (builtins.readFile ./settings.json);
 
@@ -291,7 +291,7 @@ let
         fi
 
         ${agentInteractivePolicy.shellExports}
-        exec ${preventIdleSleep}${command} --settings "$settings" "$@"
+        ${agentLauncher { commandLine = ''${command} --settings "$settings" "$@"''; }}
       '';
     };
 

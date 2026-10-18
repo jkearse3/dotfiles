@@ -1,5 +1,6 @@
 {
   agentInteractivePolicy,
+  agentLauncher,
   config,
   dotfilesPackages,
   pkgs,
@@ -15,7 +16,6 @@ let
     inherit lib pkgs;
     skills = config.agents.skills;
   };
-  preventIdleSleep = lib.optionalString pkgs.stdenv.hostPlatform.isDarwin "/usr/bin/caffeinate -i ";
 
   # caffeinate stays outermost so its idle-sleep assertion covers the whole
   # session, and secret resolution stays inside it but outside any sandbox.
@@ -35,7 +35,7 @@ let
       inherit name;
       text = ''
         ${agentInteractivePolicy.shellExports}
-        exec ${preventIdleSleep}${lib.getExe secretEnvironment} "$@"
+        ${agentLauncher { commandLine = ''${lib.getExe secretEnvironment} "$@"''; }}
       '';
     };
 
