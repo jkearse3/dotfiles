@@ -65,6 +65,7 @@
         };
         playwright-cli = pkgs.callPackage ../packages/playwright-cli/package.nix { };
         ports = pkgs.callPackage ../packages/ports/package.nix { };
+        scratch-sweep = pkgs.callPackage ../packages/scratch-sweep/package.nix { };
         token-count = pkgs.callPackage ../packages/token-count/package.nix { };
         worktree-include = pkgs.callPackage ../packages/worktree-include/package.nix {
           inherit (unstablePkgs) git;

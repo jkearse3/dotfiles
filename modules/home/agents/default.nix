@@ -30,6 +30,7 @@ in
     home = {
       packages = [
         dotfilesPackages.agent-interactive-denied
+        dotfilesPackages.scratch-sweep
         dotfilesPackages.token-count
         pkgs.tokscale
       ];
