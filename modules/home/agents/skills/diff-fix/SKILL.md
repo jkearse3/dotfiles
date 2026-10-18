@@ -12,7 +12,7 @@ description: >-
 # Diff Fix
 
 Drive a finalized jj target to a literal `diff-review` `pass` by alternating
-reviews by a fresh reviewer and verifier with fresh fixer subagents. This
+reviews by a fresh reviewer and verifier with one fresh fixer per round. This
 session coordinates: it keeps the findings list, coordinates each review,
 verifies and lands fixes, and asks the user. It never reviews or fixes itself
 beyond coordinating `diff-review`; if the host cannot start fresh agents, stop
@@ -38,7 +38,7 @@ location from the latest review, its owning revision, a status (`open`, `fixed`,
 evidence or reason. A finding stays `open` until its fix lands, a verifier
 declines it with a reason, it needs a decision, or the user decides it.
 
-The reviewer and every fixer receive the criteria, context, and user decisions
+The reviewer and fixer receive the criteria, context, and user decisions
 verbatim, plus the findings list; the verifier receives them plus, for each
 candidate, the entry it matches, if any. Settled findings and user decisions are
 earlier conclusions, re-raised only when the current code shows their reason no
@@ -84,12 +84,14 @@ against the change a landed fix made re-raises that fix's finding.
    revisions, any conflicts, and the `finalize-changes` report, without further
    fixes. Otherwise re-resolve the target from its base to the reshaped tip,
    mark the finding `fixed`, and go to step 8.
-5. **Fix.** For each owning revision with `open` findings, earliest first, run
-   `jj new <owner>` and dispatch a fresh fixer. It follows `coding-style`, edits
-   only the working copy, performs no VCS mutation or delegation, and returns
-   per finding `fixed` with checks run, `rejected` with concrete evidence, or
-   `needs-decision` with the question. It also returns replacement text when the
-   owner's description became inaccurate.
+5. **Fix.** Dispatch one fresh fixer for the round. For each owning revision
+   with `open` findings, earliest first, run `jj new <owner>` and continue that
+   fixer with the owner's change ID and findings; when the host cannot continue
+   an agent, dispatch a fresh fixer per owner instead. The fixer follows
+   `coding-style`, edits only the working copy, performs no VCS mutation or
+   delegation, and returns per finding `fixed` with checks run, `rejected` with
+   concrete evidence, or `needs-decision` with the question. It also returns
+   replacement text when the owner's description became inaccurate.
 6. **Land.** Confirm the diff addresses each `fixed` finding, changes nothing
    else, and passes checks; otherwise abandon the working copy and keep those
    findings `open` as unverified. A rejection without evidence stays `open` as
@@ -101,10 +103,10 @@ against the change a landed fix made re-raises that fix's finding.
    message. Mark the landed findings `fixed`.
 7. **Resolve conflicts** before the next fix. After each landing, list
    `jj log -r 'descendants(<owner>) & conflicts()' --reversed`. While a target
-   revision is conflicted, run `jj new` on the earliest one and dispatch a fresh
-   fixer under the step 5 rules with its change ID, its description, and the
-   landed findings, to keep the revision's intent and carry the fix. Land its
-   resolution the same way and list again. Stop and ask the user when a
+   revision is conflicted, run `jj new` on the earliest one and continue the
+   round's fixer under the step 5 rules with its change ID, its description, and
+   the landed findings, to keep the revision's intent and carry the fix. Land
+   its resolution the same way and list again. Stop and ask the user when a
    resolution fails verification or needs a decision. Then stop when a
    descendant outside the target is newly conflicted.
 8. After all fixes, run `jj new <target tip>` before the next review.
