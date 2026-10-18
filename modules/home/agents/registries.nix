@@ -75,6 +75,7 @@ in
         "shared/reasoning"
         "shared/delegation"
         "shared/version-control"
+        "shared/build-copies"
         "shared/mutation-safety"
         "shared/change-review"
       ];
