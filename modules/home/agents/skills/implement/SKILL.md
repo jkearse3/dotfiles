@@ -34,8 +34,9 @@ explore the codebase here.
 Require a jj repository with an empty `@` and no unrelated working changes.
 Record `@-` as the stack base, establish a task-owned bookmark on `@` before the
 first revision, and refer to every revision by change ID. Invoking this skill
-authorizes creating and finalizing the new revisions and running `diff-fix` on
-them. It authorizes nothing outside the new stack and no publication.
+authorizes creating, finalizing, rewinding, and abandoning the new revisions and
+running `diff-fix` on them. It authorizes nothing outside the new stack and no
+publication.
 
 ## Brief List
 
@@ -79,12 +80,12 @@ it or state why it cannot be split.
    with the answers as settled decisions. Then show the brief list and continue
    without waiting for approval.
 2. **Implement.** For the earliest `pending` brief, confirm `@` is empty and
-   sits on the last finalized revision, or on the stack base for the first
-   brief, then dispatch a fresh implementer with that brief. It follows
-   `coding-style`, edits only the working copy, performs no VCS mutation or
-   delegation, runs the brief's checks, and returns `done` with the checks run
-   and a summary of what changed and why, `blocked` with the evidence or
-   question, or `rebrief` with the evidence that the remaining briefs are wrong.
+   sits on the last `done` revision, or on the stack base for the first brief,
+   then dispatch a fresh implementer with that brief. It follows `coding-style`,
+   edits only the working copy, performs no VCS mutation or delegation, runs the
+   brief's checks, and returns `done` with the checks run and a summary of what
+   changed and why, `blocked` with the evidence or question, or `rebrief` with
+   the evidence that the briefs, including `done` ones, are wrong.
 3. **Verify.** Confirm the diff achieves the brief, changes nothing outside it,
    and passes its checks; rerun a check whose result the next decision depends
    on. Discard the attempt with `jj restore` on `@` whenever it ends without a
@@ -98,11 +99,19 @@ it or state why it cannot be split.
    description and moving the task bookmark to the new tip. Mark the brief
    `done` with its change ID. If it stops because the changes are not one
    coherent revision, treat that as a verification failure.
-5. **Rebrief.** On a `rebrief` return, or when a landed revision shows later
+5. **Rebrief.** On a `rebrief` return, or when a landed revision shows the
    briefs are wrong, dispatch a fresh planner with the brief list and the
-   evidence to revise only the `pending` briefs. A rebrief that changes the
-   outcome, criteria, a settled decision, or a binding requirement needs the
-   user.
+   evidence to revise the `pending` briefs. When the evidence shows a `done`
+   revision took the wrong path, it also returns the earliest such brief, and
+   this session rewinds: make that brief and every later `done` brief `pending`
+   with its revised content and old change ID, rebase `@` onto the last
+   remaining `done` revision or the stack base with `jj rebase -r @ -d <rev>`,
+   and move the task bookmark back to that revision, or to `@` when no `done`
+   revision remains, with `--allow-backwards`. Implementers may read the old
+   revisions as reference; abandon them before converging, or report them if the
+   run ends first. Show the revised brief list and continue without waiting for
+   approval. A rebrief that changes the outcome, criteria, a settled decision,
+   or a binding requirement needs the user.
 6. **Ask** the user when a brief is `blocked`, and offer: decide, skip, or stop.
    A decision updates the brief and makes it `pending`. A skip makes it
    `skipped` and rebriefs the `pending` briefs that depend on it, or skips them
@@ -121,9 +130,9 @@ reason. Skip this step when the user asked not to review.
 ## Report
 
 Lead with the outcome: `done`, `blocked`, or `stopped by user`. Then list the
-finalized revisions in order with change IDs and descriptions, the bookmark,
-skipped or blocked briefs with their reasons, checks run and skipped, and the
-`diff-fix` result.
+finalized revisions in order with change IDs and descriptions, the bookmark, any
+rewind with its evidence and abandoned revisions, skipped or blocked briefs with
+their reasons, checks run and skipped, and the `diff-fix` result.
 
 ## Boundaries
 
