@@ -291,7 +291,10 @@ let
         fi
 
         ${agentInteractivePolicy.shellExports}
-        ${agentLauncher { commandLine = ''${command} --settings "$settings" "$@"''; }}
+        ${agentLauncher {
+          commandLine = ''${command} --settings "$settings" "$@"'';
+          extraTmpdirVariables = [ "CLAUDE_CODE_TMPDIR" ];
+        }}
       '';
     };
 
