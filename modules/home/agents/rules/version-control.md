@@ -56,6 +56,33 @@ explicit authorization. So do repository-wide operation commands such as
 stale working copy, run `jj workspace update-stale` only if the rewritten
 revisions belong to your task-owned stack; otherwise stop and report it.
 
+## Remote Bookmarks
+
+When the task continues an existing remote branch by adding revisions to it, run
+`jj bookmark track <name> --remote <remote>` and use the resulting local
+bookmark as the task bookmark. When the task only reads the branch, for review,
+inspection, or as the base of a different change set, use `<name>@<remote>` as a
+revision and leave it untracked. Quote names with special characters as
+`"<name>"` in `jj bookmark track` and `jj bookmark list` arguments and as
+`"<name>"@<remote>` in revisions. Always pass `--remote`, because leaving it out
+tracks every remote with that bookmark name. Never fake tracking with
+`jj bookmark create` or `jj bookmark set` on `<name>@<remote>`, which makes an
+untracked copy that fetches never update, and never continue the branch under a
+new bookmark name. Tracking someone else's branch does not authorize pushing to
+it; Publication still governs every push.
+
+Before tracking, run `jj bookmark list --all <name>`. If it shows
+`<name>@<remote>` already tracked, do not track again; use the local `<name>` as
+the task bookmark, subject to History And References and Shared jj Workspaces.
+If an untracked local `<name>` points somewhere other than `<name>@<remote>`,
+tracking merges the two, which can move it to the remote commit or leave it
+conflicted, so stop and report it unless the local bookmark is task-owned and
+the reconciliation is clear. After tracking, confirm with the same listing that
+`<name>` is tracked and not conflicted: jj exits 0 when it merely warns about a
+missing or already-tracked bookmark and when tracking leaves a conflict. Do not
+track a new bookmark before its first push, because `jj git push --bookmark`
+tracks the remote bookmark it creates.
+
 ## Publication
 
 Publish references, push, create or merge pull requests, or close remote
