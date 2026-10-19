@@ -59,7 +59,8 @@ revision that cannot build or pass its checks alone. Every brief is safe to land
 on main by itself and relies on no later brief.
 
 - Put a behavior-preserving refactor that makes room for a change in its own
-  brief before that change.
+  brief, placed immediately before the first brief that relies on it unless
+  another brief must come between them.
 - Keep mechanical changes such as renames, moves, formatting, and dependency
   bumps apart from logic changes.
 - Land internals before the brief that wires them in or exposes them.
