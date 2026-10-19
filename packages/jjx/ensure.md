@@ -76,6 +76,14 @@ the Git common directory when that is the primary checkout, or the owning linked
 worktree's private Git directory when `jj workspace add` ran in a linked
 workspace, rather than the new worktree's private one.
 
+Use one jj version for every command in a shared workspace. jj colocates
+workspaces besides the default one only since 0.46.0; an older jj does not treat
+the workspace as colocated, so it never updates the worktree's Git `HEAD`. After
+an older jj moves `@`, the next command from jj 0.46.0 or later imports the
+stale `HEAD` and rebuilds `@` on the old commit while keeping the working-copy
+files, so `@` appears to revert everything in between. `jjx ensure` does not
+detect a stale `HEAD`.
+
 `jjx ensure` treats a `.jj/repo` file as a shared workspace and accepts it
 unchanged once jj reports the checkout as its root and a backend whose Git
 common directory is this checkout's. Anything else, such as a pointer to a
