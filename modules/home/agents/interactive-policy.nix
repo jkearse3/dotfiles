@@ -20,25 +20,45 @@ let
     '';
   };
 
+  jjPolicyConfig = {
+    "ui.diff-editor" = [
+      denied
+      "jj"
+      "diff-editor"
+    ];
+    "ui.merge-editor" = [
+      denied
+      "jj"
+      "merge-editor"
+    ];
+    # Other workspaces' working-copy commits, except those built on this
+    # workspace's own stack, which stays mutable when another workspace
+    # stacks on it.
+    "revset-aliases.\"foreign_working_copies()\"" =
+      "working_copies() ~ @ ~ (builtin_immutable_heads()..@)::";
+    # Makes those commits and their ancestors immutable, so a broad revset
+    # such as `trunk()::` cannot rewrite or abandon another workspace's stack.
+    # This replaces any repository-level definition in agent sessions.
+    "revset-aliases.\"immutable_heads()\"" = "builtin_immutable_heads() | foreign_working_copies()";
+  };
+
   jjShim = pkgs.writeShellApplication {
     name = "jj";
     text = ''
-      exec ${lib.getExe pkgs.jujutsu} \
-        --config ${lib.escapeShellArg "ui.diff-editor=${
-          builtins.toJSON [
-            denied
-            "jj"
-            "diff-editor"
-          ]
-        }"} \
-        --config ${lib.escapeShellArg "ui.merge-editor=${
-          builtins.toJSON [
-            denied
-            "jj"
-            "merge-editor"
-          ]
-        }"} \
-        "$@"
+      # `--ignore-immutable` lifts the protection of trunk and of other
+      # workspaces' stacks, so it needs the user's explicit authorization.
+      for argument in "$@"; do
+        [[ $argument == -- ]] && break
+        if [[ $argument == --ignore-immutable && ''${JJ_AGENT_ALLOW_IGNORE_IMMUTABLE-} != 1 ]]; then
+          echo "jj (agent policy): --ignore-immutable is blocked in a coding-agent session; it requires the user's explicit authorization for this command." >&2
+          exit 1
+        fi
+      done
+      exec ${lib.getExe pkgs.jujutsu} ${
+        lib.concatMapStringsSep " " (
+          name: "--config ${lib.escapeShellArg "${name}=${builtins.toJSON jjPolicyConfig.${name}}"}"
+        ) (builtins.attrNames jjPolicyConfig)
+      } "$@"
     '';
   };
 

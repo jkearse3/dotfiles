@@ -172,7 +172,7 @@ expect_agent_failure() {
 	local status=0
 	run_agent "$@" >"$workdir/stdout" 2>"$workdir/stderr" || status=$?
 	[[ $status -ne 0 ]]
-	grep -Fq "$expected" "$workdir/stderr"
+	grep -Fq -- "$expected" "$workdir/stderr"
 }
 
 git_repo="$workdir/git-repo"
@@ -215,3 +215,73 @@ merge_editor=$(run_agent jj -R "$jj_repo" config get ui.merge-editor)
 expect_agent_failure 'blocked jj editor in a coding-agent session' jj -R "$jj_repo" describe
 printf 'changed\n' >"$jj_repo/tracked"
 expect_agent_failure 'blocked jj diff-editor in a coding-agent session' jj -R "$jj_repo" diffedit
+
+# Reproduces an agent abandoning other workspaces' working-copy commits through
+# a revset rooted at trunk. `other` sits on trunk with a bookmark; `stacked`
+# builds on the agent's stack, which must stay mutable for the agent.
+mkdir -p "$workdir/home/.config/jj"
+cat >"$workdir/home/.config/jj/config.toml" <<'TOML'
+user.name = "Test User"
+user.email = "test@example.com"
+revset-aliases."trunk()" = "present(main)"
+TOML
+workspaces="$workdir/workspaces"
+mkdir -p "$workspaces"
+in_workspace() {
+	local name=$1
+	shift
+	run_agent jj --quiet -R "$workspaces/$name" "$@"
+}
+expect_workspace_failure() {
+	local expected=$1 name=$2
+	shift 2
+	expect_agent_failure "$expected" jj -R "$workspaces/$name" "$@"
+}
+change_id() {
+	in_workspace "$1" log --no-graph -r "$2" -T 'change_id'
+}
+
+run_agent jj --quiet git init "$workspaces/default"
+printf 'base\n' >"$workspaces/default/base"
+in_workspace default commit -m base
+in_workspace default bookmark create main -r @-
+for name in agent other stacked; do
+	in_workspace default workspace add --name "$name" "$workspaces/$name"
+done
+in_workspace agent new main
+printf 'agent\n' >"$workspaces/agent/agent"
+in_workspace agent commit -m 'agent work'
+in_workspace agent bookmark create agentb -r @-
+leftover=$(change_id agent @)
+in_workspace agent new
+in_workspace other new main
+in_workspace other bookmark create otherb -r @
+in_workspace stacked new agentb
+other_wc=$(change_id other other@)
+trunk=$(change_id agent main)
+
+expect_workspace_failure 'is immutable' agent \
+	abandon -r "$trunk:: & empty() & ~@ & description(exact:\"\")"
+[[ $(change_id agent other@) == "$other_wc" ]]
+[[ $(in_workspace agent bookmark list -T 'name ++ "\n"' otherb) == otherb ]]
+expect_workspace_failure 'is immutable' agent describe -m taken other@
+expect_workspace_failure 'is immutable' agent rebase -s "$trunk+" -o "$trunk"
+
+in_workspace agent abandon "$leftover"
+in_workspace agent describe -m 'agent work, described' agentb
+printf 'fix\n' >>"$workspaces/agent/agent"
+in_workspace agent squash --into agentb
+in_workspace stacked workspace update-stale
+[[ $(in_workspace stacked log --no-graph -r @- -T 'description.first_line()') == 'agent work, described' ]]
+
+# Bookmarks have no mechanical guard; `jj op revert` restores one deleted from
+# another workspace's stack, even after other workspaces ran operations.
+in_workspace agent bookmark delete otherb
+deletion=$(in_workspace agent op log --no-graph --limit 1 -T 'id.short()')
+in_workspace default bookmark create unrelated -r main
+in_workspace agent op revert "$deletion"
+[[ $(in_workspace agent bookmark list -T 'name ++ "\n"' otherb) == otherb ]]
+
+expect_workspace_failure '--ignore-immutable is blocked' agent --ignore-immutable describe -m taken other@
+JJ_AGENT_ALLOW_IGNORE_IMMUTABLE=1 in_workspace agent --ignore-immutable describe -m taken other@
+[[ $(in_workspace agent log --no-graph -r other@ -T 'description.first_line()') == taken ]]

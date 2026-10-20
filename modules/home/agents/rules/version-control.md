@@ -52,9 +52,14 @@ each with its own `@`. Treat another workspace's working-copy commit, shown as
 `<name>@`, and its ancestors outside trunk and your task-owned stack as owned by
 that workspace; rewriting, abandoning, or moving bookmarks on them requires
 explicit authorization. So do repository-wide operation commands such as
-`jj op restore` and any `--allow-cross-workspace` override. When jj reports a
-stale working copy, run `jj workspace update-stale` only if the rewritten
-revisions belong to your task-owned stack; otherwise stop and report it.
+`jj op restore` and any `--allow-cross-workspace` override. Target abandon,
+rebase, and bookmark commands by change IDs and bookmark names your task
+created, never by a revset rooted at trunk. When jj refuses because another
+workspace's commit is immutable, narrow the target; `--ignore-immutable`
+requires explicit authorization. To reverse a cross-workspace mistake, use
+`jj op revert <operation>`, not `jj undo`. When jj reports a stale working copy,
+run `jj workspace update-stale` only if the rewritten revisions belong to your
+task-owned stack; otherwise stop and report it.
 
 ## Remote Bookmarks
 
