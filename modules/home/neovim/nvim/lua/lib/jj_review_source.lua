@@ -341,7 +341,8 @@ function M.inspect_file_history(repo, path, callback)
 	inspect(repo, { kind = "file-history", path = path }, callback)
 end
 
---- Selects a local bookmark, then opens its first-parent bookmark or trunk range in the shared overview.
+--- Selects a local bookmark, then opens its first-parent bookmark or trunk range in the shared
+--- overview, or lists the range's revisions in the revision picker.
 function M.pick_bookmark()
 	local repo = root()
 	if not repo then
@@ -362,25 +363,35 @@ function M.pick_bookmark()
 			fzf_opts = {
 				["--delimiter"] = "\t",
 				["--with-nth"] = "2..",
-				["--header"] = "Nearest older first-parent bookmark or trunk fork point -> selected bookmark\nEnter: file overview (no patches loaded)",
+				["--header"] = "Nearest older first-parent bookmark or trunk fork point -> selected bookmark\nEnter: file overview (no patches loaded)  Ctrl-L: list its revisions",
 			},
 			actions = function()
-				return {
-					enter = function(selected)
+				local function selected_range(open)
+					return function(selected)
 						local bookmark = lookup[selected[1]]
 						if not bookmark then
 							return
 						end
 						vim.schedule(function()
-							inspect(
-								repo,
-								{ kind = "bookmark", name = bookmark.name },
-								function(comparison)
-									require("lib.jj_review").open_comparison(repo, comparison)
-								end
-							)
+							inspect(repo, { kind = "bookmark", name = bookmark.name }, open)
 						end)
-					end,
+					end
+				end
+				return {
+					enter = selected_range(function(comparison)
+						require("lib.jj_review").open_comparison(repo, comparison)
+					end),
+					["ctrl-l"] = selected_range(function(comparison)
+						require("lib.jj_history").pick(repo, nil, nil, nil, {
+							revset = string.format(
+								"commit_id(%s)..commit_id(%s)",
+								comparison.from,
+								comparison.revision.commit_id
+							),
+							name = comparison.source.name,
+							title = comparison.title,
+						})
+					end),
 				}
 			end,
 		})

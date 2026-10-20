@@ -300,7 +300,9 @@ describe("unified JJ review sources", function()
 			return entries ~= nil
 		end))
 		assert.is_nil(options.previewer)
-		assert.are.same({ "enter" }, vim.tbl_keys(options.actions()))
+		local keys = vim.tbl_keys(options.actions())
+		table.sort(keys)
+		assert.are.same({ "ctrl-l", "enter" }, keys)
 		local previous = vim.api.nvim_get_current_buf()
 		options.actions().enter({ "not an entry" })
 		assert.are.equal(previous, vim.api.nvim_get_current_buf())
@@ -312,6 +314,33 @@ describe("unified JJ review sources", function()
 		end
 		wait_for("not loaded")
 		assert.matches("alias,base..feature", text(), 1, true)
+	end)
+
+	it("lists only the selected bookmark's range revisions", function()
+		local entries, options
+		fzf.fzf_exec = function(items, opts)
+			entries, options = items, opts
+		end
+		sources.pick_bookmark()
+		assert.is_true(vim.wait(5000, function()
+			return entries ~= nil
+		end))
+		local bookmark_entries, bookmark_options = entries, options
+		entries, options = nil, nil
+		for _, item in ipairs(bookmark_entries) do
+			if item:find("\tfeature", 1, true) then
+				bookmark_options.actions()["ctrl-l"]({ item })
+				break
+			end
+		end
+		assert.is_true(vim.wait(5000, function()
+			return entries ~= nil
+		end))
+		assert.are.equal("JJ bookmark feature> ", options.prompt)
+		assert.matches("alias,base..feature", options.fzf_opts["--header"], 1, true)
+		assert.are.equal(2, #entries)
+		assert.matches("feature", entries[1], 1, true)
+		assert.matches("middle", entries[2], 1, true)
 	end)
 
 	it("falls back to the trunk fork point for a bookmark behind trunk", function()

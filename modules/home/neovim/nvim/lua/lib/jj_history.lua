@@ -10,6 +10,11 @@ local jj_id = require("lib.jj_id")
 ---@field recorded_at? string Committer timestamp of this recorded draft, including timezone.
 ---@field has_predecessors? boolean Present on evolution entries; false identifies an initial draft.
 
+---@class lib.jj_history.Range
+---@field revset string Exact revset whose revisions the picker lists instead of the default log.
+---@field name string Bookmark name shown in the prompt.
+---@field title string Human-readable comparison the range was resolved from.
+
 --- Runs inspection without snapshotting files, importing Git refs, or advancing the operation log.
 ---@param args string[]
 ---@param repo? string
@@ -52,8 +57,12 @@ local revision_template =
 ---@return string? error
 ---@param evolution? string Commit/revset whose evolutionary predecessors to list instead.
 ---@param path? string Exact root-relative path; limits history to workspace ancestry, without rename following.
-function M.list(repo, evolution, path)
+---@param revset? string Revisions to list instead of JJ's configured default log selection.
+function M.list(repo, evolution, path, revset)
 	local args = { "log", "--no-graph", "--limit", "200", "--template", revision_template }
+	if revset then
+		vim.list_extend(args, { "-r", revset })
+	end
 	if evolution then
 		local template = '"[" ++ json(commit) ++ "," ++ json(commit.local_bookmarks().map(|b| b.name()))'
 			.. ' ++ "," ++ json(predecessors.len() > 0) ++ "]\\n"'
@@ -195,7 +204,8 @@ end
 ---@param evolution? string Revision to explore with evolog; absent selects stack history.
 ---@param path? string Exact root-relative file to inspect within workspace ancestry.
 ---@param file_history? lib.jj_file_history.Result Resolved rename-aware entries; internal callback input.
-function M.pick(repo, evolution, path, file_history)
+---@param range? lib.jj_history.Range Bookmark revisions to list instead of stack history.
+function M.pick(repo, evolution, path, file_history, range)
 	if path and not evolution and not file_history then
 		vim.notify("Looking up recorded file history; <leader>jx cancels", vim.log.levels.INFO)
 		require("lib.jj_review_source").inspect_file_history(repo, path, function(result)
@@ -207,7 +217,7 @@ function M.pick(repo, evolution, path, file_history)
 	if file_history then
 		revisions = file_history.revisions
 	else
-		revisions, err = M.list(repo, evolution, path)
+		revisions, err = M.list(repo, evolution, path, range and range.revset)
 	end
 	if not revisions then
 		notify(err)
@@ -266,6 +276,7 @@ function M.pick(repo, evolution, path, file_history)
 	require("fzf-lua").fzf_exec(entries, {
 		prompt = evolution and "Previous drafts> "
 			or path and ("JJ file " .. display(path) .. "> ")
+			or range and ("JJ bookmark " .. display(range.name) .. "> ")
 			or "JJ stack> ",
 		fzf_opts = {
 			["--delimiter"] = "\t",
@@ -282,6 +293,7 @@ function M.pick(repo, evolution, path, file_history)
 						"Ctrl-Y: copy change ID",
 					}, "\n")
 				or file_history and ("Rename-aware recorded file history (inferred names)\n" .. file_history.boundary .. "\nEnter: revision overview  Ctrl-E: previous drafts  Ctrl-Y: change ID")
+				or range and ("Revisions in " .. display(range.title) .. "\nEnter: revision overview  Ctrl-E: previous drafts  Ctrl-Y: change ID")
 				or nil,
 		},
 		previewer = function()
