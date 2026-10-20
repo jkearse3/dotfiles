@@ -13,6 +13,7 @@ python=$8
 ssh_add=$9
 ssh_agent=${10}
 ssh_keygen=${11}
+real_git=${12}
 workdir=$(mktemp -d)
 test_ssh_agent_pid=
 
@@ -285,3 +286,18 @@ in_workspace agent op revert "$deletion"
 expect_workspace_failure '--ignore-immutable is blocked' agent --ignore-immutable describe -m taken other@
 JJ_AGENT_ALLOW_IGNORE_IMMUTABLE=1 in_workspace agent --ignore-immutable describe -m taken other@
 [[ $(in_workspace agent log --no-graph -r other@ -T 'description.first_line()') == taken ]]
+
+# Agent jj pushes through the Nix git rather than whichever `git` is first on
+# PATH; the push goes to a local bare remote, so no credential prompt can occur.
+[[ $(run_agent jj -R "$jj_repo" config get git.executable-path) == "$real_git" ]]
+push_remote="$workdir/push-remote.git"
+"$real_git" init -q --bare "$push_remote"
+push_repo="$workdir/push-repo"
+run_agent jj --quiet git init "$push_repo"
+run_agent jj --quiet -R "$push_repo" git remote add origin "$push_remote"
+printf 'pushed\n' >"$push_repo/pushed"
+run_agent jj --quiet -R "$push_repo" commit -m pushed
+run_agent jj --quiet -R "$push_repo" bookmark create pushed -r @-
+run_agent jj --quiet -R "$push_repo" bookmark track pushed --remote origin
+run_agent jj --quiet -R "$push_repo" git push --remote origin --bookmark pushed
+[[ $("$real_git" --git-dir "$push_remote" rev-parse pushed) == "$(run_agent jj -R "$push_repo" log --no-graph -r pushed -T 'commit_id')" ]]

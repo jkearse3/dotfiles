@@ -40,6 +40,10 @@ let
     # such as `trunk()::` cannot rewrite or abandon another workspace's stack.
     # This replaces any repository-level definition in agent sessions.
     "revset-aliases.\"immutable_heads()\"" = "builtin_immutable_heads() | foreign_working_copies()";
+    # jj runs `git` subprocesses for push and fetch, found through PATH by
+    # default; the absolute path keeps agent jj's git independent of which
+    # `git` comes first on PATH.
+    "git.executable-path" = lib.getExe pkgs.git;
   };
 
   jjShim = pkgs.writeShellApplication {
@@ -121,7 +125,8 @@ let
           ${lib.getExe pkgs.python3} \
           ${lib.getExe' pkgs.openssh "ssh-add"} \
           ${lib.getExe' pkgs.openssh "ssh-agent"} \
-          ${lib.getExe' pkgs.openssh "ssh-keygen"}
+          ${lib.getExe' pkgs.openssh "ssh-keygen"} \
+          ${lib.getExe pkgs.git}
         touch "$out"
       '';
 in
