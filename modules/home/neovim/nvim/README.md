@@ -22,15 +22,15 @@ All complete JJ comparisons use one retained, read-only **file overview**.
 Opening it loads metadata only: every file starts collapsed, including a focused
 file. There is no mandatory file-scope picker.
 
-| Key          | Inspect                                                                                            |
-| ------------ | -------------------------------------------------------------------------------------------------- |
-| `<leader>jl` | Configured JJ revision history; Enter reviews a revision against its parents.                      |
-| `<leader>jb` | Local bookmark range: nearest strictly older first-parent bookmark → selected bookmark.            |
-| `<leader>jf` | Rename-aware file history; Enter reviews the whole revision, focusing its historical filename.     |
-| `<leader>ja` | Recorded origin of the current line; focus its historical file header in the responsible revision. |
-| `<leader>jr` | Resume the retained overview without refreshing or loading patches.                                |
-| `<leader>jc` | Changes with review comments; Enter reviews one, Ctrl-X deletes its comments.                      |
-| `<leader>jx` | Cancel pending source lookup and outstanding review requests, including from a source-file buffer. |
+| Key          | Inspect                                                                                                     |
+| ------------ | ----------------------------------------------------------------------------------------------------------- |
+| `<leader>jl` | Configured JJ revision history; Enter reviews a revision against its parents.                               |
+| `<leader>jb` | Local bookmark range: nearest strictly older first-parent bookmark or trunk fork point → selected bookmark. |
+| `<leader>jf` | Rename-aware file history; Enter reviews the whole revision, focusing its historical filename.              |
+| `<leader>ja` | Recorded origin of the current line; focus its historical file header in the responsible revision.          |
+| `<leader>jr` | Resume the retained overview without refreshing or loading patches.                                         |
+| `<leader>jc` | Changes with review comments; Enter reviews one, Ctrl-X deletes its comments.                               |
+| `<leader>jx` | Cancel pending source lookup and outstanding review requests, including from a source-file buffer.          |
 
 The former `gdb` and `gdl` routes are now `jb` and `ja`. `gds` is removed: use
 `jr` to return to review and buffer-local `f` to find a file. `gdr` and

@@ -451,6 +451,18 @@ describe("jj diff comparisons", function()
 		assert.are.same({ kind = "bookmark", name = "feature-b" }, comparison.source)
 	end)
 
+	it("labels an unbookmarked trunk fork point base by commit", function()
+		local bookmark = { name = "feature", target = { "bbbbbbbb" } }
+		local comparison =
+			assert(jj_diff.bookmark_comparison("/repo", bookmark, { bookmark }, function(args)
+				assert.truthy(args[4]:find("::trunk()", 1, true))
+				return '{"commit_id":"aaaaaaaaaaaa"}\n'
+			end))
+
+		assert.are.equal("aaaaaaaaaaaa", comparison.from)
+		assert.are.equal("jj bookmark aaaaaaaaaaaa..feature", comparison.title)
+	end)
+
 	it("refuses missing and conflicted bookmark ancestry", function()
 		local bookmark = { name = "feature", target = { "bbbbbbbb" } }
 		local comparison, err = jj_diff.bookmark_comparison(

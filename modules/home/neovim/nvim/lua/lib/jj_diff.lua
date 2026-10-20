@@ -288,8 +288,10 @@ function M.revision_comparison(repo, revision)
 	}
 end
 
---- Describes the range from a bookmark's nearest first-parent bookmark to its target.
+--- Describes the range from a bookmark's nearest first-parent base to its target.
 ---
+--- The base is the nearest first-parent ancestor that is bookmarked or on trunk, so a
+--- bookmark forked from an older trunk commit compares against its fork point.
 --- Fails when either endpoint cannot be resolved to one unambiguous commit.
 ---@param repo string Repository root.
 ---@param bookmark lib.jj_diff.Bookmark Selected bookmark.
@@ -303,7 +305,7 @@ function M.bookmark_comparison(repo, bookmark, bookmarks, runner)
 	end
 	local target = bookmark.target[1]
 	local revset = string.format(
-		"heads(first_ancestors(commit_id(%s)) & bookmarks() ~ commit_id(%s))",
+		"heads(first_ancestors(commit_id(%s)) & (bookmarks() | (::trunk() ~ root())) ~ commit_id(%s))",
 		target,
 		target
 	)
@@ -335,14 +337,12 @@ function M.bookmark_comparison(repo, bookmark, bookmarks, runner)
 
 	local base = ancestors[1].commit_id
 	local base_names = normal_bookmarks_at(bookmarks, base)
-	if #base_names == 0 then
-		return nil, "bookmark " .. bookmark.name .. " has an ambiguous parent bookmark"
-	end
+	local base_label = #base_names > 0 and table.concat(base_names, ",") or base:sub(1, 12)
 	return {
 		repo = repo,
 		from = base,
 		target = target,
-		title = string.format("jj bookmark %s..%s", table.concat(base_names, ","), bookmark.name),
+		title = string.format("jj bookmark %s..%s", base_label, bookmark.name),
 		source = { kind = "bookmark", name = bookmark.name },
 	}
 end

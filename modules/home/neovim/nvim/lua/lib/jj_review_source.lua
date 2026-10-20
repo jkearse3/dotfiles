@@ -131,7 +131,7 @@ local function resolve(repo, source, run)
 		return {
 			revision = target,
 			from = range.from,
-			title = range.title .. " (nearest first-parent bookmark)",
+			title = range.title .. " (nearest first-parent bookmark or trunk fork point)",
 			source = source,
 		}
 	end
@@ -341,7 +341,7 @@ function M.inspect_file_history(repo, path, callback)
 	inspect(repo, { kind = "file-history", path = path }, callback)
 end
 
---- Selects a local bookmark, then opens its first-parent bookmark range in the shared overview.
+--- Selects a local bookmark, then opens its first-parent bookmark or trunk range in the shared overview.
 function M.pick_bookmark()
 	local repo = root()
 	if not repo then
@@ -362,7 +362,7 @@ function M.pick_bookmark()
 			fzf_opts = {
 				["--delimiter"] = "\t",
 				["--with-nth"] = "2..",
-				["--header"] = "Nearest older first-parent bookmark -> selected bookmark\nEnter: file overview (no patches loaded)",
+				["--header"] = "Nearest older first-parent bookmark or trunk fork point -> selected bookmark\nEnter: file overview (no patches loaded)",
 			},
 			actions = function()
 				return {
