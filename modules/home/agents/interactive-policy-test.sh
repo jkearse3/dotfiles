@@ -14,6 +14,7 @@ ssh_add=$9
 ssh_agent=${10}
 ssh_keygen=${11}
 real_git=${12}
+git_shim=${13}
 workdir=$(mktemp -d)
 test_ssh_agent_pid=
 
@@ -43,7 +44,8 @@ HOME="$workdir/home" \
 	git_askpass=$3
 	ssh_askpass=$4
 	cat_path=$5
-	policy_path="${jj_shim%/*}:${denied%/*}"
+	git_shim=$6
+	policy_path="${git_shim%/*}:${jj_shim%/*}:${denied%/*}"
 
 	[[ "$JJ_EDITOR" == "$denied jj editor" ]]
 	[[ "$GIT_EDITOR" == "$denied git editor" ]]
@@ -62,8 +64,9 @@ HOME="$workdir/home" \
 	[[ "$PATH" == "$policy_path:preserved-path" ]]
 	[[ "$(command -v agent-interactive-denied)" == "$denied" ]]
 	[[ "$(command -v jj)" == "$jj_shim" ]]
+	[[ "$(command -v git)" == "$git_shim" ]]
 	[[ -z "$(command -v cat || true)" ]]
-' bash "$denied" "$jj_shim" "$git_askpass" "$ssh_askpass" "$cat_path"
+' bash "$denied" "$jj_shim" "$git_askpass" "$ssh_askpass" "$cat_path" "$git_shim"
 
 status=0
 "$ssh_askpass" 'credential-looking prompt: secret' >"$workdir/ssh-stdout" 2>"$workdir/ssh-stderr" || status=$?
@@ -299,5 +302,44 @@ printf 'pushed\n' >"$push_repo/pushed"
 run_agent jj --quiet -R "$push_repo" commit -m pushed
 run_agent jj --quiet -R "$push_repo" bookmark create pushed -r @-
 run_agent jj --quiet -R "$push_repo" bookmark track pushed --remote origin
+run_agent jj --quiet -R "$push_repo" git push --remote origin --bookmark pushed
+[[ $("$real_git" --git-dir "$push_remote" rev-parse pushed) == "$(run_agent jj -R "$push_repo" log --no-graph -r pushed -T 'commit_id')" ]]
+
+# The git shim passes everything but a top-level `push` to the Nix git,
+# including the option-only `--exec-path` query.
+[[ $(run_agent git --version) == "$("$real_git" --version)" ]]
+[[ $(run_agent git --exec-path) == "$("$real_git" --exec-path)" ]]
+
+# A direct git push is blocked however the global options precede it; the
+# remote keeps its ref after each attempt.
+git_push_repo="$workdir/git-push-repo"
+"$real_git" -C "$push_remote" branch -f git-pushed pushed
+remote_before=$("$real_git" --git-dir "$push_remote" rev-parse git-pushed)
+run_agent git init -q -b git-pushed "$git_push_repo"
+run_agent git -C "$git_push_repo" config user.name 'Test User'
+run_agent git -C "$git_push_repo" config user.email test@example.com
+run_agent git -C "$git_push_repo" remote add origin "$push_remote"
+printf 'git push\n' >"$git_push_repo/tracked"
+run_agent git -C "$git_push_repo" add tracked
+run_agent git -C "$git_push_repo" commit -q -m 'git push'
+local_head=$(run_agent git -C "$git_push_repo" rev-parse HEAD)
+# The backticks are literal text in the shim's message.
+# shellcheck disable=SC2016
+git_push_blocked='`git push` is blocked'
+# shellcheck disable=SC2016 # The child shell expands its own positional argument.
+expect_agent_failure "$git_push_blocked" bash -c 'cd "$1" && git push -f origin git-pushed' bash "$git_push_repo"
+expect_agent_failure "$git_push_blocked" git -C "$git_push_repo" push -f origin git-pushed
+expect_agent_failure "$git_push_blocked" git -c push.default=current -C "$git_push_repo" push -f origin git-pushed
+expect_agent_failure "$git_push_blocked" git --git-dir="$git_push_repo/.git" push -f origin git-pushed
+expect_agent_failure "$git_push_blocked" git --git-dir "$git_push_repo/.git" --no-pager push -f origin git-pushed
+[[ $("$real_git" --git-dir "$push_remote" rev-parse git-pushed) == "$remote_before" ]]
+
+GIT_AGENT_ALLOW_PUSH=1 run_agent git -C "$git_push_repo" push -q -f "$push_remote" git-pushed
+[[ $("$real_git" --git-dir "$push_remote" rev-parse git-pushed) == "$local_head" ]]
+
+# Agent jj still publishes with the git shim first on PATH.
+printf 'pushed again\n' >>"$push_repo/pushed"
+run_agent jj --quiet -R "$push_repo" commit -m 'pushed again'
+run_agent jj --quiet -R "$push_repo" bookmark set pushed -r @-
 run_agent jj --quiet -R "$push_repo" git push --remote origin --bookmark pushed
 [[ $("$real_git" --git-dir "$push_remote" rev-parse pushed) == "$(run_agent jj -R "$push_repo" log --no-graph -r pushed -T 'commit_id')" ]]

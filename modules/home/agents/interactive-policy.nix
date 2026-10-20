@@ -66,6 +66,46 @@ let
     '';
   };
 
+  gitShim = pkgs.writeShellApplication {
+    name = "git";
+    text = ''
+      # Agents publish through `jj git push`, which runs the Nix git directly
+      # through `git.executable-path`; a direct `git push` needs the user's
+      # explicit authorization. Any global option the scan does not recognize
+      # ends it, so only an unambiguous `push` subcommand is blocked.
+      subcommand=
+      arguments=("$@")
+      index=0
+      while ((index < ''${#arguments[@]})); do
+        argument=''${arguments[index]}
+        case $argument in
+        -C | -c | --git-dir | --work-tree | --namespace | --config-env | --attr-source)
+          ((index + 1 < ''${#arguments[@]})) || break
+          index=$((index + 2))
+          ;;
+        --git-dir=* | --work-tree=* | --namespace=* | --config-env=* | --attr-source=* | --exec-path | --exec-path=* | \
+          -p | -P | --paginate | --no-pager | --bare | --no-replace-objects | \
+          --literal-pathspecs | --glob-pathspecs | --noglob-pathspecs | --icase-pathspecs | --no-optional-locks)
+          index=$((index + 1))
+          ;;
+        -*)
+          break
+          ;;
+        *)
+          subcommand=$argument
+          break
+          ;;
+        esac
+      done
+
+      if [[ $subcommand == push && ''${GIT_AGENT_ALLOW_PUSH-} != 1 ]]; then
+        echo "git (agent policy): \`git push\` is blocked in a coding-agent session; publish with \`jj git push\`. A direct git push requires the user's explicit authorization for this command (GIT_AGENT_ALLOW_PUSH=1)." >&2
+        exit 1
+      fi
+      exec ${lib.getExe pkgs.git} "$@"
+    '';
+  };
+
   cat = lib.getExe' pkgs.coreutils "cat";
 
   environment = {
@@ -82,6 +122,7 @@ let
   };
 
   path = lib.makeBinPath [
+    gitShim
     jjShim
     agentInteractiveDenied
   ];
@@ -126,7 +167,8 @@ let
           ${lib.getExe' pkgs.openssh "ssh-add"} \
           ${lib.getExe' pkgs.openssh "ssh-agent"} \
           ${lib.getExe' pkgs.openssh "ssh-keygen"} \
-          ${lib.getExe pkgs.git}
+          ${lib.getExe pkgs.git} \
+          ${lib.getExe gitShim}
         touch "$out"
       '';
 in
@@ -134,6 +176,7 @@ in
   inherit
     check
     environment
+    gitShim
     jjShim
     shellExports
     ;
