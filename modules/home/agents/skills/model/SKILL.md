@@ -179,5 +179,6 @@ concepts.>
   being written to `coding-style`, and a full change spec to `shape`.
 - Do not decide a user-owned choice the model surfaces, such as delete semantics
   or a sum type versus a table. Record it as a finding with a recommendation for
-  the caller or user to decide.
+  the caller or user to decide; `shape` asks the user when it invokes `model` in
+  design mode.
 - Ground every claim in inspected evidence; mark inference as inference.

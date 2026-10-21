@@ -75,7 +75,15 @@ Ask only if the subject is absent or could mean materially different changes.
    concept, compare credible names, and ask when the vocabulary is the user's to
    decide. Record settled names under `Decisions`.
 
-5. **Specify.** Derive acceptance criteria from the problem, not the solution:
+5. **Model.** When the chosen solution changes types, schemas, persisted data,
+   or contracts, follow `model` in design mode for it. Resolve each of its
+   findings before continuing: ask a user-owned choice under step 4's rules,
+   revise the solution when a finding shows it admits states the domain forbids,
+   and record a residual hazard under `Risks`. When resolving a finding revises
+   the solution or introduces a durable name, settle each new name under step 4
+   and follow `model` again on the revised solution. Carry the final target
+   model into `Model`. Skip this step when the change touches none of these.
+6. **Specify.** Derive acceptance criteria from the problem, not the solution:
    each is an observable result that shows the problem is solved or an invariant
    preserved, with the command, test, or inspection that proves it. When the
    change creates or alters something a person or system invokes or depends on,
@@ -85,9 +93,10 @@ Ask only if the subject is absent or could mean materially different changes.
    property guaranteed by construction needs no criterion. Then write the
    implementation details that correctness, compatibility, safety, or the user's
    intent depends on: targets, interfaces, data flow, edge and failure handling,
-   compatibility and migration. Name exact files and symbols only when grounding
-   established them. Leave revision sequencing to the implementer.
-6. **Isolation pass.** Reread the spec as a fresh implementer holding only it
+   compatibility and migration. Reference `Model` for types, relationships, and
+   migrations rather than restating it. Name exact files and symbols only when
+   grounding established them. Leave revision sequencing to the implementer.
+7. **Isolation pass.** Reread the spec as a fresh implementer holding only it
    and its named sources. They must be able to state the problem, the chosen
    solution and why, what is excluded, every settled decision, what to build,
    and how to prove it is done. Fix gaps; do not pad sections to look complete.
@@ -139,6 +148,13 @@ and the cause when it differs from the symptom.>
 - <Optional: `<durable name>`: one-sentence meaning, including null, empty, or
   default semantics. Rejected: `<alternative>` (<why it misleads>).>
 
+## Model
+
+<Optional: the target model from `model`, as a delta from the current model:
+concepts across layers, relationships, invariant enforcement, lifecycles, key
+signatures and call paths, and change impact. Resolve its findings into
+`Decisions`, `Solution`, or `Risks` rather than copying them here.>
+
 ## Acceptance Criteria
 
 - <Observable result or preserved invariant.> Proven by: <command, test, or
@@ -172,8 +188,8 @@ disguise assumptions as a complete spec. `Readiness` describes the spec when
 written, not task progress. `implement` takes the title and desired behavior as
 the outcome, `Acceptance Criteria` as the criteria, `Excluded` as the
 exclusions, `Solution` with its `Alternatives Considered` and `Decisions` as the
-settled decisions, and `Constraints`, `Implementation`, and the prevention in
-`Risks` as binding requirements, so keep each self-contained.
+settled decisions, and `Constraints`, `Model`, `Implementation`, and the
+prevention in `Risks` as binding requirements, so keep each self-contained.
 
 After a `Ready` spec, offer the next step in one line: `implement` with this
 spec, or `notes` to keep it. After a `Blocked` spec, offer to resume on the open
