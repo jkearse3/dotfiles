@@ -7,7 +7,6 @@ description: >-
   verified and ready to commit or when existing unpublished history needs
   shaping. Not for producing or repairing repository content, verification,
   review, publication, or releases.
-argument-hint: "[verified working changes | explicit mutable history set]"
 ---
 
 # Finalize Changes
@@ -19,11 +18,7 @@ Preserve the aggregate tree and leave a clean post-finalization state.
 
 ## Input
 
-```text
-$ARGUMENTS
-```
-
-Infer and confirm:
+From the user's request and context, infer and confirm:
 
 - **Target**: verified working changes, or an explicit mutable history set. Do
   not infer a history rewrite boundary from unrelated ancestry.

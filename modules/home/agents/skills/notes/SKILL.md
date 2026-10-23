@@ -6,7 +6,6 @@ description: >-
   Use when the user asks to leave or jot a note, drop a doc in the notebook, or
   come back to a prior note. Not for capturing something the user did not ask to
   keep.
-argument-hint: "[note topic, or find/read <topic>]"
 ---
 
 # Notes
@@ -21,13 +20,9 @@ return to. They carry no schema and no lifecycle. A note records knowledge to
 revisit — not work to execute, not a task to resume elsewhere, and not a
 question answered inline. Write one only when the user asks to keep something.
 
-## Arguments
+## Input
 
-```text
-$ARGUMENTS
-```
-
-Interpret `$ARGUMENTS` and recent conversation as natural language:
+Interpret the user's request and recent conversation as natural language:
 
 - Create by default when the user asks to leave, jot, write, or save a note or
   document. Infer the topic from the request and conversation.

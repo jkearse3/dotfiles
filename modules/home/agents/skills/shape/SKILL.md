@@ -10,7 +10,6 @@ description: >-
   questions where no change is requested (use investigate), pressure-testing a
   plan or decision without producing a spec (use interrogate), implementation,
   or saving the result.
-argument-hint: "[the change to shape, or where its description lives]"
 ---
 
 # Shape
@@ -22,14 +21,11 @@ no implementation.
 
 ## Input
 
-```text
-$ARGUMENTS
-```
-
-Accept the input in whatever form it arrives: a request, ticket, issue, idea,
-note, bug report, or the conversation. Take from it the stated goal,
-constraints, exclusions, and decisions already made, and preserve their wording.
-Ask only if the subject is absent or could mean materially different changes.
+Take the change to shape from the user's request and context, in whatever form
+it arrives: a request, ticket, issue, idea, note, bug report, or the
+conversation. Draw from it the stated goal, constraints, exclusions, and
+decisions already made, and preserve their wording. Ask only if the subject is
+absent or could mean materially different changes.
 
 ## Method
 

@@ -8,7 +8,6 @@ description: >-
   build, or carry out a change from any input: a request, issue, plan, note, or
   spec. Not for one-off fixes to finalized revisions, read-only investigation or
   review, Git-only checkouts, or publication.
-argument-hint: "[what to implement, or where its description lives]"
 ---
 
 # Implement
@@ -20,16 +19,12 @@ editing; if the host cannot start fresh agents, stop and report.
 
 ## Input
 
-```text
-$ARGUMENTS
-```
-
-Accept the input in whatever form it arrives: the request itself, a file, an
-issue, a note, a plan, a spec, or the conversation. Take from it the outcome,
-explicit criteria, exclusions, settled decisions, and binding requirements such
-as constraints and prescribed implementation details, and preserve their
-wording. Read a referenced artifact only as far as needed to hand it on; do not
-explore the codebase here.
+Take what to implement from the user's request and context, in whatever form it
+arrives: the request itself, a file, an issue, a note, a plan, a spec, or the
+conversation. Draw from it the outcome, explicit criteria, exclusions, settled
+decisions, and binding requirements such as constraints and prescribed
+implementation details, and preserve their wording. Read a referenced artifact
+only as far as needed to hand it on; do not explore the codebase here.
 
 Require a jj repository with an empty `@` and no unrelated working changes.
 Record `@-` as the stack base, establish a task-owned bookmark on `@` before the

@@ -4,8 +4,6 @@ description:
   Summarizes code changes for a revision, commit, jj change ID, bookmark,
   branch, PR, diff command, or working tree; use when the user asks for a
   summary of changes.
-argument-hint:
-  "branch changes | working changes | jj diff --from main | revision <rev>"
 ---
 
 # Diff Summarize
@@ -14,11 +12,8 @@ Analyze code changes and produce a structured technical summary.
 
 ## Input
 
-```
-$ARGUMENTS
-```
-
-The input is free-form natural language. Interpret it to determine:
+The input is the user's request, in free-form natural language. Interpret it to
+determine:
 
 1. **What to summarize** — a literal diff command, a description of what to
    summarize, or both. If the input contains a runnable diff command, use it

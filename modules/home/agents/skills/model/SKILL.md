@@ -9,7 +9,6 @@ description: >-
   for open questions beyond the model (use investigate), types local to code
   being written (use coding-style), a full change spec (use shape), or
   implementation.
-argument-hint: "[the system or area to model, or the change to design for]"
 ---
 
 # Model
@@ -22,16 +21,12 @@ one. Modeling is read-only and authorizes no implementation.
 
 ## Input
 
-```text
-$ARGUMENTS
-```
-
-Accept the input in whatever form it arrives: a system, area, concept, proposed
-change, spec draft, or the conversation. Take from it the subject, the layers in
-scope, and any decisions already made, and preserve their wording. Choose
-understand mode when the request is to map or audit what exists, and design mode
-when it proposes a change. Ask only if the subject is absent or the mode could
-mean materially different results.
+Take the input from the user's request and context, in whatever form it arrives:
+a system, area, concept, proposed change, spec draft, or the conversation. Draw
+from it the subject, the layers in scope, and any decisions already made, and
+preserve their wording. Choose understand mode when the request is to map or
+audit what exists, and design mode when it proposes a change. Ask only if the
+subject is absent or the mode could mean materially different results.
 
 ## Method
 

@@ -4,7 +4,6 @@ description: >-
   Create or execute a concise, self-contained prompt for a fresh session. Use
   when the user asks for a handoff, wants to resume in a new session, or
   explicitly asks to execute a handoff file.
-argument-hint: "[next-session goal or execute <path>]"
 ---
 
 # Handoff
@@ -14,13 +13,9 @@ handoff is an ignored, ordinary Markdown prompt, not workflow state.
 
 Creating a handoff never authorizes the work described by its prompt.
 
-## Arguments
+## Input
 
-```text
-$ARGUMENTS
-```
-
-Interpret `$ARGUMENTS` and recent conversation as natural language:
+Interpret the user's request and recent conversation as natural language:
 
 - Create by default. Infer one next-session goal from the recent conversation.
   Ask one focused question only when no single goal is safely inferable.
