@@ -199,8 +199,9 @@ settled decisions, and `Constraints`, `Model`, `Implementation`, and the
 prevention in `Risks` as binding requirements, so keep each self-contained.
 
 After a `Ready` spec, offer the next step in one line: `implement` with this
-spec, or `notes` to keep it. After a `Blocked` spec, offer to resume on the open
-questions, or `notes` to keep it. Do not take any step unasked.
+spec, `ticket` to condense it into a ticket, or `notes` to keep it. After a
+`Blocked` spec, offer to resume on the open questions, or `notes` to keep it. Do
+not take any step unasked.
 
 ## Boundaries
 
