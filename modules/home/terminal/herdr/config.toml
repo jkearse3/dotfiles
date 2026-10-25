@@ -26,3 +26,11 @@ key = "prefix+ctrl+q"
 type = "plugin_action"
 command = "dotfiles.jj-workspaces.remove"
 description = "remove jj workspace"
+
+# Fuzzy finder over agents and workspaces, from the dotfiles.find plugin. The
+# built-in go-to stays on prefix+g.
+[[keys.command]]
+key = "prefix+f"
+type = "plugin_action"
+command = "dotfiles.find.open"
+description = "find"

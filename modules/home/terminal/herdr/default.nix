@@ -7,6 +7,7 @@
 }:
 let
   plugins = [
+    dotfilesPackages.herdr-find
     dotfilesPackages.herdr-jj-workspaces
     dotfilesPackages.herdr-worktree-bootstrap
   ];
@@ -31,6 +32,7 @@ in
   home = {
     packages = [
       dotfilesPackages.herdr
+      dotfilesPackages.herdr-find.cli
       dotfilesPackages.herdr-jj-workspaces.cli
       completions
     ];
