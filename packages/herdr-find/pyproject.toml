@@ -1,0 +1,15 @@
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "herdr-find"
+version = "0.0.0"
+description = "Find and jump to Herdr agents and workspaces"
+requires-python = ">=3.11"
+
+[project.scripts]
+herdr-find = "herdr_find.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
