@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import os
 import re
+import shlex
 import shutil
 import subprocess
 import tempfile
@@ -13,10 +14,13 @@ from typing import final, override
 
 CLI = os.environ["HERDR_FIND"]
 
+PICKER_KEY_HINTS = "ctrl-a agents  ctrl-w workspaces  ctrl-r refresh  ctrl-o preview  ctrl-u/ctrl-d scroll preview"
+
 # Records each call, one per line, and answers agent, workspace, tab, and pane
 # list with $HERDR_STUB_AGENTS, $HERDR_STUB_WORKSPACES, $HERDR_STUB_TABS, and
 # $HERDR_STUB_PANES, each a JSON list placed under the reply's result, ignoring
-# any --workspace filter; agent read prints $HERDR_STUB_AGENT_OUTPUT. The call
+# any --workspace filter; agent read prints $HERDR_STUB_AGENT_OUTPUT; agent
+# focus, workspace focus, and plugin pane open succeed. The call
 # named by $HERDR_STUB_FAIL, such as "agent list", fails as Herdr does, writing
 # $HERDR_STUB_ERROR (by default a plain message) to stderr.
 HERDR_STUB = """\
@@ -37,6 +41,8 @@ case "$1 $2" in
     printf '{"result":{"type":"tab_list","tabs":%s}}\\n' "$HERDR_STUB_TABS" ;;
   "pane list")
     printf '{"result":{"type":"pane_list","panes":%s}}\\n' "$HERDR_STUB_PANES" ;;
+  "agent focus"|"workspace focus"|"plugin pane")
+    printf '{"result":{"type":"ok"}}\\n' ;;
   *)
     exit 2 ;;
 esac
@@ -333,6 +339,8 @@ class HerdrFindRowsTests(HerdrStubTestCase):
         self.assertIn("/srv/x y", lines[1])
 
     def test_herdr_failure_exits_non_zero_with_error(self) -> None:
+        # The message names the call as "herdr ...", not by $HERDR_BIN_PATH,
+        # here the stub's temporary path.
         for call in ("agent list", "workspace list", "pane list"):
             with self.subTest(call=call):
                 result = self.run_rows(
@@ -340,12 +348,12 @@ class HerdrFindRowsTests(HerdrStubTestCase):
                 )
                 self.assertEqual(result.returncode, 1)
                 self.assertEqual(result.stdout, "")
-                self.assertIn(f"{call} failed: herdr: server not running", result.stderr)
+                self.assertEqual(result.stderr, f"error: herdr {call} failed: herdr: server not running\n")
 
     def test_malformed_herdr_reply_exits_non_zero_with_error(self) -> None:
         result = self.run_rows(env={"HERDR_STUB_AGENTS": "not json"})
         self.assertEqual(result.returncode, 1)
-        self.assertIn("returned malformed JSON", result.stderr)
+        self.assertEqual(result.stderr, "error: herdr agent list returned malformed JSON\n")
 
 
 @final
@@ -408,6 +416,252 @@ class HerdrFindPreviewTests(HerdrStubTestCase):
                 self.assertEqual(result.stdout, "")
                 self.assertIn(f"{call} ", result.stderr)
                 self.assertTrue(result.stderr.rstrip().endswith(f"failed: {detail}"), result.stderr)
+
+
+# Stands in for fzf: records its arguments, one per NUL-terminated entry, in
+# $FAKE_FZF_ARGV and its input rows in $FAKE_FZF_INPUT, then prints input row
+# number $FAKE_FZF_CHOICE and exits 0, or, with no choice, exits 130 as fzf does
+# on Esc; $FAKE_FZF_STATUS overrides the exit status.
+FAKE_FZF = """\
+#!/bin/sh
+printf '%s\\0' "$@" > "$FAKE_FZF_ARGV"
+cat > "$FAKE_FZF_INPUT"
+if [ -n "${FAKE_FZF_CHOICE:-}" ]; then
+  sed -n "${FAKE_FZF_CHOICE}p" "$FAKE_FZF_INPUT"
+  exit "${FAKE_FZF_STATUS:-0}"
+fi
+exit "${FAKE_FZF_STATUS:-130}"
+"""
+
+PICK_FIXTURES: Mapping[str, Records] = {
+    "agents": [agent("w1:p1", "blocked", 2), agent("w2:p1", "idle", 1, workspace_id="w2")],
+    "workspaces": [workspace("w1", 1), workspace("w2", 2)],
+}
+
+
+@final
+class HerdrFindPickTests(HerdrStubTestCase):
+    @override
+    def setUp(self) -> None:
+        super().setUp()
+        fake_fzf = self.root / "fzf"
+        _ = fake_fzf.write_text(FAKE_FZF)
+        fake_fzf.chmod(0o755)
+        self.fzf_argv = self.root / "fzf.argv"
+        self.fzf_input = self.root / "fzf.input"
+        self.env |= {
+            "HERDR_FIND_FZF_PATH": str(fake_fzf),
+            "FAKE_FZF_ARGV": str(self.fzf_argv),
+            "FAKE_FZF_INPUT": str(self.fzf_input),
+        }
+        for inherited in ("HERDR_PLUGIN_CONTEXT_JSON", "FZF_DEFAULT_OPTS", "FZF_DEFAULT_OPTS_FILE"):
+            _ = self.env.pop(inherited, None)
+
+    def run_pick(self, env: Mapping[str, str] | None = None) -> subprocess.CompletedProcess[str]:
+        return self.run_cli(["pick"], PICK_FIXTURES, env)
+
+    def fzf_arguments(self) -> list[str]:
+        return self.fzf_argv.read_text().split("\0")[:-1]
+
+    def fzf_input_targets(self) -> list[str]:
+        """Return the targets of the rows given to fzf, after its header line."""
+        header, *listed = self.fzf_input.read_text().splitlines()
+        self.assertEqual(header, f"\t{PICKER_KEY_HINTS}")
+        return [line.split("\t")[0] for line in listed]
+
+    def binding(self, key: str) -> str:
+        """Return the fzf action bound to KEY, failing unless exactly one binding names it."""
+        actions = [
+            argument.removeprefix(f"--bind={key}:")
+            for argument in self.fzf_arguments()
+            if argument.startswith(f"--bind={key}:")
+        ]
+        self.assertEqual(len(actions), 1, self.fzf_arguments())
+        return actions[0]
+
+    def run_shell(self, command: str, env: Mapping[str, str] | None = None) -> subprocess.CompletedProcess[str]:
+        """Run COMMAND as fzf's --with-shell runs a binding's command."""
+        _ = self.log.write_text("")
+        fixtures = {f"HERDR_STUB_{key.upper()}": json.dumps(list(records)) for key, records in PICK_FIXTURES.items()}
+        return subprocess.run(
+            ["/bin/sh", "-c", command],
+            env={**self.env, **fixtures, **(env if env is not None else {})},
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+
+    def test_enter_focuses_the_chosen_agent(self) -> None:
+        # Input line 1 is the header line, which fzf does not let the user choose.
+        result = self.run_pick({"FAKE_FZF_CHOICE": "2"})
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(self.herdr_calls(), ["agent list", "workspace list", "agent focus w1:p1"])
+
+    def test_enter_focuses_the_chosen_workspace(self) -> None:
+        result = self.run_pick({"FAKE_FZF_CHOICE": "5"})
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(self.herdr_calls(), ["agent list", "workspace list", "workspace focus w2"])
+
+    def test_closing_without_a_choice_changes_nothing(self) -> None:
+        for status in ("1", "130"):
+            with self.subTest(status=status):
+                result = self.run_pick({"FAKE_FZF_STATUS": status})
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertEqual(result.stderr, "")
+                self.assertEqual(self.herdr_calls(), ["agent list", "workspace list"])
+
+    def test_focus_failure_is_shown_until_enter(self) -> None:
+        error = '{"error":{"code":"pane_not_found","message":"pane w1:p1 not found"}}'
+        result = self.run_pick({"FAKE_FZF_CHOICE": "2", "HERDR_STUB_FAIL": "agent focus", "HERDR_STUB_ERROR": error})
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("agent focus w1:p1 failed: pane w1:p1 not found", result.stderr)
+        self.assertTrue(result.stderr.endswith("Press enter to close."), result.stderr)
+
+    def test_listing_failure_is_shown_without_opening_fzf(self) -> None:
+        result = self.run_pick({"HERDR_STUB_FAIL": "agent list"})
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("agent list failed: herdr: server not running", result.stderr)
+        self.assertTrue(result.stderr.endswith("Press enter to close."), result.stderr)
+        self.assertFalse(self.fzf_argv.exists())
+
+    def test_fzf_failure_is_shown(self) -> None:
+        result = self.run_pick({"FAKE_FZF_STATUS": "2"})
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("fzf exited with status 2", result.stderr)
+        self.assertEqual(self.herdr_calls(), ["agent list", "workspace list"])
+
+    def test_caller_comes_from_the_plugin_context(self) -> None:
+        context = json.dumps({"workspace_id": "w1", "focused_pane_id": "w1:p1", "tab_id": "w1:t1"})
+        result = self.run_pick({"HERDR_PLUGIN_CONTEXT_JSON": context})
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(self.fzf_input_targets(), ["agent:w2:p1", "agent:w1:p1", "workspace:w2", "workspace:w1"])
+        self.assertTrue(
+            self.binding("ctrl-r").endswith(" reload-action refresh --caller-workspace w1 --caller-pane w1:p1"),
+            self.binding("ctrl-r"),
+        )
+
+    def test_missing_or_malformed_plugin_context_means_no_caller(self) -> None:
+        contexts = [None, "", "not json", "[]", '{"workspace_id": 5, "focused_pane_id": null}']
+        for context in contexts:
+            with self.subTest(context=context):
+                env = {} if context is None else {"HERDR_PLUGIN_CONTEXT_JSON": context}
+                result = self.run_pick(env)
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertEqual(
+                    self.fzf_input_targets(), ["agent:w1:p1", "agent:w2:p1", "workspace:w1", "workspace:w2"]
+                )
+                self.assertTrue(self.binding("ctrl-r").endswith(" reload-action refresh"), self.binding("ctrl-r"))
+
+    def test_fzf_searches_the_display_and_keeps_default_movement(self) -> None:
+        result = self.run_pick()
+        self.assertEqual(result.returncode, 0, result.stderr)
+        arguments = self.fzf_arguments()
+        options = ("--delimiter=\t", "--with-nth=2..", "--header-lines=1", "--ansi", "--tiebreak=index")
+        for option in (*options, "--with-shell=/bin/sh -c"):
+            self.assertIn(option, arguments)
+        self.assertEqual(self.binding("ctrl-o"), "toggle-preview")
+        self.assertEqual(self.binding("ctrl-u"), "preview-half-page-up")
+        self.assertEqual(self.binding("ctrl-d"), "preview-half-page-down")
+        for key in ("ctrl-j", "ctrl-k"):
+            self.assertFalse(any(key in argument for argument in arguments), arguments)
+
+    def test_preview_command_previews_the_row_target(self) -> None:
+        _ = self.run_pick()
+        previews = [
+            argument.removeprefix("--preview=")
+            for argument in self.fzf_arguments()
+            if argument.startswith("--preview=")
+        ]
+        self.assertEqual(len(previews), 1)
+        # fzf substitutes {1}, the row's target, as a single-quoted word.
+        result = self.run_shell(previews[0].replace("{1}", "'agent:w1:p1'"), {"HERDR_STUB_AGENT_OUTPUT": "out\n"})
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(result.stdout, "out\n")
+        self.assertEqual(self.herdr_calls(), ["agent read w1:p1 --source recent-unwrapped --lines 40"])
+
+    def test_filter_keys_toggle_and_refresh_keeps_the_filter(self) -> None:
+        _ = self.run_pick()
+        cases = [
+            # key, current prompt, prompt after the key, rows listed after it
+            ("ctrl-a", "> ", "agents> ", ["agent:w1:p1", "agent:w2:p1"]),
+            ("ctrl-a", "agents> ", "> ", ["agent:w1:p1", "agent:w2:p1", "workspace:w1", "workspace:w2"]),
+            ("ctrl-a", "workspaces> ", "agents> ", ["agent:w1:p1", "agent:w2:p1"]),
+            ("ctrl-w", "> ", "workspaces> ", ["workspace:w1", "workspace:w2"]),
+            ("ctrl-w", "workspaces> ", "> ", ["agent:w1:p1", "agent:w2:p1", "workspace:w1", "workspace:w2"]),
+            ("ctrl-r", "agents> ", None, ["agent:w1:p1", "agent:w2:p1"]),
+            ("ctrl-r", "> ", None, ["agent:w1:p1", "agent:w2:p1", "workspace:w1", "workspace:w2"]),
+        ]
+        for key, prompt, next_prompt, targets in cases:
+            with self.subTest(key=key, prompt=prompt):
+                transform = self.binding(key)
+                self.assertTrue(transform.startswith("transform:"), transform)
+                result = self.run_shell(transform.removeprefix("transform:"), {"FZF_PROMPT": prompt})
+                self.assertEqual(result.returncode, 0, result.stderr)
+                action = result.stdout.rstrip("\n")
+                prompt_action, separator, reload_command = action.rpartition("reload:")
+                self.assertEqual(separator, "reload:", action)
+                expected_prompt_action = "" if next_prompt is None else f"change-prompt({next_prompt})+"
+                self.assertEqual(prompt_action, expected_prompt_action)
+                listed = self.run_shell(reload_command)
+                self.assertEqual(listed.returncode, 0, listed.stderr)
+                header, *rows = listed.stdout.splitlines()
+                self.assertEqual(header, f"\t{PICKER_KEY_HINTS}")
+                self.assertEqual([line.split("\t")[0] for line in rows], targets)
+
+    def reload_command(self, key: str) -> str:
+        """Return the rows command KEY's binding reloads with, from the unfiltered picker."""
+        transform = self.binding(key).removeprefix("transform:")
+        action = self.run_shell(transform, {"FZF_PROMPT": "> "}).stdout.rstrip("\n")
+        return action.rpartition("reload:")[2]
+
+    def test_reload_failure_is_shown_in_the_header_line(self) -> None:
+        # fzf drops a reload's stderr and keeps the query, which could filter
+        # out an error row, but never filters the header line.
+        _ = self.run_pick()
+        self.assertIn("--header-lines=1", self.fzf_arguments())
+        failure = {"HERDR_STUB_FAIL": "agent list", "HERDR_STUB_ERROR": "server\tnot\nrunning"}
+        for key in ("ctrl-r", "ctrl-a", "ctrl-w"):
+            with self.subTest(key=key):
+                listed = self.run_shell(self.reload_command(key), failure)
+                self.assertEqual(listed.returncode, 0, listed.stderr)
+                lines = listed.stdout.splitlines()
+                self.assertEqual(len(lines), 1, lines)
+                target, display = lines[0].split("\t")
+                self.assertEqual(target, "")
+                shown = ANSI_ESCAPE.sub("", display)
+                self.assertEqual(shown, "error: herdr agent list failed: server not running")
+
+    def test_real_fzf_never_chooses_the_header_line(self) -> None:
+        # --filter prints the rows matching a query without a terminal. The
+        # query matches only the header line, so no row matches.
+        env = {"HERDR_FIND_FZF_PATH": "", "FZF_DEFAULT_OPTS": "--filter=" + shlex.quote("'ctrl-a agents")}
+        result = self.run_pick(env)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(result.stderr, "")
+        self.assertEqual(self.herdr_calls(), ["agent list", "workspace list"])
+
+    def test_real_fzf_accepts_the_options_and_prints_the_chosen_row(self) -> None:
+        # --filter makes fzf print the rows matching a query without a terminal,
+        # after parsing every picker option; the picker focuses the first.
+        env = {"HERDR_FIND_FZF_PATH": "", "FZF_DEFAULT_OPTS": "--filter=" + shlex.quote("'/srv/w2")}
+        result = self.run_pick(env)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(self.herdr_calls(), ["agent list", "workspace list", "workspace focus w2"])
+
+
+@final
+class HerdrFindOpenPopupTests(HerdrStubTestCase):
+    def test_opens_the_entrypoint_as_a_focused_plugin_pane(self) -> None:
+        result = self.run_cli(["open-popup", "picker"], env={"HERDR_PLUGIN_ID": "dotfiles.find"})
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(self.herdr_calls(), ["plugin pane open --plugin dotfiles.find --entrypoint picker --focus"])
+
+    def test_requires_a_plugin_id(self) -> None:
+        _ = self.env.pop("HERDR_PLUGIN_ID", None)
+        result = self.run_cli(["open-popup", "picker"])
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("HERDR_PLUGIN_ID is not set", result.stderr)
+        self.assertEqual(self.herdr_calls(), [])
 
 
 if __name__ == "__main__":
