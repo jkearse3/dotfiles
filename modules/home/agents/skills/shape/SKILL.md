@@ -96,10 +96,17 @@ Ask only if the subject is absent or could mean materially different changes.
    compatibility and migration. Reference `Model` for types, relationships, and
    migrations rather than restating it. Name exact files and symbols only when
    grounding established them. Leave revision sequencing to the implementer.
-7. **Isolation pass.** Reread the spec as a fresh implementer holding only it
-   and its named sources. They must be able to state the problem, the chosen
-   solution and why, what is excluded, every settled decision, what to build,
-   and how to prove it is done. Fix gaps; do not pad sections to look complete.
+7. **Isolation pass.** Dispatch a fresh read-only reader holding only the spec
+   draft and access to its named sources, not this conversation. It makes no
+   edits, VCS mutations, user-owned decisions, or further delegation. It
+   restates the problem, the chosen solution and why, what is excluded, every
+   settled decision, what to build, and how to prove it is done, and returns
+   each point it could not state or had to guess, with the spec section at
+   fault. If the host cannot start a fresh agent, reread the spec in that role
+   yourself. Fix each gap from evidence or settled decisions; take a gap that
+   needs a user-owned choice back to step 4. Repeat the pass with another fresh
+   reader only when a fix changed `Solution`, `Decisions`, or
+   `Acceptance Criteria`. Do not pad sections to look complete.
 
 ## Output
 
