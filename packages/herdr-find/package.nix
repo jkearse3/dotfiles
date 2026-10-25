@@ -21,6 +21,7 @@ pkgs.python3Packages.buildPythonApplication {
     HERDR_FIND="$out/bin/herdr-find" \
       python3 -B -m unittest discover -s tests -p 'test_*.py'
     "$out/bin/herdr-find" rows --help > /dev/null
+    "$out/bin/herdr-find" preview --help > /dev/null
     runHook postInstallCheck
   '';
 }

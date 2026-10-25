@@ -5,6 +5,8 @@ most in need of attention first, then workspaces in sidebar order. Each row is
 ``TARGET<TAB>DISPLAY``, where TARGET is ``agent:<pane_id>`` or
 ``workspace:<workspace_id>`` and DISPLAY is the text a picker shows and
 searches.
+
+``preview TARGET`` prints what a picker shows beside the selected row.
 """
 
 from __future__ import annotations
@@ -217,6 +219,80 @@ def _status_rank(status: str) -> int:
     return AGENT_STATUS_ORDER.index(known)
 
 
+TargetKind = Literal["agent", "workspace"]
+
+
+@dataclass(frozen=True)
+class Target:
+    """A row's TARGET field: the agent pane or workspace the row stands for."""
+
+    kind: TargetKind
+    id: str
+
+
+def parse_target(text: str) -> Target:
+    """Return the target TEXT names, ``agent:<pane_id>`` or ``workspace:<workspace_id>``.
+
+    Raises FindError when TEXT has neither prefix or names no ID.
+    """
+    if text.startswith(AGENT_TARGET_PREFIX) and text != AGENT_TARGET_PREFIX:
+        return Target(kind="agent", id=text.removeprefix(AGENT_TARGET_PREFIX))
+    if text.startswith(WORKSPACE_TARGET_PREFIX) and text != WORKSPACE_TARGET_PREFIX:
+        return Target(kind="workspace", id=text.removeprefix(WORKSPACE_TARGET_PREFIX))
+    raise FindError(f"malformed target {text!r}: expected agent:PANE_ID or workspace:WORKSPACE_ID")
+
+
+# Lines of recent terminal output an agent's preview shows.
+AGENT_PREVIEW_LINES = 40
+
+
+def preview(target: Target) -> str:
+    """Return the preview text for TARGET's row.
+
+    An agent's preview is its recent terminal output as Herdr reports it. A
+    workspace's preview lists its tabs, each followed by its panes' agent (or
+    "shell" when none runs), status, and title. Raises FindError when a herdr
+    call fails.
+    """
+    if target.kind == "agent":
+        line_count = str(AGENT_PREVIEW_LINES)
+        return _herdr_text("agent", "read", target.id, "--source", "recent-unwrapped", "--lines", line_count)
+    return "".join(f"{line}\n" for line in _workspace_preview(target.id))
+
+
+def _workspace_preview(workspace_id: str) -> list[str]:
+    tabs = _herdr_list("tabs", "tab", "list", "--workspace", workspace_id)
+    panes = _herdr_list("panes", "pane", "list", "--workspace", workspace_id)
+
+    pane_rows = [
+        (
+            _string(pane.get("tab_id")),
+            [
+                (_text_or(sanitize(_string(pane.get("agent"))), "shell"), ""),
+                _status_cell(_agent_status(sanitize(_string(pane.get("agent_status"))))),
+                (sanitize(_string(pane.get("terminal_title_stripped"))), ""),
+            ],
+        )
+        for pane in panes
+    ]
+    # Align agent and status across all of the workspace's panes; the title is last.
+    widths = [max((len(cells[index][0]) for _tab_id, cells in pane_rows), default=0) for index in range(2)] + [0]
+
+    lines: list[str] = []
+    for tab in tabs:
+        tab_id = _string(tab.get("tab_id"))
+        lines.append(_coloured(_text_or(sanitize(_string(tab.get("label"))), sanitize(tab_id)), _BOLD))
+        for pane_tab_id, cells in pane_rows:
+            if pane_tab_id == tab_id:
+                padded = [_coloured(text.ljust(width), colour) for (text, colour), width in zip(cells, widths, strict=True)]
+                lines.append(f"  {_COLUMN_SEPARATOR.join(padded).rstrip()}")
+    return lines
+
+
+def _text_or(text: str, fallback: str) -> str:
+    return text if text != "" else fallback
+
+
 # A display cell: its sanitized text and the SGR escape that colours it, or ""
 # for the terminal's default.
 _Cell = tuple[str, str]
@@ -294,14 +370,36 @@ def _herdr_list(key: str, *arguments: str) -> list[dict[str, object]]:
 
 def _herdr_json(*arguments: str) -> dict[str, object]:
     command = [_herdr(), *arguments]
-    result = _run(command)
-    if result.returncode != 0:
-        detail = result.stderr.strip()
-        raise FindError(f"{shlex.join(command)} failed" + (f": {detail}" if detail != "" else ""))
+    stdout = _herdr_text(*arguments)
     try:
-        return _object(cast(object, json.loads(result.stdout)))
+        return _object(cast(object, json.loads(stdout)))
     except json.JSONDecodeError as error:
         raise FindError(f"{shlex.join(command)} returned malformed JSON") from error
+
+
+def _herdr_text(*arguments: str) -> str:
+    """Return herdr's stdout for ARGUMENTS; raise FindError when it fails."""
+    command = [_herdr(), *arguments]
+    result = _run(command)
+    if result.returncode != 0:
+        detail = _herdr_failure_detail(result)
+        raise FindError(f"{shlex.join(command)} failed" + (f": {detail}" if detail != "" else ""))
+    return result.stdout
+
+
+def _herdr_failure_detail(result: subprocess.CompletedProcess[str]) -> str:
+    """Return why a herdr call failed, from its stderr or else its stdout.
+
+    Herdr reports a failed request as a JSON error reply; its message is used
+    when present, otherwise the output as written.
+    """
+    output = _text_or(result.stderr.strip(), result.stdout.strip())
+    try:
+        reply = _object(cast(object, json.loads(output)))
+    except json.JSONDecodeError:
+        return output
+    message = sanitize(_string(_object(reply.get("error")).get("message")))
+    return message if message != "" else output
 
 
 def _herdr() -> str:
@@ -339,6 +437,11 @@ def _command_rows(arguments: argparse.Namespace) -> int:
     return 0
 
 
+def _command_preview(arguments: argparse.Namespace) -> int:
+    _ = sys.stdout.write(preview(parse_target(cast(str, arguments.target))))
+    return 0
+
+
 def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog=PROGRAM, description="Find and jump to Herdr agents and workspaces.")
     commands = parser.add_subparsers(dest="command", required=True, metavar="COMMAND")
@@ -358,6 +461,18 @@ def _parser() -> argparse.ArgumentParser:
     )
     _ = rows_parser.add_argument("--caller-pane", metavar="ID", default="", help="agent pane to list last among agents")
     rows_parser.set_defaults(handler=_command_rows)
+
+    preview_parser = commands.add_parser(
+        "preview",
+        help="print the preview for one picker row",
+        description=(
+            "Print an agent's recent terminal output, or a workspace's tabs and "
+            "their panes' agents, statuses, and titles. A failure is reported on "
+            "stderr with a non-zero exit status."
+        ),
+    )
+    _ = preview_parser.add_argument("target", metavar="TARGET", help="agent:PANE_ID or workspace:WORKSPACE_ID")
+    preview_parser.set_defaults(handler=_command_preview)
     return parser
 
 

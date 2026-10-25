@@ -13,22 +13,28 @@ from typing import final, override
 
 CLI = os.environ["HERDR_FIND"]
 
-# Records each call, one per line, and answers agent, workspace, and pane list
-# with $HERDR_STUB_AGENTS, $HERDR_STUB_WORKSPACES, and $HERDR_STUB_PANES, each
-# a JSON list placed under the reply's result. The call named by
-# $HERDR_STUB_FAIL, such as "agent list", fails as Herdr does.
+# Records each call, one per line, and answers agent, workspace, tab, and pane
+# list with $HERDR_STUB_AGENTS, $HERDR_STUB_WORKSPACES, $HERDR_STUB_TABS, and
+# $HERDR_STUB_PANES, each a JSON list placed under the reply's result, ignoring
+# any --workspace filter; agent read prints $HERDR_STUB_AGENT_OUTPUT. The call
+# named by $HERDR_STUB_FAIL, such as "agent list", fails as Herdr does, writing
+# $HERDR_STUB_ERROR (by default a plain message) to stderr.
 HERDR_STUB = """\
 #!/bin/sh
 printf '%s\\n' "$*" >> "$HERDR_STUB_LOG"
 if [ "$1 $2" = "${HERDR_STUB_FAIL:-}" ]; then
-  echo "herdr: server not running" >&2
+  printf '%s\\n' "${HERDR_STUB_ERROR:-herdr: server not running}" >&2
   exit 1
 fi
 case "$1 $2" in
   "agent list")
     printf '{"result":{"type":"agent_list","agents":%s}}\\n' "$HERDR_STUB_AGENTS" ;;
+  "agent read")
+    printf '%s' "$HERDR_STUB_AGENT_OUTPUT" ;;
   "workspace list")
     printf '{"result":{"type":"workspace_list","workspaces":%s}}\\n' "$HERDR_STUB_WORKSPACES" ;;
+  "tab list")
+    printf '{"result":{"type":"tab_list","tabs":%s}}\\n' "$HERDR_STUB_TABS" ;;
   "pane list")
     printf '{"result":{"type":"pane_list","panes":%s}}\\n' "$HERDR_STUB_PANES" ;;
   *)
@@ -81,7 +87,9 @@ def workspace(workspace_id: str, number: int | None, **fields: object) -> dict[s
     }
 
 
-def pane(pane_id: str, workspace_id: str, tab_id: str, cwd: str, *, focused: bool = False) -> dict[str, object]:
+def pane(
+    pane_id: str, workspace_id: str, tab_id: str, cwd: str, *, focused: bool = False, **fields: object
+) -> dict[str, object]:
     """Return a pane record shaped like one from ``herdr pane list``."""
     return {
         "agent_status": "unknown",
@@ -91,11 +99,26 @@ def pane(pane_id: str, workspace_id: str, tab_id: str, cwd: str, *, focused: boo
         "tab_id": tab_id,
         "terminal_title_stripped": "~",
         "workspace_id": workspace_id,
+        **fields,
     }
 
 
-@final
-class HerdrFindRowsTests(unittest.TestCase):
+def tab(tab_id: str, label: str, workspace_id: str = "w1") -> dict[str, object]:
+    """Return a tab record shaped like one from ``herdr tab list``."""
+    return {
+        "agent_status": "unknown",
+        "focused": False,
+        "label": label,
+        "number": 1,
+        "pane_count": 1,
+        "tab_id": tab_id,
+        "workspace_id": workspace_id,
+    }
+
+
+class HerdrStubTestCase(unittest.TestCase):
+    """Runs the CLI against the herdr stub in a throwaway home."""
+
     @override
     def setUp(self) -> None:
         self.root = Path(tempfile.mkdtemp())
@@ -113,16 +136,18 @@ class HerdrFindRowsTests(unittest.TestCase):
             "HERDR_STUB_LOG": str(self.log),
             "HERDR_STUB_AGENTS": "[]",
             "HERDR_STUB_WORKSPACES": "[]",
+            "HERDR_STUB_TABS": "[]",
             "HERDR_STUB_PANES": "[]",
+            "HERDR_STUB_AGENT_OUTPUT": "",
         }
 
-    def run_rows(
+    def run_cli(
         self,
-        arguments: Sequence[str] = (),
+        arguments: Sequence[str],
         fixtures: Mapping[str, Records] | None = None,
         env: Mapping[str, str] | None = None,
     ) -> subprocess.CompletedProcess[str]:
-        """Run ``rows`` with the stub answering from FIXTURES: agents, workspaces, or panes."""
+        """Run the CLI with the stub answering from FIXTURES: agents, workspaces, tabs, or panes."""
         _ = self.log.write_text("")
         run_env = dict(self.env)
         if fixtures is not None:
@@ -131,12 +156,26 @@ class HerdrFindRowsTests(unittest.TestCase):
         if env is not None:
             run_env.update(env)
         return subprocess.run(
-            [CLI, "rows", *arguments],
+            [CLI, *arguments],
             env=run_env,
             text=True,
             capture_output=True,
             check=False,
         )
+
+    def herdr_calls(self) -> list[str]:
+        return self.log.read_text().splitlines()
+
+
+@final
+class HerdrFindRowsTests(HerdrStubTestCase):
+    def run_rows(
+        self,
+        arguments: Sequence[str] = (),
+        fixtures: Mapping[str, Records] | None = None,
+        env: Mapping[str, str] | None = None,
+    ) -> subprocess.CompletedProcess[str]:
+        return self.run_cli(["rows", *arguments], fixtures, env)
 
     def rows(self, *arguments: str, **fixtures: Records) -> list[tuple[str, list[str]]]:
         """Return each printed row's target and uncoloured display cells."""
@@ -150,9 +189,6 @@ class HerdrFindRowsTests(unittest.TestCase):
 
     def targets(self, *arguments: str, **fixtures: Records) -> list[str]:
         return [target for target, _cells in self.rows(*arguments, **fixtures)]
-
-    def herdr_calls(self) -> list[str]:
-        return self.log.read_text().splitlines()
 
     def test_rows_show_agent_and_workspace_fields(self) -> None:
         home_project = str(self.home / "src" / "project")
@@ -310,6 +346,68 @@ class HerdrFindRowsTests(unittest.TestCase):
         result = self.run_rows(env={"HERDR_STUB_AGENTS": "not json"})
         self.assertEqual(result.returncode, 1)
         self.assertIn("returned malformed JSON", result.stderr)
+
+
+@final
+class HerdrFindPreviewTests(HerdrStubTestCase):
+    def test_agent_preview_prints_recent_output(self) -> None:
+        output = "line 1\n\x1b[31mline 2\x1b[0m\n"
+        result = self.run_cli(["preview", "agent:w1:p1"], env={"HERDR_STUB_AGENT_OUTPUT": output})
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(result.stdout, output)
+        self.assertEqual(self.herdr_calls(), ["agent read w1:p1 --source recent-unwrapped --lines 40"])
+
+    def test_workspace_preview_lists_tabs_and_their_panes(self) -> None:
+        tabs = [tab("w1:t1", "editor"), tab("w1:t2", ""), tab("w1:t3", "empty")]
+        panes = [
+            pane("w1:p1", "w1", "w1:t1", "/srv", agent="claude", agent_status="blocked", terminal_title_stripped="Fix"),
+            pane("w1:p2", "w1", "w1:t2", "/srv", terminal_title_stripped="~/dotfiles"),
+            pane("w1:p3", "w1", "w1:t1", "/srv", agent="codex", agent_status="working", terminal_title_stripped="a\tb"),
+            pane("w1:p4", "w1", "w1:t1", "/srv", agent_status=None, terminal_title_stripped=None),
+        ]
+        result = self.run_cli(["preview", "workspace:w1"], {"tabs": tabs, "panes": panes})
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(
+            ANSI_ESCAPE.sub("", result.stdout).splitlines(),
+            [
+                "editor",
+                "  claude  blocked  Fix",
+                "  codex   working  a b",
+                "  shell   unknown",
+                "w1:t2",
+                "  shell   unknown  ~/dotfiles",
+                "empty",
+            ],
+        )
+        self.assertEqual(self.herdr_calls(), ["tab list --workspace w1", "pane list --workspace w1"])
+
+    def test_malformed_target_is_reported(self) -> None:
+        for target in ("w1:p1", "agent:", "workspace:", ""):
+            with self.subTest(target=target):
+                result = self.run_cli(["preview", target])
+                self.assertEqual(result.returncode, 1)
+                self.assertEqual(result.stdout, "")
+                self.assertIn(f"malformed target {target!r}", result.stderr)
+                self.assertEqual(self.herdr_calls(), [])
+
+    def test_herdr_failure_is_reported(self) -> None:
+        cases = [
+            ("agent:w1:p1", "agent read", "herdr: server not running", "herdr: server not running"),
+            (
+                "workspace:w9",
+                "tab list",
+                '{"error":{"code":"workspace_not_found","message":"workspace w9 not found"}}',
+                "workspace w9 not found",
+            ),
+            ("workspace:w1", "pane list", "herdr: server not running", "herdr: server not running"),
+        ]
+        for target, call, error, detail in cases:
+            with self.subTest(call=call):
+                result = self.run_cli(["preview", target], env={"HERDR_STUB_FAIL": call, "HERDR_STUB_ERROR": error})
+                self.assertEqual(result.returncode, 1)
+                self.assertEqual(result.stdout, "")
+                self.assertIn(f"{call} ", result.stderr)
+                self.assertTrue(result.stderr.rstrip().endswith(f"failed: {detail}"), result.stderr)
 
 
 if __name__ == "__main__":
