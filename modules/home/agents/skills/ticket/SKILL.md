@@ -64,8 +64,8 @@ as a level-one heading, so it can be pasted or passed to a tracker as is.
 
 ## Acceptance Criteria
 
-- [ ] <Observable result that shows the problem is solved.>
-- [ ] <Invariant that must still hold.>
+- <Observable result that shows the problem is solved.>
+- <Invariant that must still hold.>
 
 ## Out of Scope
 
@@ -131,9 +131,9 @@ list the open choices under `Open Questions`.
 
 ### Acceptance Criteria
 
-Write each criterion as a checkbox with an observable result, such as "Retrying
-a failed charge sends exactly one invoice email," not an activity such as "Add
-an idempotency key." Derive criteria from the problem, not from the solution, so
+Write each criterion as a bullet with an observable result, such as "Retrying a
+failed charge sends exactly one invoice email," not an activity such as "Add an
+idempotency key." Derive criteria from the problem, not from the solution, so
 that a different valid implementation still satisfies them. Include an invariant
 only when breaking it is a credible risk. Keep the list short. When it grows
 past about seven items, check whether the ticket should be split.
