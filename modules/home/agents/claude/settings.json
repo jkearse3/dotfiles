@@ -29,6 +29,9 @@
     }
   },
   "promptSuggestionEnabled": false,
+  "skillOverrides": {
+    "anthropic-skills:skill-creator": "off"
+  },
   "tui": "fullscreen",
   "autoMemoryEnabled": false,
   "idleCompaction": false,

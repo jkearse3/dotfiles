@@ -90,6 +90,7 @@ let
     "modelSettings.claude-opus-5-5.effortLevel"
     "outputStyle"
     "promptSuggestionEnabled"
+    "skillOverrides.anthropic-skills:skill-creator"
     "skipAutoPermissionPrompt"
     "theme"
     "tui"
