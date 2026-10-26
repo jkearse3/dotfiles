@@ -5,7 +5,8 @@ description: >-
   fetching its head into a local jj repository and running diff-review on the
   whole PR against its tickets and existing review feedback. Use when the user
   asks to review a PR by number or URL, including dependency-bump PRs from
-  Renovate or Dependabot. Not for local-only targets, fixes, or posting reviews.
+  Renovate or Dependabot. Not for local-only targets, addressing review feedback
+  (use pr-feedback), or posting reviews.
 ---
 
 # PR Review
