@@ -123,9 +123,9 @@ no draft.
 
 ## Fix
 
-Place each `fix` item before fixing it. Only the three sequencing rules the
-prerequisite bullet names come from `implement`'s Brief Size; the squash default
-and these placements override the rest of that section:
+Place each `fix` item before fixing it, bounding revisions and placing inserted
+ones by `finalize-changes`' Sequencing section. Keep the existing PR revisions
+in their order; the squash default and these placements set the granularity:
 
 - **Squash**, the default: the fix lands in its owning revision, which keeps the
   history that merges into main clean. A fix that touches code several PR
@@ -135,13 +135,13 @@ and these placements override the rest of that section:
   introduced never becomes a prerequisite revision, even a mechanical one; it
   squashes unless New revision applies.
 - **Prerequisite revision**, when the fix needs a change to code that predates
-  the PR, of a kind those three rules give its own revision: a
-  behavior-preserving refactor that makes room for it, a mechanical change such
-  as a rename, move, or dependency bump, or internals that a PR revision then
-  wires in. Insert it immediately before the first PR revision that relies on
-  it, with `jj new --insert-before <rev>`, unless another revision must come
-  between them. The rest of the fix still squashes into its owning revision, and
-  the two form one unit for the item.
+  the PR, of a kind Sequencing gives its own revision: a behavior-preserving
+  refactor that makes room for it, a mechanical change such as a rename, move,
+  or dependency bump, or internals that a PR revision then wires in. Insert it
+  immediately before the first PR revision that relies on it, with
+  `jj new --insert-before <rev>`, unless another revision must come between
+  them. The rest of the fix still squashes into its owning revision, and the two
+  form one unit for the item.
 - **New revision**, only when the item is a clear behavior miss or behavior
   change that no PR revision owns cleanly, so squashing it would blur an owning
   revision's concern. Insert it right after the latest PR revision it depends on

@@ -92,24 +92,17 @@ the briefs before and after its own. Those are earlier conclusions, reopened
 only when the current code shows their reason no longer holds. Implementer
 prompts give the absolute paths of `briefs.md` and `implementer.md` and name the
 brief instead of repeating their contents. Planner prompts give the path of
-`briefs.md` for the input and brief list, and the `Brief Size` rules verbatim
-inline, since no run file holds them.
+`briefs.md` for the input and brief list, and the `Brief Size` rules and
+`finalize-changes`' Sequencing section verbatim inline, since no run file holds
+them.
 
 ## Brief Size
 
-Give each brief one concern, and split until a further split would leave a
-revision that cannot build or pass its checks alone. Every brief is safe to land
-on main by itself and relies on no later brief.
-
-- Put a behavior-preserving refactor that makes room for a change in its own
-  brief, placed immediately before the first brief that relies on it unless
-  another brief must come between them.
-- Keep mechanical changes such as renames, moves, formatting, and dependency
-  bumps apart from logic changes.
-- Land internals before the brief that wires them in or exposes them.
-- Give each user-visible change its own brief when it can land independently.
-- Keep code, tests, documentation, and configuration with the concern that needs
-  them; never split them into briefs of their own.
+Give each brief one concern, and split by concern, not by file type or layer,
+until a further split would leave a revision that cannot build or pass its
+checks alone. Give each user-visible change its own brief when it can land
+independently. Bound and order briefs by `finalize-changes`' Sequencing section,
+so every brief is safe to land on main by itself and relies on no later brief.
 
 Recheck a brief that touches many unrelated files or mixes concerns, and split
 it or state why it cannot be split.

@@ -104,16 +104,8 @@ unpublished, task-owned commit set authorized for rewrite.
   commits with uncertain ownership. Never perform the rewrite in the user's
   current worktree.
 
-- Preserve commit dependencies and use the fewest coherent, independently valid
-  commits. No commit may knowingly rely on a descendant commit to build, pass
-  its applicable checks, preserve required behavior, or be safe to deploy and
-  use if history stops there. Land internals before the change that exposes
-  them, add a replacement safeguard before removing the original, keep
-  interfaces usable by consumers the commit cannot update, and keep persisted
-  state the parent commit produced usable or migrate it within the commit. A
-  breaking change to interfaces or persisted state is exempt from those two
-  requirements only when the user requested or approved it and the commit
-  message declares it. A requested single commit that contains independent
+- Preserve commit dependencies and apply the Sequencing rules in `SKILL.md` with
+  the fewest commits. A requested single commit that contains independent
   concerns is a blocker, not permission to obscure them.
 
 ## Preserve The Tree And Finish

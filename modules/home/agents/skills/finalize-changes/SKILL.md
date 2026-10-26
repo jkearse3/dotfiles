@@ -40,17 +40,15 @@ user-authored, pre-existing, or uncertain history without explicit authority.
    branches, publication state, and full existing descriptions. Resolve the
    immutable base and the complete target tree before mutation.
 2. Analyze the effective diff, changed files, dependencies, and existing
-   boundaries. Keep code, tests, documentation, configuration, migrations, and
-   revision-local fixes in the earliest revision whose concern requires them.
-3. Propose the fewest coherent, independently valid commits or revisions in
-   dependency order. Split independent concerns; combine partial steps and any
-   change that would otherwise rely on a descendant revision. If a requested
-   single target is incoherent, stop and ask to narrow it or permit multiple
-   revisions. If no split, order, or combination makes every revision
-   independently valid, stop without mutation and report the failing
-   requirement; never add or change content to satisfy it. A breaking change the
-   user requested or approved counts as valid when its description declares it
-   or step 4 will.
+   boundaries.
+3. Propose the fewest commits or revisions that satisfy Sequencing. Split
+   independent concerns; combine partial steps and any change that would
+   otherwise rely on a descendant revision. If a requested single target is
+   incoherent, stop and ask to narrow it or permit multiple revisions. If no
+   split, order, or combination makes every revision independently valid, stop
+   without mutation and report the failing requirement; never add or change
+   content to satisfy it. A breaking change the user requested or approved
+   counts as valid when its description declares it or step 4 will.
 4. Only when creating or rewriting descriptions, read
    `references/revision-descriptions.md`, then compose and validate each
    complete description. The diff controls what changed; supplied context may
@@ -70,6 +68,36 @@ user-authored, pre-existing, or uncertain history without explicit authority.
 8. Report the immutable base, ordered change and commit IDs, full descriptions,
    transformations, moved task-owned references, known per-revision verification
    status and gaps, tree-preservation result, conflicts, and final clean state.
+
+## Sequencing
+
+These rules order and bound the revisions of any stack. Whoever applies them
+sets the granularity, meaning how finely to split or whether to squash into
+existing revisions; these rules decide boundaries and order within it.
+
+- A revision is coherent when one description explains it as one reviewable
+  concern without unrelated clauses.
+- A revision is independently valid when it does not knowingly rely on a
+  descendant revision to build, pass its applicable checks, preserve required
+  behavior, or be safe to deploy and use if history stops there. Add a
+  replacement safeguard before removing the original, keep interfaces usable by
+  consumers the revision cannot update, and keep persisted state the parent
+  revision produced usable or migrate it within the revision. A breaking change
+  to interfaces or persisted state is exempt from those two requirements only
+  when the user requested or approved it and the revision description declares
+  it.
+- Land internals before the revision that wires them in or exposes them.
+- Put a behavior-preserving refactor that makes room for a change in its own
+  revision, immediately before the first revision that relies on it unless
+  another revision must come between them.
+- Keep mechanical changes such as renames, moves, formatting, and dependency
+  bumps apart from logic changes.
+- Keep supporting tests, documentation, configuration, migrations, and
+  revision-local fixes with the concern that requires them, in its earliest
+  revision; never split them from that concern into revisions of their own.
+- Order dependencies first. Otherwise put simpler changes before more complex
+  ones, with fewer files as the final tie-breaker.
+- Do not split merely because files differ by type or layer.
 
 ## Boundaries
 
