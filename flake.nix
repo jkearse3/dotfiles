@@ -66,6 +66,7 @@
           ./blueprints
 
           ./flake/devshell.nix
+          ./flake/nixpkgs.nix
           ./flake/packages.nix
           ./flake/treefmt.nix
         ];

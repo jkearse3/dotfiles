@@ -9,11 +9,12 @@ packages -> modules -> blueprints -> flake outputs
 ## Layers
 
 `packages/` contains derivation implementations. `flake/packages.nix` registers
-those derivations against the stable package set and constructs the shared
-unstable package set used by development shells and output constructors.
+those derivations against the stable package set. `flake/nixpkgs.nix` constructs
+the shared unstable package set used by development shells and output
+constructors.
 
 `overlays/` contains nixpkgs overlays that patch or override upstream packages.
-`flake/packages.nix` applies them to the shared unstable package set only, not
+`flake/nixpkgs.nix` applies them to the shared unstable package set only, not
 the stable one.
 
 `modules/home/` and `modules/darwin/` contain reusable Home Manager and
@@ -34,7 +35,7 @@ into repository-scoped Git and Jujutsu identities while retaining the shared
 personal identity as its default.
 
 `flake/` contains flake-parts integration and output constructors. `flake.nix`
-assembles these modules, while `flake/packages.nix` supplies shared per-system
+assembles these modules, while `flake/nixpkgs.nix` supplies shared per-system
 package arguments to the development shell and configuration constructors.
 `flake/blueprint-outputs.nix` defines the blueprint schema, validates blueprint
 IDs, derives output names, and exports the selector inventory. The Home and
@@ -78,7 +79,7 @@ commissioning workflow.
 
 Add a package implementation under `packages/` and register it explicitly in
 `flake/packages.nix`. Add an override of an upstream package as an overlay under
-`overlays/` and list it explicitly in `flake/packages.nix`. Add reusable policy
+`overlays/` and list it explicitly in `flake/nixpkgs.nix`. Add reusable policy
 under the appropriate `modules/` subtree, then import it explicitly from a
 blueprint composition. Add a blueprint as another typed declaration in
 `blueprints/default.nix`; do not derive blueprints from hostnames or discover
