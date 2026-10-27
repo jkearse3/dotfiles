@@ -50,7 +50,7 @@ describe("JJ review comment inventory", function()
 			'name = "Review Test"',
 			'email = "test@example.invalid"',
 			"[revset-aliases]",
-			"'immutable_heads()' = 'bookmarks(exact:\"trunk\")'",
+			"'trunk()' = 'bookmarks(exact:\"trunk\")'",
 		}, vim.env.JJ_CONFIG)
 		original_store = review_comments.store_directory
 		review_comments.store_directory = function()
