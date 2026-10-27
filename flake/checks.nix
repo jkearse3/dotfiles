@@ -4,6 +4,11 @@
 # builds it, as a check registered explicitly here. Repository packages run
 # their tests at build time, but the home build does not necessarily build
 # every package, so they are registered here too.
+#
+# A check that only runs a script with some tools is defined here with
+# `mkScriptCheck`. A check that needs more lives in its own `check.nix` next to
+# its tests and is registered here with `callPackage`, as `flake/packages.nix`
+# registers `packages/*/package.nix`.
 {
   perSystem =
     {
@@ -53,27 +58,6 @@
 
             touch "$out"
           '';
-
-      neovimConfig = ../modules/home/neovim/nvim;
-      neovimPluginLock = lib.importJSON (neovimConfig + "/nvim-pack-lock.json");
-
-      # Fetches a plugin at the revision `nvim-pack-lock.json` pins, so the
-      # tests exercise the plugins the Neovim configuration deploys.
-      fetchLockedNeovimPlugin =
-        pluginName:
-        let
-          lockedPlugin = neovimPluginLock.plugins.${pluginName};
-          githubRepository = builtins.match "https://github.com/([^/]+)/([^/]+)" lockedPlugin.src;
-        in
-        assert lib.assertMsg (
-          githubRepository != null
-        ) "nvim-pack-lock.json: ${pluginName} source is not a GitHub repository: ${lockedPlugin.src}";
-        builtins.fetchTree {
-          type = "github";
-          owner = builtins.elemAt githubRepository 0;
-          repo = builtins.elemAt githubRepository 1;
-          inherit (lockedPlugin) rev;
-        };
     in
     {
       # treefmt-nix contributes the `treefmt` check; the module system merges it
@@ -112,53 +96,11 @@
           ];
         };
 
-        # Runs the Neovim configuration's plenary specs against the
-        # lockfile-pinned plugins that `tests/minimal_init.lua` loads. The
-        # plugins sit under the default `site` packpath because plenary's child
-        # Neovim processes reject an extended packpath.
-        neovim =
-          let
-            neovimTestSource = lib.fileset.toSource {
-              root = neovimConfig;
-              fileset = lib.fileset.unions [
-                (neovimConfig + "/lua")
-                (neovimConfig + "/tests")
-              ];
-            };
-          in
-          unstablePkgs.runCommand "neovim"
-            {
-              nativeBuildInputs = [
-                unstablePkgs.neovim-unwrapped
-                unstablePkgs.git
-                unstablePkgs.jujutsu
-                unstablePkgs.fzf
-                unstablePkgs.jq
-                config.packages.jjx
-              ];
-            }
-            ''
-              export HOME="$TMPDIR/home"
-              export XDG_CONFIG_HOME="$TMPDIR/xdg/config"
-              export XDG_DATA_HOME="$TMPDIR/xdg/data"
-              export XDG_STATE_HOME="$TMPDIR/xdg/state"
-              export XDG_CACHE_HOME="$TMPDIR/xdg/cache"
-              mkdir -p "$HOME" "$XDG_CONFIG_HOME" "$XDG_DATA_HOME" "$XDG_STATE_HOME" "$XDG_CACHE_HOME"
-
-              plugin_dir="$XDG_DATA_HOME/nvim/site/pack/locked/opt"
-              mkdir -p "$plugin_dir"
-              ln -s ${fetchLockedNeovimPlugin "plenary.nvim"} "$plugin_dir/plenary.nvim"
-              ln -s ${fetchLockedNeovimPlugin "fzf-lua"} "$plugin_dir/fzf-lua"
-
-              cp -R ${neovimTestSource} "$TMPDIR/nvim"
-              chmod -R u+w "$TMPDIR/nvim"
-              cd "$TMPDIR/nvim"
-
-              nvim --headless -u tests/minimal_init.lua -i NONE \
-                -c "lua require('plenary.test_harness').test_directory('tests', { sequential = true, minimal_init = 'tests/minimal_init.lua' })"
-
-              touch "$out"
-            '';
+        # Runs the Neovim configuration's plenary specs on the lockfile-pinned
+        # plugins.
+        neovim = unstablePkgs.callPackage ../modules/home/neovim/nvim/tests/check.nix {
+          inherit (config.packages) jjx;
+        };
 
         handoff-skill-scripts = mkScriptCheck {
           name = "handoff-skill-scripts";

@@ -50,7 +50,11 @@ test runs inside the derivation that delivers what it tests, such as a package
 build or a module derivation the home configuration builds. A test that nothing
 builds runs as an explicitly registered flake check instead. Repository packages
 are also registered as checks, because the home build does not necessarily build
-every package.
+every package. A check that only runs a script with some tools is defined in
+`flake/checks.nix`; a check that needs more lives in its own `check.nix` next to
+its tests, such as `modules/home/neovim/nvim/tests/check.nix`, and
+`flake/checks.nix` registers it with `callPackage`, as `flake/packages.nix`
+registers `packages/*/package.nix`.
 
 ## Blueprint Outputs
 
@@ -89,9 +93,11 @@ commissioning workflow.
 Add a package implementation under `packages/` and register it explicitly in
 `flake/packages.nix`. Add an override of an upstream package as an overlay under
 `overlays/` and list it explicitly in `flake/nixpkgs.nix`. Add a standalone test
-that no derivation builds by registering it explicitly in `flake/checks.nix`.
-Add reusable policy under the appropriate `modules/` subtree, then import it
-explicitly from a blueprint composition. Add a blueprint as another typed
-declaration in `blueprints/default.nix`. Add flake integration as a flake-parts
-module under `flake/` and import it explicitly from `flake.nix`. Do not derive
-blueprints from hostnames or discover modules from the filesystem.
+that no derivation builds by registering it explicitly in `flake/checks.nix`;
+when the check needs more than running a script with some tools, define it in a
+`check.nix` next to its tests and register that file there. Add reusable policy
+under the appropriate `modules/` subtree, then import it explicitly from a
+blueprint composition. Add a blueprint as another typed declaration in
+`blueprints/default.nix`. Add flake integration as a flake-parts module under
+`flake/` and import it explicitly from `flake.nix`. Do not derive blueprints
+from hostnames or discover modules from the filesystem.
