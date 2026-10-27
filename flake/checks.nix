@@ -17,13 +17,16 @@
       # writable copy of `src` with `tools` on PATH. HOME and the XDG base
       # directories point into the build's temporary directory, so the test
       # cannot read or write user configuration. The check fails when the
-      # script exits non-zero.
+      # script exits non-zero or when its standard output lacks any of
+      # `requiredOutputLines` as an exact line, which catches a test that
+      # silently skips cases whose prerequisites are missing.
       mkScriptCheck =
         {
           name,
           src,
           script,
           tools,
+          requiredOutputLines ? [ ],
         }:
         unstablePkgs.runCommand name
           {
@@ -41,7 +44,12 @@
             export XDG_CACHE_HOME="$TMPDIR/xdg/cache"
             mkdir -p "$HOME" "$XDG_CONFIG_HOME" "$XDG_DATA_HOME" "$XDG_STATE_HOME" "$XDG_CACHE_HOME"
 
-            bash "$TMPDIR/src/${script}"
+            set -o pipefail
+            bash "$TMPDIR/src/${script}" | tee "$TMPDIR/script-output.log"
+            ${lib.concatMapStrings (line: ''
+              grep -qxF -- ${lib.escapeShellArg line} "$TMPDIR/script-output.log" \
+                || { echo ${lib.escapeShellArg "missing required output line: ${line}"} >&2; exit 1; }
+            '') requiredOutputLines}
 
             touch "$out"
           '';
@@ -81,6 +89,26 @@
             unstablePkgs.jujutsu
             unstablePkgs.coreutils
           ];
+        };
+
+        handoff-skill-scripts = mkScriptCheck {
+          name = "handoff-skill-scripts";
+          src = lib.fileset.toSource {
+            root = ../modules/home/agents/skills/handoff;
+            fileset = lib.fileset.unions [
+              ../modules/home/agents/skills/handoff/scripts
+              ../modules/home/agents/skills/handoff/tests
+            ];
+          };
+          script = "tests/handoff-scripts.sh";
+          tools = [
+            unstablePkgs.git
+            unstablePkgs.jujutsu
+            unstablePkgs.coreutils
+            config.packages.jjx
+          ];
+          # The test skips its jj cases when jj or jjx is missing from PATH.
+          requiredOutputLines = [ "ok - non-Git jj workspace resolves its default workspace" ];
         };
       };
     };
