@@ -1,7 +1,16 @@
 # Neovim regression tests
 
-From `modules/home/neovim/nvim`, with Plenary and fzf-lua already installed and
-`git`, `jj`, and `jjx` on PATH:
+The `neovim` flake check runs every spec hermetically against the plenary.nvim
+and fzf-lua revisions pinned in `nvim-pack-lock.json`. From the repository root:
+
+```sh
+nix build .#checks.aarch64-darwin.neovim --print-build-logs
+```
+
+`./x.sh check` runs it together with the repository's other checks.
+
+To run the specs by hand from `modules/home/neovim/nvim`, with Plenary and
+fzf-lua already installed and `git`, `jj`, and `jjx` on PATH:
 
 ```sh
 XDG_CONFIG_HOME="$(mktemp -d)" nvim --headless -u tests/minimal_init.lua -i NONE \
