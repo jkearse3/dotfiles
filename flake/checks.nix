@@ -65,6 +65,23 @@
             unstablePkgs.openssh
           ];
         };
+
+        implement-skill-scripts = mkScriptCheck {
+          name = "implement-skill-scripts";
+          src = lib.fileset.toSource {
+            root = ../modules/home/agents/skills/implement;
+            fileset = lib.fileset.unions [
+              ../modules/home/agents/skills/implement/scripts
+              ../modules/home/agents/skills/implement/tests
+            ];
+          };
+          script = "tests/implement-scripts.sh";
+          tools = [
+            unstablePkgs.git
+            unstablePkgs.jujutsu
+            unstablePkgs.coreutils
+          ];
+        };
       };
     };
 }
