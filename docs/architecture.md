@@ -34,14 +34,16 @@ secrets resolve through machine-local SecretSpec state (see
 into repository-scoped Git and Jujutsu identities while retaining the shared
 personal identity as its default.
 
-`flake/` contains flake-parts integration and output constructors. `flake.nix`
-assembles these modules, while `flake/nixpkgs.nix` supplies shared per-system
-package arguments to the development shell and configuration constructors.
-`flake/blueprint-outputs.nix` defines the blueprint schema, validates blueprint
-IDs, derives output names, and exports the selector inventory. The Home and
-Darwin constructors select packages, inject identity and state versions, apply
-required configuration baselines, and import the blueprint modules. Workstation
-policy belongs in modules.
+`flake/` contains flake-parts integration. Its top level holds only flake-parts
+modules, each imported explicitly from `flake.nix`, while `flake/nixpkgs.nix`
+supplies shared per-system package arguments to the development shell and
+configuration constructors. `flake/blueprint-outputs/default.nix` defines the
+blueprint schema, validates blueprint IDs, derives output names, and exports the
+selector inventory. Its private Home and Darwin constructors,
+`home-configuration.nix` and `darwin-configuration.nix`, sit beside it. The
+constructors select packages, inject identity and state versions, apply required
+configuration baselines, and import the blueprint modules. Workstation policy
+belongs in modules.
 
 ## Blueprint Outputs
 
@@ -82,5 +84,6 @@ Add a package implementation under `packages/` and register it explicitly in
 `overlays/` and list it explicitly in `flake/nixpkgs.nix`. Add reusable policy
 under the appropriate `modules/` subtree, then import it explicitly from a
 blueprint composition. Add a blueprint as another typed declaration in
-`blueprints/default.nix`; do not derive blueprints from hostnames or discover
-modules from the filesystem.
+`blueprints/default.nix`. Add flake integration as a flake-parts module under
+`flake/` and import it explicitly from `flake.nix`. Do not derive blueprints
+from hostnames or discover modules from the filesystem.

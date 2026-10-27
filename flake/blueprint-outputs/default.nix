@@ -97,10 +97,10 @@ let
     darwinConfigurationName = blueprintId;
   }) config.dotfiles.blueprintDeclarations;
 
-  mkHomeConfiguration = import ./mkHomeConfiguration.nix {
+  mkHomeConfiguration = import ./home-configuration.nix {
     inherit inputs withSystem;
   };
-  mkDarwinConfiguration = import ./mkDarwinConfiguration.nix {
+  mkDarwinConfiguration = import ./darwin-configuration.nix {
     inherit inputs withSystem;
   };
 in
