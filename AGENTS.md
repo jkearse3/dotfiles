@@ -10,6 +10,7 @@
 - Build: `./x.sh nix-build-home`
 - Activate: `./x.sh nix-switch-home`
 - Format: `./x.sh fmt` (all file types via treefmt)
+- Check (standalone tests and formatting): `./x.sh check`
 - Lint: `./x.sh lint` (Nix via statix/deadnix, tracked `.sh` and `.bash` files
   via shellcheck, Python via Pyrefly (`all` preset))
 

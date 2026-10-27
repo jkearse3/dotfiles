@@ -418,6 +418,12 @@ cmd:fmt-check() {
 	nix build .#checks.aarch64-darwin.treefmt --no-link --no-write-lock-file --accept-flake-config "${PRIVATE_OVERRIDE_ARGS[@]}"
 }
 
+cmd:check() {
+	echo "Running flake checks..."
+	load_private_override_args
+	nix flake check --print-build-logs --no-write-lock-file --accept-flake-config "${PRIVATE_OVERRIDE_ARGS[@]}"
+}
+
 cmd:lint() {
 	lint-nix
 	lint-shell

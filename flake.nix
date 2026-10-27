@@ -65,6 +65,7 @@
           ./flake/blueprint-outputs
           ./blueprints
 
+          ./flake/checks.nix
           ./flake/devshell.nix
           ./flake/nixpkgs.nix
           ./flake/packages.nix
