@@ -6,6 +6,7 @@
 {
   imports = [
     ./fish
+    ./runtime-directory
     ./starship
     ./zsh
   ];
