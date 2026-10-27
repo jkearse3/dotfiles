@@ -19,7 +19,7 @@ in
   # moves off 4.0.4).
   tokscale =
     assert assertMsg (version == "4.0.4") (
-      "Overlay flake/overlays/tokscale.nix may no longer be needed: "
+      "Overlay overlays/tokscale.nix may no longer be needed: "
       + "tokscale=${version}. Try removing the overlay."
     );
     prev.tokscale.overrideAttrs (old: {

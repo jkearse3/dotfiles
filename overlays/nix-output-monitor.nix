@@ -19,7 +19,7 @@ in
   # 2.2.0) and the new release includes the fix.
   nix-output-monitor =
     assert assertMsg (version == "2.2.0") (
-      "Overlay flake/overlays/nix-output-monitor.nix may no longer be needed: "
+      "Overlay overlays/nix-output-monitor.nix may no longer be needed: "
       + "nix-output-monitor=${version}. Try removing the overlay."
     );
     prev.nix-output-monitor.overrideAttrs (old: {

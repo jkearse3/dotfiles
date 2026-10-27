@@ -10,8 +10,11 @@ packages -> modules -> blueprints -> flake outputs
 
 `packages/` contains derivation implementations. `flake/packages.nix` registers
 those derivations against the stable package set and constructs the shared
-unstable package set used by development shells and output constructors. Its
-overlays affect only that unstable boundary.
+unstable package set used by development shells and output constructors.
+
+`overlays/` contains nixpkgs overlays that patch or override upstream packages.
+`flake/packages.nix` applies them to the shared unstable package set only, not
+the stable one.
 
 `modules/home/` and `modules/darwin/` contain reusable Home Manager and
 nix-darwin modules. Importing a feature module normally activates that feature.
@@ -74,7 +77,9 @@ commissioning workflow.
 ## Extension Rules
 
 Add a package implementation under `packages/` and register it explicitly in
-`flake/packages.nix`. Add reusable policy under the appropriate `modules/`
-subtree, then import it explicitly from a blueprint composition. Add a blueprint
-as another typed declaration in `blueprints/default.nix`; do not derive
-blueprints from hostnames or discover modules from the filesystem.
+`flake/packages.nix`. Add an override of an upstream package as an overlay under
+`overlays/` and list it explicitly in `flake/packages.nix`. Add reusable policy
+under the appropriate `modules/` subtree, then import it explicitly from a
+blueprint composition. Add a blueprint as another typed declaration in
+`blueprints/default.nix`; do not derive blueprints from hostnames or discover
+modules from the filesystem.
