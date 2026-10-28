@@ -314,8 +314,16 @@ nix-activate-home() {
 
 nix-activate-system() {
 	require_result "$SYSTEM_RESULT_PATH" "./x.sh nix-build-system --blueprint $BLUEPRINT_ID" activate || return
-	echo "Activating system config (requires sudo)..."
-	sudo "$SYSTEM_RESULT_PATH/activate"
+	local system_config
+	system_config="$(readlink -f "$SYSTEM_RESULT_PATH")"
+	# Record the system profile before activating, as darwin-rebuild switch
+	# does: launchd's org.nixos.activate-system reads it at boot to restore
+	# /run/current-system, and the profile GC-roots the closure. nix-env gets an
+	# absolute path because sudo's PATH may lack it, and -H sets HOME=~root as
+	# darwin-rebuild does.
+	echo "Setting system profile and activating system config (requires sudo)..."
+	sudo -H "$(command -v nix-env)" -p /nix/var/nix/profiles/system --set "$system_config"
+	sudo "$system_config/activate"
 }
 
 nix-switch-home() {
