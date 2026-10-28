@@ -106,10 +106,6 @@ let
   };
 in
 {
-  # The authored declarations fill the interface below; the Nix module system
-  # merges them.
-  imports = [ ../../blueprints ];
-
   options = {
     # Authored declarations are internal inputs; `flake.blueprints` below is
     # the smaller public inventory used to select the resulting outputs.
@@ -138,6 +134,10 @@ in
       };
     };
   };
+
+  # The authored declarations are a plain function of the flake inputs, so
+  # this module is their only flake-parts entry point.
+  config.dotfiles.blueprintDeclarations = import ../../blueprints { inherit inputs; };
 
   config.flake = {
     homeConfigurations = lib.mapAttrs' (

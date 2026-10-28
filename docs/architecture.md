@@ -37,14 +37,17 @@ personal identity as its default.
 `flake/` contains flake-parts integration. Of the repository's own files,
 `flake.nix` imports only modules from `flake/`, each explicitly; those modules
 wire in `packages/`, `overlays/`, and `blueprints/`, and blueprints import
-`modules/`. `flake/nixpkgs.nix` supplies shared per-system package arguments to
-the development shell and configuration constructors.
-`flake/blueprints/default.nix` imports `blueprints/`, defines the blueprint
-schema, validates blueprint IDs, derives output names, and exports the selector
-inventory. Its private Home and Darwin constructors, `home-configuration.nix`
-and `darwin-configuration.nix`, sit beside it. The constructors select packages,
-inject identity and state versions, apply required configuration baselines, and
-import the blueprint modules. Workstation policy belongs in modules.
+`modules/`. Nothing outside `flake/` is a flake-parts module: `packages/`,
+`overlays/`, and `blueprints/` hold plain functions that their `flake/` module
+calls, and `modules/` holds Home Manager and nix-darwin modules.
+`flake/nixpkgs.nix` supplies shared per-system package arguments to the
+development shell and configuration constructors. `flake/blueprints/default.nix`
+calls `blueprints/`, defines the blueprint schema, validates blueprint IDs,
+derives output names, and exports the selector inventory. Its private Home and
+Darwin constructors, `home-configuration.nix` and `darwin-configuration.nix`,
+sit beside it. The constructors select packages, inject identity and state
+versions, apply required configuration baselines, and import the blueprint
+modules. Workstation policy belongs in modules.
 
 `flake/checks.nix` registers the standalone tests that `./x.sh check` runs. A
 test runs inside the derivation that delivers what it tests, such as a package

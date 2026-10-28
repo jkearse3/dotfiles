@@ -1,7 +1,7 @@
 # Declares concrete blueprints and the reusable workstation composition modules
-# they select. `flake/blueprints/` imports this module and owns output
+# they select. `flake/blueprints/` calls this function and owns output
 # construction and validation.
-{ inputs, ... }:
+{ inputs }:
 let
   # Personal commit identity shared by every blueprint. Signing key resolves from
   # config, so this is a function of the home module's config.
@@ -60,79 +60,77 @@ let
     ];
   };
 in
+# Each declaration is a complete activation contract. Identity and state
+# versions are repeated intentionally so blueprints can evolve independently;
+# policy shared across declarations belongs in the composition modules above.
 {
-  # Each declaration is a complete activation contract. Identity and state
-  # versions are repeated intentionally so blueprints can evolve independently;
-  # policy shared across declarations belongs in the composition modules above.
-  dotfiles.blueprintDeclarations = {
-    # Unmarked member of the laptop-dev family: the development workstation for
-    # every machine without variant tweaks. Secrets resolve through the
-    # machine-local SecretSpec provider, so this one blueprint serves any
-    # machine with no device-specific configuration identity.
-    laptop-dev-default = {
-      system = "aarch64-darwin";
-      user = {
-        name = "johnnie";
-        homeDirectory = "/Users/johnnie";
-      };
-      home = {
-        stateVersion = "26.05";
-        module =
-          { config, ... }:
-          {
-            imports = [ workstationHomeModule ];
-
-            vcs.identityPolicy = {
-              identities.personal = personalIdentity config;
-              defaultIdentity = "personal";
-            };
-          };
-      };
-      darwin = {
-        stateVersion = 5;
-        module = workstationDarwinModule;
-      };
+  # Unmarked member of the laptop-dev family: the development workstation for
+  # every machine without variant tweaks. Secrets resolve through the
+  # machine-local SecretSpec provider, so this one blueprint serves any
+  # machine with no device-specific configuration identity.
+  laptop-dev-default = {
+    system = "aarch64-darwin";
+    user = {
+      name = "johnnie";
+      homeDirectory = "/Users/johnnie";
     };
+    home = {
+      stateVersion = "26.05";
+      module =
+        { config, ... }:
+        {
+          imports = [ workstationHomeModule ];
 
-    # The laptop-dev family's work variant: the same workstation composition
-    # plus repository-scoped work VCS identity from the private profile input.
-    laptop-dev-work = {
-      system = "aarch64-darwin";
-      user = {
-        name = "johnnie";
-        homeDirectory = "/Users/johnnie";
-      };
-      home = {
-        stateVersion = "26.05";
-        module =
-          { config, ... }:
-          let
-            inherit (inputs.dotfiles-private) workProfile;
-          in
-          {
-            imports = [ workstationHomeModule ];
-
-            vcs.identityPolicy = {
-              identities.personal = personalIdentity config;
-              defaultIdentity = "personal";
-              identities.work = {
-                name = "Johnnie Kearse III";
-                inherit (workProfile) email;
-                inherit (personalIdentity config) signingKey;
-              };
-              repositoryScopes = [
-                {
-                  root = workProfile.repositoriesRoot;
-                  identity = "work";
-                }
-              ];
-            };
+          vcs.identityPolicy = {
+            identities.personal = personalIdentity config;
+            defaultIdentity = "personal";
           };
-      };
-      darwin = {
-        stateVersion = 5;
-        module = workstationDarwinModule;
-      };
+        };
+    };
+    darwin = {
+      stateVersion = 5;
+      module = workstationDarwinModule;
+    };
+  };
+
+  # The laptop-dev family's work variant: the same workstation composition
+  # plus repository-scoped work VCS identity from the private profile input.
+  laptop-dev-work = {
+    system = "aarch64-darwin";
+    user = {
+      name = "johnnie";
+      homeDirectory = "/Users/johnnie";
+    };
+    home = {
+      stateVersion = "26.05";
+      module =
+        { config, ... }:
+        let
+          inherit (inputs.dotfiles-private) workProfile;
+        in
+        {
+          imports = [ workstationHomeModule ];
+
+          vcs.identityPolicy = {
+            identities.personal = personalIdentity config;
+            defaultIdentity = "personal";
+            identities.work = {
+              name = "Johnnie Kearse III";
+              inherit (workProfile) email;
+              inherit (personalIdentity config) signingKey;
+            };
+            repositoryScopes = [
+              {
+                root = workProfile.repositoriesRoot;
+                identity = "work";
+              }
+            ];
+          };
+        };
+    };
+    darwin = {
+      stateVersion = 5;
+      module = workstationDarwinModule;
     };
   };
 }
