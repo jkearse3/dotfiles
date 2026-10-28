@@ -1,0 +1,15 @@
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "agent-policy"
+version = "0.0.0"
+description = "Decide whether a coding agent's command runs, from a declarative policy"
+requires-python = ">=3.11"
+
+[project.scripts]
+agent-policy = "agent_policy.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]

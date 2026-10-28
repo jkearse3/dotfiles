@@ -1,6 +1,7 @@
 preset = "all"
 project-includes = [
   "modules/home/agents/skills/**/scripts",
+  "packages/agent-policy",
   "packages/commit-message",
   "packages/direnv-worktree",
   "packages/herdr-find",
@@ -13,6 +14,8 @@ project-includes = [
   "packages/worktree-include",
 ]
 search-path = [
+  "packages/agent-policy/src",
+  "packages/agent-policy/tests",
   "packages/commit-message/src",
   "packages/herdr-find/src",
   "packages/herdr-jj-workspaces/src",

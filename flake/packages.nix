@@ -22,6 +22,7 @@
       # instead of discovering them through the eventual flake output.
       packages = rec {
         agent-interactive-denied = pkgs.callPackage ../packages/agent-interactive-denied/package.nix { };
+        agent-policy = pkgs.callPackage ../packages/agent-policy/package.nix { };
         commit-message = pkgs.callPackage ../packages/commit-message/package.nix { };
         direnv-worktree = pkgs.callPackage ../packages/direnv-worktree/package.nix {
           inherit (unstablePkgs) git;
