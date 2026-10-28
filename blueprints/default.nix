@@ -55,6 +55,7 @@ let
     imports = [
       ../modules/darwin/determinate-nix.nix
       ../modules/darwin/homebrew.nix
+      ../modules/darwin/runtime-directory.nix
       ../modules/darwin/security.nix
       ../modules/darwin/shell.nix
     ];
