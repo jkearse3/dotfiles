@@ -249,6 +249,12 @@ export class SubagentTasks {
           "subagent",
           "--extension",
           fileURLToPath(new URL("./index.ts", import.meta.url)),
+          // Children have no UI, so the gate blocks every approval request
+          // there; loading it explicitly keeps that true with extensions off.
+          "--extension",
+          fileURLToPath(
+            new URL("../agent-policy-approval/index.ts", import.meta.url),
+          ),
           "--model",
           assignment.model,
           "--thinking",

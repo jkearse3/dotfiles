@@ -366,7 +366,12 @@ test("launch captures private artifacts, isolates resources, extracts only final
     assert.equal(args[args.indexOf("--tools") + 1], "read,grep,find,ls");
     assert.equal(args[args.indexOf("--model") + 1], "provider/model");
     assert.equal(args[args.indexOf("--exclude-tools") + 1], "subagent");
-    assert.ok(args.includes("--extension"));
+    const extensions = args.flatMap((arg, index) =>
+      args[index - 1] === "--extension"
+        ? [path.basename(path.dirname(arg))]
+        : [],
+    );
+    assert.deepEqual(extensions, ["subagent", "agent-policy-approval"]);
     assert.equal(reply.tasks[0]!.extensions, false);
     assert.deepEqual(reply.tasks[0]!.skills, []);
     assert.equal(reply.tasks[0]!.projectTrusted, false);

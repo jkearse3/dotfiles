@@ -53,8 +53,10 @@ edit, write, extensions/MCP, and skills. Per-task capability controls are:
   what extension code or tools calling other tools can do.
 - `extensions`: defaults to `true`. Set `false` to disable configured extensions
   and MCP. A minimal coordinator guard is still explicitly loaded, but never
-  exposes delegation to children. Disable extensions as well as narrowing tools
-  for read-only tasks; extensions can execute code independently of tool calls.
+  exposes delegation to children. The agent policy approval gate is also loaded
+  explicitly, so a child's shell command carrying `AGENT_POLICY_APPROVE=` is
+  always blocked. Disable extensions as well as narrowing tools for read-only
+  tasks; extensions can execute code independently of tool calls.
 - `skills`: optional managed skill-name allowlist. Omit it for normal discovered
   skills, pass `[]` for no skills, or name only the skills the child may use.
   Unknown, duplicate, and malformed names fail before spawn. Explicit names
@@ -157,6 +159,16 @@ generated global `AGENTS.md`. The legacy `pi-shepherd` package, skill, launch
 configuration, and sandbox grants have been removed from managed configuration.
 Existing legacy runtime databases and unrelated live teammates are not migrated
 or deleted.
+
+## Agent policy approval
+
+The `agent-policy-approval` extension is Pi's approval adapter for the
+`agent-policy` shims. When a `bash` tool call's command contains
+`AGENT_POLICY_APPROVE=` anywhere, the extension asks the user to confirm it
+before it runs. A declined request, or one in a session without a UI (print,
+JSON, and subagent children), is blocked with a reason telling the agent not to
+retry. Every other tool call passes untouched. User-entered `!` commands are not
+gated, because the user typed them.
 
 ## Timings
 
