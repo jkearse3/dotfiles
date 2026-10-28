@@ -5,7 +5,6 @@
 blueprint:
 let
   home-manager = inputs.home-manager-unstable;
-  llmAgents = inputs.llm-agents.packages;
   useEditableHomeSources = builtins.getEnv "DOTFILES_HOME_LOCKED" == "";
   homeManagerBaselineModule = {
     home = {
@@ -20,6 +19,8 @@ let
 in
 withSystem blueprint.system (
   {
+    config,
+    system,
     unstablePkgs,
     ...
   }:
@@ -30,8 +31,8 @@ withSystem blueprint.system (
       blueprint.home.module
     ];
     extraSpecialArgs = {
-      dotfilesPackages = inputs.self.packages.${blueprint.system} // {
-        inherit (llmAgents.${blueprint.system})
+      dotfilesPackages = config.packages // {
+        inherit (inputs.llm-agents.packages.${system})
           ccusage
           claude-code
           herdr
