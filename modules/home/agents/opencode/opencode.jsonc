@@ -15,6 +15,13 @@
   "autoupdate": false,
   "permission": {
     "*": "allow",
-    "question": "deny"
+    "question": "deny",
+    // The last matching pattern wins. OpenCode matches each command in the
+    // line with its leading assignments, so `AGENT_POLICY_APPROVE=<id> jj …`
+    // asks the user before agent-policy honors the approval.
+    "bash": {
+      "*": "allow",
+      "*AGENT_POLICY_APPROVE=*": "ask"
+    }
   }
 }
