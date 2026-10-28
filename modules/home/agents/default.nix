@@ -9,6 +9,7 @@ let
   agentInteractivePolicy = import ./interactive-policy.nix {
     inherit lib pkgs;
     agentInteractiveDenied = dotfilesPackages.agent-interactive-denied;
+    agentPolicy = dotfilesPackages.agent-policy;
   };
   agentLauncher = import ./launcher.nix {
     inherit lib pkgs;

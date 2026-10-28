@@ -116,6 +116,7 @@
             inherit lib;
             pkgs = unstablePkgs;
             agentInteractiveDenied = config.packages.agent-interactive-denied;
+            agentPolicy = config.packages.agent-policy;
           }).check;
 
         handoff-skill-scripts = mkScriptCheck {

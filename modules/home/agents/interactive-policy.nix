@@ -1,5 +1,6 @@
 {
   agentInteractiveDenied,
+  agentPolicy,
   lib,
   pkgs,
 }:
@@ -46,65 +47,177 @@ let
     "git.executable-path" = lib.getExe pkgs.git;
   };
 
-  jjShim = pkgs.writeShellApplication {
-    name = "jj";
-    text = ''
-      # `--ignore-immutable` lifts the protection of trunk and of other
-      # workspaces' stacks, so it needs the user's explicit authorization.
-      for argument in "$@"; do
-        [[ $argument == -- ]] && break
-        if [[ $argument == --ignore-immutable && ''${JJ_AGENT_ALLOW_IGNORE_IMMUTABLE-} != 1 ]]; then
-          echo "jj (agent policy): --ignore-immutable is blocked in a coding-agent session; it requires the user's explicit authorization for this command." >&2
-          exit 1
-        fi
-      done
-      exec ${lib.getExe pkgs.jujutsu} ${
-        lib.concatMapStringsSep " " (
-          name: "--config ${lib.escapeShellArg "${name}=${builtins.toJSON jjPolicyConfig.${name}}"}"
-        ) (builtins.attrNames jjPolicyConfig)
-      } "$@"
-    '';
+  # The command policy every agent's jj and git invocations pass through
+  # `agent-policy`. A refused rule names its ID; the agent requests the user's
+  # approval by rerunning the command with `AGENT_POLICY_APPROVE=<id>`, which
+  # each agent harness turns into a prompt.
+  commandPolicy = {
+    tools = {
+      jj = {
+        executable = lib.getExe pkgs.jujutsu;
+        prefix-arguments = lib.concatMap (name: [
+          "--config"
+          "${name}=${builtins.toJSON jjPolicyConfig.${name}}"
+        ]) (builtins.attrNames jjPolicyConfig);
+        # clap accepts jj's global options before, between, and after
+        # subcommands.
+        global-options-position = "anywhere";
+        global-options = [
+          {
+            names = [
+              "-R"
+              "--repository"
+            ];
+            arity = "value";
+          }
+          {
+            names = [ "--ignore-working-copy" ];
+            arity = "flag";
+          }
+          {
+            names = [ "--ignore-immutable" ];
+            arity = "flag";
+          }
+          {
+            names = [
+              "--at-operation"
+              "--at-op"
+            ];
+            arity = "value";
+          }
+          {
+            names = [ "--debug" ];
+            arity = "flag";
+          }
+          {
+            names = [ "--color" ];
+            arity = "value";
+          }
+          {
+            names = [ "--quiet" ];
+            arity = "flag";
+          }
+          {
+            names = [ "--no-pager" ];
+            arity = "flag";
+          }
+          {
+            names = [ "--config" ];
+            arity = "value";
+          }
+          {
+            names = [ "--config-file" ];
+            arity = "value";
+          }
+          {
+            names = [ "--no-integrate-operation" ];
+            arity = "flag";
+          }
+          {
+            names = [
+              "-h"
+              "--help"
+            ];
+            arity = "flag";
+          }
+        ];
+        rules = [
+          {
+            id = "jj.ignore-immutable";
+            kind = "refuse-option";
+            scope = "any";
+            refused-options = [ "--ignore-immutable" ];
+            message = "`--ignore-immutable` lifts the protection of trunk and of other workspaces' stacks; rewrite only mutable revisions of your own stack instead.";
+          }
+        ];
+      };
+
+      git = {
+        executable = lib.getExe pkgs.git;
+        prefix-arguments = [ ];
+        global-options-position = "before-subcommand";
+        global-options =
+          map
+            (name: {
+              names = [ name ];
+              arity = "value";
+            })
+            [
+              "-C"
+              "-c"
+              "--git-dir"
+              "--work-tree"
+              "--namespace"
+              "--config-env"
+              "--attr-source"
+            ]
+          ++ [
+            {
+              names = [ "--exec-path" ];
+              arity = "optional-value";
+            }
+          ]
+          ++
+            map
+              (name: {
+                names = [ name ];
+                arity = "flag";
+              })
+              [
+                "-p"
+                "-P"
+                "--paginate"
+                "--no-pager"
+                "--bare"
+                "--no-replace-objects"
+                "--literal-pathspecs"
+                "--glob-pathspecs"
+                "--noglob-pathspecs"
+                "--icase-pathspecs"
+                "--no-optional-locks"
+              ];
+        rules = [
+          # Agents publish through `jj git push`, which runs the Nix git
+          # directly through `git.executable-path` and so bypasses this shim.
+          {
+            id = "git.push";
+            kind = "refuse-subcommand";
+            scope = [ "push" ];
+            message = "Agents publish with `jj git push` instead.";
+          }
+        ];
+      };
+    };
   };
 
-  gitShim = pkgs.writeShellApplication {
-    name = "git";
-    text = ''
-      # Agents publish through `jj git push`, which runs the Nix git directly
-      # through `git.executable-path`; a direct `git push` needs the user's
-      # explicit authorization. Any global option the scan does not recognize
-      # ends it, so only an unambiguous `push` subcommand is blocked.
-      subcommand=
-      arguments=("$@")
-      index=0
-      while ((index < ''${#arguments[@]})); do
-        argument=''${arguments[index]}
-        case $argument in
-        -C | -c | --git-dir | --work-tree | --namespace | --config-env | --attr-source)
-          ((index + 1 < ''${#arguments[@]})) || break
-          index=$((index + 2))
-          ;;
-        --git-dir=* | --work-tree=* | --namespace=* | --config-env=* | --attr-source=* | --exec-path | --exec-path=* | \
-          -p | -P | --paginate | --no-pager | --bare | --no-replace-objects | \
-          --literal-pathspecs | --glob-pathspecs | --noglob-pathspecs | --icase-pathspecs | --no-optional-locks)
-          index=$((index + 1))
-          ;;
-        -*)
-          break
-          ;;
-        *)
-          subcommand=$argument
-          break
-          ;;
-        esac
-      done
-
-      if [[ $subcommand == push && ''${GIT_AGENT_ALLOW_PUSH-} != 1 ]]; then
-        echo "git (agent policy): \`git push\` is blocked in a coding-agent session; publish with \`jj git push\`. A direct git push requires the user's explicit authorization for this command (GIT_AGENT_ALLOW_PUSH=1)." >&2
-        exit 1
-      fi
-      exec ${lib.getExe pkgs.git} "$@"
+  # Shims reference the policy only through this derivation, so an invalid
+  # policy fails the build instead of every agent command.
+  validatedCommandPolicy =
+    let
+      unvalidated = pkgs.writeText "agent-command-policy-unvalidated.json" (
+        builtins.toJSON commandPolicy
+      );
+    in
+    pkgs.runCommandLocal "agent-command-policy.json" { } ''
+      ${lib.getExe' agentPolicy "agent-policy"} validate ${unvalidated}
+      cp ${unvalidated} "$out"
     '';
-  };
+
+  # Builds the PATH shim for TOOL, which hands every invocation to
+  # `agent-policy`; it runs the real binary or refuses with a corrective
+  # message.
+  mkPolicyShim =
+    tool:
+    pkgs.writeShellApplication {
+      name = tool;
+      text = ''
+        exec ${lib.getExe' agentPolicy "agent-policy"} run --policy ${validatedCommandPolicy} ${tool} -- "$@"
+      '';
+    };
+
+  jjShim = mkPolicyShim "jj";
+
+  gitShim = mkPolicyShim "git";
 
   cat = lib.getExe' pkgs.coreutils "cat";
 

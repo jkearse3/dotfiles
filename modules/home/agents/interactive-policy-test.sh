@@ -179,6 +179,16 @@ expect_agent_failure() {
 	grep -Fq -- "$expected" "$workdir/stderr"
 }
 
+# Asserts that agent-policy refuses the command under RULE_ID with the tool's
+# message prefix and tells the agent how to request approval for that rule.
+expect_policy_refusal() {
+	local tool=$1 rule_id=$2
+	shift 2
+
+	expect_agent_failure "$tool (agent policy): $rule_id refused this command" "$@"
+	grep -Fq -- "AGENT_POLICY_APPROVE=$rule_id" "$workdir/stderr"
+}
+
 git_repo="$workdir/git-repo"
 run_agent git init -q "$git_repo"
 run_agent git -C "$git_repo" config user.name 'Test User'
@@ -286,9 +296,51 @@ in_workspace default bookmark create unrelated -r main
 in_workspace agent op revert "$deletion"
 [[ $(in_workspace agent bookmark list -T 'name ++ "\n"' otherb) == otherb ]]
 
-expect_workspace_failure '--ignore-immutable is blocked' agent --ignore-immutable describe -m taken other@
-JJ_AGENT_ALLOW_IGNORE_IMMUTABLE=1 in_workspace agent --ignore-immutable describe -m taken other@
+# `--ignore-immutable` anywhere before `--` needs the user's approval of
+# jj.ignore-immutable itself; the retired override and other approvals do not
+# lift it.
+other_description=$(in_workspace agent log --no-graph -r other@ -T 'description')
+for approval in unset '' 1 git.push jj.git-push; do
+	if [[ $approval == unset ]]; then
+		expect_policy_refusal jj jj.ignore-immutable \
+			jj -R "$workspaces/agent" --ignore-immutable describe -m taken other@
+	else
+		AGENT_POLICY_APPROVE=$approval expect_policy_refusal jj jj.ignore-immutable \
+			jj -R "$workspaces/agent" describe --ignore-immutable -m taken other@
+	fi
+done
+JJ_AGENT_ALLOW_IGNORE_IMMUTABLE=1 expect_policy_refusal jj jj.ignore-immutable \
+	jj -R "$workspaces/agent" --ignore-immutable describe -m taken other@
+[[ $(in_workspace agent log --no-graph -r other@ -T 'description') == "$other_description" ]]
+# After `--` the token is an operand, not the option.
+[[ $(in_workspace agent util exec -- "$python" -c 'import sys; print(sys.argv[1])' --ignore-immutable) == --ignore-immutable ]]
+AGENT_POLICY_APPROVE=jj.ignore-immutable in_workspace agent --ignore-immutable describe -m taken other@
 [[ $(in_workspace agent log --no-graph -r other@ -T 'description.first_line()') == taken ]]
+AGENT_POLICY_APPROVE=git.push,jj.ignore-immutable \
+	in_workspace agent --ignore-immutable describe -m 'taken twice' other@
+[[ $(in_workspace agent log --no-graph -r other@ -T 'description.first_line()') == 'taken twice' ]]
+
+# The real binary never sees the approval, so it cannot leak into commands the
+# approved one runs.
+# shellcheck disable=SC2016 # Python reads the variable, not the shell.
+approval_seen=$(AGENT_POLICY_APPROVE=jj.ignore-immutable in_workspace agent --ignore-immutable util exec -- \
+	"$python" -c 'import os; print(os.environ.get("AGENT_POLICY_APPROVE", "unset"))')
+[[ $approval_seen == unset ]]
+
+# The engine adds nothing else to the environment either: the real binary sees
+# the caller's PATH and no Python settings of its own.
+# shellcheck disable=SC2016 # Python reads the variables, not the shell.
+read_python_environment='import os; print(os.environ["PATH"]); print(os.environ.get("PYTHONNOUSERSITE", "unset"))'
+caller_environment=$(
+	unset PYTHONNOUSERSITE
+	run_agent "$python" -c "$read_python_environment"
+)
+tool_environment=$(
+	unset PYTHONNOUSERSITE
+	in_workspace agent util exec -- "$python" -c "$read_python_environment"
+)
+[[ $tool_environment == "$caller_environment" ]]
+[[ ${tool_environment##*$'\n'} == unset ]]
 
 # Agent jj pushes through the Nix git rather than whichever `git` is first on
 # PATH; the push goes to a local bare remote, so no credential prompt can occur.
@@ -323,18 +375,23 @@ printf 'git push\n' >"$git_push_repo/tracked"
 run_agent git -C "$git_push_repo" add tracked
 run_agent git -C "$git_push_repo" commit -q -m 'git push'
 local_head=$(run_agent git -C "$git_push_repo" rev-parse HEAD)
-# The backticks are literal text in the shim's message.
-# shellcheck disable=SC2016
-git_push_blocked='`git push` is blocked'
 # shellcheck disable=SC2016 # The child shell expands its own positional argument.
-expect_agent_failure "$git_push_blocked" bash -c 'cd "$1" && git push -f origin git-pushed' bash "$git_push_repo"
-expect_agent_failure "$git_push_blocked" git -C "$git_push_repo" push -f origin git-pushed
-expect_agent_failure "$git_push_blocked" git -c push.default=current -C "$git_push_repo" push -f origin git-pushed
-expect_agent_failure "$git_push_blocked" git --git-dir="$git_push_repo/.git" push -f origin git-pushed
-expect_agent_failure "$git_push_blocked" git --git-dir "$git_push_repo/.git" --no-pager push -f origin git-pushed
+expect_policy_refusal git git.push bash -c 'cd "$1" && git push -f origin git-pushed' bash "$git_push_repo"
+grep -Fq -- 'jj git push' "$workdir/stderr"
+expect_policy_refusal git git.push git -C "$git_push_repo" push -f origin git-pushed
+expect_policy_refusal git git.push git -c push.default=current -C "$git_push_repo" push -f origin git-pushed
+expect_policy_refusal git git.push git --git-dir="$git_push_repo/.git" push -f origin git-pushed
+expect_policy_refusal git git.push git --git-dir "$git_push_repo/.git" --no-pager push -f origin git-pushed
+# Only an approval of git.push itself lifts the refusal; the retired override,
+# a boolean, an empty list, and other rules' approvals do not.
+GIT_AGENT_ALLOW_PUSH=1 expect_policy_refusal git git.push git -C "$git_push_repo" push -f origin git-pushed
+for approval in '' 1 jj.ignore-immutable; do
+	AGENT_POLICY_APPROVE=$approval expect_policy_refusal git git.push \
+		git -C "$git_push_repo" push -f origin git-pushed
+done
 [[ $("$real_git" --git-dir "$push_remote" rev-parse git-pushed) == "$remote_before" ]]
 
-GIT_AGENT_ALLOW_PUSH=1 run_agent git -C "$git_push_repo" push -q -f "$push_remote" git-pushed
+AGENT_POLICY_APPROVE=git.push run_agent git -C "$git_push_repo" push -q -f "$push_remote" git-pushed
 [[ $("$real_git" --git-dir "$push_remote" rev-parse git-pushed) == "$local_head" ]]
 
 # Agent jj still publishes with the git shim first on PATH.

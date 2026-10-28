@@ -10,7 +10,6 @@
     "deny": ["AskUserQuestion", "EnterPlanMode", "Agent(Plan)"],
     "ask": [
       "Bash(git commit:*)",
-      "Bash(git push:*)",
       "Bash(git reset:*)",
       "Bash(git rebase:*)",
       "Bash(git merge:*)",
