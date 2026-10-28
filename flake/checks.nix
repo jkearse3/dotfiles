@@ -107,6 +107,17 @@
           inherit (config.packages) jjx;
         };
 
+        # Runs `interactive-policy-test.sh` against the agent jj and git shims.
+        # The home build also links this check, but `./x.sh check` does not
+        # build the home configuration. Uses the same arguments the home
+        # module passes, so both build the same derivation.
+        agent-interactive-policy =
+          (import ../modules/home/agents/interactive-policy.nix {
+            inherit lib;
+            pkgs = unstablePkgs;
+            agentInteractiveDenied = config.packages.agent-interactive-denied;
+          }).check;
+
         handoff-skill-scripts = mkScriptCheck {
           name = "handoff-skill-scripts";
           src = lib.fileset.toSource {
