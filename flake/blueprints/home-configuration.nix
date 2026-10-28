@@ -46,6 +46,7 @@ withSystem blueprint.system (
         repositoryDirectory = "dotfiles";
         editable = useEditableHomeSources;
       };
+      dotfilesUser = blueprint.user;
     };
   }
 )

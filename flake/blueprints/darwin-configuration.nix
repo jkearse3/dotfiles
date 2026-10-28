@@ -18,6 +18,9 @@ withSystem blueprint.system (
   in
   inputs.darwin.lib.darwinSystem {
     inherit (blueprint) system;
+    specialArgs = {
+      dotfilesUser = blueprint.user;
+    };
     modules = [
       darwinBaselineModule
       blueprint.darwin.module

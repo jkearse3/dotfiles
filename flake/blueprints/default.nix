@@ -21,6 +21,16 @@ let
         type = types.strMatching "^/.*";
         description = "Absolute user home directory";
       };
+      runtimeDirectoryParent = mkOption {
+        type = types.str;
+        default = "/var/run/user";
+        readOnly = true;
+        description = ''
+          Directory holding per-user runtime directories, each named after the
+          account's uid on the machine, which is looked up when used because it
+          differs between machines. macOS empties /var/run at every boot.
+        '';
+      };
     };
   };
 
