@@ -1,4 +1,5 @@
-# Defines the blueprint declaration interface and turns each declaration into
+# Wires `blueprints/` into the flake: defines the blueprint declaration
+# interface, imports the authored declarations, and turns each declaration into
 # Home Manager, nix-darwin, and selector-inventory flake outputs.
 {
   config,
@@ -105,6 +106,10 @@ let
   };
 in
 {
+  # The authored declarations fill the interface below; the Nix module system
+  # merges them.
+  imports = [ ../../blueprints ];
+
   options = {
     # Authored declarations are internal inputs; `flake.blueprints` below is
     # the smaller public inventory used to select the resulting outputs.

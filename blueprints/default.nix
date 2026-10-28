@@ -1,5 +1,6 @@
 # Declares concrete blueprints and the reusable workstation composition modules
-# they select. Output construction and validation live under `flake/`.
+# they select. `flake/blueprints/` imports this module and owns output
+# construction and validation.
 { inputs, ... }:
 let
   # Personal commit identity shared by every blueprint. Signing key resolves from
