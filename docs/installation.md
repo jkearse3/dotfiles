@@ -183,7 +183,9 @@ Homebrew to install the declared applications. Homebrew does not automatically
 update, upgrade, or remove other packages during activation.
 
 The Home Manager and nix-darwin outputs are independent, but system-first is the
-documented bootstrap order.
+documented bootstrap order. The system activation creates the user's
+`XDG_RUNTIME_DIR` under `/var/run/user`; Home Manager exports the variable only
+once that directory exists, and warns during activation until it does.
 
 ## Activate Home Manager
 
