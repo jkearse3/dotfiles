@@ -14,6 +14,8 @@ from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
+from .jj_push_dry_run import jj_push_dry_run_refusal
+
 if TYPE_CHECKING:
     from .invocation import ParsedInvocation
     from .policy import AllowlistRule
@@ -46,5 +48,15 @@ NamedCheck = Callable[[CheckRequest], CheckRefusal | None]
 """A check returns ``None`` to pass or a ``CheckRefusal``. An exception it
 raises refuses the invocation under the owning rule."""
 
-NAMED_CHECKS: dict[str, NamedCheck] = {}
+
+def check_jj_push_dry_run(request: CheckRequest) -> CheckRefusal | None:
+    """Refuse a `jj git push` unless its dry run only adds or moves forward
+    at most as many bookmarks as it names targets (see ``jj_push_dry_run``)."""
+    reason = jj_push_dry_run_refusal(request)
+    return None if reason is None else CheckRefusal(reason)
+
+
+NAMED_CHECKS: dict[str, NamedCheck] = {
+    "jj-push-dry-run": check_jj_push_dry_run,
+}
 """Every check a policy may name, keyed by the name used in policy files."""

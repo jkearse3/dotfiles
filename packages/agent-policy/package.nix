@@ -1,4 +1,5 @@
 {
+  jujutsu,
   pkgs,
 }:
 pkgs.python3Packages.buildPythonApplication {
@@ -8,6 +9,11 @@ pkgs.python3Packages.buildPythonApplication {
 
   src = ./.;
   build-system = [ pkgs.python3Packages.setuptools ];
+  # The jj-push-dry-run tests run real jj against a local bare git remote.
+  nativeCheckInputs = [
+    jujutsu
+    pkgs.git
+  ];
 
   doInstallCheck = true;
   installCheckPhase = ''

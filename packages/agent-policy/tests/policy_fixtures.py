@@ -63,6 +63,7 @@ def jj_tool(executable: str = "/bin/jj", rules: list[Json] | None = None) -> Jso
             {"names": ["--ignore-immutable"], "arity": "flag"},
             {"names": ["--at-operation", "--at-op"], "arity": "value"},
             {"names": ["--quiet"], "arity": "flag"},
+            {"names": ["--debug"], "arity": "flag"},
             {"names": ["--color"], "arity": "value"},
             {"names": ["--config"], "arity": "value"},
             {"names": ["-h", "--help"], "arity": "flag"},
