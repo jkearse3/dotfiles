@@ -129,6 +129,67 @@ let
             refused-options = [ "--ignore-immutable" ];
             message = "`--ignore-immutable` lifts the protection of trunk and of other workspaces' stacks; rewrite only mutable revisions of your own stack instead.";
           }
+          # Pushes that name each bookmark and only add or fast-forward remote
+          # bookmarks run unprompted; everything else, including force pushes
+          # and deletions, needs the user's approval. Unlisted options refuse,
+          # so a jj upgrade cannot widen what passes.
+          {
+            id = "jj.git-push";
+            kind = "allowlist";
+            scope = [
+              "git"
+              "push"
+            ];
+            allowed-options = [
+              {
+                names = [
+                  "-b"
+                  "--bookmark"
+                ];
+                arity = "value";
+                value-constraint = "literal-name";
+              }
+              # A revset; the dry-run check bounds how many bookmarks it adds.
+              {
+                names = [
+                  "-c"
+                  "--change"
+                ];
+                arity = "value";
+              }
+              {
+                names = [ "--named" ];
+                arity = "value";
+                value-constraint = "literal-name-before-equals";
+              }
+              {
+                names = [ "--remote" ];
+                arity = "value";
+                value-constraint = "literal-name";
+              }
+              {
+                names = [ "--dry-run" ];
+                arity = "flag";
+              }
+            ];
+            allowed-global-options = [
+              "-R"
+              "--quiet"
+              "--no-pager"
+              "--color"
+              "--debug"
+              "--ignore-working-copy"
+              "-h"
+            ];
+            target-options = [
+              "-b"
+              "-c"
+              "--named"
+            ];
+            informational-options = [ "-h" ];
+            checks = [ "jj-push-dry-run" ];
+            message = "Agents push named bookmarks forward with `jj git push -b <name>` (one `-b` per bookmark), `-c <revision>`, or `--named <name>=<revision>`, optionally with `--remote <name>` and `--dry-run`; pushes that select bookmarks by pattern or in bulk, rewrite or delete remote bookmarks, or change jj's configuration or operation are the user's decision.";
+          }
         ];
       };
 

@@ -400,3 +400,131 @@ run_agent jj --quiet -R "$push_repo" commit -m 'pushed again'
 run_agent jj --quiet -R "$push_repo" bookmark set pushed -r @-
 run_agent jj --quiet -R "$push_repo" git push --remote origin --bookmark pushed
 [[ $("$real_git" --git-dir "$push_remote" rev-parse pushed) == "$(run_agent jj -R "$push_repo" log --no-graph -r pushed -T 'commit_id')" ]]
+
+# jj.git-push runs pushes that name each bookmark and only add or fast-forward
+# remote bookmarks, with the allowed globals in any position.
+in_push_repo() {
+	run_agent jj --quiet -R "$push_repo" "$@"
+}
+local_commit() {
+	run_agent jj -R "$push_repo" log --no-graph -r "$1" -T 'commit_id'
+}
+remote_commit() {
+	"$real_git" --git-dir "$push_remote" rev-parse --verify -q "refs/heads/$1" || true
+}
+remote_refs() {
+	"$real_git" --git-dir "$push_remote" for-each-ref --format='%(refname) %(objectname)'
+}
+commit_in_push_repo() {
+	printf '%s\n' "$1" >>"$push_repo/pushed"
+	in_push_repo commit -m "$1"
+}
+expect_push_refusal() {
+	expect_policy_refusal jj jj.git-push jj -R "$push_repo" "$@"
+}
+
+commit_in_push_repo added
+in_push_repo bookmark create added -r @-
+run_agent jj git push --no-pager -b added -R "$push_repo" --color=never --remote origin
+[[ $(remote_commit added) == "$(local_commit added)" ]]
+commit_in_push_repo forward
+in_push_repo bookmark set added -r @-
+run_agent jj -R "$push_repo" git --quiet push --bookmark=added --ignore-working-copy
+[[ $(remote_commit added) == "$(local_commit added)" ]]
+commit_in_push_repo 'forward with debug'
+in_push_repo bookmark set added -r @-
+run_agent jj --debug -R "$push_repo" git push -b exact:added >"$workdir/stdout" 2>"$workdir/stderr"
+[[ $(remote_commit added) == "$(local_commit added)" ]]
+commit_in_push_repo change
+in_push_repo git push -c @-
+change_bookmark=$(run_agent jj -R "$push_repo" log --no-graph -r @- -T 'local_bookmarks.map(|b| b.name()).join(",")')
+[[ $change_bookmark == push-* ]]
+[[ $(remote_commit "$change_bookmark") == "$(local_commit @-)" ]]
+in_push_repo git push --named named=@- --remote=origin
+[[ $(remote_commit named) == "$(local_commit @-)" ]]
+# jj accepts a name containing `@` only as a quoted string literal; the quoted
+# form names exactly one bookmark, so the preview and the push both pass.
+commit_in_push_repo 'quoted name'
+in_push_repo bookmark create '"quoted@2"' -r @-
+remote_before=$(remote_refs)
+run_agent jj -R "$push_repo" git push --remote origin --bookmark '"quoted@2"' --dry-run >"$workdir/stdout" 2>&1
+grep -Fq -- 'bookmark: "quoted@2" [add to' "$workdir/stdout"
+[[ $(remote_refs) == "$remote_before" ]]
+in_push_repo git push -b '"quoted@2"'
+[[ $(remote_commit quoted@2) == "$(local_commit '"quoted@2"')" ]]
+[[ $(run_agent jj git push --help) == *Usage* ]]
+[[ $(run_agent jj -R "$push_repo" git push -h) == *Usage* ]]
+
+# `--ignore-immutable` is judged by its own rule, not the push allowlist,
+# which passes this push of an unchanged bookmark.
+expect_policy_refusal jj jj.ignore-immutable jj -R "$push_repo" git push --ignore-immutable -b added
+if grep -Fq -- 'jj.git-push' "$workdir/stderr"; then
+	exit 1
+fi
+
+# Bulk, pattern, configuration, and operation-changing pushes are refused
+# before jj runs, each naming the safe form.
+remote_before=$(remote_refs)
+expect_push_refusal git push
+grep -Fq -- 'names nothing to act on' "$workdir/stderr"
+grep -Fq -- 'jj git push -b <name>' "$workdir/stderr"
+expect_push_refusal --quiet git push --remote origin
+for option in --all --tracked --deleted -r=@- --revision=@- \
+	--allow-private --allow-conflicts --allow-empty-description --frobnicate; do
+	expect_push_refusal git push -b added "$option"
+	grep -Fq -- "\`${option%%=*}\` is not an allowed option for \`jj git push\`" "$workdir/stderr"
+done
+expect_push_refusal git push -b added -t v1
+expect_push_refusal git push -b added --tag v1
+expect_push_refusal git push -b added -o ci.skip
+expect_push_refusal git push -b added --option ci.skip
+expect_push_refusal git push -b '*'
+grep -Fq -- 'is a pattern' "$workdir/stderr"
+expect_push_refusal git push -b 'glob:a*'
+expect_push_refusal git push --bookmark added --bookmark='added|named'
+expect_push_refusal git push -b added --remote '*'
+expect_push_refusal git push --named 'na*=@-'
+expect_push_refusal --config ui.color=never git push -b added
+# shellcheck disable=SC2016 # The backticks are literal message text.
+grep -Fq -- 'global option `--config` is not allowed for `jj git push`' "$workdir/stderr"
+expect_push_refusal git push -b added --config-file /dev/null
+expect_push_refusal --at-operation @ git push -b added
+expect_push_refusal git push -b added --no-integrate-operation
+[[ $(remote_refs) == "$remote_before" ]]
+
+# The dry-run check refuses force pushes, deletions, and more bookmark
+# changes than named targets; `--dry-run` itself passes without the check.
+in_push_repo new 'added-'
+commit_in_push_repo sideways
+in_push_repo bookmark set added -r @- --allow-backwards
+expect_push_refusal git push -b added
+# shellcheck disable=SC2016 # The backticks are literal message text.
+grep -Fq -- '`added` (move sideways from' "$workdir/stderr"
+run_agent jj -R "$push_repo" git push --dry-run -b added >"$workdir/stdout" 2>"$workdir/stderr"
+grep -Fq -- 'move sideways from' "$workdir/stderr"
+in_push_repo bookmark set added -r 'added-' --allow-backwards
+expect_push_refusal --quiet git push -b added
+# shellcheck disable=SC2016 # The backticks are literal message text.
+grep -Fq -- '`added` (move backward from' "$workdir/stderr"
+in_push_repo bookmark delete named
+expect_push_refusal git push -b named
+# shellcheck disable=SC2016 # The backticks are literal message text.
+grep -Fq -- '`named` (delete from' "$workdir/stderr"
+commit_in_push_repo 'excess one'
+commit_in_push_repo 'excess two'
+expect_push_refusal git push -c 'description(glob:"excess*")'
+grep -Fq -- 'changes 2 bookmarks but the command names only 1 target' "$workdir/stderr"
+expect_push_refusal git push -c 'all()'
+[[ $(remote_refs) == "$remote_before" ]]
+
+# Only an approval of jj.git-push itself lets a refused push through.
+for approval in '' 1 jj.ignore-immutable git.push; do
+	AGENT_POLICY_APPROVE=$approval expect_push_refusal git push -b added
+done
+[[ $(remote_refs) == "$remote_before" ]]
+AGENT_POLICY_APPROVE=jj.git-push in_push_repo git push -b added
+[[ $(remote_commit added) == "$(local_commit added)" ]]
+AGENT_POLICY_APPROVE=git.push,jj.git-push in_push_repo git push -b named
+[[ -z $(remote_commit named) ]]
+# Approval also lifts the allowlist's option refusals.
+AGENT_POLICY_APPROVE=jj.git-push in_push_repo git push -b added --allow-private

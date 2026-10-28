@@ -16,7 +16,6 @@
       "Bash(git revert:*)",
       "Bash(git cherry-pick:*)",
       "Bash(git rm:*)",
-      "Bash(jj git push:*)",
       "Bash(*AGENT_POLICY_APPROVE=*)"
     ],
     "defaultMode": "auto"
