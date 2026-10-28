@@ -43,8 +43,9 @@ or could mean materially different work.
    material claim in the input or in inspected evidence. Never manufacture
    motivation, urgency, or impact.
 5. **Reread as the assignee.** Holding only the ticket and its links, a reader
-   must be able to say what is wrong, what is decided, what is excluded, and how
-   to know it is done. Cut anything that does not help that reader.
+   must be able to say what is wrong, why it matters, what is decided, what is
+   excluded, and how to know it is done. Cut anything that does not help that
+   reader.
 
 ## Format
 
@@ -56,7 +57,12 @@ as a level-one heading, so it can be pasted or passed to a tracker as is.
 
 ## Problem
 
-<What is wrong or missing today, who or what it affects, and why it matters.>
+<What is wrong or missing today, and who or what it affects.>
+
+## Impact
+
+<Why the work matters: the product goal, user or business outcome, or work it
+unblocks, and why now.>
 
 ## Solution
 
@@ -105,8 +111,8 @@ carry those.
 ### Problem
 
 Write one or two short paragraphs. Lead with current behavior or the missing
-capability, then who or what it affects and why it matters now. For a bug, add
-the steps to reproduce, the expected result, and the actual result:
+capability, then who or what it affects. For a bug, add the steps to reproduce,
+the expected result, and the actual result:
 
 ```markdown
 **Steps to reproduce**
@@ -120,6 +126,18 @@ the steps to reproduce, the expected result, and the actual result:
 
 For routine work such as an upgrade or cleanup, one sentence of purpose is
 enough.
+
+### Impact
+
+Explain why the work is worth doing to a reader who knows the code but not the
+product context: the user or customer outcome, the product goal or initiative it
+serves, the work it unblocks, or the cost of leaving it, and why now when timing
+matters. Write one short paragraph or a few bullets. State only motivation that
+the input or inspected evidence supplies, such as a customer request, metric,
+incident, or roadmap decision, and link its source under `Context`. Omit the
+section for routine work whose purpose fits in the `Problem` sentence. When the
+input gives no reason for non-routine work, omit the section and ask for one in
+the note after the ticket.
 
 ### Solution
 
@@ -157,8 +175,8 @@ deliverable, such as "Recommendation written up and linked in this ticket."
 ## Output
 
 Return the ticket block in the response. After it, note in a line or two any
-assumption the ticket relies on that the user should confirm. Do not take any
-further step unasked.
+assumption the ticket relies on that the user should confirm, and any missing
+reason the work matters. Do not take any further step unasked.
 
 ## Boundaries
 
