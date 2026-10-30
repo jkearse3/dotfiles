@@ -97,6 +97,9 @@
         };
 
         manifest-policy = unstablePkgs.callPackage ../modules/home/secrets/tests/check.nix { };
+        secret-wrappers = unstablePkgs.callPackage ../modules/home/secrets/tests/check.nix {
+          test = "secret-wrappers";
+        };
 
         # Runs the Neovim configuration's plenary specs on the lockfile-pinned
         # plugins.

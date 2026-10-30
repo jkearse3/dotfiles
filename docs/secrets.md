@@ -14,9 +14,26 @@ alias. No secret value or provider choice is ever committed.
   against a fixed store-path manifest, the `default` profile, and the consumer's
   scope. `SECRETSPEC_PROVIDER` overrides the alias for a single invocation.
 
-A plaintext value never enters Nix evaluation, a derivation, a generated file,
-process arguments, logs, or `/nix/store`. The wrappers require SecretSpec
-`>= 0.18.0` (asserted at evaluation) from `nixpkgs-unstable`.
+The repository passes only secret names and provider selectors through Nix and
+generated launchers; it does not resolve plaintext values during evaluation or
+builds. SecretSpec injects values at runtime. This is not a guarantee about what
+SecretSpec, a provider, or the launched application writes to logs, files, or
+subprocess arguments. The wrappers require SecretSpec `>= 0.18.0` (asserted at
+evaluation) from `nixpkgs-unstable`.
+
+## Environment boundary
+
+Each launcher pins its manifest, `default` profile, and scope rather than taking
+those selectors from the caller's `SECRETSPEC_*` variables. Scoped execution
+removes inherited manifest-declared names outside that scope, including names
+from other profiles. An optional launcher's direct fallback when the alias is
+absent applies the same filtering. In-scope ambient values and unrelated
+environment variables survive; the scope is not a general environment allowlist.
+
+SecretSpec resolves credentials before entering any consumer sandbox. The
+consumer and its descendants can read admitted environment credentials; scope
+filtering does not isolate secrets from child commands or restrict what those
+commands can do with them.
 
 ## Commissioning a machine
 
@@ -44,7 +61,13 @@ Consumers whose secrets are all optional (like OpenCode) run without this step.
 - **Provider configured but unavailable** (e.g. Linux `keyring` with no Secret
   Service) — SecretSpec fails rather than silently degrading. Repair the
   provider, choose another, or override for the invocation. The wrapper does not
-  reinterpret a failing provider as an uncommissioned machine.
+  reinterpret a failing provider as an uncommissioned machine. Provider-list
+  inspection errors also fail visibly. A nonempty `SECRETSPEC_PROVIDER` skips
+  alias discovery, not scoped SecretSpec resolution; it never triggers an
+  anonymous retry on failure.
+- **Keychain prompts or access failures** — Keychain authorization and signing
+  are separate from launcher scope filtering. This integration does not change
+  Keychain access policy or remediate prompts.
 
 ## Backup and recovery
 

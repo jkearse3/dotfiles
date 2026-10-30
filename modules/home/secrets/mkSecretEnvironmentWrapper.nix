@@ -24,6 +24,10 @@ assert lib.assertMsg (lib.elem environmentName environments)
 let
   escapedCommand = lib.escapeShellArg command;
   escapedScope = lib.escapeShellArg environmentName;
+  manifestPolicy = (import ./manifestPolicy.nix { inherit lib; }) (builtins.readFile manifest);
+  excludedSecretNames =
+    lib.subtractLists manifestPolicy.scopes.${environmentName}.secretNames
+      manifestPolicy.allSecretNames;
 
   # The manifest is a value-free registry, so shipping it into the store is safe.
   # Pinning a store path also stops SecretSpec's current-directory discovery from
@@ -57,7 +61,14 @@ pkgs.writeShellApplication {
       if ! grep -qE '^[[:space:]]*dotfiles[[:space:]]*=' <<< "$providerList"; then
         ${
           if allowMissingProvider then
-            ''exec ${escapedCommand} "$@"''
+            ''
+              # Match scoped SecretSpec execution even without a provider: names
+              # declared in any profile but outside this scope must not leak in.
+              ${lib.concatMapStringsSep "\n" (
+                secretName: "unset -v -- ${lib.escapeShellArg secretName}"
+              ) excludedSecretNames}
+              exec ${escapedCommand} "$@"
+            ''
           else
             ''
               {
