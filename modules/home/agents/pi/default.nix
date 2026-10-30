@@ -22,32 +22,6 @@ let
     skills = config.agents.skills;
   };
 
-  # Stock MCP rewrites enabled/exposure values, so deliver writable JSON with
-  # generation-owned defaults rather than a read-only Home Manager symlink.
-  mcpFile = ./mcp.json;
-  mcpStatePath = "state/pi-mcp.json";
-  piMcpMerge = pkgs.writeShellApplication {
-    name = "pi-mcp-merge";
-    runtimeInputs = [
-      pkgs.coreutils
-      pkgs.jq
-    ];
-    text = builtins.readFile ./pi-mcp-merge.sh;
-  };
-  piMcpMergeChecked =
-    pkgs.runCommandLocal "pi-mcp-merge-checked"
-      {
-        nativeBuildInputs = [
-          pkgs.bash
-          pkgs.coreutils
-          pkgs.jq
-        ];
-      }
-      ''
-        bash ${./pi-mcp-merge-test.sh} ${piMcpMerge}/bin/pi-mcp-merge ${mcpFile}
-        ln -s ${piMcpMerge} $out
-      '';
-
   # Herdr ships the authoritative Pi lifecycle and session integration beside
   # its binary. Editable delivery reaches it through the stable user-profile
   # link tracked in `extensions/herdr-agent-state.ts`; locked delivery replaces
@@ -184,8 +158,6 @@ in
 
       extraBuilderCommands = ''
         mkdir -p $out/state
-        ln -s ${mcpFile} $out/${mcpStatePath}
-        ln -s ${piMcpMergeChecked} $out/state/pi-mcp-merge-checked
         ln -s ${herdrPiIntegrationChecked} $out/state/pi-herdr-integration-checked
 
         # The extensions themselves are delivered by symlink, so the generation
@@ -193,19 +165,25 @@ in
         ln -s ${dotfilesPackages.pi-extensions-checked} $out/state/pi-extensions-checked
       '';
 
-      activation.piMcp =
-        lib.hm.dag.entryAfter [ "writeBoundary" ] # bash
-          ''
-            piPreviousMcp=""
-            if [[ -v oldGenPath ]]; then
-              piPreviousMcp="$oldGenPath/${mcpStatePath}"
-            fi
-            run ${piMcpMergeChecked}/bin/pi-mcp-merge \
-              "$HOME/.pi/agent/mcp.json" \
-              ${mcpFile} \
-              "$piPreviousMcp"
-            unset piPreviousMcp
-          '';
+      # Pi's `/mcp` command rewrites `enabled` and `exposure` values, so the
+      # file must stay writable rather than a read-only Home Manager symlink.
+      # Each switch merges the servers in `mcp.json` into it: declared fields
+      # replace whatever Pi wrote, while undeclared servers and fields stay
+      # Pi-owned. Removing a declaration leaves its last value in the file
+      # until it is edited by hand. The Exa header keeps the literal
+      # `${EXA_API_KEY}` reference, which Pi expands at runtime, so the key
+      # never enters the Nix store.
+      activation.piMcp = lib.hm.dag.entryAfter [ "linkGeneration" ] (
+        lib.hm.generators.mkImpureConfigMerger {
+          inherit pkgs;
+          format = "json";
+          empty = "{}";
+          mode = "600";
+          path = "${config.home.homeDirectory}/.pi/agent/mcp.json";
+          staticSettings = ./mcp.json;
+          jqOperation = "$dynamic * $static";
+        }
+      );
 
       file = {
         ".pi/agent/AGENTS.md".text = renderAgentsMarkdown {
