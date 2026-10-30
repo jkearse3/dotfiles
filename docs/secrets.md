@@ -27,8 +27,13 @@ Each launcher pins its manifest, `default` profile, and scope rather than taking
 those selectors from the caller's `SECRETSPEC_*` variables. Scoped execution
 removes inherited manifest-declared names outside that scope, including names
 from other profiles. An optional launcher's direct fallback when the alias is
-absent applies the same filtering. In-scope ambient values and unrelated
-environment variables survive; the scope is not a general environment allowlist.
+absent applies the same filtering. The manifest alone determines this policy:
+only active secrets in the `default` profile count, and every one must
+explicitly declare `required = false` to allow launch without a provider. A
+scope with no active secrets also needs no provider. Unknown scopes fail Nix
+evaluation; consumers do not maintain a second scope inventory or an
+optional-provider flag. In-scope ambient values and unrelated environment
+variables survive; the scope is not a general environment allowlist.
 
 SecretSpec resolves credentials before entering any consumer sandbox. The
 consumer and its descendants can read admitted environment credentials; scope
@@ -39,8 +44,10 @@ commands can do with them.
 
 Mapping the `dotfiles` alias is machine-local, not managed by Home Manager, and
 repeated on every new machine. It affects only commands that request the alias,
-not a machine-wide default. Until it is done, a secret-backed launcher fails
-with guidance instead of running without secrets.
+not a machine-wide default. Until it is done, a launcher with any required
+active secret fails with guidance instead of running without secrets. Optional
+consumers, including both Pi and OpenCode (normal and sandbox variants), start
+without commissioning; they retain admitted ambient credentials.
 
 ```sh
 # In the dev shell (nix develop), which supplies secretspec.
@@ -51,7 +58,7 @@ secretspec config global provider list
 ```
 
 Then store each consumer's secret values — see [Consumers](#consumers).
-Consumers whose secrets are all optional (like OpenCode) run without this step.
+Consumers whose active secrets are all optional run without this step.
 
 ## Troubleshooting
 

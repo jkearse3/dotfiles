@@ -8,26 +8,21 @@
 {
   lib,
   pkgs,
-  environments,
   manifest,
 }:
 {
   name,
   environmentName,
   command,
-  allowMissingProvider ? false,
 }:
 assert lib.assertMsg (name != "") "mkSecretEnvironmentWrapper: name must not be empty";
 assert lib.assertMsg (command != "") "mkSecretEnvironmentWrapper: command must not be empty";
-assert lib.assertMsg (lib.elem environmentName environments)
-  "mkSecretEnvironmentWrapper: unknown secret environment '${environmentName}'; declare it in modules/home/secrets";
 let
   escapedCommand = lib.escapeShellArg command;
   escapedScope = lib.escapeShellArg environmentName;
   manifestPolicy = (import ./manifestPolicy.nix { inherit lib; }) (builtins.readFile manifest);
-  excludedSecretNames =
-    lib.subtractLists manifestPolicy.scopes.${environmentName}.secretNames
-      manifestPolicy.allSecretNames;
+  scopePolicy = manifestPolicy.scopes.${environmentName};
+  excludedSecretNames = lib.subtractLists scopePolicy.secretNames manifestPolicy.allSecretNames;
 
   # The manifest is a value-free registry, so shipping it into the store is safe.
   # Pinning a store path also stops SecretSpec's current-directory discovery from
@@ -37,6 +32,8 @@ let
     name = "secretspec.toml";
   };
 in
+assert lib.assertMsg (builtins.hasAttr environmentName manifestPolicy.scopes)
+  "mkSecretEnvironmentWrapper: unknown secret environment '${environmentName}'; declare its scope in secretspec.toml";
 pkgs.writeShellApplication {
   inherit name;
   runtimeInputs = [
@@ -47,9 +44,9 @@ pkgs.writeShellApplication {
     manifest=${lib.escapeShellArg "${manifestPath}"}
 
     # SECRETSPEC_PROVIDER is the intentional per-invocation override. Without it,
-    # resolve through the machine-local `dotfiles` alias. Most consumers require
-    # that alias; callers whose complete secret scope is optional may instead run
-    # unchanged on an uncommissioned machine. A malformed or failing registered
+    # resolve through the machine-local `dotfiles` alias. The manifest's active
+    # default-profile scope determines whether an uncommissioned machine may run
+    # without a provider. A malformed or failing registered
     # provider remains SecretSpec's concern and never silently loses credentials.
     provider="''${SECRETSPEC_PROVIDER:-dotfiles}"
     if [ -z "''${SECRETSPEC_PROVIDER:-}" ]; then
@@ -60,7 +57,7 @@ pkgs.writeShellApplication {
 
       if ! grep -qE '^[[:space:]]*dotfiles[[:space:]]*=' <<< "$providerList"; then
         ${
-          if allowMissingProvider then
+          if !scopePolicy.requiresProvider then
             ''
               # Match scoped SecretSpec execution even without a provider: names
               # declared in any profile but outside this scope must not leak in.

@@ -226,6 +226,23 @@ lib.runTests {
       ).success;
     expected = false;
   };
+  testUnknownLauncherScopeIsRejected = {
+    expr =
+      (builtins.tryEval (
+        import ../mkSecretEnvironmentWrapper.nix
+          {
+            inherit lib;
+            manifest = ../../../../secretspec.toml;
+            pkgs.writeShellApplication = application: application;
+          }
+          {
+            name = "unknown-scope";
+            environmentName = "undeclared-consumer";
+            command = "/unused";
+          }
+      )).success;
+    expected = false;
+  };
   testRepositoryManifest = {
     expr = evaluate (builtins.readFile ../../../../secretspec.toml);
     expected = {

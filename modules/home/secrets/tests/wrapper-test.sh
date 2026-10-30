@@ -37,6 +37,15 @@ for listing in '' 'No provider aliases configured.' '  unrelated = dotenv://test
 done
 printf '%s\n' 'ok - absent and misleading aliases use filtered fallback; required policy fails'
 
+# A scope with no default-profile members needs no provider. Scope membership
+# still admits ambient values declared only in another profile.
+export PROVIDER_LIST=
+run_status 0 "$INACTIVE_WRAPPER"
+grep -qxF OTHER_PROFILE=excluded "$TEST_ROOT/environment"
+grep -qxF UNRELATED=preserved "$TEST_ROOT/environment"
+if grep -qE '^(ADMITTED|EXCLUDED)=' "$TEST_ROOT/environment"; then fail 'inactive scope leaked secrets'; fi
+printf '%s\n' 'ok - empty active intersection uses manifest-derived filtered fallback'
+
 run_status 1 env INSPECT_STATUS=9 "$OPTIONAL_WRAPPER"
 grep -qF 'failed to inspect' "$TEST_ROOT/stderr"
 [[ ! -e $TEST_ROOT/started ]] || fail 'inspection error launched child'

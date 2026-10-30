@@ -181,7 +181,6 @@ let
         name = "${name}-secret-environment";
         environmentName = "pi";
         inherit command;
-        allowMissingProvider = true;
       };
     in
     pkgs.writeShellApplication {
