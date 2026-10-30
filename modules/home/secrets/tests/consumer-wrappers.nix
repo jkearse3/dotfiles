@@ -22,10 +22,7 @@ let
     let
       args = {
         inherit lib pkgs;
-        config.agents = {
-          shellPath = "${pkgs.bash}/bin/bash";
-          pi.packages = [ ];
-        };
+        config.agents.shellPath = "${pkgs.bash}/bin/bash";
         dotfilesPackages = {
           pi = child "pi";
           opencode = child "opencode";

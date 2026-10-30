@@ -12,8 +12,6 @@
   ...
 }:
 let
-  cfg = config.agents.pi;
-
   renderAgentsMarkdown = import ../renderAgentsMarkdown.nix { inherit lib; };
   piRules = {
     delegation = ./rules/delegation.md;
@@ -23,33 +21,6 @@ let
     inherit lib pkgs;
     skills = config.agents.skills;
   };
-
-  # Fallback defaults for keys pi rewrites as the user changes theme, provider,
-  # model, thinking level, or TUI mode in the app. The merge lets the live value
-  # win, so these only fill keys pi has not written.
-  #
-  # `lastChangelogVersion` suppresses the changelog screen. Pi stamps that key
-  # only when it is unset or the changelog holds newer entries, so a version
-  # above every release is written once and never rewritten.
-  seedSettings = {
-    theme = "tokyonight";
-    defaultProvider = "openai-codex";
-    defaultModel = "gpt-6.1-sol";
-    defaultThinkingLevel = "medium";
-    tuiMode = "fullscreen";
-    lastChangelogVersion = "999.999.999";
-
-    # Without it pi runs `/bin/bash`, which is bash 3.2 on macOS.
-    shellPath = config.agents.shellPath;
-  };
-
-  seedFile = pkgs.writeText "pi-settings-seed.json" (builtins.toJSON seedSettings);
-
-  # Recorded into the generation rather than into ~/.pi, following
-  # `modules/misc/dconf.nix`, so the set Nix owns rolls back with the generation
-  # and needs no state file of its own.
-  packagesFile = pkgs.writeText "pi-packages.json" (builtins.toJSON cfg.packages);
-  packagesStatePath = "state/pi-packages.json";
 
   # Stock MCP rewrites enabled/exposure values, so deliver writable JSON with
   # generation-owned defaults rather than a read-only Home Manager symlink.
@@ -75,32 +46,6 @@ let
       ''
         bash ${./pi-mcp-merge-test.sh} ${piMcpMerge}/bin/pi-mcp-merge ${mcpFile}
         ln -s ${piMcpMerge} $out
-      '';
-
-  piSettingsMerge = pkgs.writeShellApplication {
-    name = "pi-settings-merge";
-    runtimeInputs = [
-      pkgs.coreutils
-      pkgs.jq
-    ];
-    text = builtins.readFile ./pi-settings-merge.sh;
-  };
-
-  # A merge regression drops settings pi wrote without saying so, and activation
-  # is a bad place to discover that. Gate the script on its fixtures at build
-  # time instead, and hand the module only the checked path.
-  piSettingsMergeChecked =
-    pkgs.runCommandLocal "pi-settings-merge-checked"
-      {
-        nativeBuildInputs = [
-          pkgs.bash
-          pkgs.coreutils
-          pkgs.jq
-        ];
-      }
-      ''
-        bash ${./pi-settings-merge-test.sh} ${piSettingsMerge}/bin/pi-settings-merge
-        ln -s ${piSettingsMerge} $out
       '';
 
   # Herdr ships the authoritative Pi lifecycle and session integration beside
@@ -205,42 +150,32 @@ in
     ../../secrets
   ];
 
-  options.agents.pi.packages = lib.mkOption {
-    type = lib.types.listOf (lib.types.either lib.types.str (lib.types.attrsOf lib.types.anything));
-    default = [ ];
-    example = [
-      "npm:@example/pi-pack"
-      {
-        source = "https://github.com/example/pi-pack";
-        skills = [ "review" ];
-      }
-    ];
-    description = ''
-      Third-party pi packages to install, as `npm:`/`git:`/absolute-path
-      sources. The attribute set form carries the `pi config` resource filters
-      alongside a `source` key.
-
-      Nix owns these entries additively: changing or removing one here reaches
-      `~/.pi/agent/settings.json` on the next activation, but entries installed
-      with `pi install` are never touched. Pi replaces arrays wholesale when it
-      merges settings, so this list must not be written into the live file
-      directly.
-
-      Pin every entry to an exact version (`npm:@scope/pack@1.2.3`, `git:...@tag`).
-      Pi installs a missing package when it starts, so an unpinned source
-      resolves to whatever is newest at that moment, on a schedule nobody chose,
-      and a generation rollback restores this entry without restoring the tree
-      that was installed for it.
-
-      Entries are matched the way pi matches them — an npm source by bare
-      package name, a git source by host and path, a local source by resolved
-      path — so re-installing a declared package at another version updates the
-      existing entry in place, and pi's value for it stands until this list
-      changes.
-    '';
-  };
-
   config = {
+    # Home Manager merges these keys into the writable settings file on every
+    # switch, so a declared value replaces whatever Pi wrote. Pi keeps every
+    # undeclared key, including `defaultProvider`, `defaultModel`, and the
+    # `packages` entries `pi install` writes. Removing a key here leaves its
+    # last value in the file until it is edited by hand.
+    programs.pi-coding-agent = {
+      enable = true;
+
+      # `pi` and `nono-pi` below are the only Pi executables on PATH.
+      package = null;
+
+      mutableSettings = true;
+      settings = {
+        theme = "tokyonight";
+
+        # Suppresses the changelog screen. Pi stamps this key only when it is
+        # unset or the changelog holds newer entries, so a version above every
+        # release is never rewritten.
+        lastChangelogVersion = "999.999.999";
+
+        # Without it pi runs `/bin/bash`, which is bash 3.2 on macOS.
+        shellPath = config.agents.shellPath;
+      };
+    };
+
     home = {
       packages = [
         pi
@@ -249,7 +184,6 @@ in
 
       extraBuilderCommands = ''
         mkdir -p $out/state
-        ln -s ${packagesFile} $out/${packagesStatePath}
         ln -s ${mcpFile} $out/${mcpStatePath}
         ln -s ${piMcpMergeChecked} $out/state/pi-mcp-merge-checked
         ln -s ${herdrPiIntegrationChecked} $out/state/pi-herdr-integration-checked
@@ -271,25 +205,6 @@ in
               ${mcpFile} \
               "$piPreviousMcp"
             unset piPreviousMcp
-          '';
-
-      activation.piSettings =
-        lib.hm.dag.entryAfter [ "piMcp" ] # bash
-          ''
-            # Unset on a first activation, and pointing at a generation without
-            # the state file on the first switch after this option existed. The
-            # merge treats either as an empty Nix-owned set.
-            piPreviousPackages=""
-            if [[ -v oldGenPath ]]; then
-              piPreviousPackages="$oldGenPath/${packagesStatePath}"
-            fi
-
-            run ${piSettingsMergeChecked}/bin/pi-settings-merge \
-              "$HOME/.pi/agent/settings.json" \
-              ${seedFile} \
-              ${packagesFile} \
-              "$piPreviousPackages"
-            unset piPreviousPackages
           '';
 
       file = {
