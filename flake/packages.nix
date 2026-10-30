@@ -14,7 +14,7 @@
     }:
     let
       # The pi module delivers this directory to pi; the packages below build
-      # its npm dependencies and check its sources.
+      # its npm dependencies, check its sources, and assemble its locked tree.
       piExtensions = ../modules/home/agents/pi/extensions;
     in
     {
@@ -64,6 +64,10 @@
           # The 5.x compiler the extensions are written against; the unstable
           # default is the TypeScript 7 native preview.
           typescript = unstablePkgs.typescript_5;
+        };
+        pi-extensions-locked = pkgs.callPackage ../packages/pi-extensions-locked/package.nix {
+          inherit pi-extension-deps pi-extensions-checked;
+          extensions = piExtensions;
         };
         playwright-cli = pkgs.callPackage ../packages/playwright-cli/package.nix { };
         ports = pkgs.callPackage ../packages/ports/package.nix { };

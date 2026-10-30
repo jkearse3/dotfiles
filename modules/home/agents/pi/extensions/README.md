@@ -254,12 +254,13 @@ integration in the active Nix profile. This gives Herdr its canonical installed
 filename, so `herdr integration status` verifies the same artifact shipped by
 the installed Herdr package instead of a copied extension.
 
-Editable delivery preserves that profile-relative link. Locked delivery replaces
-it with a direct link to the selected `dotfilesPackages.herdr` artifact. The
-`pi-extensions-checked` package (`./x.sh pi-extensions-check`) checks the
-integration identity, version marker, and source link target, and the Home
-Manager build fails through that package when any of them is wrong. Do not run
-`herdr integration install pi`; Home Manager owns the canonical path.
+Editable delivery preserves that profile-relative link. Locked delivery, the
+`pi-extensions-locked` package, replaces it with a direct link to the selected
+`dotfilesPackages.herdr` artifact. The `pi-extensions-checked` package
+(`./x.sh pi-extensions-check`) checks the integration identity, version marker,
+and source link target, and the Home Manager build fails through that package
+when any of them is wrong. Do not run `herdr integration install pi`; Home
+Manager owns the canonical path.
 
 ## Types for Pi's modules
 

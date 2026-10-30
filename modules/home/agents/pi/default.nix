@@ -22,22 +22,8 @@ let
     skills = config.agents.skills;
   };
 
-  # Locked mode cannot use the editable checkout's gitignored `node_modules`.
-  # Build a complete immutable extension root from the same lockfile used by
-  # editable npm installs. In normal mode mkSource points Pi directly at the
-  # checkout, where npm owns runtime dependencies.
-  piExtensionsLocked = pkgs.runCommandLocal "pi-extensions-locked" { } ''
-    # Depending on the check keeps a failing extension or Herdr integration
-    # from producing a locked tree.
-    test -e ${dotfilesPackages.pi-extensions-checked}
-
-    mkdir -p $out
-    cp -R ${./extensions}/. $out/
-    rm -rf $out/node_modules $out/.pi-types $out/herdr-agent-state.ts
-    ln -s ${dotfilesPackages.pi-extension-deps}/node_modules $out/node_modules
-    ln -s ${dotfilesPackages.pi-extensions-checked.herdrPiIntegration} $out/herdr-agent-state.ts
-  '';
-  piExtensionsSource = if dotfilesSource.editable then mkSource ./extensions else piExtensionsLocked;
+  piExtensionsSource =
+    if dotfilesSource.editable then mkSource ./extensions else dotfilesPackages.pi-extensions-locked;
 
   nono-pi-entrypoint = mkNonoWrapper {
     name = "pi-entrypoint";
