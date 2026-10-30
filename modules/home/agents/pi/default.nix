@@ -22,49 +22,27 @@ let
     skills = config.agents.skills;
   };
 
+  mkAgentLaunchers = import ../mkAgentLaunchers.nix {
+    inherit
+      agentInteractivePolicy
+      agentLauncher
+      lib
+      mkNonoWrapper
+      mkSecretEnvironmentWrapper
+      pkgs
+      ;
+  };
+
   piExtensionsSource =
     if dotfilesSource.editable then mkSource ./extensions else dotfilesPackages.pi-extensions-locked;
 
-  nono-pi-entrypoint = mkNonoWrapper {
-    name = "pi-entrypoint";
-    profile = "coding-agents";
-    command = lib.getExe dotfilesPackages.pi;
-  };
-
-  # Caffeinate stays outermost so its idle-sleep assertion covers the whole
-  # session. Secret resolution stays inside it but outside nono so the sandbox
-  # never needs access to the machine's provider. EXA_API_KEY is optional: when
-  # absent, the interpolated header is empty and Exa continues on its
-  # anonymous free tier.
-  mkPi =
-    {
-      name,
-      command,
-    }:
-    let
-      secretEnvironment = mkSecretEnvironmentWrapper {
-        name = "${name}-secret-environment";
-        environmentName = "pi";
-        inherit command;
-      };
-    in
-    pkgs.writeShellApplication {
-      inherit name;
-      # Apply the non-interactive policy to the secret wrapper, nono, Pi, and
-      # every command Pi runs without changing the user's interactive shell.
-      text = ''
-        ${agentInteractivePolicy.shellExports}
-        ${agentLauncher { commandLine = ''${lib.getExe secretEnvironment} "$@"''; }}
-      '';
-    };
-
-  pi = mkPi {
+  # The `pi` secret environment supplies EXA_API_KEY. It is optional: when
+  # absent, the interpolated header is empty and Exa continues on its anonymous
+  # free tier.
+  piLaunchers = mkAgentLaunchers {
     name = "pi";
     command = lib.getExe dotfilesPackages.pi;
-  };
-  nono-pi = mkPi {
-    name = "nono-pi";
-    command = "${nono-pi-entrypoint}/bin/nono-pi-entrypoint";
+    secretEnvironment = "pi";
   };
 in
 {
@@ -101,8 +79,8 @@ in
 
     home = {
       packages = [
-        pi
-        nono-pi
+        piLaunchers.launcher
+        piLaunchers.nonoLauncher
       ];
 
       extraBuilderCommands = ''
