@@ -17,27 +17,16 @@ let
     skills = config.agents.skills;
   };
 
-  # caffeinate stays outermost so its idle-sleep assertion covers the whole
-  # session, and secret resolution stays inside it but outside any sandbox.
-  mkOpencode =
-    {
-      name,
-      command,
-    }:
-    let
-      secretEnvironment = mkSecretEnvironmentWrapper {
-        name = "${name}-secret-environment";
-        environmentName = "opencode";
-        inherit command;
-      };
-    in
-    pkgs.writeShellApplication {
-      inherit name;
-      text = ''
-        ${agentInteractivePolicy.shellExports}
-        ${agentLauncher { commandLine = ''${lib.getExe secretEnvironment} "$@"''; }}
-      '';
-    };
+  mkAgentLaunchers = import ../mkAgentLaunchers.nix {
+    inherit
+      agentInteractivePolicy
+      agentLauncher
+      lib
+      mkNonoWrapper
+      mkSecretEnvironmentWrapper
+      pkgs
+      ;
+  };
 
   opencodeFishCompletion = # fish
     ''
@@ -76,19 +65,10 @@ let
     '';
   };
 
-  nono-opencode-entrypoint = mkNonoWrapper {
-    name = "opencode-entrypoint";
-    profile = "coding-agents";
-    command = "${opencode-wrapped}/bin/opencode";
-  };
-
-  opencode = mkOpencode {
+  opencodeLaunchers = mkAgentLaunchers {
     name = "opencode";
     command = "${opencode-wrapped}/bin/opencode";
-  };
-  nono-opencode = mkOpencode {
-    name = "nono-opencode";
-    command = "${nono-opencode-entrypoint}/bin/nono-opencode-entrypoint";
+    secretEnvironment = "opencode";
   };
 in
 {
@@ -102,8 +82,8 @@ in
 
   config = {
     home.packages = [
-      opencode
-      nono-opencode
+      opencodeLaunchers.launcher
+      opencodeLaunchers.nonoLauncher
     ];
     home.file = {
       ".config/opencode/opencode.jsonc".source = mkSource ./opencode.jsonc;
