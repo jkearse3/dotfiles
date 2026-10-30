@@ -62,20 +62,10 @@ let
   '';
   piExtensionsSource = if dotfilesSource.editable then mkSource ./extensions else piExtensionsLocked;
 
-  # Scope the non-interactive policy to Pi and every command it shells out to
-  # without changing the user's interactive shell.
-  pi-wrapped = pkgs.writeShellApplication {
-    name = "pi";
-    text = ''
-      ${agentInteractivePolicy.shellExports}
-      exec ${dotfilesPackages.pi}/bin/pi "$@"
-    '';
-  };
-
   nono-pi-entrypoint = mkNonoWrapper {
     name = "pi-entrypoint";
     profile = "coding-agents";
-    command = "${pi-wrapped}/bin/pi";
+    command = lib.getExe dotfilesPackages.pi;
   };
 
   # Caffeinate stays outermost so its idle-sleep assertion covers the whole
@@ -97,14 +87,17 @@ let
     in
     pkgs.writeShellApplication {
       inherit name;
+      # Apply the non-interactive policy to the secret wrapper, nono, Pi, and
+      # every command Pi runs without changing the user's interactive shell.
       text = ''
+        ${agentInteractivePolicy.shellExports}
         ${agentLauncher { commandLine = ''${lib.getExe secretEnvironment} "$@"''; }}
       '';
     };
 
   pi = mkPi {
     name = "pi";
-    command = "${pi-wrapped}/bin/pi";
+    command = lib.getExe dotfilesPackages.pi;
   };
   nono-pi = mkPi {
     name = "nono-pi";
