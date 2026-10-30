@@ -10,6 +10,7 @@
   pkgs,
   lib,
   mkNonoWrapper,
+  mkSecretEnvironmentWrapper,
   mkSource,
   ...
 }:
@@ -257,72 +258,60 @@ let
     '';
   };
 
-  # caffeinate stays outermost so its idle-sleep assertion covers the whole
-  # session, wrapping both the direct binary and the sandbox entrypoint.
-  mkClaude =
-    {
-      name,
-      command,
-    }:
-    pkgs.writeShellApplication {
-      inherit name;
-      runtimeInputs = [ checkedSettingsOverlay ];
-      text = ''
-        # `--settings` precedes "$@" so an explicit flag from the caller still
-        # wins. That rests on one more undocumented behavior: a later
-        # `--settings` occurrence displaces an earlier one entirely, rather
-        # than the first winning or the two payloads merging per leaf. The
-        # overlay absorbs an unusable machine-local file on its own;
-        # the fallback here covers the overlay itself failing, which must not be
-        # able to strand a launch without the pin.
-        settings=$(claude-settings-overlay \
-          ${pinnedSettingsPath} \
-          ${lib.escapeShellArg machineSettingsPath} \
-          ${lib.escapeShellArgs machineOverridablePaths}) || settings=${pinnedSettingsPath}
-
-        # Appended to rather than replaced, so a caller's own folders still load.
-        plugin_dirs=''${CLAUDE_CODE_PLUGIN_DIRS-}
-        for manifest in ${lib.escapeShellArg modsPath}/*/.claude-plugin/plugin.json; do
-          [ -f "$manifest" ] || continue
-          plugin_dirs=''${plugin_dirs:+$plugin_dirs:}''${manifest%/.claude-plugin/plugin.json}
-        done
-        if [ -n "$plugin_dirs" ]; then
-          export CLAUDE_CODE_PLUGIN_DIRS="$plugin_dirs"
-        fi
-
-        ${agentInteractivePolicy.shellExports}
-        ${agentLauncher {
-          commandLine = ''${command} --settings "$settings" "$@"'';
-          extraTmpdirVariables = [ "CLAUDE_CODE_TMPDIR" ];
-        }}
-      '';
-    };
-
-  nono-claude-entrypoint = mkNonoWrapper {
-    name = "claude-entrypoint";
-    profile = "coding-agents";
-    command = "${claude-wrapped}/bin/claude";
+  mkAgentLaunchers = import ../mkAgentLaunchers.nix {
+    inherit
+      agentInteractivePolicy
+      agentLauncher
+      lib
+      mkNonoWrapper
+      mkSecretEnvironmentWrapper
+      pkgs
+      ;
   };
 
-  claude = mkClaude {
+  claudeLaunchers = mkAgentLaunchers {
     name = "claude";
     command = "${claude-wrapped}/bin/claude";
-  };
-  nono-claude = mkClaude {
-    name = "nono-claude";
-    command = "${nono-claude-entrypoint}/bin/nono-claude-entrypoint";
+    secretEnvironment = null;
+    runtimeInputs = [ checkedSettingsOverlay ];
+    setup = ''
+      # `--settings` precedes "$@" so an explicit flag from the caller still
+      # wins. That rests on one more undocumented behavior: a later
+      # `--settings` occurrence displaces an earlier one entirely, rather
+      # than the first winning or the two payloads merging per leaf. The
+      # overlay absorbs an unusable machine-local file on its own;
+      # the fallback here covers the overlay itself failing, which must not be
+      # able to strand a launch without the pin.
+      settings=$(claude-settings-overlay \
+        ${pinnedSettingsPath} \
+        ${lib.escapeShellArg machineSettingsPath} \
+        ${lib.escapeShellArgs machineOverridablePaths}) || settings=${pinnedSettingsPath}
+
+      # Appended to rather than replaced, so a caller's own folders still load.
+      plugin_dirs=''${CLAUDE_CODE_PLUGIN_DIRS-}
+      for manifest in ${lib.escapeShellArg modsPath}/*/.claude-plugin/plugin.json; do
+        [ -f "$manifest" ] || continue
+        plugin_dirs=''${plugin_dirs:+$plugin_dirs:}''${manifest%/.claude-plugin/plugin.json}
+      done
+      if [ -n "$plugin_dirs" ]; then
+        export CLAUDE_CODE_PLUGIN_DIRS="$plugin_dirs"
+      fi
+    '';
+    extraArguments = ''--settings "$settings"'';
+    extraTmpdirVariables = [ "CLAUDE_CODE_TMPDIR" ];
   };
 in
 {
   imports = [
     ../../nono
+    ../../secrets
     ../registries.nix
     ../shell.nix
   ];
 
   home.packages = [
-    claude
-    nono-claude
+    claudeLaunchers.launcher
+    claudeLaunchers.nonoLauncher
     dotfilesPackages.ccusage
     (pkgs.writeShellScriptBin "claude-mcp-add-linear" ''
       exec claude mcp add linear-server -s local --transport http https://mcp.linear.app/mcp
@@ -335,7 +324,7 @@ in
     # than the inner binary so that anything that does reach it still carries
     # the settings pin, which now lives in the wrapper rather than in flags
     # baked into `claude-wrapped`.
-    ".local/bin/claude".source = "${claude}/bin/claude";
+    ".local/bin/claude".source = "${claudeLaunchers.launcher}/bin/claude";
 
     # `.claude/settings.json` is deliberately absent: the pinned copy arrives
     # through the wrapper flag, leaving the home path free for Claude Code's
