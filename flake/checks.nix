@@ -96,6 +96,8 @@
           ];
         };
 
+        manifest-policy = unstablePkgs.callPackage ../modules/home/secrets/tests/check.nix { };
+
         # Runs the Neovim configuration's plenary specs on the lockfile-pinned
         # plugins.
         neovim = unstablePkgs.callPackage ../modules/home/neovim/nvim/tests/check.nix {
