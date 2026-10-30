@@ -22,43 +22,20 @@ let
     skills = config.agents.skills;
   };
 
-  # Herdr ships the authoritative Pi lifecycle and session integration beside
-  # its binary. Editable delivery reaches it through the stable user-profile
-  # link tracked in `extensions/herdr-agent-state.ts`; locked delivery replaces
-  # that relative link with this exact package artifact.
-  herdrPiIntegration = "${dotfilesPackages.herdr}/share/herdr/integrations/pi/herdr-agent-state.ts";
-  herdrPiIntegrationChecked =
-    pkgs.runCommandLocal "pi-herdr-integration-checked"
-      {
-        nativeBuildInputs = [
-          pkgs.coreutils
-          pkgs.gnugrep
-        ];
-      }
-      ''
-        expectedTarget='../../../../../../.nix-profile/share/herdr/integrations/pi/herdr-agent-state.ts'
-        actualTarget="$(readlink ${./extensions}/herdr-agent-state.ts)"
-        if [[ "$actualTarget" != "$expectedTarget" ]]; then
-          echo "pi Herdr integration link target mismatch: $actualTarget" >&2
-          exit 1
-        fi
-
-        test -s ${herdrPiIntegration}
-        grep -Fxq '// HERDR_INTEGRATION_ID=pi' ${herdrPiIntegration}
-        grep -Eq '^// HERDR_INTEGRATION_VERSION=[0-9]+$' ${herdrPiIntegration}
-        ln -s ${herdrPiIntegration} $out
-      '';
-
   # Locked mode cannot use the editable checkout's gitignored `node_modules`.
   # Build a complete immutable extension root from the same lockfile used by
   # editable npm installs. In normal mode mkSource points Pi directly at the
   # checkout, where npm owns runtime dependencies.
   piExtensionsLocked = pkgs.runCommandLocal "pi-extensions-locked" { } ''
+    # Depending on the check keeps a failing extension or Herdr integration
+    # from producing a locked tree.
+    test -e ${dotfilesPackages.pi-extensions-checked}
+
     mkdir -p $out
     cp -R ${./extensions}/. $out/
     rm -rf $out/node_modules $out/.pi-types $out/herdr-agent-state.ts
     ln -s ${dotfilesPackages.pi-extension-deps}/node_modules $out/node_modules
-    ln -s ${herdrPiIntegrationChecked} $out/herdr-agent-state.ts
+    ln -s ${dotfilesPackages.pi-extensions-checked.herdrPiIntegration} $out/herdr-agent-state.ts
   '';
   piExtensionsSource = if dotfilesSource.editable then mkSource ./extensions else piExtensionsLocked;
 
@@ -143,11 +120,10 @@ in
       ];
 
       extraBuilderCommands = ''
-        mkdir -p $out/state
-        ln -s ${herdrPiIntegrationChecked} $out/state/pi-herdr-integration-checked
-
         # The extensions themselves are delivered by symlink, so the generation
-        # has no other reference to them and the check would never be built.
+        # has no other reference to them and the check, which also gates the
+        # Herdr integration they link to, would never be built.
+        mkdir -p $out/state
         ln -s ${dotfilesPackages.pi-extensions-checked} $out/state/pi-extensions-checked
       '';
 

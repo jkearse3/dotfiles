@@ -1,5 +1,6 @@
 # Gate for the pi extension sources: this builds only when every extension
-# typechecks and passes its fixtures.
+# typechecks and passes its fixtures, and the Herdr lifecycle integration they
+# link to has the expected link target, identity, and version marker.
 #
 # The typecheck is also what keeps an extension from importing a module pi
 # cannot load. It resolves imports against exactly what an extension has at
@@ -12,6 +13,7 @@
 # on its own runs the same check against the current tree.
 {
   extensions,
+  herdr,
   nodejs,
   pi,
   pi-extension-deps,
@@ -19,14 +21,35 @@
   pkgs,
   typescript,
 }:
+let
+  # Herdr ships the authoritative Pi lifecycle and session integration beside
+  # its binary. Editable delivery reaches it through the stable user-profile
+  # link tracked in `extensions/herdr-agent-state.ts`; locked delivery replaces
+  # that relative link with this exact package artifact.
+  herdrPiIntegration = "${herdr}/share/herdr/integrations/pi/herdr-agent-state.ts";
+in
 pkgs.runCommandLocal "pi-extensions-checked"
   {
     nativeBuildInputs = [
       nodejs
       typescript
     ];
+    passthru = { inherit herdrPiIntegration; };
   }
   ''
+    # The Herdr integration check runs before the empty-tree return below, so
+    # it gates every tree.
+    expectedTarget='../../../../../../.nix-profile/share/herdr/integrations/pi/herdr-agent-state.ts'
+    actualTarget="$(readlink ${extensions}/herdr-agent-state.ts)"
+    if [[ "$actualTarget" != "$expectedTarget" ]]; then
+      echo "pi Herdr integration link target mismatch: $actualTarget" >&2
+      exit 1
+    fi
+
+    test -s ${herdrPiIntegration}
+    grep -Fxq '// HERDR_INTEGRATION_ID=pi' ${herdrPiIntegration}
+    grep -Eq '^// HERDR_INTEGRATION_VERSION=[0-9]+$' ${herdrPiIntegration}
+
     # An extension is a directory holding an `index.ts`. With none declared
     # there is nothing to check, and every step below would fail on the empty
     # tree.
