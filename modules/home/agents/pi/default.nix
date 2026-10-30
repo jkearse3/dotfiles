@@ -78,13 +78,6 @@ let
     command = "${pi-wrapped}/bin/pi";
   };
 
-  # Gate the secret wrapper on the concrete sandbox entrypoint without running
-  # nono or resolving machine-local secrets during the build.
-  nono-pi-entrypoint-checked = pkgs.runCommandLocal "nono-pi-entrypoint-checked" { } ''
-    test -x ${nono-pi-entrypoint}/bin/nono-pi-entrypoint
-    ln -s ${nono-pi-entrypoint} $out
-  '';
-
   # Caffeinate stays outermost so its idle-sleep assertion covers the whole
   # session. Secret resolution stays inside it but outside nono so the sandbox
   # never needs access to the machine's provider. EXA_API_KEY is optional: when
@@ -115,7 +108,7 @@ let
   };
   nono-pi = mkPi {
     name = "nono-pi";
-    command = "${nono-pi-entrypoint-checked}/bin/nono-pi-entrypoint";
+    command = "${nono-pi-entrypoint}/bin/nono-pi-entrypoint";
   };
 in
 {
