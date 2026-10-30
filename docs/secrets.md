@@ -87,6 +87,20 @@ gate search. A stored provider value wins over an ambient `EXA_API_KEY`; with no
 stored value, an ambient one survives into either client. Unset it in your shell
 to force free-tier behavior despite a stale ambient value.
 
+Pi adds or updates its declared Exa authentication headers only when the
+resulting MCP URL exactly matches the declared Exa URL. Customized or
+uncertain-ownership headers survive declaration changes; existing headers on
+custom endpoints are left untouched. Unchanged declarations also preserve user
+deletions.
+
+**Audit existing custom Exa endpoints manually:** inspect the `exa` entry in
+`~/.pi/agent/mcp.json` and remove or replace any `headers` that should not go to
+that endpoint, especially `x-api-key: "${EXA_API_KEY}"`. Earlier reconciliation
+could attach this default to a customized URL. Pi does not automatically remove
+it because the repository cannot distinguish an old default from intentional
+custom authentication. A custom endpoint with that header can receive your
+runtime Exa key.
+
 For one-off testing, override the provider for a single launch (this skips the
 alias preflight):
 
