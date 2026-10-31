@@ -348,23 +348,25 @@ For each materially changed concept:
    List the identifiers the change introduced and rename any whose meaning no
    longer matches the final behavior; names chosen early in a change often
    describe an earlier understanding.
-3. Confirm symbols covered by **Document Symbol Contracts** have concise,
+3. Confirm the task summary reports each new durable name with its rejected
+   alternatives.
+4. Confirm symbols covered by **Document Symbol Contracts** have concise,
    conventionally formatted documentation of their contracts.
-4. Confirm each runtime assertion added to production code, other than a
+5. Confirm each runtime assertion added to production code, other than a
    boundary parser or validating constructor, guards an invariant that types, a
    boundary parser, or a declarative layer could not express, or that would cost
    more to encode than the defect it prevents.
-5. Confirm behavior covered by **Write Durable Checks** has the strongest
+6. Confirm behavior covered by **Write Durable Checks** has the strongest
    practical safe coverage, each new check fails when that behavior is broken,
    and report any remaining validation gap.
-6. Confirm declarations introduced or materially reworked use primary-first
+7. Confirm declarations introduced or materially reworked use primary-first
    disclosure and contiguous supporting declarations without unrelated
    reordering.
-7. Scan changed functions for coherent semantic paragraphs and atomic groups.
-8. Confirm multi-field record construction uses one named field or property per
+8. Scan changed functions for coherent semantic paragraphs and atomic groups.
+9. Confirm multi-field record construction uses one named field or property per
    line, including nested records.
-9. Run the project's formatter and focused type, lint, and test checks.
-10. Inspect the diff for unnecessary renaming, comments, modules, API changes,
+10. Run the project's formatter and focused type, lint, and test checks.
+11. Inspect the diff for unnecessary renaming, comments, modules, API changes,
     whitespace-only changes, and repository text that depends on internal
     planning or workflow context.
 
