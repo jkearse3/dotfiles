@@ -165,6 +165,9 @@ resolve.
 
 ## Enforce Correctness
 
+Types, boundary parsers, and declarative layers rule out states the code does
+not support; durable checks protect behavior those mechanisms do not guarantee.
+
 ### Make Invalid States Unrepresentable
 
 Prefer precise input and output types over `any`, unstructured maps, or
