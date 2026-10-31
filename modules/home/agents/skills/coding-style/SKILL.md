@@ -3,10 +3,10 @@ name: coding-style
 description: >-
   Use whenever writing, editing, generating, or refactoring source code. Make
   changes easy for search-driven agents and humans to find, understand, modify,
-  and verify through consistent domain vocabulary, precise types, progressive
-  declaration order, semantic code paragraphs, scannable record construction,
-  and risk-based durable checks. Apply proportionally without unrelated cleanup
-  or reformatting.
+  and verify through consistent domain vocabulary, types that make invalid
+  states unrepresentable, progressive declaration order, semantic code
+  paragraphs, scannable record construction, and risk-based durable checks.
+  Apply proportionally without unrelated cleanup or reformatting.
 ---
 
 # Coding Style
@@ -130,16 +130,46 @@ the symbol. Describe behavior rather than narrating implementation steps, avoid
 merely restating the name or signature, and update the documentation when the
 contract changes.
 
-### Make Intent Checkable
+### Make Invalid States Unrepresentable
+
+When code depends on an invariant—a value is present, in range, already
+validated, or a workflow step has already happened—enforce it with the strongest
+mechanism the language and repository already provide, in this order:
+
+1. Shape types so the invalid state cannot be constructed. Use tagged unions
+   instead of combinations of nullable fields, required fields instead of
+   optional fields that are always set, distinct ID and value types instead of
+   interchangeable primitives where mixing them is a realistic correctness or
+   security risk, and exhaustive matching so a new case breaks the build instead
+   of falling into a default branch.
+2. Check runtime data once, where it enters, and return a type that records the
+   result. A parser or validating constructor produces a type that only it can
+   create, and downstream code accepts that type without checking again:
+   `parseEmail(raw) -> Email` replaces calls to `assertValidEmail(raw)`
+   scattered across consumers.
+3. Move what remains into a declarative layer the system already enforces, such
+   as data-store constraints, configuration or interface schemas, or build-time
+   checks, so the rule is declared once where the data is defined rather than
+   checked by each piece of code that reads it. An invariant that spans records
+   or concurrent writers, such as uniqueness or a reference to another record,
+   belongs in the layer every writer passes through, such as a data-store
+   constraint, even when a boundary parser also checks it.
+4. Fall back to a runtime assertion only when the earlier mechanisms cannot
+   express the invariant, or when encoding it would cost more than the defect it
+   prevents. Put the check in the boundary that owns the invariant, not in each
+   consumer, and name its error after the violated invariant.
+
+Treat the urge to write an `assert`, `ensure`, or `must` helper in production
+code as a prompt to revisit steps 1 through 3. A remaining runtime check usually
+means a type or declarative rule still allows a state the code does not support.
+Test assertions are unaffected.
+
+Use the language's own idioms and the repository's existing mechanisms. Do not
+introduce type-level machinery, validation libraries, or encodings whose reading
+cost exceeds the risk they remove.
 
 - Prefer precise input and output types over `any`, unstructured maps, or
   convention-only fields.
-- Use distinct ID or value types when interchangeable primitives create a
-  realistic correctness or security risk.
-- Represent meaningful state alternatives explicitly rather than through
-  undocumented combinations of nullable fields.
-- Make invalid usage fail through the compiler, schema validation, or focused
-  runtime validation when practical.
 - Name important types and validation errors so diagnostics lead back to the
   relevant concept.
 
@@ -313,16 +343,20 @@ For each materially changed concept:
 4. Confirm declarations introduced or materially reworked use primary-first
    disclosure and contiguous supporting declarations without unrelated
    reordering.
-5. Scan changed functions for coherent semantic paragraphs and atomic groups.
-6. Confirm multi-field record construction uses one named field or property per
+5. Confirm each runtime assertion added to production code, other than a
+   boundary parser or validating constructor, guards an invariant that types, a
+   boundary parser, or a declarative layer could not express, or that would cost
+   more to encode than the defect it prevents.
+6. Scan changed functions for coherent semantic paragraphs and atomic groups.
+7. Confirm multi-field record construction uses one named field or property per
    line, including nested records.
-7. Confirm behavior covered by **Write Durable Checks** has the strongest
+8. Confirm behavior covered by **Write Durable Checks** has the strongest
    practical safe coverage, each new check fails when that behavior is broken,
    and report any remaining validation gap.
-8. Run the project's formatter and focused type, lint, and test checks.
-9. Inspect the diff for unnecessary renaming, comments, modules, API changes,
-   whitespace-only changes, and repository text that depends on internal
-   planning or workflow context.
+9. Run the project's formatter and focused type, lint, and test checks.
+10. Inspect the diff for unnecessary renaming, comments, modules, API changes,
+    whitespace-only changes, and repository text that depends on internal
+    planning or workflow context.
 
 Optimize ambiguity, navigation cost, and semantic scanability—not identifier
 length, file count, or the number of blank lines.
