@@ -116,6 +116,8 @@ lives.
 - Keep stable error codes, event names, configuration keys, and protocol values
   searchable as literals when operational lookup depends on them.
 - Give runtime errors enough stable context to locate their source.
+- Name important types and validation errors so diagnostics lead back to the
+  relevant concept.
 - Mark retained legacy APIs as deprecated and point to the supported path.
 - Document intentional non-behavior where a maintainer would reasonably search
   for an implementation that does not exist.
@@ -165,6 +167,9 @@ resolve.
 
 ### Make Invalid States Unrepresentable
 
+Prefer precise input and output types over `any`, unstructured maps, or
+convention-only fields.
+
 When code depends on an invariant—a value is present, in range, already
 validated, or a workflow step has already happened—enforce it with the strongest
 mechanism the language and repository already provide, in this order:
@@ -200,11 +205,6 @@ Test assertions are unaffected.
 Use the language's own idioms and the repository's existing mechanisms. Do not
 introduce type-level machinery, validation libraries, or encodings whose reading
 cost exceeds the risk they remove.
-
-- Prefer precise input and output types over `any`, unstructured maps, or
-  convention-only fields.
-- Name important types and validation errors so diagnostics lead back to the
-  relevant concept.
 
 ### Write Durable Checks
 
