@@ -3,16 +3,20 @@ name: coding-style
 description: >-
   Use whenever writing, editing, generating, or refactoring source code. Make
   changes easy for search-driven agents and humans to find, understand, modify,
-  and verify through consistent domain vocabulary, types that make invalid
-  states unrepresentable, progressive declaration order, semantic code
-  paragraphs, scannable record construction, and risk-based durable checks.
-  Apply proportionally without unrelated cleanup or reformatting.
+  and verify: name and locate concepts with consistent domain vocabulary,
+  explain code through symbol contracts and self-contained repository text,
+  enforce correctness with types that make invalid states unrepresentable and
+  risk-based durable checks, and lay out code with progressive declaration
+  order, semantic code paragraphs, and scannable record construction. Apply
+  proportionally without unrelated cleanup or reformatting.
 ---
 
 # Coding Style
 
 Write code so a reader can move from likely task language to the correct
-implementation with a few searches, then scan its control and data flow through
+implementation with a few searches, understand each symbol's contract at its
+definition, rely on types to reject states the code does not support and on
+durable checks to protect the rest, and scan its control and data flow through
 coherent semantic paragraphs.
 
 Apply this skill to every source-code change. Routine local edits may need only
@@ -21,7 +25,7 @@ cross-module behavior, and structural refactors warrant deliberate retrieval and
 flow checks. Apply durable-check guidance at either depth because it depends on
 behavior and risk, not change size.
 
-## Write Searchable Code
+## Name and Locate Concepts
 
 ### Inspect First
 
@@ -107,6 +111,20 @@ lives.
 - Keep orchestrators readable as a sequence of calls whose names lead to their
   implementations.
 
+### Preserve Operational Trails
+
+- Keep stable error codes, event names, configuration keys, and protocol values
+  searchable as literals when operational lookup depends on them.
+- Give runtime errors enough stable context to locate their source.
+- Mark retained legacy APIs as deprecated and point to the supported path.
+- Document intentional non-behavior where a maintainer would reasonably search
+  for an implementation that does not exist.
+
+Do not duplicate authoritative constants or weaken a sound data model merely to
+repeat strings. Prefer one source of truth when drift is the greater risk.
+
+## Explain Code
+
 ### Document Symbol Contracts
 
 Give each public or exported API symbol introduced or materially changed by the
@@ -129,6 +147,21 @@ Follow the language's documentation conventions so tools associate the text with
 the symbol. Describe behavior rather than narrating implementation steps, avoid
 merely restating the name or signature, and update the documentation when the
 contract changes.
+
+### Keep Repository Text Self-Contained
+
+Comments, docstrings, documents, and fixtures must be understandable from the
+repository alone or from a cited, resolvable external artifact. Never rely on
+the plan, ticket prose, session, or agent workflow that produced the change.
+References to internal planning structure—plan or phase names, stage or step
+numbers, task or milestone labels, or the producing agent's workflow state—carry
+no durable meaning and must not appear.
+
+Describe what the code does and why in durable terms. Cite an issue ID or stable
+design document only when that reference adds information a later reader can
+resolve.
+
+## Enforce Correctness
 
 ### Make Invalid States Unrepresentable
 
@@ -173,32 +206,53 @@ cost exceeds the risk they remove.
 - Name important types and validation errors so diagnostics lead back to the
   relevant concept.
 
-### Preserve Operational Trails
+### Write Durable Checks
 
-- Keep stable error codes, event names, configuration keys, and protocol values
-  searchable as literals when operational lookup depends on them.
-- Give runtime errors enough stable context to locate their source.
-- Mark retained legacy APIs as deprecated and point to the supported path.
-- Document intentional non-behavior where a maintainer would reasonably search
-  for an implementation that does not exist.
+Add a durable check when all of these are true:
 
-Do not duplicate authoritative constants or weaken a sound data model merely to
-repeat strings. Prefer one source of truth when drift is the greater risk.
+1. The change introduces or alters behavior whose failure would matter to a
+   caller, an external system, or persisted state.
+2. The compiler, schema, build, or artifact construction does not guarantee the
+   behavior.
+3. No existing check directly protects it.
 
-### Keep Repository Text Self-Contained
+Common cases include behavior that:
 
-Comments, docstrings, documents, and fixtures must be understandable from the
-repository alone or from a cited, resolvable external artifact. Never rely on
-the plan, ticket prose, session, or agent workflow that produced the change.
-References to internal planning structure—plan or phase names, stage or step
-numbers, task or milestone labels, or the producing agent's workflow state—carry
-no durable meaning and must not appear.
+- computes deterministic results over inputs with meaningful edge or failure
+  cases, including caller-supplied malformed or empty input;
+- mutates files, persistent state, or an external system; or
+- exposes a runtime contract such as arguments, output streams, exit codes,
+  idempotence, or change detection.
 
-Describe what the code does and why in durable terms. Cite an issue ID or stable
-design document only when that reference adds information a later reader can
-resolve.
+Use the repository's existing check mechanism rather than introducing a new
+harness. Missing checks among immediate neighbors are not a reason to skip one;
+compare behavior with repository examples carrying similar risk.
 
-## Order Top-Level Declarations for Progressive Disclosure
+Do not add tautological checks, which pass whether or not the behavior is
+correct: restating a compiler, schema, or build guarantee; asserting a mock
+returns its configured value; deriving the expected value from the code under
+test; or asserting on unreviewed snapshots. Confirm each new check fails when
+the behavior it protects is broken.
+
+Durable checks must use repository fixtures, temporary files, in-memory state,
+explicitly provisioned disposable state, or sandboxed integrations. They must
+not read sensitive data or access or mutate protected, production, shared, or
+non-disposable user state. Treat explicitly authorized validation against such
+state as separate manual validation.
+
+Mocks and fakes count when they enforce behavior the artifact owns, such as
+request construction, call sequencing, error handling, or suppression of a side
+effect. They do not establish external compatibility when they merely restate
+assumptions about the external system.
+
+If representative automation is impractical, add the strongest meaningful safe
+partial check and report the remaining validation gap. If no meaningful partial
+check exists, report the whole gap. Do not touch sensitive state or add a
+disproportionate harness solely to satisfy this section.
+
+## Lay Out Code
+
+### Order Top-Level Declarations for Progressive Disclosure
 
 At the top level of a file, module, namespace, or equivalent scope, organize
 each coherent region for progressive top-down reading. After language-mandated
@@ -225,7 +279,7 @@ unrelated declarations solely to make the surrounding file conform. When ideal
 placement would require broader reordering, preserve the existing structure and
 make the changed region as clear as possible within it.
 
-## Structure Code Paragraphs
+### Structure Code Paragraphs
 
 Use blank lines as semantic delimiters. Each paragraph should perform one
 coherent step; a blank line should signal a distinct purpose in the function's
@@ -273,7 +327,7 @@ cannot make complex logic clear, use extraction, naming, or comments instead.
 Follow mandatory formatters and syntax conventions, and avoid whitespace-only
 changes outside code touched by the requested work.
 
-## Format Record Construction
+### Format Record Construction
 
 When a struct, record, or object literal initializes more than one named field,
 write it as a multiline block with one named field or property per line. Apply
@@ -283,50 +337,6 @@ Keep empty and single-field literals compact when clearer. This rule does not
 require one-per-line formatting for positional arguments or collection elements.
 Follow a mandatory formatter when the language controls layout.
 
-## Write Durable Checks
-
-Add a durable check when all of these are true:
-
-1. The change introduces or alters behavior whose failure would matter to a
-   caller, an external system, or persisted state.
-2. The compiler, schema, build, or artifact construction does not guarantee the
-   behavior.
-3. No existing check directly protects it.
-
-Common cases include behavior that:
-
-- computes deterministic results over inputs with meaningful edge or failure
-  cases, including caller-supplied malformed or empty input;
-- mutates files, persistent state, or an external system; or
-- exposes a runtime contract such as arguments, output streams, exit codes,
-  idempotence, or change detection.
-
-Use the repository's existing check mechanism rather than introducing a new
-harness. Missing checks among immediate neighbors are not a reason to skip one;
-compare behavior with repository examples carrying similar risk.
-
-Do not add tautological checks, which pass whether or not the behavior is
-correct: restating a compiler, schema, or build guarantee; asserting a mock
-returns its configured value; deriving the expected value from the code under
-test; or asserting on unreviewed snapshots. Confirm each new check fails when
-the behavior it protects is broken.
-
-Durable checks must use repository fixtures, temporary files, in-memory state,
-explicitly provisioned disposable state, or sandboxed integrations. They must
-not read sensitive data or access or mutate protected, production, shared, or
-non-disposable user state. Treat explicitly authorized validation against such
-state as separate manual validation.
-
-Mocks and fakes count when they enforce behavior the artifact owns, such as
-request construction, call sequencing, error handling, or suppression of a side
-effect. They do not establish external compatibility when they merely restate
-assumptions about the external system.
-
-If representative automation is impractical, add the strongest meaningful safe
-partial check and report the remaining validation gap. If no meaningful partial
-check exists, report the whole gap. Do not touch sensitive state or add a
-disproportionate harness solely to satisfy this section.
-
 ## Check the Result
 
 For each materially changed concept:
@@ -334,25 +344,25 @@ For each materially changed concept:
 1. Search with likely domain terms. Confirm the relevant file or symbol appears
    without excessive unrelated hits and its landing context identifies the
    implementation or next delegation.
-2. Confirm symbols covered by **Document Symbol Contracts** have concise,
-   conventionally formatted documentation of their contracts.
-3. Confirm related behavior and checks use consistent, discoverable vocabulary.
+2. Confirm related behavior and checks use consistent, discoverable vocabulary.
    List the identifiers the change introduced and rename any whose meaning no
    longer matches the final behavior; names chosen early in a change often
    describe an earlier understanding.
-4. Confirm declarations introduced or materially reworked use primary-first
-   disclosure and contiguous supporting declarations without unrelated
-   reordering.
-5. Confirm each runtime assertion added to production code, other than a
+3. Confirm symbols covered by **Document Symbol Contracts** have concise,
+   conventionally formatted documentation of their contracts.
+4. Confirm each runtime assertion added to production code, other than a
    boundary parser or validating constructor, guards an invariant that types, a
    boundary parser, or a declarative layer could not express, or that would cost
    more to encode than the defect it prevents.
-6. Scan changed functions for coherent semantic paragraphs and atomic groups.
-7. Confirm multi-field record construction uses one named field or property per
-   line, including nested records.
-8. Confirm behavior covered by **Write Durable Checks** has the strongest
+5. Confirm behavior covered by **Write Durable Checks** has the strongest
    practical safe coverage, each new check fails when that behavior is broken,
    and report any remaining validation gap.
+6. Confirm declarations introduced or materially reworked use primary-first
+   disclosure and contiguous supporting declarations without unrelated
+   reordering.
+7. Scan changed functions for coherent semantic paragraphs and atomic groups.
+8. Confirm multi-field record construction uses one named field or property per
+   line, including nested records.
 9. Run the project's formatter and focused type, lint, and test checks.
 10. Inspect the diff for unnecessary renaming, comments, modules, API changes,
     whitespace-only changes, and repository text that depends on internal
