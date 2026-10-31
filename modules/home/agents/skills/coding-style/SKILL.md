@@ -25,6 +25,9 @@ cross-module behavior, and structural refactors warrant deliberate retrieval and
 flow checks. Apply durable-check guidance at either depth because it depends on
 behavior and risk, not change size.
 
+Do not rework code outside the requested change solely to make it conform to
+this skill.
+
 ## Name and Locate Concepts
 
 ### Inspect First
@@ -68,8 +71,9 @@ means, then check that it is searchable.
 - Prefer the shortest accurate name whose search results are mostly relevant.
   Give generic operations an informative object when needed:
   `validateSmtpConfig`, not `validateConfig`.
-- Use one spelling for one concept. Avoid aliases and near-synonyms unless an
-  external interface requires them.
+- Use one spelling for one concept across its behavior, checks, and other
+  references, so a search for that spelling finds them together. Avoid aliases
+  and near-synonyms unless an external interface requires them.
 - Treat filenames and directories as search terms. Name concept-bearing modules
   after the behavior or domain question they answer.
 - Respect meaningful language qualification and established framework
@@ -105,7 +109,6 @@ A definition's immediate context should normally reveal what it does, its
 important inputs and outputs, hidden constraints, and where delegated behavior
 lives.
 
-- Keep related behavior and checks easy to locate through the same vocabulary.
 - Split large mixed modules when distinct task-sized concepts repeatedly land
   readers in unrelated code. Do not fragment cohesive code into tiny files.
 - Keep orchestrators readable as a sequence of calls whose names lead to their
@@ -255,6 +258,12 @@ disproportionate harness solely to satisfy this section.
 
 ## Lay Out Code
 
+Apply these layout rules fully to new files and to new or substantially
+rewritten code. In existing code, apply them to the code the change introduces
+or materially reworks. Do not move, reorder, or reformat untouched code solely
+to make an existing file conform, and avoid whitespace-only changes outside the
+code the change touches. Follow mandatory formatters where they control layout.
+
 ### Order Top-Level Declarations for Progressive Disclosure
 
 At the top level of a file, module, namespace, or equivalent scope, organize
@@ -274,22 +283,17 @@ for reader clarity rather than unnecessary dependency-first ordering. Actual
 language constraints, generated-code requirements, mandatory tooling, and
 established repository conventions take precedence.
 
-Apply this fully to new files and substantially rewritten top-level regions. In
-an existing file, apply it to declarations introduced or materially reworked by
-the change: keep those declarations in a coherent local group and place that
-group at the most sensible point in the existing order. Do not move or reformat
-unrelated declarations solely to make the surrounding file conform. When ideal
-placement would require broader reordering, preserve the existing structure and
-make the changed region as clear as possible within it.
+Treat a substantially rewritten top-level region as new. In an existing file,
+keep the declarations the change introduces or materially reworks in a coherent
+local group and place that group at the most sensible point in the existing
+order. When ideal placement would require broader reordering, preserve the
+existing structure and make the changed region as clear as possible within it.
 
 ### Structure Code Paragraphs
 
 Use blank lines as semantic delimiters. Each paragraph should perform one
 coherent step; a blank line should signal a distinct purpose in the function's
 flow.
-
-Apply this fully to new or substantially rewritten code. Do not reformat
-untouched code merely to make an existing file conform.
 
 Start a new paragraph when the code changes phase, such as preparing inputs,
 consuming a validated result, moving from derivation to a side effect, changing
@@ -327,8 +331,7 @@ stronger separators or put a blank line after every statement; blank lines
 should expose existing structure, not manufacture stages. Keep compact branches
 and loops compact when they perform one coherent step. If paragraph boundaries
 cannot make complex logic clear, use extraction, naming, or comments instead.
-Follow mandatory formatters and syntax conventions, and avoid whitespace-only
-changes outside code touched by the requested work.
+Follow syntax conventions that govern blank lines.
 
 ### Format Record Construction
 
@@ -338,7 +341,6 @@ the rule recursively to nested record values so their shape remains scannable.
 
 Keep empty and single-field literals compact when clearer. This rule does not
 require one-per-line formatting for positional arguments or collection elements.
-Follow a mandatory formatter when the language controls layout.
 
 ## Check the Result
 
