@@ -66,6 +66,25 @@ in the sandbox over the files in the flake source; untracked files are not
 linted. The `lint` package depends on those checks and `pi-extensions-checked`,
 so `nix build --no-link .#lint` is the fast subset that builds only lint.
 
+## Working-Copy Snapshots
+
+In a colocated jj repository, Nix reads a flake through Git and sees only the
+files in the Git index, which jj updates when it snapshots the working copy, so
+a file created since the last jj command is missing from a flake evaluation. The
+home configuration therefore puts a `nix` wrapper (`packages/nix-jj-snapshot`)
+ahead of the real Nix on `PATH`; it runs `jj util snapshot` in the current
+directory's repository, then the real Nix with the same arguments. Run `nix`
+from inside the repository whose flake it reads: a flake reference to another
+checkout is not snapshotted.
+
+Jujutsu signs every commit it writes, including working-copy snapshots, so a
+snapshot can ask 1Password for approval (see `docs/ssh.md`). When the snapshot
+fails, for example while 1Password is locked, the wrapper stops before running
+Nix; `NIX_SKIP_JJ_SNAPSHOT=1` skips the snapshot. The wrapper's script describes
+when it skips the snapshot on its own, and `modules/home/nix/jj-snapshot.nix`
+how it stays first on `PATH`. Where the wrapper does not run, such as before the
+first Home Manager activation, `jj status` snapshots by hand.
+
 ## Blueprint Outputs
 
 The canonical `.#blueprints` inventory maps each blueprint ID to its platform,

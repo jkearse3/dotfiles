@@ -16,6 +16,7 @@
     {
       config,
       lib,
+      pkgs,
       unstablePkgs,
       ...
     }:
@@ -201,6 +202,10 @@
               unstablePkgs.coreutils
             ];
           };
+
+          # Runs the `nix` wrapper that snapshots jj against stub jj and Nix,
+          # built with the same nixpkgs as the wrapper the home profile installs.
+          nix-jj-snapshot-behavior = pkgs.callPackage ../packages/nix-jj-snapshot/check.nix { };
 
           manifest-policy = unstablePkgs.callPackage ../modules/home/secrets/tests/check.nix { };
           secret-wrappers = unstablePkgs.callPackage ../modules/home/secrets/tests/check.nix {

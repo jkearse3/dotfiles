@@ -6,6 +6,8 @@
   ...
 }:
 {
+  imports = [ ./jj-snapshot.nix ];
+
   # The nix-index-database overlay wraps nix-locate and comma with a prebuilt
   # database, so neither needs a local `nix-index` run or a cache symlink.
   home.packages = [
