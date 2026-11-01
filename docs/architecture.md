@@ -76,7 +76,10 @@ physical-device identity.
 
 Home Manager and nix-darwin remain separate outputs. They can be evaluated,
 built, and activated independently; no constructor embeds Home Manager into
-nix-darwin.
+nix-darwin. The `eval-blueprints` package records the derivation paths of every
+blueprint's Home Manager and nix-darwin configuration without depending on them,
+so `nix build --no-link .#eval-blueprints` evaluates every blueprint without
+building one, and fails when any of them fails to evaluate.
 
 ## Module Interfaces
 

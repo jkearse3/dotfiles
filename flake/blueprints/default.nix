@@ -145,27 +145,55 @@ in
     };
   };
 
-  # The authored declarations are a plain function of the flake inputs, so
-  # this module is their only flake-parts entry point.
-  config.dotfiles.blueprintDeclarations = import ../../blueprints { inherit inputs; };
+  config = {
+    # The authored declarations are a plain function of the flake inputs, so
+    # this module is their only flake-parts entry point.
+    dotfiles.blueprintDeclarations = import ../../blueprints { inherit inputs; };
 
-  config.flake = {
-    homeConfigurations = lib.mapAttrs' (
-      _: blueprint: lib.nameValuePair blueprint.homeConfigurationName (mkHomeConfiguration blueprint)
-    ) blueprintOutputSpecs;
+    flake = {
+      homeConfigurations = lib.mapAttrs' (
+        _: blueprint: lib.nameValuePair blueprint.homeConfigurationName (mkHomeConfiguration blueprint)
+      ) blueprintOutputSpecs;
 
-    darwinConfigurations = lib.mapAttrs' (
-      _: blueprint: lib.nameValuePair blueprint.darwinConfigurationName (mkDarwinConfiguration blueprint)
-    ) blueprintOutputSpecs;
+      darwinConfigurations = lib.mapAttrs' (
+        _: blueprint: lib.nameValuePair blueprint.darwinConfigurationName (mkDarwinConfiguration blueprint)
+      ) blueprintOutputSpecs;
 
-    blueprints = lib.mapAttrs (_: blueprint: {
-      inherit (blueprint)
-        darwinConfigurationName
-        homeConfigurationName
-        os
-        system
-        ;
-      username = blueprint.user.name;
-    }) blueprintOutputSpecs;
+      blueprints = lib.mapAttrs (_: blueprint: {
+        inherit (blueprint)
+          darwinConfigurationName
+          homeConfigurationName
+          os
+          system
+          ;
+        username = blueprint.user.name;
+      }) blueprintOutputSpecs;
+    };
+
+    # `eval-blueprints` evaluates every blueprint of this system without
+    # building any configuration: its content records the derivation paths of
+    # each blueprint's Home Manager activation package and nix-darwin system,
+    # and discarding their string context keeps those derivations out of its
+    # inputs. Building it fails when either configuration fails to evaluate.
+    # The flake outputs are only read by attribute here, so the configurations,
+    # which take these packages through `dotfilesPackages`, do not form a cycle
+    # with it.
+    perSystem =
+      { pkgs, system, ... }:
+      let
+        blueprintDerivationPaths = lib.mapAttrs (_: blueprint: {
+          home =
+            builtins.unsafeDiscardStringContext
+              config.flake.homeConfigurations.${blueprint.homeConfigurationName}.activationPackage.drvPath;
+          darwin =
+            builtins.unsafeDiscardStringContext
+              config.flake.darwinConfigurations.${blueprint.darwinConfigurationName}.system.drvPath;
+        }) (lib.filterAttrs (_: blueprint: blueprint.system == system) config.flake.blueprints);
+      in
+      {
+        packages.eval-blueprints = pkgs.writeText "eval-blueprints.json" (
+          builtins.toJSON blueprintDerivationPaths
+        );
+      };
   };
 }
