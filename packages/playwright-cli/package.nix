@@ -3,16 +3,16 @@
 let
   package = pkgs.buildNpmPackage {
     pname = "playwright-cli";
-    version = "0.1.22";
+    version = "0.1.23";
 
     src = pkgs.fetchFromGitHub {
       owner = "microsoft";
       repo = "playwright-cli";
-      rev = "b85c7a736bb473bf55b584e54a09ffa698d6d871";
-      hash = "sha256-80xzHvf7BHGvoKvMdkGeNUsUrpZrpw5eryuQM8NKT/E=";
+      rev = "0a808078d96496cf2a8fa725143c870354f63cda";
+      hash = "sha256-MqeB9U8676YOlB6JbX5Dcp2PeWftQcmbTUPp9dS5t+U=";
     };
 
-    npmDepsHash = "sha256-mGD7a/v1cx/xPGZo8nN3WA40mYGgF/KzMKiGbvUeX4E=";
+    npmDepsHash = "sha256-GQjH0Zwf9cYuuM6m4mM2Xwz6qWuJTsXsj0nCSm71BlY=";
     dontNpmBuild = true;
 
     meta = {
