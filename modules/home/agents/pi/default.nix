@@ -49,6 +49,7 @@ in
   imports = [
     ../../lib/source.nix
     ../../secrets
+    ../rules.nix
   ];
 
   config = {

@@ -125,6 +125,8 @@ let
     allowed.'';
 in
 {
+  imports = [ ./rules.nix ];
+
   options.agents.shellPath = lib.mkOption {
     type = lib.types.str;
     readOnly = true;
