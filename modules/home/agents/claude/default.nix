@@ -305,7 +305,7 @@ in
   imports = [
     ../../nono
     ../../secrets
-    ../registries.nix
+    ../skills.nix
     ../rules.nix
     ../shell.nix
   ];

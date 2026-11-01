@@ -22,7 +22,7 @@ let
 in
 {
   imports = [
-    ./registries.nix
+    ./skills.nix
     ./shell.nix
     ./claude
     ./opencode

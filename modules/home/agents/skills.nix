@@ -1,3 +1,7 @@
+# The agent skill registry: skill directories (a `SKILL.md` plus supporting
+# files) that agent frontends install as skills. Add one either as a directory
+# under `modules/home/agents/skills/`, which is discovered automatically, or
+# from another module with `agents.extraSkills.<name> = <path>;`.
 { config, lib, ... }:
 let
   localSkillSources = lib.mapAttrs (name: _: ./skills/${name}) (

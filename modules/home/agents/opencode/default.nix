@@ -76,7 +76,7 @@ in
     ../../lib/source.nix
     ../../nono
     ../../secrets
-    ../registries.nix
+    ../skills.nix
     ../rules.nix
     ../shell.nix
   ];

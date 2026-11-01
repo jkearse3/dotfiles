@@ -19,7 +19,7 @@ let
   '';
 in
 {
-  imports = [ ../agents/registries.nix ];
+  imports = [ ../agents/skills.nix ];
 
   home = {
     packages = [ dotfilesPackages.hunk ];

@@ -79,7 +79,7 @@ packages with selected external packages, and `dotfilesSource`, which describes
 the repository source and editable-delivery mode. `modules/home/lib/source.nix`
 turns the latter into the shared `mkSource` helper.
 
-Modules that contribute agent skills import the agent registry interface
+Modules that contribute agent skills import `modules/home/agents/skills.nix`
 explicitly. Agent frontends import the modules providing the factories they use:
 nono for sandbox wrappers, secrets for secret-environment wrappers. These
 dependencies do not rely on another aggregate import or import ordering.

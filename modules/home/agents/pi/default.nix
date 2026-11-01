@@ -50,6 +50,7 @@ in
     ../../lib/source.nix
     ../../secrets
     ../rules.nix
+    ../skills.nix
   ];
 
   config = {

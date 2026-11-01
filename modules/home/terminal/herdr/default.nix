@@ -25,7 +25,7 @@ let
 in
 {
   imports = [
-    ../../agents/registries.nix
+    ../../agents/skills.nix
     ../../lib/source.nix
   ];
 
