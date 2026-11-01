@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 
 # Tests how dotfiles-apps validates its arguments and selects a blueprint, up
-# to the point where it would start nh. Usage: arguments-test.sh
+# to the point where it would start nh, and which arguments package-update
+# passes to the package updaters. Usage: arguments-test.sh
 # <dotfiles-apps executable> <blueprint ID from the flake's inventory>.
 # Runs with HOME and XDG_CONFIG_HOME in a temporary directory.
 
@@ -96,6 +97,31 @@ expect_output "options before --locked select the blueprint" "Selected blueprint
 printf '%s\n' "$blueprint_id" >"$XDG_CONFIG_HOME/dotfiles/blueprint-id"
 run_app "$repo" build-system
 expect_output "the marker selects the blueprint" "Selected blueprint '$blueprint_id' from marker"
+
+run_app "$repo" flake-update --dry-run
+expect "--dry-run is rejected for flake-update" 2 "flake-update does not accept '--dry-run'"
+
+run_app "$repo" flake-update --help
+expect "flake-update --help exits 0" 0 "usage: nix run .#flake-update"
+
+run_app "$repo" package-update --locked
+expect "--locked is rejected for package-update" 2 "package-update does not accept '--locked'"
+
+run_app "$repo" package-update --dry-run
+expect "package-update without updaters succeeds" 0 "No package updaters found"
+
+# A stub updater, like the real ones started through `/usr/bin/env bash`,
+# echoes the arguments package-update passes it.
+mkdir -p "$repo/packages/stub"
+cat >"$repo/packages/stub/update.sh" <<'EOF'
+#!/usr/bin/env bash
+echo "stub updater args: $*."
+EOF
+chmod +x "$repo/packages/stub/update.sh"
+run_app "$repo" package-update --dry-run
+expect "package-update --dry-run passes --latest --dry-run" 0 "stub updater args: --latest --dry-run."
+run_app "$repo" package-update
+expect "package-update without --dry-run passes --latest alone" 0 "stub updater args: --latest."
 
 if [[ $failures -ne 0 ]]; then
 	echo "$failures case(s) failed" >&2

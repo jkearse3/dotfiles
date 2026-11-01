@@ -89,6 +89,12 @@ from build time, selects the blueprint from `--blueprint` or the marker, and
 adds the `DOTFILES_PRIVATE_LOCAL` override to its nh calls; `--locked` builds
 store-backed home sources.
 
+The same script backs the `package-update` and `flake-update` apps.
+`package-update` runs every `packages/*/update.sh --latest` updater (`--dry-run`
+prints the new pins without editing files). `flake-update` updates `flake.lock`
+and runs the updaters in a jj change of its own, then builds `eval-blueprints`
+and commits the change with jj when anything changed.
+
 ## Module Interfaces
 
 Reusable Home modules receive `dotfilesPackages`, which combines repository

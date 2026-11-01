@@ -2,6 +2,8 @@
 
 # The commands behind this repository's flake apps: `nix run .#<command> --
 # [options]` runs `dotfiles-apps <command> [options]` from the repository root.
+# build-home, switch-home, build-system, and switch-system build or activate the
+# selected blueprint; package-update and flake-update update dependencies.
 # `package.nix` prepends `blueprint_output`, generated from the flake's
 # `blueprints` inventory at build time, so blueprint selection needs no Nix
 # evaluation.
@@ -30,8 +32,23 @@ usage: nix run .#$command -- [--blueprint <blueprint-id>]
   --help                      print this usage
 EOF
 		;;
+	package-update)
+		cat <<EOF
+usage: nix run .#package-update -- [--dry-run]
+
+  --dry-run                   print the new pins without editing files
+  --help                      print this usage
+EOF
+		;;
+	flake-update)
+		cat <<EOF
+usage: nix run .#flake-update
+
+  --help                      print this usage
+EOF
+		;;
 	*)
-		echo "usage: nix run .#<build-home|switch-home|build-system|switch-system> -- [options]"
+		echo "usage: nix run .#<build-home|switch-home|build-system|switch-system|package-update|flake-update> -- [options]"
 		;;
 	esac
 }
@@ -49,7 +66,7 @@ fail_usage() {
 # Succeeds when `command` accepts `option`.
 accepts_option() {
 	case $1:$2 in
-	*:--help | *-home:--blueprint | *-home:--locked | *-system:--blueprint) ;;
+	*:--help | *-home:--blueprint | *-home:--locked | *-system:--blueprint | package-update:--dry-run) ;;
 	*) return 1 ;;
 	esac
 }
@@ -126,19 +143,72 @@ nh_darwin() {
 	nh darwin "$action" . -H "$darwin_configuration_name" --diff "$diff_mode" --show-trace --accept-flake-config "${private_override[@]}"
 }
 
-# Runs `command` (build-home, switch-home, build-system, or switch-system) on
-# the blueprint selected by `--blueprint` or the marker. Argument errors exit 2
-# before anything else; the working-directory guard, DOTFILES_PRIVATE_LOCAL, and
-# blueprint selection exit 1 before any Nix or nh call.
+# Runs every package updater, `packages/*/update.sh --latest`, which pins its
+# package to the latest upstream release. With `is_dry_run` set, the updaters
+# also get `--dry-run` and print the new pins without editing files. Exits with
+# the status of the first updater that fails.
+package_update() {
+	local is_dry_run=$1
+
+	local updater_args=(--latest)
+	if [[ -n $is_dry_run ]]; then
+		updater_args+=(--dry-run)
+	fi
+
+	shopt -s nullglob
+	local updaters=(packages/*/update.sh)
+	shopt -u nullglob
+	if [[ ${#updaters[@]} -eq 0 ]]; then
+		echo "No package updaters found"
+		return
+	fi
+	local updater
+	for updater in "${updaters[@]}"; do
+		echo "Updating $updater..."
+		"$updater" "${updater_args[@]}"
+	done
+}
+
+# Updates the flake inputs and every package pin in a jj change of their own,
+# then commits it as "build(nix): update dependencies" once every blueprint
+# still evaluates. Starts a new change first when the working copy is not
+# empty, and commits nothing when no dependency changed. `jj` comes from the
+# user's PATH.
+flake_update() {
+	local is_working_copy_empty
+	is_working_copy_empty="$(jj log -r @ --no-graph -T empty)"
+	if [[ $is_working_copy_empty != true ]]; then
+		jj new
+	fi
+
+	nix flake update --accept-flake-config "${private_override[@]}"
+	package_update ""
+
+	local changed_files
+	changed_files="$(jj diff -r @ --name-only)"
+	if [[ -z $changed_files ]]; then
+		echo "dependencies unchanged, skipping evaluation"
+		return
+	fi
+
+	nix build --no-link --accept-flake-config "${private_override[@]}" .#eval-blueprints
+	jj commit -m "build(nix): update dependencies"
+}
+
+# Runs `command`: build-home, switch-home, build-system, or switch-system on the
+# blueprint selected by `--blueprint` or the marker, or package-update or
+# flake-update. Argument errors exit 2 before anything else; the
+# working-directory guard, DOTFILES_PRIVATE_LOCAL, and blueprint selection exit
+# 1 before any Nix, nh, or jj call.
 main() {
 	local command=${1-}
 	shift || true
 	case $command in
-	build-home | switch-home | build-system | switch-system) ;;
+	build-home | switch-home | build-system | switch-system | package-update | flake-update) ;;
 	*) fail_usage "$command" "unknown command '$command'" ;;
 	esac
 
-	local blueprint_id="" is_locked=""
+	local blueprint_id="" is_locked="" is_dry_run=""
 	while [[ $# -gt 0 ]]; do
 		accepts_option "$command" "$1" || fail_usage "$command" "$command does not accept '$1'"
 		case $1 in
@@ -152,19 +222,30 @@ main() {
 			shift
 			;;
 		--locked) is_locked=1 ;;
+		--dry-run) is_dry_run=1 ;;
 		esac
 		shift
 	done
 
-	# nh builds `.`, so the built-in blueprint inventory matches it only when
-	# `.` is this repository.
+	# Every command works on `.`: nh builds it, and the built-in blueprint
+	# inventory matches it only when `.` is this repository.
 	if [[ ! -f flake.nix || ! -f flake/blueprints/default.nix ]]; then
 		echo "error: $command must run from the dotfiles repository root" >&2
 		exit 1
 	fi
 
+	if [[ $command == package-update ]]; then
+		package_update "$is_dry_run"
+		return
+	fi
+
 	local private_override
 	set_private_override
+
+	if [[ $command == flake-update ]]; then
+		flake_update
+		return
+	fi
 
 	local blueprint_source="--blueprint"
 	if [[ -z $blueprint_id ]]; then
