@@ -60,6 +60,12 @@ its tests, such as `modules/home/neovim/nvim/tests/check.nix`, and
 `flake/checks.nix` registers it with `callPackage`, as `flake/packages.nix`
 registers `packages/*/package.nix`.
 
+Lint runs as flake checks too, so `nix flake check` gates it. `lint-nix`,
+`lint-shell`, and `lint-python` run statix and deadnix, shellcheck, and Pyrefly
+in the sandbox over the files in the flake source; untracked files are not
+linted. The `lint` package depends on those checks and `pi-extensions-checked`,
+so `nix build --no-link .#lint` is the fast subset that builds only lint.
+
 ## Blueprint Outputs
 
 The canonical `.#blueprints` inventory maps each blueprint ID to its platform,

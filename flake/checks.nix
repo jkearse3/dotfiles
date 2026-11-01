@@ -1,4 +1,5 @@
-# Registers the standalone tests that `nix flake check` and `./x.sh check` run.
+# Registers the standalone tests and lint checks that `nix flake check` and
+# `./x.sh check` run, and the `lint` package that builds only the lint checks.
 #
 # A test runs in the derivation that delivers what it tests, or, when nothing
 # builds it, as a check registered explicitly here. Repository packages run
@@ -6,9 +7,10 @@
 # every package, so they are registered here too.
 #
 # A check that only runs a script with some tools is defined here with
-# `mkScriptCheck`. A check that needs more lives in its own `check.nix` next to
-# its tests and is registered here with `callPackage`, as `flake/packages.nix`
-# registers `packages/*/package.nix`.
+# `mkScriptCheck`, and a linter run over repository files with `mkLintCheck`. A
+# check that needs more lives in its own `check.nix` next to its tests and is
+# registered here with `callPackage`, as `flake/packages.nix` registers
+# `packages/*/package.nix`.
 {
   perSystem =
     {
@@ -58,74 +60,178 @@
 
             touch "$out"
           '';
-    in
-    {
-      # treefmt-nix contributes the `treefmt` check; the module system merges it
-      # with these.
-      checks = config.packages // {
-        x-ssh-agent = mkScriptCheck {
-          name = "x-ssh-agent";
+
+      # Builds a check that runs `command`, a linter invocation, from the root
+      # of a read-only copy of `fileset`, a subset of the repository, with
+      # `tools` on PATH. The check fails when `command` fails. Only files in
+      # the flake source are linted, so untracked files are not. HOME and the
+      # XDG cache point into the build's temporary directory, so linters
+      # cannot read user configuration.
+      mkLintCheck =
+        {
+          name,
+          fileset,
+          tools,
+          command,
+        }:
+        let
           src = lib.fileset.toSource {
             root = ../.;
-            fileset = lib.fileset.unions [
-              ../x.sh
-              ../tests/x-ssh-agent.sh
-            ];
+            inherit fileset;
           };
-          script = "tests/x-ssh-agent.sh";
+        in
+        unstablePkgs.runCommand name
+          {
+            nativeBuildInputs = tools;
+          }
+          ''
+            export HOME="$TMPDIR/home"
+            export XDG_CACHE_HOME="$TMPDIR/xdg/cache"
+            mkdir -p "$HOME" "$XDG_CACHE_HOME"
+
+            cd ${src}
+            ${command}
+
+            touch "$out"
+          '';
+
+      # The linters, run over the files in the flake source. `packages.lint`
+      # builds them together, and they are flake checks individually.
+      lintChecks = {
+        lint-nix = mkLintCheck {
+          name = "lint-nix";
+          fileset = lib.fileset.fileFilter (file: file.hasExt "nix") ../.;
           tools = [
+            unstablePkgs.statix
+            unstablePkgs.deadnix
+          ];
+          command = ''
+            echo "Linting Nix files..."
+            statix check .
+            deadnix --fail .
+          '';
+        };
+
+        # `.shellcheckrc` enables `external-sources`, so the fileset also
+        # carries every file a script sources, provided scripts source only other
+        # `.sh` or `.bash` files.
+        lint-shell = mkLintCheck {
+          name = "lint-shell";
+          fileset = lib.fileset.unions [
+            ../.shellcheckrc
+            (lib.fileset.fileFilter (file: file.hasExt "sh" || file.hasExt "bash") ../.)
+          ];
+          tools = [
+            unstablePkgs.findutils
+            unstablePkgs.shellcheck
+          ];
+          command = ''
+            echo "Linting shell scripts..."
+            find . -type f \( -name '*.sh' -o -name '*.bash' \) -print0 | sort -z | xargs -0 shellcheck
+          '';
+        };
+
+        # `pyrefly.toml` selects the checked directories and import roots, so
+        # the fileset carries every Python source and project file rather than
+        # repeating that list.
+        lint-python = mkLintCheck {
+          name = "lint-python";
+          fileset = lib.fileset.unions [
+            ../pyrefly.toml
+            (lib.fileset.fileFilter (
+              file: file.hasExt "py" || file.hasExt "pyi" || file.name == "pyproject.toml"
+            ) ../.)
+          ];
+          # Pyrefly queries the interpreter for the Python version and
+          # platform; without one it falls back to defaults that report
+          # different diagnostics than an editor or shell with Python does.
+          tools = [
+            unstablePkgs.pyrefly
             unstablePkgs.python3
-            unstablePkgs.openssh
           ];
-        };
-
-        implement-skill-scripts = mkScriptCheck {
-          name = "implement-skill-scripts";
-          src = lib.fileset.toSource {
-            root = ../modules/home/agents/skills/implement;
-            fileset = lib.fileset.unions [
-              ../modules/home/agents/skills/implement/scripts
-              ../modules/home/agents/skills/implement/tests
-            ];
-          };
-          script = "tests/implement-scripts.sh";
-          tools = [
-            unstablePkgs.git
-            unstablePkgs.jujutsu
-            unstablePkgs.coreutils
-          ];
-        };
-
-        manifest-policy = unstablePkgs.callPackage ../modules/home/secrets/tests/check.nix { };
-        secret-wrappers = unstablePkgs.callPackage ../modules/home/secrets/tests/check.nix {
-          test = "secret-wrappers";
-        };
-
-        # Runs the Neovim configuration's plenary specs on the lockfile-pinned
-        # plugins.
-        neovim = unstablePkgs.callPackage ../modules/home/neovim/nvim/tests/check.nix {
-          inherit (config.packages) jjx;
-        };
-
-        handoff-skill-scripts = mkScriptCheck {
-          name = "handoff-skill-scripts";
-          src = lib.fileset.toSource {
-            root = ../modules/home/agents/skills/handoff;
-            fileset = lib.fileset.unions [
-              ../modules/home/agents/skills/handoff/scripts
-              ../modules/home/agents/skills/handoff/tests
-            ];
-          };
-          script = "tests/handoff-scripts.sh";
-          tools = [
-            unstablePkgs.git
-            unstablePkgs.jujutsu
-            unstablePkgs.coreutils
-            config.packages.jjx
-          ];
-          # The test skips its jj cases when jj or jjx is missing from PATH.
-          requiredOutputLines = [ "ok - non-Git jj workspace resolves its default workspace" ];
+          command = ''
+            echo "Checking Python types..."
+            pyrefly check --min-severity warn
+          '';
         };
       };
+    in
+    {
+      # Builds every lint check and the pi extension checks, so
+      # `nix build .#lint` runs all lint without the slower tests.
+      packages.lint = unstablePkgs.linkFarm "lint" (
+        lintChecks // { inherit (config.packages) pi-extensions-checked; }
+      );
+
+      # treefmt-nix contributes the `treefmt` check; the module system merges it
+      # with these.
+      checks =
+        config.packages
+        // lintChecks
+        // {
+          x-ssh-agent = mkScriptCheck {
+            name = "x-ssh-agent";
+            src = lib.fileset.toSource {
+              root = ../.;
+              fileset = lib.fileset.unions [
+                ../x.sh
+                ../tests/x-ssh-agent.sh
+              ];
+            };
+            script = "tests/x-ssh-agent.sh";
+            tools = [
+              unstablePkgs.python3
+              unstablePkgs.openssh
+            ];
+          };
+
+          implement-skill-scripts = mkScriptCheck {
+            name = "implement-skill-scripts";
+            src = lib.fileset.toSource {
+              root = ../modules/home/agents/skills/implement;
+              fileset = lib.fileset.unions [
+                ../modules/home/agents/skills/implement/scripts
+                ../modules/home/agents/skills/implement/tests
+              ];
+            };
+            script = "tests/implement-scripts.sh";
+            tools = [
+              unstablePkgs.git
+              unstablePkgs.jujutsu
+              unstablePkgs.coreutils
+            ];
+          };
+
+          manifest-policy = unstablePkgs.callPackage ../modules/home/secrets/tests/check.nix { };
+          secret-wrappers = unstablePkgs.callPackage ../modules/home/secrets/tests/check.nix {
+            test = "secret-wrappers";
+          };
+
+          # Runs the Neovim configuration's plenary specs on the lockfile-pinned
+          # plugins.
+          neovim = unstablePkgs.callPackage ../modules/home/neovim/nvim/tests/check.nix {
+            inherit (config.packages) jjx;
+          };
+
+          handoff-skill-scripts = mkScriptCheck {
+            name = "handoff-skill-scripts";
+            src = lib.fileset.toSource {
+              root = ../modules/home/agents/skills/handoff;
+              fileset = lib.fileset.unions [
+                ../modules/home/agents/skills/handoff/scripts
+                ../modules/home/agents/skills/handoff/tests
+              ];
+            };
+            script = "tests/handoff-scripts.sh";
+            tools = [
+              unstablePkgs.git
+              unstablePkgs.jujutsu
+              unstablePkgs.coreutils
+              config.packages.jjx
+            ];
+            # The test skips its jj cases when jj or jjx is missing from PATH.
+            requiredOutputLines = [ "ok - non-Git jj workspace resolves its default workspace" ];
+          };
+        };
     };
 }
