@@ -47,6 +47,9 @@ withSystem blueprint.system (
         editable = useEditableHomeSources;
       };
       dotfilesUser = blueprint.user;
+      # The binary cache settings that `flake.nix` declares, so the home
+      # configuration can offer them to plain `nix` commands.
+      dotfilesNixConfig = (import ../../flake.nix).nixConfig;
     };
   }
 )
