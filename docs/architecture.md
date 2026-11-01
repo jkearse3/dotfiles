@@ -81,6 +81,14 @@ blueprint's Home Manager and nix-darwin configuration without depending on them,
 so `nix build --no-link .#eval-blueprints` evaluates every blueprint without
 building one, and fails when any of them fails to evaluate.
 
+The `build-home`, `switch-home`, `build-system`, and `switch-system` flake apps
+(`flake/apps.nix`) build or activate one blueprint's configuration through nh,
+for example `nix run .#build-home -- --blueprint <blueprint-id>`. They run the
+`dotfiles-apps` script (`packages/dotfiles-apps`), which carries the inventory
+from build time, selects the blueprint from `--blueprint` or the marker, and
+adds the `DOTFILES_PRIVATE_LOCAL` override to its nh calls; `--locked` builds
+store-backed home sources.
+
 ## Module Interfaces
 
 Reusable Home modules receive `dotfilesPackages`, which combines repository

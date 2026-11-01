@@ -60,6 +60,7 @@
         imports = [
           inputs.treefmt-nix.flakeModule
 
+          ./flake/apps.nix
           ./flake/blueprints
           ./flake/checks.nix
           ./flake/devshell.nix
