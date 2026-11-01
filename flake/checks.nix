@@ -1,5 +1,5 @@
-# Registers the standalone tests and lint checks that `nix flake check` and
-# `./x.sh check` run, and the `lint` package that builds only the lint checks.
+# Registers the standalone tests and lint checks that `nix flake check` runs,
+# and the `lint` package that builds only the lint checks.
 #
 # A test runs in the derivation that delivers what it tests, or, when nothing
 # builds it, as a check registered explicitly here. Repository packages run
@@ -170,22 +170,6 @@
         config.packages
         // lintChecks
         // {
-          x-ssh-agent = mkScriptCheck {
-            name = "x-ssh-agent";
-            src = lib.fileset.toSource {
-              root = ../.;
-              fileset = lib.fileset.unions [
-                ../x.sh
-                ../tests/x-ssh-agent.sh
-              ];
-            };
-            script = "tests/x-ssh-agent.sh";
-            tools = [
-              unstablePkgs.python3
-              unstablePkgs.openssh
-            ];
-          };
-
           implement-skill-scripts = mkScriptCheck {
             name = "implement-skill-scripts";
             src = lib.fileset.toSource {

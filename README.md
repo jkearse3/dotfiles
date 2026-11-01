@@ -6,38 +6,50 @@ Configurations managed with Nix.
 
 Follow the [fresh Darwin installation guide](docs/installation.md). The flake
 has a private SSH input, so a new machine must commission 1Password and verify
-access to `dotfiles-private` before the first `nix develop` invocation.
+access to `dotfiles-private` before the first `nix run` or `nix develop`
+invocation.
 
 After installing the prerequisites and initializing the colocated Jujutsu
 workspace, the activation sequence is:
 
 ```sh
-nix develop --accept-flake-config --command ./x.sh nix-blueprints
-nix develop --accept-flake-config --command ./x.sh nix-switch-system --blueprint <blueprint-id>
-nix develop --accept-flake-config --command ./x.sh nix-switch-home --blueprint <blueprint-id>
+nix eval --accept-flake-config .#blueprints --apply builtins.attrNames
+nix run --accept-flake-config .#switch-system -- --blueprint <blueprint-id>
+nix run --accept-flake-config .#switch-home -- --blueprint <blueprint-id>
 ```
 
-Home Manager creates `dotfiles/blueprint-id` under the XDG config root (normally
-`~/.config`), so later commands can invoke `./x.sh` directly without
-`--blueprint`.
+`--accept-flake-config` enables the binary cache declared in `flake.nix` until
+Home Manager writes it into the user's Nix configuration. Home Manager also
+creates `dotfiles/blueprint-id` under the XDG config root (normally
+`~/.config`), so later commands do not need `--blueprint`.
 
 ## Usage
 
-- `./x.sh nix-<cmd>-home [--blueprint <blueprint-id>]` - Home Manager:
-  eval/build/diff/activate/switch
-- `./x.sh nix-<cmd>-system [--blueprint <blueprint-id>]` - system:
-  eval/build/diff/activate/switch
-- `./x.sh nix-eval-all` - evaluate every canonical blueprint without a marker
-- `./x.sh nix-blueprints` - list configured blueprint IDs
-- `./x.sh fmt` - format all files
-- `./x.sh fmt-check` - check formatting without modifying files
-- `./x.sh lint` - check Nix, tracked `.sh` and `.bash` files, and Python
+Run these from the repository root:
 
-Blueprint-dependent evaluation, build, and switch commands use an explicit
-`--blueprint` first, then the Home Manager-managed blueprint marker. Builds use
-blueprint-specific `result-home-<blueprint-id>` and
-`result-system-<blueprint-id>` links so activation cannot consume another
-blueprint's result.
+- `nix run .#<build|switch>-home -- [--blueprint <blueprint-id>] [--locked]` -
+  Home Manager: build or switch; `--locked` uses store-backed sources
+- `nix run .#<build|switch>-system -- [--blueprint <blueprint-id>]` - system:
+  build or switch
+- `nix build --no-link .#eval-blueprints` - evaluate every blueprint without
+  building it
+- `nix eval .#blueprints --apply builtins.attrNames` - list configured blueprint
+  IDs
+- `nix fmt` - format all files
+- `nix build --no-link .#checks.aarch64-darwin.treefmt` - check formatting
+  without modifying files
+- `nix build --no-link .#lint` - check Nix, tracked `.sh` and `.bash` files, and
+  Python; a fast subset of `nix flake check`, which runs the same lint checks
+- `nix run .#package-update -- [--dry-run]` - update the pins of packaged tools
+- `nix run .#flake-update` - update `flake.lock` and the package pins, and
+  commit the result with jj
+
+Build and switch apps use an explicit `--blueprint` first, then the Home
+Manager-managed blueprint marker. They run nh, which shows a package diff
+against the configuration in use and leaves no result link in the checkout;
+build never activates. The `nix` that Home Manager puts on `PATH` snapshots the
+Jujutsu working copy first, so Nix sees new files; see
+[Working-Copy Snapshots](docs/architecture.md#working-copy-snapshots).
 
 ## Reference
 

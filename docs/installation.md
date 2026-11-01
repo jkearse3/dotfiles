@@ -42,14 +42,15 @@ cd "$HOME/dotfiles"
 ```
 
 Normal Home Manager activation creates editable links into `~/dotfiles`. Do not
-move or delete this checkout after activation. Use `nix-switch-home-locked` only
-when store-backed, non-editable Home Manager sources are specifically needed.
+move or delete this checkout after activation. Pass `--locked` to the Home
+Manager switch only when store-backed, non-editable sources are specifically
+needed.
 
 ## Provision GitHub SSH Access
 
 The flake includes `dotfiles-private` as an SSH input. Provision access before
-the first `nix develop` invocation; the system configuration cannot install and
-configure 1Password until after Nix has evaluated the flake.
+the first `nix run` or `nix develop` invocation; the system configuration cannot
+install and configure 1Password until after Nix has evaluated the flake.
 
 Install 1Password manually for this bootstrap:
 
@@ -138,21 +139,27 @@ file that Home Manager reports as a collision rather than overwriting it.
 
 ## Initialize The Repository
 
-The development shell supplies the modern Bash, Jujutsu, `jq`, `nvd`, and other
-tools used by `x.sh`. Accept the repository's flake configuration explicitly on
-a new Nix installation:
+Repository commands are plain Nix commands and flake apps, run from the
+repository root; the apps bring their own Bash, nh, and other tools, so a fresh
+machine needs only Nix. Until Home Manager writes the binary cache into the
+user's Nix configuration, pass `--accept-flake-config` so Nix uses the cache
+declared in `flake.nix`.
+
+The development shell supplies Jujutsu and `jjx` before Home Manager installs
+them:
 
 ```sh
 cd "$HOME/dotfiles"
 nix develop --accept-flake-config --command jjx ensure
 ```
 
-`jjx ensure` creates the colocated Jujutsu workspace required by `x.sh`.
+`jjx ensure` creates the colocated Jujutsu workspace that the `nix` wrapper
+snapshots and `nix run .#flake-update` commits to.
 
 List the available blueprints:
 
 ```sh
-nix develop --accept-flake-config --command ./x.sh nix-blueprints
+nix eval --accept-flake-config .#blueprints --apply builtins.attrNames
 ```
 
 The current choices are:
@@ -173,8 +180,7 @@ blueprint=laptop-dev-default
 Build, inspect, and activate the system configuration:
 
 ```sh
-nix develop --accept-flake-config --command \
-  ./x.sh nix-switch-system --blueprint "$blueprint"
+nix run --accept-flake-config .#switch-system -- --blueprint "$blueprint"
 ```
 
 The activation requests administrator access through `sudo`. It configures
@@ -192,8 +198,7 @@ once that directory exists, and warns during activation until it does.
 Build, inspect, and activate the selected user's configuration:
 
 ```sh
-nix develop --accept-flake-config --command \
-  ./x.sh nix-switch-home --blueprint "$blueprint"
+nix run --accept-flake-config .#switch-home -- --blueprint "$blueprint"
 ```
 
 Home Manager activates without `sudo` and writes the selected blueprint to:
@@ -202,13 +207,14 @@ Home Manager activates without `sudo` and writes the selected blueprint to:
 ${XDG_CONFIG_HOME:-$HOME/.config}/dotfiles/blueprint-id
 ```
 
-Later `./x.sh` commands read this marker, so they no longer need an explicit
+Later build and switch apps read this marker, so they no longer need an explicit
 `--blueprint` argument.
 
 Open a new terminal after activation. Home Manager cannot update the environment
 of the shell that launched it; a new login shell loads the managed profile,
-exposes modern Bash on `PATH`, and selects the normalized 1Password agent
-socket.
+selects the normalized 1Password agent socket, and puts the `nix` wrapper that
+snapshots the Jujutsu working copy ahead of the real Nix (see
+[Working-Copy Snapshots](architecture.md#working-copy-snapshots)).
 
 ## Verify The Installation
 
@@ -219,7 +225,8 @@ use Bash syntax. Start the managed Bash first:
 bash
 ```
 
-Verify the system generation, Home Manager marker, and both flake outputs:
+Verify the system generation, the Home Manager marker, that every blueprint
+evaluates, and that the selected Home Manager configuration builds:
 
 ```sh
 cd "$HOME/dotfiles"
@@ -227,8 +234,8 @@ cd "$HOME/dotfiles"
 test -e /run/current-system
 test -s "${XDG_CONFIG_HOME:-$HOME/.config}/dotfiles/blueprint-id"
 
-./x.sh nix-eval-system
-./x.sh nix-eval-home
+nix build --no-link .#eval-blueprints
+nix run .#build-home
 ```
 
 Verify the managed GitHub SSH configuration and private repository access:
@@ -286,11 +293,27 @@ First-time activation requires `--blueprint <blueprint-id>`. Home Manager writes
 the marker used by later commands; nix-darwin activation alone does not create
 it.
 
-### `x.sh` rejects the macOS Bash version
+### `nix run` fails before the app runs
 
-Before Home Manager activation, invoke `x.sh` through `nix develop` as shown
-above. After activation, open a new terminal so the managed profile's Bash is on
-`PATH`.
+`nix run` evaluates the flake before the app starts, so a failure there is
+usually private flake access: see
+[Private flake access fails](#private-flake-access-fails).
+
+### `switch-system` fails to activate nix-darwin
+
+`nix run .#switch-system` activates through nh's `darwin switch`. If it fails on
+a machine that has never activated nix-darwin, activate once with nix-darwin
+directly, then return to `nix run .#switch-system`:
+
+```sh
+sudo nix run nix-darwin/master#darwin-rebuild -- switch --flake .#<darwinConfigurationName>
+```
+
+`nix eval --json .#blueprints` shows each blueprint's `darwinConfigurationName`.
+nix-darwin requires system activation to run as root. On a machine that has
+activated nix-darwin before, run
+`sudo /run/current-system/sw/bin/darwin-rebuild switch --flake .#<darwinConfigurationName>`
+instead.
 
 ### Home Manager reports an existing file
 
@@ -300,5 +323,5 @@ verification succeeds.
 
 ### Editable configuration links are broken
 
-Restore the repository at `~/dotfiles` and rerun `./x.sh nix-switch-home`. The
+Restore the repository at `~/dotfiles` and rerun `nix run .#switch-home`. The
 normal configuration intentionally links managed source files to this checkout.

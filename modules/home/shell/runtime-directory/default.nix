@@ -51,7 +51,7 @@ lib.mkIf pkgs.stdenv.hostPlatform.isDarwin {
   home.activation.runtimeDirectory = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
     xdg_runtime_dir="${posixRuntimeDirectory}"
     if ! { ${posixIsRuntimeDirectoryReady "$xdg_runtime_dir"}; }; then
-      warnEcho "$xdg_runtime_dir is not a directory owned by $(/usr/bin/id -un), so XDG_RUNTIME_DIR stays unset; run ./x.sh nix-switch-system to create it"
+      warnEcho "$xdg_runtime_dir is not a directory owned by $(/usr/bin/id -un), so XDG_RUNTIME_DIR stays unset; run nix run .#switch-system to create it"
     fi
     unset xdg_runtime_dir
   '';

@@ -7,7 +7,7 @@ and fzf-lua revisions pinned in `nvim-pack-lock.json`. From the repository root:
 nix build .#checks.aarch64-darwin.neovim --print-build-logs
 ```
 
-`./x.sh check` runs it together with the repository's other checks.
+`nix flake check` runs it together with the repository's other checks.
 
 To run the specs by hand from `modules/home/neovim/nvim`, with Plenary and
 fzf-lua already installed and `git`, `jj`, and `jjx` on PATH:

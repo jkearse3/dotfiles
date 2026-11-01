@@ -53,13 +53,15 @@ of the machine vault. An empty `agent.toml` exposes no keys, malformed TOML
 stops the agent, and removing the file restores 1Password's broader default
 inventory.
 
-Before the first activation, `x.sh` uses 1Password's native Darwin socket when
-the normalized socket does not exist. After activation, Home Manager's
-normalized socket takes precedence.
+Before the first activation, the normalized socket does not exist yet, so export
+1Password's native Darwin socket in the shell that runs the first Nix commands;
+Nix needs it to fetch `dotfiles-private` when it evaluates the flake. After
+activation, Home Manager's normalized socket takes precedence.
 
 ```sh
-./x.sh nix-blueprints
-./x.sh nix-switch-home --blueprint <blueprint-id>
+export SSH_AUTH_SOCK="$HOME/Library/Group Containers/2BUA8C4S2C.com.1password/t/agent.sock"
+nix eval --accept-flake-config .#blueprints --apply builtins.attrNames
+nix run --accept-flake-config .#switch-home -- --blueprint <blueprint-id>
 ```
 
 Home Manager owns `~/.ssh/config`. Before the first switch, move any unmanaged
@@ -92,7 +94,10 @@ not yet approved asks for approval, and any such command fails while 1Password
 is locked or the request is denied. Unattended work therefore needs 1Password to
 stay unlocked. Tooling that runs `jj` in the background, such as a prompt or
 editor integration, must pass `--ignore-working-copy` so it never snapshots and
-never signs.
+never signs. The `nix` wrapper snapshots before every Nix command run inside a
+jj repository, including the ones direnv's `use flake` runs, so those commands
+need the same approval; `NIX_SKIP_JJ_SNAPSHOT=1` skips the snapshot (see
+[Working-Copy Snapshots](architecture.md#working-copy-snapshots)).
 
 ## Additional GitHub Accounts
 

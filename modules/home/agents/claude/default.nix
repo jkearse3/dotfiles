@@ -147,11 +147,11 @@ let
   #
   # Union runs the other way too, so a repository's own `.claude/settings.json`
   # can add rules the pin has no reason to carry everywhere — this repository's
-  # `Bash(./x.sh ...)` rules live there rather than here. That direction is
-  # trust-gated where the pin is not: Claude Code discards project-scope
-  # `permissions.allow` and `additionalDirectories` entries, and says so on
-  # stderr, until the workspace is trusted. An untrusted checkout therefore
-  # prompts for those rules rather than losing them.
+  # `Bash(nix flake check)` and similar rules live there rather than here. That
+  # direction is trust-gated where the pin is not: Claude Code discards
+  # project-scope `permissions.allow` and `additionalDirectories` entries, and
+  # says so on stderr, until the workspace is trusted. An untrusted checkout
+  # therefore prompts for those rules rather than losing them.
   #
   # A leaf pinned here would otherwise shadow the machine-local file with no
   # indication in the UI: `/config` and `/model` still change the running

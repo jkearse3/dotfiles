@@ -49,7 +49,7 @@ sit beside it. The constructors select packages, inject identity and state
 versions, apply required configuration baselines, and import the blueprint
 modules. Workstation policy belongs in modules.
 
-`flake/checks.nix` registers the standalone tests that `./x.sh check` runs. A
+`flake/checks.nix` registers the standalone tests that `nix flake check` runs. A
 test runs inside the derivation that delivers what it tests, such as a package
 build or a module derivation the home configuration builds. A test that nothing
 builds runs as an explicitly registered flake check instead. Repository packages
@@ -65,6 +65,18 @@ Lint runs as flake checks too, so `nix flake check` gates it. `lint-nix`,
 in the sandbox over the files in the flake source; untracked files are not
 linted. The `lint` package depends on those checks and `pi-extensions-checked`,
 so `nix build --no-link .#lint` is the fast subset that builds only lint.
+
+## Commands
+
+Read-only work uses plain Nix commands from the repository root: `nix fmt`,
+`nix flake check`, and `nix build` of the `lint` and `eval-blueprints` packages.
+The imperative workflows are flake apps run with `nix run .#<app> -- [options]`,
+described under [Blueprint Outputs](#blueprint-outputs). No repository script
+adds flags to these commands, so the binary cache comes from the user's Nix
+configuration (the Nix home module copies `nixConfig` from `flake.nix`), and a
+plain command reads a local `dotfiles-private` checkout only when given
+`--override-input dotfiles-private path:<checkout>`. The `nix` wrapper below
+only snapshots the working copy; it passes arguments through unchanged.
 
 ## Working-Copy Snapshots
 
@@ -88,10 +100,10 @@ first Home Manager activation, `jj status` snapshots by hand.
 ## Blueprint Outputs
 
 The canonical `.#blueprints` inventory maps each blueprint ID to its platform,
-user, Home output name, and Darwin output name. `x.sh` uses this inventory for
-explicit `--blueprint` selection and for the managed `dotfiles/blueprint-id`
-marker. A blueprint ID is configuration identity, not a hostname or
-physical-device identity.
+user, Home output name, and Darwin output name. The flake apps use this
+inventory for explicit `--blueprint` selection and for the managed
+`dotfiles/blueprint-id` marker. A blueprint ID is configuration identity, not a
+hostname or physical-device identity.
 
 Home Manager and nix-darwin remain separate outputs. They can be evaluated,
 built, and activated independently; no constructor embeds Home Manager into
