@@ -15,10 +15,6 @@ let
     scratchSweep = dotfilesPackages.scratch-sweep;
     exitSweepIdleFor = config.agents.scratchSweep.exitIdleFor;
   };
-  renderSkillsDir = import ./renderSkillsDir.nix {
-    inherit lib pkgs;
-    skills = config.agents.skills;
-  };
 in
 {
   imports = [
@@ -69,7 +65,10 @@ in
 
       file = {
         ".agents/mcp.json".source = ./mcp.json;
-        ".agents/skills" = renderSkillsDir { };
+        ".agents/skills" = {
+          source = config.agents.skillsDir;
+          recursive = true;
+        };
       };
     };
   };

@@ -1,8 +1,14 @@
 # The agent skill registry: skill directories (a `SKILL.md` plus supporting
 # files) that agent frontends install as skills. Add one either as a directory
 # under `modules/home/agents/skills/`, which is discovered automatically, or
-# from another module with `agents.extraSkills.<name> = <path>;`.
-{ config, lib, ... }:
+# from another module with `agents.extraSkills.<name> = <path>;`. Frontends
+# install the composed set by reading `agents.skillsDir`.
+{
+  config,
+  lib,
+  pkgs,
+  ...
+}:
 let
   localSkillSources = lib.mapAttrs (name: _: ./skills/${name}) (
     lib.filterAttrs (_: type: type == "directory") (builtins.readDir ./skills)
@@ -10,6 +16,7 @@ let
   duplicateSkillNames = lib.intersectLists (lib.attrNames localSkillSources) (
     lib.attrNames config.agents.extraSkills
   );
+  composedSkillSources = localSkillSources // config.agents.extraSkills;
 in
 {
   options.agents = {
@@ -27,16 +34,19 @@ in
         name in two modules with different sources fails evaluation during normal
         Nix option merging. Extra skill names must also not duplicate local skill
         directory names.
+
+        Contributed skills appear in `agents.skillsDir` alongside local skills.
       '';
     };
 
-    skills = lib.mkOption {
-      type = lib.types.attrsOf lib.types.path;
+    skillsDir = lib.mkOption {
+      type = lib.types.package;
       readOnly = true;
       description = ''
-        Composed skill directories for agent frontends. Local skills are discovered
-        from `modules/home/agents/skills`; external modules contribute through
-        `agents.extraSkills`.
+        Directory derivation `agent-skills` holding one symlink per composed
+        skill: local skills discovered from `modules/home/agents/skills` plus
+        `agents.extraSkills`. Agent frontends use it as the source of their
+        skills `home.file` entry.
       '';
     };
   };
@@ -49,6 +59,8 @@ in
       }
     ];
 
-    agents.skills = localSkillSources // config.agents.extraSkills;
+    agents.skillsDir = pkgs.linkFarm "agent-skills" (
+      lib.mapAttrsToList (name: path: { inherit name path; }) composedSkillSources
+    );
   };
 }

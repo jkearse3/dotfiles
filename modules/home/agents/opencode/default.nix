@@ -12,10 +12,6 @@
 }:
 let
   renderAgentsMarkdown = import ../renderAgentsMarkdown.nix { inherit lib; };
-  renderSkillsDir = import ../renderSkillsDir.nix {
-    inherit lib pkgs;
-    skills = config.agents.skills;
-  };
 
   mkAgentLaunchers = import ../mkAgentLaunchers.nix {
     inherit
@@ -89,7 +85,10 @@ in
     home.file = {
       ".config/opencode/opencode.jsonc".source = mkSource ./opencode.jsonc;
       ".config/opencode/tui.json".source = mkSource ./tui.json;
-      ".config/opencode/skills" = renderSkillsDir { };
+      ".config/opencode/skills" = {
+        source = config.agents.skillsDir;
+        recursive = true;
+      };
       ".config/opencode/AGENTS.md".text = renderAgentsMarkdown {
         title = "OpenCode Instructions";
         registries = [

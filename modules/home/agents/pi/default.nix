@@ -17,11 +17,6 @@ let
     delegation = ./rules/delegation.md;
   };
 
-  renderPiSkillsDir = import ../renderSkillsDir.nix {
-    inherit lib pkgs;
-    skills = config.agents.skills;
-  };
-
   mkAgentLaunchers = import ../mkAgentLaunchers.nix {
     inherit
       agentInteractivePolicy
@@ -134,7 +129,10 @@ in
         # Editable mode points into the checkout; locked mode supplies an
         # immutable tree with the same lockfile-derived runtime dependencies.
         ".pi/agent/extensions".source = piExtensionsSource;
-        ".pi/agent/skills" = renderPiSkillsDir { };
+        ".pi/agent/skills" = {
+          source = config.agents.skillsDir;
+          recursive = true;
+        };
         ".pi/agent/themes/tokyonight.json".source = mkSource ./themes/tokyonight.json;
       };
     };

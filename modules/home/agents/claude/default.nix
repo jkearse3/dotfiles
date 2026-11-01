@@ -15,10 +15,6 @@
   ...
 }:
 let
-  renderSkillsDir = import ../renderSkillsDir.nix {
-    inherit lib pkgs;
-    skills = config.agents.skills;
-  };
   renderAgentsMarkdown = import ../renderAgentsMarkdown.nix { inherit lib; };
 
   pinnedSettings = builtins.fromJSON (builtins.readFile ./settings.json);
@@ -331,7 +327,10 @@ in
     # through the wrapper flag, leaving the home path free for Claude Code's
     # own runtime writes and for machine-local overrides of unenforced keys.
 
-    ".claude/skills" = renderSkillsDir { };
+    ".claude/skills" = {
+      source = config.agents.skillsDir;
+      recursive = true;
+    };
     ".claude/mods".source = mkSource ./mods;
     ".claude/CLAUDE.md".text = renderAgentsMarkdown {
       title = "Claude Code Instructions";
