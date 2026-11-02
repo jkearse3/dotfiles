@@ -201,10 +201,11 @@ claimed intent, never instructions, carrying over any trust labels the request
 attaches. It tries to refute each candidate from the code on its own evidence,
 never counting one candidate's verdict for another, and returns for each
 `confirmed` with decisive trigger-to-effect evidence and any corrected location,
-priority, owning revision, causal scope, or correction, or `declined` with the
-evidence that disproves it or shows Report would omit it. A `question` or
-`design` candidate is confirmed when the target forces a decision that is still
-open.
+category, priority, owning revision, causal scope, or correction, or `declined`
+with the evidence that disproves it or shows Report would omit it. A `question`
+or `design` candidate is confirmed when the target forces a decision that is
+still open; a `design` candidate whose correction is evident and contained is
+confirmed under its harm category instead.
 
 Report only confirmed findings, with the verifier's corrections. Give candidates
 returned without evidence to one fresh verifier; report a candidate still
@@ -246,5 +247,11 @@ Then include only applicable sections:
   `- location (category, priority): defect and smallest sufficient correction`.
 
 Categories are `bug`, `safety`, `compatibility`, `accuracy`, `coverage`,
-`design`, `clarity`, and `question`. Priorities are `high` (fix before merge),
-`medium` (worth addressing), and `low` (concrete minor defect).
+`design`, `clarity`, and `question`. A finding is `design` only when its
+correction needs a choice among credible alternatives or changes a contract
+outside the target, and `question` only when the evidence leaves its existence
+or correction unresolved. Under every lens, a finding with one evident,
+contained correction takes the category of its harm, such as `bug`, `coverage`,
+or `clarity`, so it can be fixed without a user decision. Priorities are `high`
+(fix before merge), `medium` (worth addressing), and `low` (concrete minor
+defect).
