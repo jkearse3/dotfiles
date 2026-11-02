@@ -80,8 +80,12 @@ type admits that some path produces or some consumer mishandles, as notes for
       owner.
    2. Make only the chosen changes following `coding-style`, confirm the diff
       holds only those changes, and run proportionate checks.
-   3. When the owner's description became inaccurate, compose and validate a
-      replacement as `finalize-changes` describes.
+   3. When the owner's description became inaccurate, reread `finalize-changes`'
+      `references/revision-descriptions.md` and compose the complete replacement
+      from the owner's resulting diff and its current description, using the
+      chosen proposals only as facts about what changed. Never copy proposal
+      text, and never mention proposals, lenses, refinement, or review. Format
+      and validate it with the options that reference gives.
    4. Run `jj squash --from <child> --into <owner>` with `--message "$desc"` for
       a replacement, or `--use-destination-message` otherwise.
    5. Run `jj new <target tip>`, then proportionate checks there.
