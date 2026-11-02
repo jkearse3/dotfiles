@@ -52,7 +52,7 @@ unpublished, task-owned commit set authorized for rewrite.
   content exactly match one proposed coherent concern. Stop if any other staged
   entry remains. Keep supporting tests, documentation, configuration, and
   migrations with that concern.
-- Before creating or rewriting a description, read
+- Immediately before creating or rewriting each description, reread
   `references/revision-descriptions.md`. Format and validate an agent-authored
   message, then pass the exact value unchanged:
 

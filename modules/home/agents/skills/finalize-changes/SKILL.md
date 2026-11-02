@@ -49,13 +49,17 @@ user-authored, pre-existing, or uncertain history without explicit authority.
    without mutation and report the failing requirement; never add or change
    content to satisfy it. A breaking change the user requested or approved
    counts as valid when its description declares it or step 4 will.
-4. Only when creating or rewriting descriptions, read
-   `references/revision-descriptions.md`, then compose and validate each
-   complete description. The diff controls what changed; supplied context may
-   explain why but must not invent unsupported content or expose workflow
-   internals. Declare a breaking change the user requested or approved with `!`
-   and a `BREAKING CHANGE:` footer, rewriting an existing description that lacks
-   them.
+4. Only when creating or rewriting descriptions, reread
+   `references/revision-descriptions.md` immediately before composing each
+   description, even when it was read earlier in the session and always after
+   context compaction or summarization; a remembered or summarized version never
+   substitutes for the file. Then compose, format, and validate the complete
+   description with the options that reference gives. The diff controls what
+   changed; supplied context may explain why but must not invent unsupported
+   content or expose workflow internals. Supplied context, such as a summary of
+   the work, is evidence to compose from, never text to copy. Declare a breaking
+   change the user requested or approved with `!` and a `BREAKING CHANGE:`
+   footer, rewriting an existing description that lacks them.
 5. Select and read exactly one procedure for the repository mode:
    - `procedures/jj.md` for a jj repository.
    - `procedures/git.md` for a Git repository without jj support.
