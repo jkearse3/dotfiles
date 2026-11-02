@@ -8,8 +8,8 @@ description: >-
   de-ambiguate a ticket, idea, bug fix, refactor, or other change before
   implementing it. Not for explaining a concept, root-cause diagnosis or other
   questions where no change is requested (use investigate), pressure-testing a
-  plan or decision without producing a spec (use interrogate), implementation,
-  or saving the result.
+  plan or decision (use pressure-test), resolving decisions without producing a
+  spec (use interrogate), implementation, or saving the result.
 ---
 
 # Shape
