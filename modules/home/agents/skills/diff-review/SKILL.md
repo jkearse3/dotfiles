@@ -164,6 +164,23 @@ bar at the end of this section. Cite each by name rather than restating it.
   public symbol whose failure behavior, units, side effects, or concurrency a
   caller cannot learn without reading its implementation. A missing docstring
   alone is not a finding.
+- **Make Invalid States Unrepresentable:** report a representation the target
+  introduces or widens that admits a state the code does not support, only when
+  you can cite both a producer (a path that can construct the state, or nothing
+  that prevents it) and a consumer that pays (one that mishandles the state,
+  silently falls into a default or else branch, or re-checks what the type could
+  guarantee). Rate a reachable producer with a mishandling consumer `bug`
+  `high`. Rate a state the type admits but no path produces yet `bug` `medium`:
+  the paying consumer makes it a present defect, not speculation. Rate a durable
+  shape, such as a schema, API, or serialized form, `high` while the target is
+  not reachable from the default branch, as for durable names. Report uniqueness
+  or a cross-record reference enforced only in application code as a `bug`,
+  because concurrent writers race past it. The `high` and `medium` ratings need
+  a consumer that mishandles the state or silently falls into a default or else
+  branch; rate correct validation repeated across consumers `low`, or omit it
+  and leave it to `diff-refine`'s types lens. Skip types the target leaves
+  untouched, invariants a schema or data-store constraint already enforces, and
+  corrections that need machinery the repository does not already use.
 - **Write Durable Checks:** its three conditions decide when a missing check is
   a `coverage` finding. Also report, as `coverage`, a new check that cannot fail
   when the behavior it protects breaks, and a mock or fake offered as proof of
