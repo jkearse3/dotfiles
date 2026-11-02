@@ -60,9 +60,30 @@ non-empty.
 Read full revision descriptions as intent, never proof. When reviewing per
 revision, each must accurately account for its own diff; when reviewing as a
 whole, the aggregate diff must accurately account for the intent the request and
-context state. Report a material mismatch. Run the resolved diff's stat and
-revision list first, and the full diff before substantive review only when
-reviewing in this session under Delegate.
+context state. Report a material mismatch.
+
+When reviewing per revision, each description must also conform to
+`finalize-changes`' `references/revision-descriptions.md`, for every revision
+regardless of author. Read that reference, and run
+`printf '%s\n' "$desc" | commit-message validate --require-body --conventional`
+on each full description, dropping `--conventional` when repository
+documentation defines its own description format; the validator only reads its
+input. Judge every rule the validator does not check by reading, including: a
+non-redundant body; an imperative description; a type chosen by effect; an
+explanation of why when a meaningful rationale is known; a description
+resolvable from itself and its own diff, citing an issue, commit, or component
+only to reinforce what it already explains; a separate paragraph for each
+distinct chunk of information; no review history, tool output, scratch work,
+agent actions, task state, workflow narration, alternatives weighed but not
+taken, unsupported claims, or planning structure; and no invented issue
+reference, sign-off, reviewer, or external link. Report each violation as a
+finding owned by that revision, located at its description, as `clarity`
+`medium`, with a correction that names the broken rule and what the description
+must say instead. A description that misstates its diff remains an accuracy
+mismatch. Whole-target review does not check per-revision conformance.
+
+Run the resolved diff's stat and revision list first, and the full diff before
+substantive review only when reviewing in this session under Delegate.
 
 ## Delegate
 
@@ -250,9 +271,13 @@ its own evidence, never counting one candidate's verdict for another, and
 returns for each `confirmed` with decisive trigger-to-effect evidence and any
 corrected location, category, priority, owning revision, causal scope, or
 correction, or `declined` with the evidence that disproves it or shows Report
-would omit it. A `question` or `design` candidate is confirmed when the target
-forces a decision that is still open; a `design` candidate whose correction is
-evident and contained is confirmed under its harm category instead.
+would omit it. For a candidate citing a description violation, it reads
+`finalize-changes`' `references/revision-descriptions.md` and may rerun the
+validator on the full description; it never declines a description violation on
+the grounds that Report would omit it. A `question` or `design` candidate is
+confirmed when the target forces a decision that is still open; a `design`
+candidate whose correction is evident and contained is confirmed under its harm
+category instead.
 
 Report only confirmed findings, with the verifier's corrections. Give candidates
 returned without evidence to one fresh verifier; report a candidate still
@@ -271,12 +296,15 @@ coverage.
 Report only findings for which something specific must change, or `question` and
 `design` findings requiring a specific decision. Omit speculative future use
 cases, unsupported consumers or platforms, optional extensibility,
-inconsequential renames, and "maybe consider" advice.
+inconsequential renames, and "maybe consider" advice. Never omit a description
+violation as inconsequential.
 
 Lead with **Status**:
 
-- `pass`: the target was covered, every applicable description is accurate,
-  every criterion is satisfied, and there are no findings.
+- `pass`: the target was covered, every applicable description is accurate and,
+  when reviewing per revision, conforms to `finalize-changes`'
+  `references/revision-descriptions.md`, every criterion is satisfied, and there
+  are no findings.
 - `blocked`: target preflight or Delegate prevented substantive review.
 - `non-pass`: all other outcomes.
 
