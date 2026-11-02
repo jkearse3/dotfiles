@@ -11,9 +11,13 @@ absorbed into that value, and a blank line is what separates them. A `-` or
 indented continuations.
 
 Line endings are normalized to LF and non-empty output ends with exactly one
-newline. The validator intentionally does not enforce Conventional Commit
+newline. By default the validator does not enforce Conventional Commit
 subject structure: any non-empty subject within the width limit is accepted,
-while recognized footer metadata must use canonical structure.
+while recognized footer metadata must use canonical structure. Two opt-in
+flags tighten it for repositories that follow those conventions:
+`--conventional` requires a Conventional Commits subject with one of
+`DEFAULT_CONVENTIONAL_TYPES`, a lowercase description start, and no trailing
+period, and `--require-body` requires body text before any footer block.
 """
 
 from __future__ import annotations
@@ -26,6 +30,24 @@ from typing import Literal, cast
 
 DEFAULT_BODY_WIDTH = 72
 DEFAULT_SUBJECT_WIDTH = 72
+
+# Subject types `validate --conventional` accepts, matched case-sensitively.
+DEFAULT_CONVENTIONAL_TYPES = (
+    "feat",
+    "fix",
+    "refactor",
+    "perf",
+    "style",
+    "chore",
+    "docs",
+    "test",
+    "ci",
+    "build",
+)
+CONVENTIONAL_SUBJECT_RE = re.compile(
+    r"^(?P<type>[^\s():!]+)(?:\((?P<scope>[^()]*)\))?(?P<breaking>!)?: "
+    + r"(?P<description>.*)$"
+)
 
 # Git folds a trailer's continuation line into the trailer value only when the
 # line is indented; `git interpret-trailers --parse` drops an unindented one,
@@ -483,6 +505,47 @@ def validate_subject(subject: str, *, subject_width: int) -> list[str]:
     return []
 
 
+def validate_conventional_subject(subject: str) -> list[str]:
+    """Return errors for a subject that is not `type(scope)!: description`.
+
+    The type must be one of ``DEFAULT_CONVENTIONAL_TYPES``; an optional scope
+    must be non-empty without whitespace; the description must follow ": "
+    directly and must not start with an uppercase letter; and the subject must
+    not end with a period. An empty subject returns no errors because
+    ``validate_subject`` already reports it, and a subject that does not match
+    the header form reports only that, since its parts cannot be identified.
+    """
+    if subject == "":
+        return []
+
+    header = CONVENTIONAL_SUBJECT_RE.fullmatch(subject)
+    if header is None:
+        return ["line 1: subject must use the form type(scope)!: description"]
+
+    errors: list[str] = []
+    subject_type = header.group("type")
+    if subject_type not in DEFAULT_CONVENTIONAL_TYPES:
+        errors.append(
+            f"line 1: subject type is not a default type: {subject_type} "
+            + f"(expected one of {', '.join(DEFAULT_CONVENTIONAL_TYPES)})"
+        )
+
+    scope = header.group("scope")
+    if scope is not None and (scope == "" or any(char.isspace() for char in scope)):
+        errors.append("line 1: subject scope must be non-empty without whitespace")
+
+    description = header.group("description")
+    if description == "" or description[0].isspace():
+        errors.append('line 1: subject description is required after ": "')
+    elif description[0].isupper():
+        errors.append("line 1: subject description must start lowercase")
+
+    if subject.endswith("."):
+        errors.append("line 1: subject must not end with a period")
+
+    return errors
+
+
 def validate_body_lines(lines: list[str], *, body_width: int) -> list[str]:
     """Return width errors for body/footer lines.
 
@@ -534,6 +597,45 @@ def footer_candidate_indices(lines: list[str]) -> list[int]:
     return indices
 
 
+@dataclass(frozen=True)
+class FinalBlock:
+    """Line indices of a message's last run of non-blank lines.
+
+    ``start`` and ``last_line_index`` bound the run inclusively.
+    ``footer_start`` is the first footer candidate inside it, which is where
+    footer metadata begins, or ``None`` when the run holds no candidate.
+    """
+
+    start: int
+    last_line_index: int
+    footer_start: int | None
+
+
+def locate_final_block(lines: list[str], candidate_indices: list[int]) -> FinalBlock:
+    """Return the final block of ``lines``, which must hold at least two lines.
+
+    ``candidate_indices`` are the message's ``footer_candidate_indices``.
+    Trailing blank lines are skipped. The block starts at the subject, index
+    0, when no blank line separates the subject from the lines after it.
+    """
+    last_line_index = len(lines) - 1
+    while last_line_index > 0 and lines[last_line_index].strip() == "":
+        last_line_index -= 1
+
+    start = last_line_index
+    while start > 0 and lines[start - 1].strip() != "":
+        start -= 1
+
+    final_candidates = [
+        index for index in candidate_indices if start <= index <= last_line_index
+    ]
+    return FinalBlock(
+        start=start,
+        last_line_index=last_line_index,
+        footer_start=final_candidates[0] if len(final_candidates) != 0 else None,
+    )
+
+
 def validate_footer_lines(lines: list[str], *, required_footers: list[str]) -> list[str]:
     """Return structural footer errors and missing required-footer errors.
 
@@ -545,20 +647,10 @@ def validate_footer_lines(lines: list[str], *, required_footers: list[str]) -> l
     if len(lines) < 2:
         return [f"required footer is missing: {footer}" for footer in required_footers]
 
-    final_line_index = len(lines) - 1
-    while final_line_index > 0 and lines[final_line_index].strip() == "":
-        final_line_index -= 1
-
-    final_block_start = final_line_index
-    while final_block_start > 0 and lines[final_block_start - 1].strip() != "":
-        final_block_start -= 1
-
     candidate_indices = footer_candidate_indices(lines)
-    final_candidates = [
-        index
-        for index in candidate_indices
-        if final_block_start <= index <= final_line_index
-    ]
+    final_block = locate_final_block(lines, candidate_indices)
+    final_block_start = final_block.start
+    final_line_index = final_block.last_line_index
 
     for index in candidate_indices:
         if index < final_block_start:
@@ -567,8 +659,8 @@ def validate_footer_lines(lines: list[str], *, required_footers: list[str]) -> l
             )
 
     footer_entries: list[str] = []
-    if len(final_candidates) != 0:
-        footer_start = final_candidates[0]
+    footer_start = final_block.footer_start
+    if footer_start is not None:
         if footer_start != final_block_start or footer_start == 1:
             errors.append(
                 f"line {footer_start + 1}: footer block must be separated "
@@ -650,6 +742,24 @@ def validate_footer_lines(lines: list[str], *, required_footers: list[str]) -> l
     return errors
 
 
+def validate_body_presence(lines: list[str]) -> list[str]:
+    """Return ``body is required`` unless a non-blank line follows the subject.
+
+    Only lines before the final block's footer start count as body, so a
+    message holding just footer metadata, including ``BREAKING CHANGE``
+    continuations, has no body. Fenced lines are never footer candidates and
+    therefore count as body.
+    """
+    if len(lines) < 2:
+        return ["body is required"]
+
+    footer_start = locate_final_block(lines, footer_candidate_indices(lines)).footer_start
+    body_end = footer_start if footer_start is not None else len(lines)
+    if any(line.strip() != "" for line in lines[1:body_end]):
+        return []
+    return ["body is required"]
+
+
 def has_allowed_unbreakable_overrun(line: str, *, body_width: int) -> bool:
     """Return whether ``line`` exceeds ``body_width`` only via unbreakable spans.
 
@@ -724,6 +834,16 @@ def create_parser() -> argparse.ArgumentParser:
         default=[],
         help="require an exact canonical footer (repeatable)",
     )
+    _ = validator.add_argument(
+        "--conventional",
+        action="store_true",
+        help="require a Conventional Commits subject with a default type",
+    )
+    _ = validator.add_argument(
+        "--require-body",
+        action="store_true",
+        help="require a body before any footer block",
+    )
     return parser
 
 
@@ -741,6 +861,8 @@ def main(argv: list[str] | None = None) -> int:
     lines = message.splitlines()
     subject = lines[0] if len(lines) != 0 else ""
     errors = validate_subject(subject, subject_width=cast(int, namespace.subject_width))
+    if cast(bool, namespace.conventional):
+        errors.extend(validate_conventional_subject(subject))
     errors.extend(validate_body_lines(lines, body_width=cast(int, namespace.body_width)))
     errors.extend(
         validate_footer_lines(
@@ -748,6 +870,8 @@ def main(argv: list[str] | None = None) -> int:
             required_footers=cast(list[str], namespace.require_footer),
         )
     )
+    if cast(bool, namespace.require_body):
+        errors.extend(validate_body_presence(lines))
 
     if len(errors) != 0:
         print_validation_errors(errors)

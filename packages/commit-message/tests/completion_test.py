@@ -44,6 +44,8 @@ class CompletionTests(unittest.TestCase):
         self.assertIn("--subject-width", validate_options)
         self.assertIn("--body-width", validate_options)
         self.assertIn("--require-footer", validate_options)
+        self.assertIn("--conventional", validate_options)
+        self.assertIn("--require-body", validate_options)
 
     def test_zsh_defines_subcommands_and_options(self) -> None:
         result = run(
@@ -71,6 +73,8 @@ class CompletionTests(unittest.TestCase):
                 "validate",
                 "*--require-footer[require an exact canonical footer]:footer",
             ),
+            ("validate", "--conventional[require a Conventional Commits subject]"),
+            ("validate", "--require-body[require a body]"),
         ):
             with self.subTest(command=command):
                 command_result = run(

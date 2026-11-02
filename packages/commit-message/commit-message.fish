@@ -8,3 +8,5 @@ complete -c commit-message -n '__fish_seen_subcommand_from validate' -s h -l hel
 complete -c commit-message -n '__fish_seen_subcommand_from validate' -l subject-width -x -d 'Maximum subject width'
 complete -c commit-message -n '__fish_seen_subcommand_from validate' -l body-width -x -d 'Maximum body/footer line width'
 complete -c commit-message -n '__fish_seen_subcommand_from validate' -l require-footer -x -d 'Require an exact canonical footer'
+complete -c commit-message -n '__fish_seen_subcommand_from validate' -l conventional -d 'Require a Conventional Commits subject'
+complete -c commit-message -n '__fish_seen_subcommand_from validate' -l require-body -d 'Require a body'

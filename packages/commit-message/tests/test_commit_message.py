@@ -26,6 +26,53 @@ def validate_message(message: str, *args: str) -> subprocess.CompletedProcess[st
     return run_cli("validate", message, *args)
 
 
+def validation_errors(result: subprocess.CompletedProcess[str]) -> list[str]:
+    """Return the errors a failed `validate` listed on stderr, in order."""
+    return [
+        line.removeprefix("- ")
+        for line in result.stderr.splitlines()
+        if line.startswith("- ")
+    ]
+
+
+CONVENTIONAL_REJECTIONS = (
+    (
+        "api: add x\n",
+        [
+            "line 1: subject type is not a default type: api (expected one of "
+            + "feat, fix, refactor, perf, style, chore, docs, test, ci, build)"
+        ],
+    ),
+    (
+        "Feat: add x\n",
+        [
+            "line 1: subject type is not a default type: Feat (expected one of "
+            + "feat, fix, refactor, perf, style, chore, docs, test, ci, build)"
+        ],
+    ),
+    ("feat(): add x\n", ["line 1: subject scope must be non-empty without whitespace"]),
+    (
+        "feat(a b): add x\n",
+        ["line 1: subject scope must be non-empty without whitespace"],
+    ),
+    ("feat:add x\n", ["line 1: subject must use the form type(scope)!: description"]),
+    ("feat: \n", ['line 1: subject description is required after ": "']),
+    ("feat:  add x\n", ['line 1: subject description is required after ": "']),
+    ("feat: Add x\n", ["line 1: subject description must start lowercase"]),
+    ("feat: add x.\n", ["line 1: subject must not end with a period"]),
+    ("add a thing\n", ["line 1: subject must use the form type(scope)!: description"]),
+)
+
+BODYLESS_MESSAGES = (
+    "subject\n",
+    "subject\n\n\n",
+    "subject\n\nCloses #1\n",
+    "subject\n\nSigned-off-by: A <a@b.c>\n",
+    "subject\n\nBREAKING CHANGE: x\n",
+    "subject\n\nBREAKING CHANGE: x\nmore detail\n",
+)
+
+
 class CommitMessageTests(unittest.TestCase):
     def test_empty_input_stays_empty_but_is_invalid(self) -> None:
         self.assertEqual(format_message("").stdout, "")
@@ -60,6 +107,107 @@ class CommitMessageTests(unittest.TestCase):
         ):
             with self.subTest(message=message):
                 self.assertEqual(validate_message(message).returncode, 0)
+
+    def test_conventional_accepts_default_types_scopes_and_breaking_marks(self) -> None:
+        for message in (
+            "feat(vcs)!: add x\n",
+            "feat!: drop y\n",
+            "fix(diff-review): handle z\n",
+            "docs: `README` wording\n",
+            "test: 2 more cases\n",
+        ):
+            with self.subTest(message=message):
+                result = validate_message(message, "--conventional")
+                self.assertEqual(result.returncode, 0, result.stderr)
+
+    def test_conventional_rejects_nonconforming_subjects(self) -> None:
+        for message, errors in CONVENTIONAL_REJECTIONS:
+            with self.subTest(message=message):
+                result = validate_message(message, "--conventional")
+                self.assertEqual(result.returncode, 1)
+                self.assertEqual(validation_errors(result), errors)
+
+    def test_conventional_reports_every_subject_error_with_width(self) -> None:
+        result = validate_message(
+            "Feat(a b): Add x.\n", "--conventional", "--subject-width", "10"
+        )
+        self.assertEqual(result.returncode, 1)
+        self.assertEqual(
+            validation_errors(result),
+            [
+                "line 1: subject is 17 characters (max 10)",
+                "line 1: subject type is not a default type: Feat (expected one of "
+                + "feat, fix, refactor, perf, style, chore, docs, test, ci, build)",
+                "line 1: subject scope must be non-empty without whitespace",
+                "line 1: subject description must start lowercase",
+                "line 1: subject must not end with a period",
+            ],
+        )
+
+    def test_conventional_leaves_empty_subject_to_presence_check(self) -> None:
+        result = validate_message("", "--conventional")
+        self.assertEqual(result.returncode, 1)
+        self.assertEqual(validation_errors(result), ["line 1: subject is required"])
+
+    def test_require_body_rejects_messages_without_body(self) -> None:
+        for message in BODYLESS_MESSAGES:
+            with self.subTest(message=message):
+                result = validate_message(message, "--require-body")
+                self.assertEqual(result.returncode, 1)
+                self.assertEqual(validation_errors(result), ["body is required"])
+
+    def test_require_body_reports_after_footer_errors(self) -> None:
+        result = validate_message("subject\nCloses #1\n", "--require-body")
+        self.assertEqual(result.returncode, 1)
+        self.assertEqual(
+            validation_errors(result),
+            [
+                "line 2: footer block must be separated from the body by a blank line",
+                "body is required",
+            ],
+        )
+
+        empty = validate_message("", "--require-body")
+        self.assertEqual(
+            validation_errors(empty),
+            ["line 1: subject is required", "body is required"],
+        )
+
+    def test_require_body_accepts_body_before_footers(self) -> None:
+        for message in (
+            "subject\n\nBody text.\n",
+            "subject\nBody text.\n",
+            "subject\n\nBody text.\n\nCloses #1\n",
+            "subject\n\n```\nCloses #1\n```\n",
+        ):
+            with self.subTest(message=message):
+                result = validate_message(message, "--require-body")
+                self.assertEqual(result.returncode, 0, result.stderr)
+
+    def test_require_body_counts_body_above_an_unseparated_footer(self) -> None:
+        result = validate_message("subject\n\nBody text.\nCloses #1\n", "--require-body")
+        self.assertEqual(result.returncode, 1)
+        self.assertEqual(
+            validation_errors(result),
+            ["line 4: footer block must be separated from the body by a blank line"],
+        )
+
+    def test_conventional_and_require_body_combine(self) -> None:
+        result = validate_message("feat: Add x\n", "--conventional", "--require-body")
+        self.assertEqual(result.returncode, 1)
+        self.assertEqual(
+            validation_errors(result),
+            ["line 1: subject description must start lowercase", "body is required"],
+        )
+
+    def test_opt_in_checks_do_not_apply_without_their_flags(self) -> None:
+        for message in (
+            *(message for message, _ in CONVENTIONAL_REJECTIONS),
+            *BODYLESS_MESSAGES,
+        ):
+            with self.subTest(message=message):
+                result = validate_message(message)
+                self.assertEqual(result.returncode, 0, result.stderr)
 
     def test_validator_reports_subject_and_body_widths(self) -> None:
         subject = validate_message(
