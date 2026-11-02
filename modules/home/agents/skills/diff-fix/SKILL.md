@@ -90,17 +90,24 @@ against the change a landed fix made re-raises that fix's finding.
    an agent, dispatch a fresh fixer per owner instead. The fixer follows
    `coding-style`, edits only the working copy, performs no VCS mutation or
    delegation, and returns per finding `fixed` with checks run, `rejected` with
-   concrete evidence, or `needs-decision` with the question. It also returns
-   replacement text when the owner's description became inaccurate.
+   concrete evidence, or `needs-decision` with the question. The fixer never
+   returns description text. When the owner's description became inaccurate, or
+   a finding concerns the description, it returns facts instead: which
+   statements no longer hold and what behavior was added, removed, or changed,
+   citing the diff.
 6. **Land.** Confirm the diff addresses each `fixed` finding, changes nothing
    else, and passes checks; otherwise abandon the working copy and keep those
    findings `open` as unverified. A rejection without evidence stays `open` as
    unverified; a rejection of a change the user asked for, or a `needs-decision`
-   return, makes it `needs-decision` with the question. Validate any replacement
-   description as `finalize-changes` describes, then run
+   return, makes it `needs-decision` with the question. When the fixer returned
+   description facts, this session rereads `finalize-changes`'
+   `references/revision-descriptions.md` and composes the complete replacement
+   from the owner's resulting diff, its current description, and the fixer's
+   facts. The replacement must not mention reviews, findings, rounds, or fixes.
+   Format and validate it with the options that reference gives. Then run
    `jj squash --from @ --into <owner>`, adding `--message "$desc"` for a
-   replacement. A description-only fix squashes the empty working copy with a
-   message. Mark the landed findings `fixed`.
+   replacement. A description-only finding squashes the empty working copy with
+   the composed message. Mark the landed findings `fixed`.
 7. **Resolve conflicts** before the next fix. After each landing, list
    `jj log -r 'descendants(<owner>) & conflicts()' --reversed`. While a target
    revision is conflicted, run `jj new` on the earliest one and continue the
