@@ -156,11 +156,14 @@ it or state why it cannot be split.
    failure, dispatch one fresh implementer with the failure as evidence in the
    emptied `@`; a second makes the brief `blocked`.
 4. **Finalize.** Follow `finalize-changes` for the verified working changes with
-   single-revision intent, passing the implementer's summary as context for the
-   description and moving the task bookmark to the new tip. Mark the brief
-   `done` with its change ID and add its entry to `Landed notes`. If it stops
-   because the changes are not one coherent revision, treat that as a
-   verification failure.
+   single-revision intent, passing the implementer's summary as evidence of what
+   changed and why, never as text to copy, and moving the task bookmark to the
+   new tip. Compose the description from the diff under `finalize-changes`'
+   `references/revision-descriptions.md`; it must not mention brief names or
+   numbers, `briefs.md`, rebriefs, landed notes, check logs, planners,
+   implementers, checkers, or the run directory. Mark the brief `done` with its
+   change ID and add its entry to `Landed notes`. If it stops because the
+   changes are not one coherent revision, treat that as a verification failure.
 5. **Rebrief.** On a `rebrief` return, or when a landed revision shows the
    briefs are wrong, dispatch a fresh planner with `briefs.md` and the evidence
    to revise the `pending` briefs, and update them in `briefs.md` in place. When
