@@ -63,9 +63,12 @@ unpublished, task-owned commit set authorized for rewrite.
 
   The change made in response.'
   desc="$(printf '%s\n' "$desc" | commit-message format)"
-  printf '%s\n' "$desc" | commit-message validate
+  printf '%s\n' "$desc" | commit-message validate --require-body --conventional
   git commit --no-edit -m "$desc"
   ```
+
+  Drop `--conventional` only when repository documentation defines its own
+  format, as `references/revision-descriptions.md` says.
 
   Never format an exact user-supplied message. Validate it unchanged and stop if
   validation fails.

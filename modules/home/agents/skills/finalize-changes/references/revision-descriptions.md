@@ -67,12 +67,20 @@ value, and pass it unchanged to the mutation:
 
 ```bash
 desc="$(printf '%s\n' "$desc" | commit-message format)"
-printf '%s\n' "$desc" | commit-message validate
+printf '%s\n' "$desc" | commit-message validate --require-body --conventional
 ```
 
+`--require-body` applies to every agent-authored description and enforces the
+body rule above. `--conventional` checks the Conventional Commits subject with
+the default types; pass it whenever repository documentation does not define its
+own description format, and drop only `--conventional` when it does.
+
 When a governing issue requires `issue_footer`, validate its exact presence with
-`commit-message validate --require-footer "$issue_footer"`. Repeat the option
-for each required issue-reference footer.
+`commit-message validate --require-body --conventional --require-footer "$issue_footer"`,
+dropping `--conventional` by the same rule. Repeat `--require-footer` for each
+required issue-reference footer.
 
 If validation fails, revise and repeat. Never format an exact user-supplied
-message; if it fails validation, stop and report the failure.
+message; validate it unchanged with plain `commit-message validate`, adding only
+any required `--require-footer` options, and if it fails validation, stop and
+report the failure.

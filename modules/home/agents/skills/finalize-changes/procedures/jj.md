@@ -65,9 +65,12 @@ Prior state or constraint, when it adds value.
 
 The change made in response.'
 desc="$(printf '%s\n' "$desc" | commit-message format)"
-printf '%s\n' "$desc" | commit-message validate
+printf '%s\n' "$desc" | commit-message validate --require-body --conventional
 jj describe -r <target> -m "$desc"
 ```
+
+Drop `--conventional` only when repository documentation defines its own format,
+as `references/revision-descriptions.md` says.
 
 Never format an exact user-supplied message. Validate it unchanged and stop if
 validation fails.
