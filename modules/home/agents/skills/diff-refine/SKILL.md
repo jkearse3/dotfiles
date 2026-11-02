@@ -3,10 +3,10 @@ name: diff-refine
 description: >-
   Proposes and applies behavior-preserving refinements to a finalized local jj
   revision, range, stack, or bookmark: simpler shape, reuse, naming, structure,
-  and evidenced performance. Use when the user asks to refine, simplify, polish,
-  or optimize a finalized diff target in a jj repository. Not for bug fixing,
-  review, working changes, Git-only checkouts, revision reshaping, or
-  publication.
+  type tightening, and evidenced performance. Use when the user asks to refine,
+  simplify, polish, or optimize a finalized diff target in a jj repository. Not
+  for bug fixing, review, working changes, Git-only checkouts, revision
+  reshaping, or publication.
 ---
 
 # Diff Refine
@@ -34,8 +34,12 @@ A proposal must:
   **naming** (a name misleads, no longer matches the final behavior, breaks the
   domain vocabulary, or falls short of `coding-style`'s naming guidance),
   **structure** (placement, order, or coupling makes the code harder to find or
-  change), or **performance** (an evidenced algorithmic, I/O, or allocation cost
-  on a reachable path);
+  change), **types** (tighten a type the target changes so it admits fewer
+  states the code does not support, following `coding-style`'s Make Invalid
+  States Unrepresentable, such as replacing a combination of nullable fields
+  with a tagged union or moving checks repeated across consumers into one
+  boundary parser), or **performance** (an evidenced algorithmic, I/O, or
+  allocation cost on a reachable path);
 - stay in scope: code the target changes, plus unchanged code the target made
   redundant or inconsistent. Read further only to settle a proposal, such as
   finding an existing helper or checking callers;
@@ -45,19 +49,21 @@ A proposal must:
   revisions stay valid after the squash;
 - state its concrete gain: what it removes, merges, clarifies, or makes cheaper;
 - preserve observable behavior, including contracts, output, errors, and
-  persisted data. The one exception is renaming a contract or durable name the
-  target introduces, in the revision that introduced it, updating every use,
-  including migrations, together. A name that already exists in the target's
-  base is a note for `diff-review`. Rate such a rename `medium` risk once the
-  name has left the local machine, such as through a pushed bookmark or a
-  migration applied to a shared database;
+  persisted data. The one exception is renaming, or tightening the type of, a
+  contract or durable name the target introduces, in the revision that
+  introduced it, updating every use, including migrations, together. A contract
+  or name that already exists in the target's base is a note for `diff-review`.
+  Rate such a rename or tightening `medium` risk once it has left the local
+  machine, such as through a pushed bookmark or a migration applied to a shared
+  database;
 - follow the repository's established patterns and `coding-style`, not the
   proposer's taste, and add no generality nobody needs.
 
 Drop anything else. Report a refinement that spans target revisions as a note.
-Zero proposals is a valid result. Report bugs as notes for `diff-review` or
-`diff-fix` and mixed-concern revisions as notes for `finalize-changes`; never
-fix or reshape them here.
+Zero proposals is a valid result. Report bugs, including a state the current
+type admits that some path produces or some consumer mishandles, as notes for
+`diff-review` or `diff-fix`, and mixed-concern revisions as notes for
+`finalize-changes`; never fix or reshape them here.
 
 ## Flow
 
