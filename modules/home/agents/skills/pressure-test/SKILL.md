@@ -33,7 +33,16 @@ Pressure testing is read-only and authorizes no change.
    is a fatal break: skip Attack, confirm it under Verify with no change or the
    existing solution as the alternative, and report `simpler path` if it is
    confirmed; if it is declined, continue to Attack.
-4. Ask the user only when the root problem or a binding constraint is theirs to
+4. Identify the system invariants any solution must preserve beyond the
+   subject's own constraints: data shapes that match the states the system can
+   reach, ownership boundaries, sources of truth, and consumer contracts. Ground
+   each with a locator, like any other source, in evidence that the system
+   relies on it: a type, schema, or validation that enforces it, code that
+   assumes it, or a user statement. A rule without such evidence is a
+   preference, not an invariant. When the evidence leaves unclear whether
+   something is an invariant or only a convention, do not treat it as binding;
+   when it would change the verdict, list it under `Open` as a user decision.
+5. Ask the user only when the root problem or a binding constraint is theirs to
    decide and the evidence does not settle it. Otherwise state it as an
    assumption with what would invalidate it.
 
@@ -52,14 +61,17 @@ agents concurrently.
   through the lenses below and returns each candidate break in the form and
   severity below, applying the omission rules below, with the load-bearing
   claims that held and the attacks they withstood.
-- The **alternative seeker** receives only the root problem, constraints, and
-  grounding sources, never the subject or its solution, so the subject cannot
-  anchor it. It returns the simplest credible solution, considering no change, a
-  smaller scope, removing something, and reusing an existing mechanism, with
-  what that solution costs and gives up.
+- The **alternative seeker** receives only the root problem, constraints, system
+  invariants, and grounding sources, never the subject or its solution, so the
+  subject cannot anchor it. It returns the simplest credible solution that
+  preserves every invariant, considering no change, a smaller scope, removing
+  something, and reusing an existing mechanism, with what that solution costs
+  and gives up. If breaking an invariant is what would make it simpler, it names
+  the invariant and argues why it can go.
 
 When this session cannot delegate, write the simplest alternative from the root
-problem before attacking the subject in depth, then attack in one pass.
+problem and system invariants before attacking the subject in depth, then attack
+in one pass.
 
 Use these lenses as prompts, not a checklist:
 
@@ -97,24 +109,30 @@ claims held and which attacks they withstood.
 ## Verify
 
 When this session may delegate, dispatch one fresh verifier, under the limits in
-Attack, with the steelman, the subject's sources, the root problem and
-constraints, every candidate break, and the alternative. It tries to refute each
-break on its own evidence, never counting one break's verdict for another, and
-returns each as `confirmed` with decisive evidence and any corrected severity or
-repair, or `declined` with the evidence that disproves it or the omission rule
-in Attack that excludes it. It checks whether the alternative solves the root
-problem within the constraints and names what the subject handles that the
-alternative does not. Report only confirmed breaks. When this session cannot
-delegate, recheck each break's decisive evidence here.
+Attack, with the steelman, the subject's sources, the root problem, constraints,
+and system invariants, every candidate break, and the alternative. It tries to
+refute each break on its own evidence, never counting one break's verdict for
+another, and returns each as `confirmed` with decisive evidence and any
+corrected severity or repair, or `declined` with the evidence that disproves it
+or the omission rule in Attack that excludes it. It checks whether the
+alternative solves the root problem within the constraints, checks it against
+each invariant, and names what the subject handles that the alternative does
+not. An alternative that breaks an invariant is not credible unless it says so
+and argues why the invariant can go. Report only confirmed breaks. When this
+session cannot delegate, recheck each break's decisive evidence and the
+alternative against each invariant here.
 
 ## Compare
 
 Compare the subject, with its fixable breaks repaired, against the alternative
 on the root problem and constraints: behavior, risk, reversibility, cost to
-build and maintain, and fit with existing patterns. Recommend the alternative
-when it solves the root problem and the subject has a confirmed fatal break or
-costs or risks more. When the subject's extra complexity buys something the
-problem requires, name it.
+build and maintain, and fit with existing patterns. Judge cost across the whole
+system, not by diff size: an alternative that saves code by moving an invariant
+from types, schemas, or validation into callers' discipline, comments, or later
+runtime checks costs more, not less. Recommend the alternative when it solves
+the root problem and the subject has a confirmed fatal break or costs or risks
+more. When the subject's extra complexity buys something the problem requires,
+name it.
 
 ## Report
 
@@ -133,8 +151,8 @@ Then include only applicable sections:
 - **Root problem:** one or two sentences, with any assumption it rests on.
 - **Breaks:** most severe first, as
   `- <claim attacked> (<severity>): <scenario> → <failure>; <evidence>; <repair>`.
-- **Simpler path:** the alternative, what it gives up, and why it is or is not
-  better. When none is credible, say so in one line.
+- **Simpler path:** the alternative, what it gives up, any invariant it breaks,
+  and why it is or is not better. When none is credible, say so in one line.
 - **Survived:** load-bearing claims that held and the attacks they withstood.
 - **Open:** user-owned decisions that would change the verdict, each with a
   recommendation.
