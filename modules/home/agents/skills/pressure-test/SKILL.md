@@ -69,6 +69,9 @@ Use these lenses as prompts, not a checklist:
   success criteria that would pass with the problem unsolved.
 - **Inputs and states:** edge cases, scale, concurrency, ordering, retries,
   partial failure, and malformed or adversarial input.
+- **Model fidelity:** data shapes that can represent states the system cannot
+  reach or cannot represent states it can, and invariants moved from types,
+  schemas, or validation into convention or caller discipline.
 - **Lifecycle:** rollout, migration, rollback, upgrade, removal, ownership, and
   long-term maintenance.
 - **Integration:** consumers and contracts it breaks, existing patterns it
