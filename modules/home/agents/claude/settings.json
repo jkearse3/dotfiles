@@ -6,7 +6,14 @@
     "sessionUrl": false
   },
   "permissions": {
-    "allow": ["Read", "Grep", "Glob"],
+    "allow": [
+      "Read",
+      "Grep",
+      "Glob",
+      "Bash(jj git push --help)",
+      "Bash(jj git push --bookmark *)",
+      "Bash(jj git push --remote * --bookmark *)"
+    ],
     "deny": ["AskUserQuestion", "EnterPlanMode", "Agent(Plan)"],
     "ask": [
       "Bash(git commit:*)",
@@ -17,7 +24,9 @@
       "Bash(git revert:*)",
       "Bash(git cherry-pick:*)",
       "Bash(git rm:*)",
-      "Bash(jj git push:*)"
+      "Bash(jj git push * main*)",
+      "Bash(jj git push * master*)",
+      "Bash(jj git push *--config*)"
     ],
     "defaultMode": "auto"
   },
