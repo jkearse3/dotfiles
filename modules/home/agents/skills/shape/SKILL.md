@@ -7,9 +7,9 @@ description: >-
   when the user wants to figure out how to make, shape, scope, spec, or
   de-ambiguate a ticket, idea, bug fix, refactor, or other change before
   implementing it. Not for explaining a concept, root-cause diagnosis or other
-  questions where no change is requested (use investigate), pressure-testing a
-  plan or decision (use pressure-test), resolving decisions without producing a
-  spec (use interrogate), implementation, or saving the result.
+  questions where no change is requested (use investigate), pressure-testing an
+  existing plan or decision (use pressure-test), resolving decisions without
+  producing a spec (use interrogate), implementation, or saving the result.
 ---
 
 # Shape
@@ -92,17 +92,52 @@ absent or could mean materially different changes.
    compatibility and migration. Reference `Model` for types, relationships, and
    migrations rather than restating it. Name exact files and symbols only when
    grounding established them. Leave revision sequencing to the implementer.
-7. **Isolation pass.** Dispatch a fresh read-only reader holding only the spec
-   draft and access to its named sources, not this conversation. It makes no
-   edits, VCS mutations, user-owned decisions, or further delegation. It
-   restates the problem, the chosen solution and why, what is excluded, every
-   settled decision, what to build, and how to prove it is done, and returns
-   each point it could not state or had to guess, with the spec section at
-   fault. If the host cannot start a fresh agent, reread the spec in that role
-   yourself. Fix each gap from evidence or settled decisions; take a gap that
-   needs a user-owned choice back to step 4. Repeat the pass with another fresh
-   reader only when a fix changed `Solution`, `Decisions`, or
-   `Acceptance Criteria`. Do not pad sections to look complete.
+7. **Pressure test.** Follow `pressure-test` on the draft spec, as step 5
+   follows `model`. Skip this step for a small, reversible change that touches
+   no persisted state, contracts, or external consumers. Take the draft spec as
+   the steelman, reuse steps 1 and 2's grounding and problem definition instead
+   of re-deriving them, and skip its next-step offer.
+
+   Each round, give the breaker the ledger of prior breaks with their
+   `confirmed` or `declined` verdicts so it does not re-raise declined ones
+   unless the spec has since changed what the decline relied on; it still
+   attacks the whole spec. Rerun the alternative seeker only when the root
+   problem, constraints, or system invariants changed; otherwise reuse its prior
+   result.
+
+   Resolve each round's report. Fold each confirmed `fixable` break into
+   `Implementation`, `Acceptance Criteria`, or `Risks`, following step 5 again
+   when a fix touches types, schemas, persisted data, or contracts; record a
+   `minor` break under `Risks` or drop it. On a confirmed `fatal` break or a
+   `simpler path` verdict, return to step 3 with the alternative, if any, then
+   step 4 for the user's decision; after the solution changes, repeat steps 5
+   through 7. When the user keeps the solution, record the alternative under
+   `Alternatives Considered`; later rounds pass it to the verifier and Compare
+   as user-rejected, so they do not recommend it again while the alternative
+   seeker's inputs are unchanged. When the user keeps the solution despite a
+   confirmed `fatal` break, record the break under `Risks` as user-accepted, or,
+   if they cannot accept it, under `Open Questions` and return a `Blocked` spec;
+   later rounds pass an accepted break to the breaker and verifier as
+   user-accepted, so it does not block `holds`. Take each `Open` item through
+   step 4.
+
+   Then run another round. Stop only after a round whose verdict is `holds`: no
+   confirmed `fatal` or `fixable` break the user has not accepted, and no
+   recommended alternative the user has not already rejected.
+
+8. **Isolation pass.** As the final gate after pressure testing, dispatch a
+   fresh read-only reader holding only the spec draft and access to its named
+   sources, not this conversation. It makes no edits, VCS mutations, user-owned
+   decisions, or further delegation. It restates the problem, the chosen
+   solution and why, what is excluded, every settled decision, what to build,
+   and how to prove it is done, and returns each point it could not state or had
+   to guess, with the spec section at fault. If the host cannot start a fresh
+   agent, reread the spec in that role yourself. Fix each gap from evidence or
+   settled decisions; take a gap that needs a user-owned choice back to step 4.
+   Repeat the pass with another fresh reader only when a fix changed `Solution`,
+   `Decisions`, or `Acceptance Criteria`. When a fix changes `Solution`
+   substantively, return to step 7 for another round first. Do not pad sections
+   to look complete.
 
 ## Output
 
