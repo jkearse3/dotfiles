@@ -6,9 +6,10 @@ repository does not specify one, use Conventional Commits:
 
 Default types are `feat`, `fix`, `refactor`, `perf`, `style`, `chore`, `docs`,
 `test`, `ci`, and `build`. Use an imperative lowercase description without a
-period, and keep the complete subject under 72 characters. Choose the type by
-effect: agent configuration is `feat` when behavior changes, `refactor` when
-reorganized, and `docs` only when behavior is unchanged.
+period. Aim for a complete subject of about 50 characters; 72 characters is the
+hard limit the validator enforces. Choose the type by effect: agent
+configuration is `feat` when behavior changes, `refactor` when reorganized, and
+`docs` only when behavior is unchanged.
 
 Every agent-authored description requires a non-redundant body. Use the body to
 record useful context or details that are not obvious from the subject.
