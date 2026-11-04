@@ -75,7 +75,8 @@ resolvable from itself and its own diff, citing an issue, commit, or component
 only to reinforce what it already explains; a separate paragraph for each
 distinct chunk of information; no review history, tool output, scratch work,
 agent actions, task state, workflow narration, alternatives weighed but not
-taken, unsupported claims, or planning structure; and no invented issue
+taken, unsupported claims, or planning structure; an issue-reference footer that
+uses `Refs`, never `Closes`, `Fixes`, or `Resolves`; and no invented issue
 reference, sign-off, reviewer, or external link. Report each violation as a
 finding owned by that revision, located at its description, as `clarity`
 `medium`, with a correction that names the broken rule and what the description
