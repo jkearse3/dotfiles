@@ -6,9 +6,10 @@ description: >-
   and verify: name and locate concepts with consistent domain vocabulary,
   explain code through symbol contracts and self-contained repository text,
   enforce correctness with types that make invalid states unrepresentable and
-  risk-based durable checks, and lay out code with progressive declaration
-  order, semantic code paragraphs, and scannable record construction. Apply
-  proportionally without unrelated cleanup or reformatting.
+  risk-based durable checks, keep cost proportional on unbounded paths, and lay
+  out code with progressive declaration order, semantic code paragraphs, and
+  scannable record construction. Apply proportionally without unrelated cleanup
+  or reformatting.
 ---
 
 # Coding Style
@@ -256,6 +257,12 @@ partial check and report the remaining validation gap. If no meaningful partial
 check exists, report the whole gap. Do not touch sensitive state or add a
 disproportionate harness solely to satisfy this section.
 
+## Keep Cost Proportional
+
+Where input size or I/O count is unbounded, avoid quadratic work, I/O inside
+loops, and N+1 queries. Elsewhere, prefer the clearer code and optimize only on
+evidence, such as a profile, benchmark, or measured regression.
+
 ## Lay Out Code
 
 Apply these layout rules fully to new files and to new or substantially
@@ -370,8 +377,10 @@ For each materially changed concept:
 8. Scan changed functions for coherent semantic paragraphs and atomic groups.
 9. Confirm multi-field record construction uses one named field or property per
    line, including nested records.
-10. Run the project's formatter and focused type, lint, and test checks.
-11. Inspect the diff for unnecessary renaming, comments, modules, API changes,
+10. Confirm unbounded paths avoid quadratic work, I/O inside loops, and N+1
+    queries, and that any other optimization rests on evidence.
+11. Run the project's formatter and focused type, lint, and test checks.
+12. Inspect the diff for unnecessary renaming, comments, modules, API changes,
     whitespace-only changes, and repository text that depends on internal
     planning or workflow context.
 
