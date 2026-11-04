@@ -3,13 +3,13 @@ name: coding-style
 description: >-
   Use whenever writing, editing, generating, or refactoring source code. Make
   changes easy for search-driven agents and humans to find, understand, modify,
-  and verify: name and locate concepts with consistent domain vocabulary,
-  explain code through symbol contracts and self-contained repository text,
-  enforce correctness with types that make invalid states unrepresentable and
-  risk-based durable checks, handle failure safely, keep cost proportional on
-  unbounded paths, and lay out code with progressive declaration order, semantic
-  code paragraphs, and scannable record construction. Apply proportionally
-  without unrelated cleanup or reformatting.
+  and verify: name and locate concepts with consistent domain vocabulary, reuse
+  existing code and keep changes minimal, explain code through symbol contracts
+  and self-contained repository text, enforce correctness with types that make
+  invalid states unrepresentable and risk-based durable checks, handle failure
+  safely, keep cost proportional on unbounded paths, and lay out code with
+  progressive declaration order, semantic code paragraphs, and scannable record
+  construction. Apply proportionally without unrelated cleanup or reformatting.
 ---
 
 # Coding Style
@@ -128,6 +128,16 @@ lives.
 
 Do not duplicate authoritative constants or weaken a sound data model merely to
 repeat strings. Prefer one source of truth when drift is the greater risk.
+
+## Keep the Change Minimal
+
+Reuse first. Search for implementations the way **Inspect First** searches for
+terms: before writing a helper, type, or utility, look for one that already does
+the job, including code written earlier in the same change, and extend it when
+the extension stays coherent.
+
+Add only the parameters, branches, indirection, configuration, and state the
+requested behavior needs. Do not add hooks for hypothetical callers.
 
 ## Explain Code
 
@@ -388,13 +398,16 @@ For each materially changed concept:
 8. Scan changed functions for coherent semantic paragraphs and atomic groups.
 9. Confirm multi-field record construction uses one named field or property per
    line, including nested records.
-10. Confirm errors are handled or propagated, failure releases resources and
+10. Confirm the change reuses an existing helper, type, or utility wherever one
+    does the job, and adds no parameter, branch, indirection, configuration, or
+    state the requested behavior does not need.
+11. Confirm errors are handled or propagated, failure releases resources and
     leaves partial mutations recoverable, untrusted input is escaped or
     parameterized, and secrets stay out of logs, errors, and output.
-11. Confirm unbounded paths avoid quadratic work, I/O inside loops, and N+1
+12. Confirm unbounded paths avoid quadratic work, I/O inside loops, and N+1
     queries, and that any other optimization rests on evidence.
-12. Run the project's formatter and focused type, lint, and test checks.
-13. Inspect the diff for unnecessary renaming, comments, modules, API changes,
+13. Run the project's formatter and focused type, lint, and test checks.
+14. Inspect the diff for unnecessary renaming, comments, modules, API changes,
     whitespace-only changes, and repository text that depends on internal
     planning or workflow context.
 

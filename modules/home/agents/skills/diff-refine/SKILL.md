@@ -29,15 +29,15 @@ the target and no publication.
 
 A proposal must:
 
-- serve one lens: **simplicity** (drop concepts, indirection, branches,
-  parameters, or state the behavior does not need, or reuse existing code),
-  **naming** (a name misleads, no longer matches the final behavior, breaks the
-  domain vocabulary, or falls short of `coding-style`'s naming guidance),
-  **structure** (placement, order, or coupling makes the code harder to find or
-  change), **types** (tighten a type the target changes so it admits fewer
-  states the code does not support, following `coding-style`'s Make Invalid
-  States Unrepresentable, such as replacing a combination of nullable fields
-  with a tagged union or moving checks repeated across consumers into one
+- serve one lens: **simplicity** (reuse existing code, or drop concepts and
+  anything else `coding-style`'s Keep the Change Minimal says the behavior does
+  not need), **naming** (a name misleads, no longer matches the final behavior,
+  breaks the domain vocabulary, or falls short of `coding-style`'s naming
+  guidance), **structure** (placement, order, or coupling makes the code harder
+  to find or change), **types** (tighten a type the target changes so it admits
+  fewer states the code does not support, following `coding-style`'s Make
+  Invalid States Unrepresentable, such as replacing a combination of nullable
+  fields with a tagged union or moving checks repeated across consumers into one
   boundary parser), or **performance** (an evidenced algorithmic, I/O, or
   allocation cost on a reachable path);
 - stay in scope: code the target changes, plus unchanged code the target made

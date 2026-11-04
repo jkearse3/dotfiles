@@ -217,6 +217,10 @@ bar at the end of this section. Cite each by name rather than restating it.
 record construction) and its naming preferences beyond the Names tests are never
 findings; they apply when code is written.
 
+`coding-style`'s Keep the Change Minimal is never a finding beyond the dead
+material and unrelated churn reported above; leave reuse and speculative
+generality to `diff-refine`.
+
 For each changed dependency version, direct or transitive, decide whether it is
 safe for this repository: it introduces no security issue and no breaking
 behavior that the repository's tests would miss. Escalate only while the
