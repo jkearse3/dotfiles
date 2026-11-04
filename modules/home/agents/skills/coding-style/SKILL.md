@@ -6,10 +6,10 @@ description: >-
   and verify: name and locate concepts with consistent domain vocabulary,
   explain code through symbol contracts and self-contained repository text,
   enforce correctness with types that make invalid states unrepresentable and
-  risk-based durable checks, keep cost proportional on unbounded paths, and lay
-  out code with progressive declaration order, semantic code paragraphs, and
-  scannable record construction. Apply proportionally without unrelated cleanup
-  or reformatting.
+  risk-based durable checks, handle failure safely, keep cost proportional on
+  unbounded paths, and lay out code with progressive declaration order, semantic
+  code paragraphs, and scannable record construction. Apply proportionally
+  without unrelated cleanup or reformatting.
 ---
 
 # Coding Style
@@ -213,6 +213,17 @@ Use the language's own idioms and the repository's existing mechanisms. Do not
 introduce type-level machinery, validation libraries, or encodings whose reading
 cost exceeds the risk they remove.
 
+### Handle Failure
+
+- Handle or propagate every error; never swallow one silently. Give it the
+  context **Preserve Operational Trails** describes.
+- Release acquired resources on every path, including failure.
+- Where a partial result would matter, make a mutation complete or leave state
+  recoverable through atomic replace, idempotent retry, or explicit rollback.
+- Never interpolate untrusted input into commands, queries, paths, or markup
+  without the language's escaping or parameterization.
+- Keep secrets out of logs, errors, and output.
+
 ### Write Durable Checks
 
 Add a durable check when all of these are true:
@@ -377,10 +388,13 @@ For each materially changed concept:
 8. Scan changed functions for coherent semantic paragraphs and atomic groups.
 9. Confirm multi-field record construction uses one named field or property per
    line, including nested records.
-10. Confirm unbounded paths avoid quadratic work, I/O inside loops, and N+1
+10. Confirm errors are handled or propagated, failure releases resources and
+    leaves partial mutations recoverable, untrusted input is escaped or
+    parameterized, and secrets stay out of logs, errors, and output.
+11. Confirm unbounded paths avoid quadratic work, I/O inside loops, and N+1
     queries, and that any other optimization rests on evidence.
-11. Run the project's formatter and focused type, lint, and test checks.
-12. Inspect the diff for unnecessary renaming, comments, modules, API changes,
+12. Run the project's formatter and focused type, lint, and test checks.
+13. Inspect the diff for unnecessary renaming, comments, modules, API changes,
     whitespace-only changes, and repository text that depends on internal
     planning or workflow context.
 
