@@ -47,14 +47,17 @@ keeps ordinary prose such as `Records: ...` unambiguous. Wrapped trailer values
 use indented continuation lines. `BREAKING CHANGE: description` is the
 Conventional Commits exception to the token rule and may continue flush left.
 
-Issue-reference footers use `Closes`, `Fixes`, or `Resolves` when the change
-resolves the issue and `Refs` when it only relates. These are tracker commands,
-not `Token: value` trailers: follow the keyword with one space and no colon,
-then exactly one tracker identifier: `#123` or `owner/repository#123` for
-GitHub, and `PROJ-123` for Jira or Linear. Put multiple issues on separate
-footer lines, and never append punctuation to an issue identifier. Generic
-trailer values are free-form prose; when the value is an opaque URL, hash, or
-identity, preserve that value exactly rather than punctuating it as a sentence.
+Issue-reference footers in agent-authored descriptions always use `Refs`, never
+`Closes`, `Fixes`, or `Resolves`, on every revision, including the last revision
+of a stack and a single-revision change set: a revision only contributes to an
+issue, and the pull request that merges the change set resolves it. `Refs` is a
+tracker command, not a `Token: value` trailer: follow the keyword with one space
+and no colon, then exactly one tracker identifier: `#123` or
+`owner/repository#123` for GitHub, and `PROJ-123` for Jira or Linear. Put
+multiple issues on separate footer lines, and never append punctuation to an
+issue identifier. Generic trailer values are free-form prose; when the value is
+an opaque URL, hash, or identity, preserve that value exactly rather than
+punctuating it as a sentence.
 
 When the change set has a governing issue or ticket, source its identifier from
 the task-owned branch or bookmark name, the plan or contract in scope, or the
@@ -76,7 +79,8 @@ body rule above. `--conventional` checks the Conventional Commits subject with
 the default types; pass it whenever repository documentation does not define its
 own description format, and drop only `--conventional` when it does.
 
-When a governing issue requires `issue_footer`, validate its exact presence with
+When a governing issue requires `issue_footer`, such as `Refs PROJ-123`,
+validate its exact presence with
 `commit-message validate --require-body --conventional --require-footer "$issue_footer"`,
 dropping `--conventional` by the same rule. Repeat `--require-footer` for each
 required issue-reference footer.
