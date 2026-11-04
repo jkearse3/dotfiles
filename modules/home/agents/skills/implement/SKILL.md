@@ -4,10 +4,11 @@ description: >-
   Implements a requested change in a jj repository as a stack of finalized
   revisions, breaking the work into revision briefs and building each one
   through a fresh implementer subagent so this session's context stays small,
-  then converging the stack with diff-fix. Use when the user asks to implement,
-  build, or carry out a change from any input: a request, issue, plan, note, or
-  spec. Not for one-off fixes to finalized revisions, read-only investigation or
-  review, Git-only checkouts, or publication.
+  then refining the stack with diff-refine and converging it with diff-fix. Use
+  when the user asks to implement, build, or carry out a change from any input:
+  a request, issue, plan, note, or spec. Not for one-off fixes to finalized
+  revisions, read-only investigation or review, Git-only checkouts, or
+  publication.
 ---
 
 # Implement
@@ -42,8 +43,8 @@ by change ID.
 
 Invoking this skill authorizes creating and writing this run directory, and
 creating, finalizing, rewinding, and abandoning the new revisions and running
-`diff-fix` on them. It authorizes nothing outside the new stack and run
-directory and no publication.
+`diff-refine` and `diff-fix` on them. It authorizes nothing outside the new
+stack and run directory and no publication.
 
 ## Run Directory
 
@@ -72,8 +73,12 @@ description drafts and check logs, stay in the session scratchpad.
   IDs.
 - `Landed notes`: for each `done` brief, the deviations and established patterns
   later briefs must build on, from the implementer's summary.
-- `Outcome`, written at the end: `done`, `blocked`, or `stopped by user`, and
-  the `diff-fix` result or why it was skipped.
+- `Refine`, written when Refine ends: applied proposals, restored ones with
+  their failure evidence, unchecked revisions, and notes; or why it was skipped;
+  or the state `diff-refine` reported when it stopped, then the recovery.
+- `Outcome`, written at the end: `done`, `blocked`, or `stopped by user`; the
+  Refine result from `Refine`, adding the declined proposals recorded under
+  `Decisions during the run`; and the `diff-fix` result or why it was skipped.
 
 `implementer.md` holds the implementer rules from step 2, the path of
 `briefs.md` and of the input when `Input` points to it, and the return contract.
@@ -185,14 +190,45 @@ it or state why it cannot be split.
    `Decisions during the run`.
 7. Repeat from step 2 until no brief is `pending`.
 
+## Refine
+
+Once no brief is `pending`, at least one is `done`, and `briefs.md` has no
+`Refine` entry, follow `diff-refine` on the new stack, from the stack base to
+the bookmark. Pass as caller context:
+
+- as constraints proposals must respect, the input's criteria, exclusions,
+  settled decisions, and binding requirements, and `Decisions during the run`;
+- each `done` brief's checks as its revision's checks, stated as passed at
+  Verify;
+- the standing choice "apply every proposal that needs no user decision; ask
+  about `needs-decision` proposals in one batch";
+- that this session reviews the target next, so `diff-refine` skips its Check.
+
+When `diff-refine` asks about `needs-decision` proposals, ask the user once,
+giving each its question and recommended answer and offering apply or skip per
+proposal, or stop the run. Record the answers under `Decisions during the run`,
+each declined proposal with its location, lens, owning revision, and proposed
+shape. `diff-refine`'s appliers make every edit; this session edits no files
+here.
+
+On `completed`, record the result under `Refine` in `briefs.md`, then continue
+to Converge. On `stopped`, record the state `diff-refine` reports under `Refine`
+and ask the user to recover it, by repairing it or authorizing a named recovery,
+or to stop the run. After a recovery, record it under `Refine` and continue to
+Converge; never converge on unrecovered state. Skip this step when the user
+asked not to refine or not to review, and record why under `Refine`.
+
 ## Converge
 
-Once no brief is `pending` and at least one is `done`, follow `diff-fix` on the
-new stack, from the stack base to the bookmark, with the input's criteria and
-binding requirements verbatim as its criteria and its exclusions as context.
-Pass as user decisions the input's settled decisions and, from `briefs.md`,
-every answer and ruling the user gave during the run, including each `skipped`
-brief with the user's reason. Skip this step when the user asked not to review.
+Once Refine completes, is recovered, or is skipped, and at least one brief is
+`done`, follow `diff-fix` on the new stack, from the stack base to the bookmark,
+with the input's criteria and binding requirements verbatim as its criteria and
+its exclusions as context. Pass as user decisions the input's settled decisions
+and, from `briefs.md`, every answer and ruling the user gave during the run,
+including each `skipped` brief with the user's reason and each proposal the user
+declined during Refine. Pass each `restored` proposal with its failure evidence
+as context, without labeling it declined or decided. Skip this step when the
+user asked not to review.
 
 ## Report
 
@@ -200,7 +236,8 @@ Write `Outcome` to `briefs.md`. Then lead the report with the outcome: `done`,
 `blocked`, or `stopped by user`. List the finalized revisions in order with
 change IDs and descriptions, the bookmark, any rewind with its evidence and
 abandoned revisions, skipped or blocked briefs with their reasons, checks run
-and skipped, the `diff-fix` result, and the run directory's absolute path.
+and skipped, the Refine result with its declined and restored proposals, the
+`diff-fix` result, and the run directory's absolute path.
 
 ## Boundaries
 
