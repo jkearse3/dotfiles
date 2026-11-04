@@ -48,6 +48,9 @@ A proposal must:
   touches nothing a later target revision changes or depends on, so later
   revisions stay valid after the squash;
 - state its concrete gain: what it removes, merges, clarifies, or makes cheaper;
+- carry a decision flag, `needs-decision` when it depends on taste, product
+  behavior, or a name the user owns. A `needs-decision` proposal also carries
+  the question for the user and a recommended answer;
 - preserve observable behavior, including contracts, output, errors, and
   persisted data. The one exception is renaming, or tightening the type of, a
   contract or durable name the target introduces, in the revision that
@@ -71,10 +74,14 @@ type admits that some path produces or some consumer mishandles, as notes for
    IDs, commits, base, any user focus, and **Proposal Rules**. It makes no
    edits, VCS mutation, or further delegation, and returns proposals ranked by
    gain, each with a `file:line` location, lens, owning revision, current and
-   proposed shape, gain, and risk (`low`, `medium`, `high`), plus its notes. If
-   the host cannot start a fresh agent, stop and report.
+   proposed shape, gain, risk (`low`, `medium`, `high`), and decision flag, with
+   the question and recommended answer for a `needs-decision` one, plus its
+   notes. If the host cannot start a fresh agent, stop and report.
 2. **Choose.** Present the proposals and let the user pick. Apply a standing
-   choice such as "all low-risk" without asking.
+   choice without asking. It may select by risk, such as "all low-risk", or by
+   the decision flag, such as "apply every proposal that needs no user decision;
+   ask about the rest in one batch". A choice by the decision flag leaves each
+   proposal's risk as rated, as information.
 3. **Apply.** For each owning revision with chosen proposals, earliest first:
    1. Record the current jj operation ID, then create a fresh empty child of the
       owner.
