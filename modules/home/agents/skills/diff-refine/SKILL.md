@@ -21,6 +21,11 @@ Resolve the target as `diff-review` does, and require a jj repository and no
 `<target> & immutable()` revisions. Refer to the target and every owning
 revision by change ID, never commit ID, because each squash rewrites commits.
 
+A caller, such as a skill that built the target, may pass context with the
+target: constraints proposals must respect, such as acceptance criteria,
+exclusions, and settled decisions, and whether the caller reviews the target
+next.
+
 Invoking this skill authorizes squashing chosen refinements into the target's
 mutable revisions and rebasing their descendants. It authorizes nothing outside
 the target and no publication.
@@ -71,12 +76,13 @@ type admits that some path produces or some consumer mishandles, as notes for
 ## Flow
 
 1. **Propose.** Dispatch a fresh read-only subagent with the target's change
-   IDs, commits, base, any user focus, and **Proposal Rules**. It makes no
-   edits, VCS mutation, or further delegation, and returns proposals ranked by
-   gain, each with a `file:line` location, lens, owning revision, current and
-   proposed shape, gain, risk (`low`, `medium`, `high`), and decision flag, with
-   the question and recommended answer for a `needs-decision` one, plus its
-   notes. If the host cannot start a fresh agent, stop and report.
+   IDs, commits, base, any user focus, any caller constraints, and **Proposal
+   Rules**. It makes no edits, VCS mutation, or further delegation, and returns
+   proposals ranked by gain, each with a `file:line` location, lens, owning
+   revision, current and proposed shape, gain, risk (`low`, `medium`, `high`),
+   and decision flag, with the question and recommended answer for a
+   `needs-decision` one, plus its notes. If the host cannot start a fresh agent,
+   stop and report.
 2. **Choose.** Present the proposals and let the user pick. Apply a standing
    choice without asking. It may select by risk, such as "all low-risk", or by
    the decision flag, such as "apply every proposal that needs no user decision;
@@ -102,10 +108,10 @@ type admits that some path produces or some consumer mishandles, as notes for
    `jj op restore <recorded operation ID>`, which keeps earlier owners'
    refinements; otherwise leave the state as is and report it.
 
-4. **Check.** Run `jj new <target tip>`. Unless Apply stopped, follow
-   `diff-review` on the target in this session as one that must stay independent
-   of the target, and report its verdict. Do not fix its findings; suggest
-   `diff-fix` when it does not pass.
+4. **Check.** Run `jj new <target tip>`. Unless Apply stopped or the caller
+   stated that it reviews the target next, follow `diff-review` on the target in
+   this session as one that must stay independent of the target, and report its
+   verdict. Do not fix its findings; suggest `diff-fix` when it does not pass.
 
 ## Report
 
