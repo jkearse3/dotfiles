@@ -32,7 +32,10 @@ the target and no publication.
 
 ## Proposal Rules
 
-A proposal must:
+Judge proposals against the target's final shape: read the target's aggregate
+diff, from its base to its tip, before any single revision, so a proposal
+neither refines code a later revision rewrites or removes nor misses an
+inconsistency visible only across revisions. A proposal must:
 
 - serve one lens: **simplicity** (reuse existing code, or drop concepts and
   anything else `coding-style`'s Keep the Change Minimal says the behavior does
@@ -50,9 +53,11 @@ A proposal must:
   finding an existing helper or checking callers;
 - name one owning revision: the target revision whose concern the refinement
   belongs to, the earliest that introduced the code, or for unchanged code, that
-  made it redundant or inconsistent. When later target revisions change or
-  depend on the affected code, list the part each needs to keep its intent with
-  the refinement;
+  made it redundant or inconsistent;
+- list every later target revision whose code must change with the refinement,
+  such as through callers, uses, or tests, with the part each needs to keep its
+  intent. State an empty list explicitly when no later revision must change, and
+  `cannot list` when they cannot be determined;
 - state its concrete gain: what it removes, merges, clarifies, or makes cheaper;
 - carry a decision flag, `needs-decision` when it depends on taste, product
   behavior, or a name the user owns. A `needs-decision` proposal also carries
@@ -68,8 +73,10 @@ A proposal must:
 - follow the repository's established patterns and `coding-style`, not the
   proposer's taste, and add no generality nobody needs.
 
-Drop anything else. Report a refinement that needs a revision outside the target
-as a note. Zero proposals is a valid result. Report bugs, including a state the
+Drop anything else, including a refinement of code a later target revision
+rewrites or removes, and any `cannot list` proposal. Report a refinement that
+needs a revision outside the target, or a dropped `cannot list` proposal, as a
+note. Zero proposals is a valid result. Report bugs, including a state the
 current type admits that some path produces or some consumer mishandles, as
 notes for `diff-review` or `diff-fix`, and mixed-concern revisions as notes for
 `finalize-changes`; never fix or reshape them here.
@@ -79,13 +86,14 @@ notes for `diff-review` or `diff-fix`, and mixed-concern revisions as notes for
 1. **Propose.** Dispatch a fresh read-only subagent with the target's change
    IDs, commits, base, any user focus, any caller constraints and per-revision
    checks, and **Proposal Rules**. It makes no edits, VCS mutation, or further
-   delegation, and returns proposals ranked by gain, each with a `file:line`
-   location, lens, owning revision, the part listed for each later revision,
-   current and proposed shape, gain, risk (`low`, `medium`, `high`), and
-   decision flag, with the question and recommended answer for a
-   `needs-decision` one, plus its notes and proportionate checks for each target
-   revision without caller checks. These are each revision's checks below. If
-   the host cannot start a fresh agent, stop.
+   delegation. It returns proposals ranked by gain, each with a `file:line`
+   location, lens, owning revision, every later target revision that must change
+   with it and the part each needs, or an explicitly empty list, current and
+   proposed shape, gain, risk (`low`, `medium`, `high`), and decision flag, with
+   the question and recommended answer for a `needs-decision` one, plus its
+   notes and proportionate checks for each target revision without caller
+   checks. These are each revision's checks below. If the host cannot start a
+   fresh agent, stop.
 2. **Baseline.** For each target revision whose checks the caller did not state
    already pass, earliest first, run `jj new <rev>` and have a check agent run
    that revision's checks, whether the caller or the proposer supplied them, and
