@@ -72,7 +72,8 @@ description drafts and check logs, stay in the session scratchpad.
   trigger, evidence, and what changed; and any rewind with its abandoned change
   IDs.
 - `Landed notes`: for each `done` brief, the deviations and established patterns
-  later briefs must build on, from the implementer's summary.
+  later briefs must build on, from the implementer's summary, and the symbol
+  changes from its `done` return.
 - `Refine`, written when Refine ends: applied proposals, restored ones with
   their failure evidence, unchecked revisions, and notes; or why it was skipped;
   or the state `diff-refine` reported when it stopped, then the recovery.
@@ -152,10 +153,11 @@ it or state why it cannot be split.
    non-overlapping ranges when a file is too large for one read, and rereads one
    only after its context is compacted or when told the file changed. It follows
    `coding-style`, edits only the working copy, performs no VCS mutation or
-   delegation, runs the brief's checks, and returns `done` with the checks run
-   and a summary of what changed and why, `blocked` with the evidence or
-   question, or `rebrief` with the evidence that the briefs, including `done`
-   ones, are wrong.
+   delegation, runs the brief's checks, and returns `done` with the checks run,
+   a summary of what changed and why, and its symbol changes: each symbol the
+   revision renamed, moved, or removed that a later brief names, or that there
+   are none; `blocked` with the evidence or question; or `rebrief` with the
+   evidence that the briefs, including `done` ones, are wrong.
 3. **Verify.** Confirm the diff achieves the brief, changes nothing outside it,
    and passes its checks; rerun a check whose result the next decision depends
    on. Discard the attempt with `jj restore` on `@` whenever it ends without a
@@ -171,8 +173,9 @@ it or state why it cannot be split.
    `references/revision-descriptions.md`; it must not mention brief names or
    numbers, `briefs.md`, rebriefs, landed notes, check logs, planners,
    implementers, checkers, or the run directory. Mark the brief `done` with its
-   change ID and add its entry to `Landed notes`. If it stops because the
-   changes are not one coherent revision, treat that as a verification failure.
+   change ID and add its entry to `Landed notes`, recording the implementer's
+   symbol changes there. If it stops because the changes are not one coherent
+   revision, treat that as a verification failure.
 5. **Rebrief.** On a `rebrief` return, or when a landed revision shows the
    briefs are wrong, dispatch a fresh planner with `briefs.md` and the evidence
    to revise the `pending` briefs, and update them in `briefs.md` in place. When
