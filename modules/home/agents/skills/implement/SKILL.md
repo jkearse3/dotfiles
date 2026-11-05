@@ -118,11 +118,10 @@ it or state why it cannot be split.
 
 1. **Break down.** Dispatch a fresh planner to explore read-only: no edits, VCS
    mutation, scratch files in the repository, or delegation. It returns ordered
-   briefs that produce the outcome, sized by the `Brief Size` rules. It also
-   returns any question whose answer is a user-owned decision that would change
-   the briefs. Ask the user those questions before implementing, record the
-   answers under `Decisions during the run`, and rebrief with them as settled
-   decisions. Then write the briefs to `briefs.md` and check them.
+   draft briefs that produce the outcome, sized by the `Brief Size` rules, and
+   any question whose answer is a user-owned decision that would change the
+   briefs. Write the draft briefs to `briefs.md` and check them before asking
+   the user anything.
 
    Dispatch one fresh checker under the planner's read-only limits. Its prompt
    gives the absolute path of `briefs.md`, and of the input when `Input` points
@@ -135,16 +134,23 @@ it or state why it cannot be split.
    does not judge or attack the approach, which the run treats as settled. It
    returns each gap with the brief and input item at fault, the failed check,
    and whether it needs a user-owned decision, or that it found none; record
-   that result under `Rebriefs`. When it finds gaps, ask the user those that
-   need a user-owned decision before implementing and record the answers under
-   `Decisions during the run`. Give the remaining gaps and those answers to one
-   fresh planner, prompted as in Break down, to revise the briefs once, and
-   update `briefs.md` in place. Do not run the checker again: confirm the
-   revision closes each gap, and for any gap it leaves open or returns as
-   unresolvable, ask the user before implementing and offer decide, skip the
-   affected brief, or stop, as step 6 does, recording the answer under
-   `Decisions during the run`. Then show the brief list and continue without
-   waiting for approval.
+   that result under `Rebriefs`.
+
+   Then settle the planner's questions and the checker's gaps with one ask and
+   one revision. Merge a gap that a planner question already covers into that
+   question. Ask the user the planner's questions and the gaps that need a
+   user-owned decision together, in one ask before implementing, and record the
+   answers under `Decisions during the run`. Give those answers, as settled
+   decisions, and the remaining gaps to one fresh planner, prompted as in Break
+   down, to revise the briefs once, and update `briefs.md` in place. With no
+   questions and no gaps, skip the ask and the revising planner; with gaps but
+   none needing the user, skip the ask and give the revising planner the gaps.
+   Do not run the checker again: confirm the revision closes each gap and
+   reflects each answer. For any gap it leaves open or returns as unresolvable,
+   and any new user-owned question it returns, ask the user before implementing
+   and offer decide, skip the affected brief, or stop, as step 6 does, recording
+   the answer under `Decisions during the run`. Then show the brief list and
+   continue without waiting for approval.
 
 2. **Implement.** For the earliest `pending` brief, confirm `@` is empty and
    sits on the last `done` revision, or on the stack base for the first brief,
