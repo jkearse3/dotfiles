@@ -80,10 +80,10 @@ description drafts and check logs, stay in the session scratchpad.
   Refine result from `Refine`, adding the declined proposals recorded under
   `Decisions during the run`; and the `diff-fix` result or why it was skipped.
 
-`implementer.md` holds the implementer rules from step 2, the path of
-`briefs.md` and of the input when `Input` points to it, and the return contract.
-Write it once before the first implementer, and revise it only when those rules
-change.
+`implementer.md` holds the implementer rules from step 2, including the rule to
+read each run file and the input once, the path of `briefs.md` and of the input
+when `Input` points to it, and the return contract. Write it once before the
+first implementer, and revise it only when those rules change.
 
 ## Brief List
 
@@ -147,11 +147,15 @@ it or state why it cannot be split.
 
 2. **Implement.** For the earliest `pending` brief, confirm `@` is empty and
    sits on the last `done` revision, or on the stack base for the first brief,
-   then dispatch a fresh implementer with that brief. It follows `coding-style`,
-   edits only the working copy, performs no VCS mutation or delegation, runs the
-   brief's checks, and returns `done` with the checks run and a summary of what
-   changed and why, `blocked` with the evidence or question, or `rebrief` with
-   the evidence that the briefs, including `done` ones, are wrong.
+   then dispatch a fresh implementer with that brief. It reads `implementer.md`,
+   `briefs.md`, and the input when `Input` points to it once each, whole, in
+   non-overlapping ranges when a file is too large for one read, and rereads one
+   only after its context is compacted or when told the file changed. It follows
+   `coding-style`, edits only the working copy, performs no VCS mutation or
+   delegation, runs the brief's checks, and returns `done` with the checks run
+   and a summary of what changed and why, `blocked` with the evidence or
+   question, or `rebrief` with the evidence that the briefs, including `done`
+   ones, are wrong.
 3. **Verify.** Confirm the diff achieves the brief, changes nothing outside it,
    and passes its checks; rerun a check whose result the next decision depends
    on. Discard the attempt with `jj restore` on `@` whenever it ends without a
