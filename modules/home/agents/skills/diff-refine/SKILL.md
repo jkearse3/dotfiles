@@ -86,13 +86,19 @@ notes for `diff-review` or `diff-fix`, and mixed-concern revisions as notes for
    `needs-decision` one, plus its notes and proportionate checks for each target
    revision without caller checks. These are each revision's checks below. If
    the host cannot start a fresh agent, stop.
-2. **Baseline.** Run the checks of each target revision, whether the caller or
-   the proposer supplied them, in a fresh `jj new <rev>`, one revision at a
-   time, skipping each revision whose checks the caller stated already pass.
-   Then run `jj new <target tip>`. Mark each failing revision unchecked, and
-   make each proposal that touches it `needs-decision` with that failure as its
-   question. A proposal touches the revision it owns and each revision it lists
-   a part for.
+2. **Baseline.** For each target revision whose checks the caller did not state
+   already pass, earliest first, run `jj new <rev>` and have a check agent run
+   that revision's checks, whether the caller or the proposer supplied them, and
+   return each check's exact command and result. Start one fresh check agent for
+   the first such revision and continue it for the rest, or start a fresh one
+   per revision when the host cannot continue an agent; if the host cannot start
+   a fresh agent, stop. The check agent edits no files beyond what the checks
+   themselves write, performs no VCS mutation or delegation, and keeps scratch
+   files in the session scratchpad; this session runs no checks. Then run
+   `jj new <target tip>`. Mark each failing revision unchecked, and make each
+   proposal that touches it `needs-decision` with that failure as its question.
+   A proposal touches the revision it owns and each revision it lists a part
+   for.
 3. **Choose.** Present the proposals and let the user pick. Apply a standing
    choice without asking. It may select by risk, such as "all low-risk", or by
    the decision flag, such as "apply every proposal that needs no user decision;
@@ -100,34 +106,43 @@ notes for `diff-review` or `diff-fix`, and mixed-concern revisions as notes for
    proposal's risk as rated, as information.
 4. **Apply.** Apply the chosen proposals one at a time, by owning revision
    earliest first and in gain order within an owner. This session never edits
-   files here; it only runs `jj new`, verification, squashes, restores, and
-   reverts. For each proposal:
+   files or runs checks here; it only runs `jj new`, squashes, restores,
+   reverts, and read-only jj inspection, dispatches agents, and judges their
+   reports and diffs. It judges whether a diff passes checks from the commands
+   and results the applier reports. When a check report is missing, inconsistent
+   with the diff, or doubtful, dispatch a fresh agent to rerun the named checks
+   and return each command and result; if the host cannot start a fresh agent,
+   stop. The rerun agent works under the check agent's limits from Baseline. A
+   check failing in its rerun is a verification failure. If the rerun changed
+   the working copy, such as through a formatter run as a check, judge the diff
+   again before landing. For each proposal:
    1. Run `jj new <target tip>`, then record the current jj operation ID.
    2. Dispatch one fresh applier with the proposal and all caller context. If
       the host cannot start a fresh agent, stop. As in `diff-fix`'s fixer
       contract, the applier follows `coding-style`, edits only the working copy,
       and performs no VCS mutation or delegation. It knows no earlier proposal
-      and rereads current code. Per revision it returns `applied` with checks
-      run, `obsolete` when the code the proposal, or at a later revision its
-      listed part, names is gone or already has the proposed shape, `failed`
-      with evidence, including when the proposal's intent conflicts with landed
-      code, or `needs-decision` with the question. It never returns description
-      text; when a revision's description no longer holds, it returns facts
-      instead: which statements no longer hold and what behavior changed, citing
-      the diff.
+      and rereads current code. Per revision it returns `applied` with each
+      check's exact command and result, `obsolete` when the code the proposal,
+      or at a later revision its listed part, names is gone or already has the
+      proposed shape, `failed` with evidence, including when the proposal's
+      intent conflicts with landed code, or `needs-decision` with the question.
+      It never returns description text; when a revision's description no longer
+      holds, it returns facts instead: which statements no longer hold and what
+      behavior changed, citing the diff.
    3. **Owner.** Run `jj new <owner>` and continue the applier with the owner's
       part of the proposal, everything not listed for a later revision, and the
       owner's change ID, description, and checks. At an unchecked owner the
       applier applies that part and neither runs nor repairs that revision's
       checks. Verify the diff holds only the owner's part, keeps the owner's
       described intent, and, unless the owner is unchecked, passes the owner's
-      checks. When the applier returned description facts, reread
-      `finalize-changes`' `references/revision-descriptions.md` and compose the
-      complete replacement from the resulting diff, the current description, and
-      those facts, never mentioning proposals, lenses, refinement, or review.
-      Format and validate it with the options that reference gives. Run
-      `jj squash --from @ --into <owner>` with `--message "$desc"` for a
-      replacement, or `--use-destination-message` otherwise. Then list
+      checks by the applier's report. When the applier returned description
+      facts, reread `finalize-changes`' `references/revision-descriptions.md`
+      and compose the complete replacement from the resulting diff, the current
+      description, and those facts, never mentioning proposals, lenses,
+      refinement, or review. Format and validate it with the options that
+      reference gives. Run `jj squash --from @ --into <owner>` with
+      `--message "$desc"` for a replacement, or `--use-destination-message`
+      otherwise. Then list
       `jj log -r 'descendants(<owner>) & ~(<target>) & conflicts()'`; any result
       is a newly conflicted descendant outside the target.
    4. **Later revisions.** For every later target revision, earliest first, run
@@ -143,7 +158,7 @@ notes for `diff-review` or `diff-fix`, and mixed-concern revisions as notes for
       Verify the diff holds only the listed part, conflict resolutions, and
       repairs of failures this proposal caused, keeps the revision's described
       intent, and, unless the revision is unchecked, passes the checks the
-      applier ran, then land it as at the owner. An empty working copy whose
+      applier reports, then land it as at the owner. An empty working copy whose
       checks pass, or at an unchecked revision, needs no squash.
    5. **Retry.** On the first verification failure at a revision, run
       `jj restore` and continue the applier once with the failure. A second
@@ -156,12 +171,13 @@ notes for `diff-review` or `diff-fix`, and mixed-concern revisions as notes for
       reason and continue with the next. Otherwise it ends `applied`.
 
       To revert, inspect each operation after the recorded one with
-      `jj op show`. If any was not made by this proposal's commands or the
-      working-copy snapshots their checks triggered, such as through a `nix`
-      wrapper, stop without reverting. Otherwise run `jj op revert` on each,
-      newest first; never `jj op restore`. Then confirm nothing in the target is
-      conflicted or divergent and `@` is an empty child of the target tip;
-      otherwise stop.
+      `jj op show`. If any was made neither by this proposal's commands nor by a
+      working-copy snapshot that an agent dispatched for this proposal took,
+      such as through the applier's read-only jj commands or checks the applier
+      or a rerun agent ran through a `nix` wrapper, stop without reverting.
+      Otherwise run `jj op revert` on each, newest first; never `jj op restore`.
+      Then confirm nothing in the target is conflicted or divergent and `@` is
+      an empty child of the target tip; otherwise stop.
 
 5. **Check.** Run `jj new <target tip>`. Unless the run stopped or the caller
    stated that it reviews the target next, follow `diff-review` on the target in
