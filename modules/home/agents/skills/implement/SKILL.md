@@ -14,9 +14,9 @@ description: >-
 # Implement
 
 Turn any description of a change into a stack of finalized, independently valid
-revisions. This session coordinates: it keeps the run's state, verifies and
-finalizes each revision, and asks the user. Subagents do the exploration and the
-editing; if the host cannot start fresh agents, stop and report.
+revisions. This session coordinates: it keeps the run's state, judges and
+finalizes each revision, and asks the user. Subagents do the exploration, the
+editing, and the checks; if the host cannot start fresh agents, stop and report.
 
 ## Input
 
@@ -159,14 +159,22 @@ it or state why it cannot be split.
    non-overlapping ranges when a file is too large for one read, and rereads one
    only after its context is compacted or when told the file changed. It follows
    `coding-style`, edits only the working copy, performs no VCS mutation or
-   delegation, runs the brief's checks, and returns `done` with the checks run,
-   a summary of what changed and why, and its symbol changes: each symbol the
-   revision renamed, moved, or removed that a later brief names, or that there
-   are none; `blocked` with the evidence or question; or `rebrief` with the
-   evidence that the briefs, including `done` ones, are wrong.
-3. **Verify.** Confirm the diff achieves the brief, changes nothing outside it,
-   and passes its checks; rerun a check whose result the next decision depends
-   on. Discard the attempt with `jj restore` on `@` whenever it ends without a
+   delegation, runs the brief's checks, and returns `done` with each check's
+   exact command and result, a summary of what changed and why, and its symbol
+   changes: each symbol the revision renamed, moved, or removed that a later
+   brief names, or that there are none; `blocked` with the evidence or question;
+   or `rebrief` with the evidence that the briefs, including `done` ones, are
+   wrong.
+3. **Verify.** Judge from the diff and the implementer's reported checks that
+   the diff achieves the brief, changes nothing outside it, and passes the
+   brief's checks; this session runs no checks. When a check report is missing,
+   inconsistent with the diff, or doubtful, dispatch a fresh agent to rerun the
+   named checks and return each command and result. It edits no files beyond
+   what the checks themselves write, performs no VCS mutation or delegation, and
+   keeps scratch files in the session scratchpad. A check failing in its rerun
+   is a verification failure. If the rerun changed the working copy, such as
+   through a formatter run as a check, judge the diff again before finalizing.
+   Discard the attempt with `jj restore` on `@` whenever it ends without a
    verified `done`; unlike abandoning, this empties `@` in place and keeps its
    change ID and any bookmark on it. A `blocked` return then makes the brief
    `blocked`, and a `rebrief` return goes to step 5. On a first verification
