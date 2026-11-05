@@ -67,9 +67,13 @@ against the change a landed fix made re-raises that fix's finding.
    verifier confirms it is still present or declines it with a reason. Per
    finding the review returns category, location, mechanism, and owning revision
    (the earliest target revision whose diff introduces the defect). A full
-   review's `pass` ends the run; `blocked` stops it; `non-pass` continues to
-   step 2. On `delta-pass`, triage under step 2, then continue from step 3 when
-   any finding is `open` or `needs-decision`; otherwise start a full review.
+   review's `pass` ends the run unless a finding is `needs-decision`; then
+   triage under step 2, ask under step 3, and end with `pass` unless the user
+   stops the run or a decision made a finding `open` or calls for a reshape;
+   such a decision continues with steps 4 to 8. `blocked` stops the run;
+   `non-pass` continues to step 2. On `delta-pass`, triage under step 2, then
+   continue from step 3 when any finding is `open` or `needs-decision`;
+   otherwise start a full review.
 2. **Triage.** A finding a user decision covers takes that decision's effect. A
    reasoned decline settles a finding unless the user asked for that change.
    `design` and `question` findings, findings owned outside the target, findings
@@ -86,6 +90,7 @@ against the change a landed fix made re-raises that fix's finding.
      latest attempt is an evidenced rejection, and no user decision covers it;
    - the review returned `non-pass` and nothing is `open`;
    - a `delta-pass` left a finding `needs-decision`;
+   - a full review's `pass` left a finding `needs-decision`;
    - 5 `non-pass` reviews, delta or full, since the last user checkpoint, unless
      a user decision set another limit.
 4. **Reshape.** When a user decision calls for reordering, splitting, or moving
