@@ -136,7 +136,10 @@ notes for `diff-review` or `diff-fix`, and mixed-concern revisions as notes for
       intent conflicts with landed code, or `needs-decision` with the question.
       It never returns description text; when a revision's description no longer
       holds, it returns facts instead: which statements no longer hold and what
-      behavior changed, citing the diff.
+      behavior changed, citing the diff. At the owner it also reads the later
+      target revisions with read-only jj commands, such as `jj file show -r` and
+      `jj diff -r`, and returns each one whose code uses what the proposal
+      changed, naming the use.
    3. **Owner.** Run `jj new <owner>` and continue the applier with the owner's
       part of the proposal, everything not listed for a later revision, and the
       owner's change ID, description, and checks. At an unchecked owner the
@@ -150,24 +153,36 @@ notes for `diff-review` or `diff-fix`, and mixed-concern revisions as notes for
       refinement, or review. Format and validate it with the options that
       reference gives. Run `jj squash --from @ --into <owner>` with
       `--message "$desc"` for a replacement, or `--use-destination-message`
-      otherwise. Then list
-      `jj log -r 'descendants(<owner>) & ~(<target>) & conflicts()'`; any result
-      is a newly conflicted descendant outside the target.
-   4. **Later revisions.** For every later target revision, earliest first, run
-      `jj new <rev>` and continue the applier with its change ID, description,
-      listed part if any, any conflict, and checks. The applier applies the
-      part, resolves conflicts, and repairs check failures, keeping the
+      otherwise. Then, as `diff-fix`'s Loop step 7 does, list
+      `jj log -r 'descendants(<owner>) & conflicts()' --reversed`. A target
+      revision in the list was left conflicted by this proposal; any other
+      revision is a newly conflicted descendant outside the target.
+   4. **Later revisions.** Visit only the proposal's visit set: each later
+      target revision it lists a part for, each one the applier reported at the
+      owner as using code the proposal changed, and each target revision a
+      landing of this proposal left conflicted. Do not visit revisions outside
+      the set. Visit one revision at a time, always the earliest unvisited one
+      in the set, so each is visited after every landing of this proposal in its
+      ancestors. Run `jj new <rev>` and continue the applier with the revision's
+      change ID, description, listed part if any, any conflict, and checks; when
+      the host cannot continue an agent, dispatch a fresh applier for each visit
+      with those inputs, the proposal, and what has landed for it. The applier
+      applies the part, updates uses of what the proposal changed, resolves
+      conflicts, and repairs check failures the proposal caused, keeping the
       revision's intent, then runs the revision's checks plus those of earlier
       checked target revisions whose files its diff touches. At an unchecked
-      revision it only applies the part and resolves conflicts, and neither runs
-      nor repairs that revision's checks. When it returns `obsolete` for the
-      part, it applies nothing for it and continues as at a revision without a
-      part, so that revision's work usually ends as an empty working copy.
-      Verify the diff holds only the listed part, conflict resolutions, and
-      repairs of failures this proposal caused, keeps the revision's described
-      intent, and, unless the revision is unchecked, passes the checks the
-      applier reports, then land it as at the owner. An empty working copy whose
-      checks pass, or at an unchecked revision, needs no squash.
+      revision it only applies the part, updates uses, and resolves conflicts,
+      and neither runs nor repairs any checks. When it returns `obsolete` for
+      the part, it applies nothing for it and continues as at a revision without
+      a part, so that revision's work may end as an empty working copy. Verify
+      the diff holds only the listed part, updates of uses of what the proposal
+      changed, conflict resolutions, and repairs of failures this proposal
+      caused, keeps the revision's described intent, and, unless the revision is
+      unchecked, passes the checks the applier reports, then land it as at the
+      owner, listing conflicts among that revision's descendants. An empty
+      working copy whose checks pass, or at an unchecked revision, needs no
+      squash. A visited revision still in `conflicts()` after this is a
+      verification failure there.
    5. **Retry.** On the first verification failure at a revision, run
       `jj restore` and continue the applier once with the failure. A second
       failure there fails the proposal.
@@ -196,8 +211,11 @@ notes for `diff-review` or `diff-fix`, and mixed-concern revisions as notes for
 
 Lead with the outcome. It is `completed` when every proposal ends `applied`,
 `declined`, `restored`, or `dropped`, and `stopped` only when a revert cannot
-proceed or fails its post-check, or the host cannot start a fresh agent. Give
-each proposal's status, with the reason for `restored` and `dropped`, and for a
-stop the state left and the proposals not attempted. Then list unchecked
-revisions, rewritten revisions and rebased descendants, checks run per revision
-and their results, any `diff-review` verdict, and notes.
+proceed or fails its post-check, the host cannot start a fresh agent, or a
+target revision is conflicted or divergent after the last proposal. Before
+reporting `completed`, confirm
+`jj log -r '(<target>) & (conflicts() | divergent())'` is empty. Give each
+proposal's status, with the reason for `restored` and `dropped`, and for a stop
+the state left and the proposals not attempted. Then list unchecked revisions,
+rewritten revisions and rebased descendants, checks run per revision and their
+results, any `diff-review` verdict, and notes.
