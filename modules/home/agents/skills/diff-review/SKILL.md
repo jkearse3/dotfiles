@@ -29,6 +29,26 @@ Infer from the request and context:
 - **Context:** focus areas, non-goals, and known issues. Focus and known issues
   never narrow review; a non-goal excuses an absence, not a defect in changed
   behavior.
+- **Delta scope:** optional, for a caller whose earlier review covered the whole
+  target: a delta base commit ID, a delta tip commit ID, and the changed
+  revisions, the target revisions by change ID whose diff or description changed
+  since that review, each marked when its description was replaced. The delta is
+  the tree diff `jj diff --from <delta base> --to <delta tip>`, not a revision
+  range, because the base may be a rewritten commit that is no longer an
+  ancestor. The delta tip must be the resolved target tip's commit; a mismatch
+  or an unresolvable base blocks review. An empty delta is valid. Unlike focus,
+  delta scope narrows review to every delta hunk under every relevant lens, the
+  consumers of every contract the delta changes, including unchanged code inside
+  and outside the target, and every earlier finding the request supplies,
+  wherever it is located. A defect in a target hunk the delta neither changes
+  nor reaches is out of scope. Owning revisions and granularity still refer to
+  the full resolved target. When reviewing per revision, check description
+  accuracy only on changed revisions, landing safety on changed revisions and
+  every target revision descending from one, and description conformance,
+  including the validator, only on changed revisions whose description was
+  replaced; when reviewing as a whole, no per-revision check runs. Assess a
+  criterion only when the delta or an earlier finding can affect its evidence,
+  and mark the others `not reassessed`.
 - **Evidence constraints:** explicit exclusions, located primary-source
   quotations, and prior independent conclusions. Do not reopen quoted material
   the target leaves unchanged. Treat a prior conclusion as settled only when the
@@ -45,17 +65,18 @@ clean Git worktree. Missing, ambiguous, unresolvable, undescribed, unfinalized,
 or undiffable targets block review. If evidence is unavailable or excluded,
 block only the verdict or coverage it prevents and continue reachable work.
 
-For one revision, review its diff. For a stack, review the aggregate delta. When
-reviewing per revision, also compare each revision's diff with its description,
-including changes later removed by the stack, and check that each revision is
-safe to land on its own: report one that relies on a descendant revision to
-build, pass its applicable checks, preserve required behavior, or be safe to
-deploy and use, or that, without a declared breaking change, leaves its parent's
-interfaces unusable by consumers it cannot update or its parent's persisted
-state unusable and unmigrated. Derive a stacked target's base from its ancestry,
-not a default bookmark. A fresh empty undescribed jj `@` means `@-`. An
-aggregate empty diff is valid only when at least one included revision diff is
-non-empty.
+For one revision, review its diff. For a stack, review the aggregate diff. Under
+delta scope, review what **Delta scope** bounds, and limit the per-revision
+checks below to the revisions it names for each. When reviewing per revision,
+also compare each revision's diff with its description, including changes later
+removed by the stack, and check that each revision is safe to land on its own:
+report one that relies on a descendant revision to build, pass its applicable
+checks, preserve required behavior, or be safe to deploy and use, or that,
+without a declared breaking change, leaves its parent's interfaces unusable by
+consumers it cannot update or its parent's persisted state unusable and
+unmigrated. Derive a stacked target's base from its ancestry, not a default
+bookmark. A fresh empty undescribed jj `@` means `@-`. An aggregate empty diff
+is valid only when at least one included revision diff is non-empty.
 
 Read full revision descriptions as intent, never proof. When reviewing per
 revision, each must accurately account for its own diff; when reviewing as a
@@ -83,26 +104,30 @@ finding owned by that revision, located at its description, as `clarity`
 must say instead. A description that misstates its diff remains an accuracy
 mismatch. Whole-target review does not check per-revision conformance.
 
-Run the resolved diff's stat and revision list first, and the full diff before
-substantive review only when reviewing in this session under Delegate.
+Run the resolved diff's stat and revision list first, under delta scope also the
+delta's stat, and the full diff before substantive review only when reviewing in
+this session under Delegate.
 
 ## Delegate
 
 This session may delegate unless it is itself a delegate whose conversation
 lacks explicit human authorization to delegate, or the host cannot start fresh
 agents. When it may delegate, dispatch one fresh reviewer for the whole target
-and review no hunk in this session; otherwise review in one pass under Review. A
-request that says this session must stay independent of the target, such as one
-from the target's author or fixer, is `blocked` when this session may not
-delegate. Never split the target across reviewers: one reviewer sees every
-revision, so per-revision description and landing-safety checks keep the whole
-stack in view.
+and review no hunk in this session; otherwise review in one pass under Review.
+Under delta scope, that reviewer still receives the whole resolved target, which
+it needs for consumers, owning revisions, and descendant landing safety, while
+delta scope bounds what it reviews. A request that says this session must stay
+independent of the target, such as one from the target's author or fixer, is
+`blocked` when this session may not delegate. Never split the target across
+reviewers: one reviewer sees every revision, so per-revision description and
+landing-safety checks keep the whole stack in view.
 
 The reviewer works read-only: no edits, VCS mutation, scratch files in the
 repository, or delegation. It receives the resolved target, granularity,
-criteria, context, evidence constraints, and any earlier findings the request
-supplies, verbatim. Tell it what Verify tells the verifier about author-supplied
-text. It reviews the whole target by following this skill's Establish the target
+criteria, context, any delta scope, evidence constraints, and any earlier
+findings the request supplies, verbatim. Tell it what Verify tells the verifier
+about author-supplied text. It reviews the whole target, or under delta scope
+what Establish the target bounds, by following this skill's Establish the target
 with the target already resolved, Review, and Report's categories, priorities,
 and omission rules, skipping Delegate and Verify, and returns coverage,
 criterion evidence, and candidate findings, each with location, category,
@@ -308,21 +333,26 @@ Lead with **Status**:
 
 - `pass`: the target was covered, every applicable description is accurate and,
   when reviewing per revision, conforms to `finalize-changes`'
-  `references/revision-descriptions.md`, every criterion is satisfied, and there
-  are no findings.
+  `references/revision-descriptions.md`, every criterion is satisfied, there are
+  no findings, and no delta scope applied.
+- `delta-pass`: under delta scope, the delta and changed revisions were covered,
+  every assessed applicable description is accurate and, when replaced,
+  conforms, no assessed criterion is `not satisfied` or `blocked`, and there are
+  no findings. It means the delta is clean, not that the target passes.
 - `blocked`: target preflight or Delegate prevented substantive review.
 - `non-pass`: all other outcomes.
 
 Then include only applicable sections:
 
 - **Coverage:** compactly identify reviewed path groups, lenses, stack revisions
-  or whole-target review, known existing issues, unreachable areas with what
-  evidence is missing, and the number of candidates verification declined.
+  or whole-target review, under delta scope the delta base and tip and the
+  changed revisions, known existing issues, unreachable areas with what evidence
+  is missing, and the number of candidates verification declined.
 - **Criteria:** mark each declared criterion `satisfied`, `not satisfied`, or
-  `blocked`, citing decisive admissible evidence or the precise blocker. A
-  failed criterion becomes a finding only when the target has a concrete
-  correction; a blocked criterion does so only when required validation is
-  absent or completion is improperly claimed.
+  `blocked`, or under delta scope `not reassessed`, citing decisive admissible
+  evidence or the precise blocker. A failed criterion becomes a finding only
+  when the target has a concrete correction; a blocked criterion does so only
+  when required validation is absent or completion is improperly claimed.
 - **Findings:** highest priority first as
   `- location (category, priority): defect and smallest sufficient correction`.
 
