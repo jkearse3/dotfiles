@@ -106,20 +106,12 @@ regardless of author. Read that reference, and run
 `printf '%s\n' "$desc" | commit-message validate --require-body --conventional`
 on each full description, dropping `--conventional` when repository
 documentation defines its own description format; the validator only reads its
-input. Judge every rule the validator does not check by reading, including: a
-non-redundant body; an imperative description; a type chosen by effect; an
-explanation of why when a meaningful rationale is known; a description
-resolvable from itself and its own diff, citing an issue, commit, or component
-only to reinforce what it already explains; a separate paragraph for each
-distinct chunk of information; no review history, tool output, scratch work,
-agent actions, task state, workflow narration, alternatives weighed but not
-taken, unsupported claims, or planning structure; an issue-reference footer that
-uses `Refs`, never `Closes`, `Fixes`, or `Resolves`; and no invented issue
-reference, sign-off, reviewer, or external link. Report each violation as a
-finding owned by that revision, located at its description, as `clarity`
-`medium`, with a correction that names the broken rule and what the description
-must say instead. A description that misstates its diff remains an accuracy
-mismatch. Whole-target review does not check per-revision conformance.
+input. Judge by reading every rule that reference states which the validator
+does not check. Report each violation as a finding owned by that revision,
+located at its description, as `clarity` `medium`, with a correction that names
+the broken rule and what the description must say instead. A description that
+misstates its diff remains an accuracy mismatch. Whole-target review does not
+check per-revision conformance.
 
 Run the resolved diff's stat and revision list first, under delta scope also the
 delta's stat, and the full diff before substantive review only when reviewing in
