@@ -92,6 +92,34 @@ set_private_override() {
 	private_override=(--override-input dotfiles-private "path:$path")
 }
 
+# Sets `output_name` to the home or system configuration name of the selected
+# blueprint: `blueprint_id` when given, as from `--blueprint`, otherwise the ID
+# in the `dotfiles/blueprint-id` marker under XDG_CONFIG_HOME (default
+# `$HOME/.config`). `kind` is `home` or `system`. Prints the selected ID and its
+# source, and exits 1 when no ID is given and the marker is missing, or when the
+# ID names no blueprint.
+select_blueprint() {
+	local kind=$1
+	local blueprint_id=$2
+
+	local blueprint_source="--blueprint"
+	if [[ -z $blueprint_id ]]; then
+		local marker="${XDG_CONFIG_HOME:-$HOME/.config}/dotfiles/blueprint-id"
+		if [[ ! -f $marker ]]; then
+			echo "error: no blueprint selected; run 'nix eval .#blueprints --apply builtins.attrNames', then bootstrap with 'nix run .#switch-home -- --blueprint <blueprint-id>'" >&2
+			exit 1
+		fi
+		blueprint_id="$(<"$marker")"
+		blueprint_source="marker $marker"
+	fi
+
+	if ! output_name="$(blueprint_output "$kind" "$blueprint_id")"; then
+		echo "error: unknown blueprint '$blueprint_id' from $blueprint_source; run 'nix eval .#blueprints --apply builtins.attrNames' to list canonical IDs" >&2
+		exit 1
+	fi
+	echo "Selected blueprint '$blueprint_id' from $blueprint_source"
+}
+
 # Prints the nh `--diff` mode that compares a build with the configuration in
 # use: `always` when its profile exists, otherwise `never` with a warning, as on
 # a machine that has not activated it yet. nh's default `auto` compares only
@@ -247,23 +275,8 @@ main() {
 		return
 	fi
 
-	local blueprint_source="--blueprint"
-	if [[ -z $blueprint_id ]]; then
-		local marker="${XDG_CONFIG_HOME:-$HOME/.config}/dotfiles/blueprint-id"
-		if [[ ! -f $marker ]]; then
-			echo "error: no blueprint selected; run 'nix eval .#blueprints --apply builtins.attrNames', then bootstrap with 'nix run .#switch-home -- --blueprint <blueprint-id>'" >&2
-			exit 1
-		fi
-		blueprint_id="$(<"$marker")"
-		blueprint_source="marker $marker"
-	fi
-
 	local output_name
-	if ! output_name="$(blueprint_output "${command#*-}" "$blueprint_id")"; then
-		echo "error: unknown blueprint '$blueprint_id' from $blueprint_source; run 'nix eval .#blueprints --apply builtins.attrNames' to list canonical IDs" >&2
-		exit 1
-	fi
-	echo "Selected blueprint '$blueprint_id' from $blueprint_source"
+	select_blueprint "${command#*-}" "$blueprint_id"
 
 	case $command in
 	*-home) nh_home "${command%-home}" "$output_name" "$is_locked" ;;
