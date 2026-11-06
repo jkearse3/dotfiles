@@ -278,9 +278,10 @@ reach this directory as the Git-ignored `.pi-types` link:
 `tsconfig.json` here extends `.pi-types/tsconfig.json`, so the modules an
 extension may import from Pi are listed once, in
 `packages/pi-extension-types/package.nix`. Change that list when a Pi release
-adds, renames, or removes a module; the package build fails if a listed
-declaration is missing. Do not add `paths` or `baseUrl` to `tsconfig.json` here,
-because either replaces the inherited mappings.
+adds, renames, or removes a module; the package build fails when the list's
+specifiers differ from the module table in Pi's extension loader, and when a
+listed declaration is missing. Do not add `paths` or `baseUrl` to
+`tsconfig.json` here, because either replaces the inherited mappings.
 
 The devshell creates the link on entry and refreshes it after a Pi version bump.
 Only editors read it: the `pi-extensions-checked` package links the same

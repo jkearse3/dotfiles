@@ -26,7 +26,8 @@ let
   # table in pi's `dist/core/extensions/loader.js`, minus the `@mariozechner/*`
   # aliases it also carries. Those are the pre-rename spellings, kept upstream
   # so older extensions keep loading; new source here should use the current
-  # names.
+  # names. The build compares these keys with that table's and fails, naming
+  # each specifier, when they differ; the declaration paths stay hand-written.
   #
   # Pi's table carries whole specifiers, not prefixes, so each importable
   # subpath is its own entry.
@@ -55,6 +56,14 @@ let
     "typebox/value" = "typebox/build/value/index.d.mts";
   };
 
+  # One `<specifier>\t<declaration>` line per `moduleDeclarations` entry, for
+  # the build script's checks.
+  moduleDeclarationsTsv = pkgs.writeText "pi-module-declarations.tsv" (
+    lib.concatStrings (
+      lib.mapAttrsToList (specifier: declaration: "${specifier}\t${declaration}\n") moduleDeclarations
+    )
+  );
+
   # `paths` entries resolve against the file that declares them, so the
   # extensions' own `tsconfig.json` extends this one and must not set `baseUrl`
   # or `paths` itself: either would replace these mappings rather than add to
@@ -78,6 +87,51 @@ pkgs.runCommand "pi-extension-types-${pi.version}"
   ''
     export HOME="$TMPDIR"
     cd "$TMPDIR"
+
+    # Pi resolves an extension's imports through the `_aliases` table in its
+    # extension loader. A specifier the table gains would fail `tsc` with TS2307,
+    # and one it drops would still typecheck here but fail to load in pi, so
+    # compare the table's keys with `moduleDeclarations` before installing.
+    # Only `"<specifier>": <identifier>,` and `<identifier>: <identifier>,`
+    # entries are understood; any other entry fails rather than being skipped.
+    alias_entry='^[[:space:]]*("([^"]+)"|([A-Za-z_$][A-Za-z0-9_$]*)):[[:space:]]*[A-Za-z_$][A-Za-z0-9_$]*,?[[:space:]]*$'
+    : >loader-specifiers
+    while IFS= read -r line; do
+      if [[ ! $line =~ $alias_entry ]]; then
+        echo "pi-extension-types: cannot read this _aliases entry in pi ${pi.version}'s dist/core/extensions/loader.js: $line" >&2
+        exit 1
+      fi
+      specifier="''${BASH_REMATCH[2]:-''${BASH_REMATCH[3]}}"
+      if [[ $specifier != "@mariozechner/"* ]]; then
+        echo "$specifier" >>loader-specifiers
+      fi
+    done < <(
+      awk '
+        /^[[:space:]]*_aliases = \{$/ { inside = 1; next }
+        inside && /^[[:space:]]*\};/ { exit }
+        inside && NF { print }
+      ' ${pi.src}/dist/core/extensions/loader.js
+    )
+    if [[ ! -s loader-specifiers ]]; then
+      echo "pi-extension-types: found no _aliases table in dist/core/extensions/loader.js; pi ${pi.version} changed its loader layout, update this check" >&2
+      exit 1
+    fi
+
+    sort -u loader-specifiers -o loader-specifiers
+    cut -f1 ${moduleDeclarationsTsv} | sort -u >declared-specifiers
+    drift=0
+    while IFS= read -r specifier; do
+      echo "pi-extension-types: pi ${pi.version}'s extension loader resolves $specifier, which moduleDeclarations lacks" >&2
+      drift=1
+    done < <(comm -23 loader-specifiers declared-specifiers)
+    while IFS= read -r specifier; do
+      echo "pi-extension-types: moduleDeclarations lists $specifier, which pi ${pi.version}'s extension loader no longer resolves" >&2
+      drift=1
+    done < <(comm -13 loader-specifiers declared-specifiers)
+    if [[ $drift -ne 0 ]]; then
+      echo "update moduleDeclarations in packages/pi-extension-types/package.nix to match the _aliases table in pi's dist/core/extensions/loader.js" >&2
+      exit 1
+    fi
 
     cp ${pi.src}/package.json ${pi.src}/package-lock.json .
 
@@ -119,15 +173,9 @@ pkgs.runCommand "pi-extension-types-${pi.version}"
         echo "pi-extension-types: no declaration for $specifier at node_modules/$declaration" >&2
         missing=1
       fi
-    done < ${
-      pkgs.writeText "pi-module-declarations.tsv" (
-        lib.concatStrings (
-          lib.mapAttrsToList (specifier: declaration: "${specifier}\t${declaration}\n") moduleDeclarations
-        )
-      )
-    }
+    done < ${moduleDeclarationsTsv}
     if [[ $missing -ne 0 ]]; then
-      echo "pi ${pi.version} may have changed its published layout or module table" >&2
+      echo "pi-extension-types: pi ${pi.version} may have moved a declaration in its published layout; update that specifier's declaration path in moduleDeclarations" >&2
       exit 1
     fi
   ''
