@@ -179,6 +179,14 @@ unreachable in Coverage. Then verify its candidates under Verify.
 6. Read the changeset as a whole for incomplete refactors or migrations,
    inconsistent patterns, integration gaps, and stale generated or documented
    artifacts.
+7. **Claims sweep:** list the behaviors, names, defaults, options, and contracts
+   the target adds, changes, or removes. For each, search repository prose
+   beyond the diff for statements about it, using literal names and distinctive
+   phrasings. Prose means docs, guides, READMEs, comments, help and error
+   messages, examples, and agent guidance such as skills and prompts. Report
+   each statement the target makes false as `accuracy`, owned by the revision
+   whose change makes it false. Under delta scope, sweep only what the delta
+   changes.
 
 Apply only relevant lenses:
 
