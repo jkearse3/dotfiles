@@ -44,6 +44,10 @@ EOF
 		cat <<EOF
 usage: nix run .#flake-update
 
+Reads the dotfiles/blueprint-id marker and, after evaluating every blueprint
+and running \`nix flake check\`, builds that blueprint's home configuration
+before committing the update.
+
   --help                      print this usage
 EOF
 		;;
@@ -197,12 +201,29 @@ package_update() {
 	done
 }
 
+# Runs `nix` with the remaining arguments as one check of an uncommitted
+# dependency update. When it fails, reports which check failed and that the
+# update stays in `@` for the fix, and exits 1.
+check_dependency_update() {
+	local check_name=$1
+	shift
+
+	if ! nix "$@"; then
+		echo "error: $check_name failed; the dependency update stays uncommitted in @ so the fix can land in the same change" >&2
+		exit 1
+	fi
+}
+
 # Updates the flake inputs and every package pin in a jj change of their own,
 # then commits it as "build(nix): update dependencies" once every blueprint
-# still evaluates. Starts a new change first when the working copy is not
-# empty, and commits nothing when no dependency changed. `jj` comes from the
-# user's PATH.
+# still evaluates, `nix flake check` passes, and the Home Manager configuration
+# `home_configuration_name` builds. Starts a new change first when the working
+# copy is not empty, and commits nothing when no dependency changed. When a
+# check fails, exits 1 and leaves the update uncommitted in `@`. `jj` comes from
+# the user's PATH.
 flake_update() {
+	local home_configuration_name=$1
+
 	local is_working_copy_empty
 	is_working_copy_empty="$(jj log -r @ --no-graph -T empty)"
 	if [[ $is_working_copy_empty != true ]]; then
@@ -219,15 +240,22 @@ flake_update() {
 		return
 	fi
 
-	nix build --no-link --accept-flake-config "${private_override[@]}" .#eval-blueprints
+	check_dependency_update "nix build .#eval-blueprints" \
+		build --no-link --accept-flake-config "${private_override[@]}" .#eval-blueprints
+	check_dependency_update "nix flake check" \
+		flake check --accept-flake-config "${private_override[@]}"
+	check_dependency_update "building home configuration '$home_configuration_name'" \
+		build --no-link --accept-flake-config "${private_override[@]}" ".#homeConfigurations.\"$home_configuration_name\".activationPackage"
+
 	jj commit -m "build(nix): update dependencies"
 }
 
 # Runs `command`: build-home, switch-home, build-system, or switch-system on the
 # blueprint selected by `--blueprint` or the marker, or package-update or
-# flake-update. Argument errors exit 2 before anything else; the
-# working-directory guard, DOTFILES_PRIVATE_LOCAL, and blueprint selection exit
-# 1 before any Nix, nh, or jj call.
+# flake-update, which builds the home configuration of the blueprint the marker
+# selects. Argument errors exit 2 before anything else; the working-directory
+# guard, DOTFILES_PRIVATE_LOCAL, and blueprint selection exit 1 before any Nix,
+# nh, or jj call.
 main() {
 	local command=${1-}
 	shift || true
@@ -270,12 +298,13 @@ main() {
 	local private_override
 	set_private_override
 
+	local output_name
 	if [[ $command == flake-update ]]; then
-		flake_update
+		select_blueprint home ""
+		flake_update "$output_name"
 		return
 	fi
 
-	local output_name
 	select_blueprint "${command#*-}" "$blueprint_id"
 
 	case $command in

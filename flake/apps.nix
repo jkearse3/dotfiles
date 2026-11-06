@@ -3,8 +3,9 @@
 # Each app runs the `dotfiles-apps` script (`packages/dotfiles-apps`) with its
 # own name as the command. The script is a flake check rather than a package,
 # so `nix flake check` runs its shellcheck, and `dotfiles-apps-arguments` tests
-# its argument and blueprint-selection errors and the arguments package-update
-# passes to the package updaters.
+# its argument and blueprint-selection errors, the arguments package-update
+# passes to the package updaters, and which checks flake-update runs before it
+# commits, using stub `nix` and `jj` commands.
 {
   config,
   lib,
@@ -40,7 +41,7 @@ in
         build-system = mkDotfilesApp "build-system" "Build the selected blueprint's nix-darwin configuration and diff it";
         switch-system = mkDotfilesApp "switch-system" "Build and activate the selected blueprint's nix-darwin configuration";
         package-update = mkDotfilesApp "package-update" "Pin every package with an updater to its latest upstream release";
-        flake-update = mkDotfilesApp "flake-update" "Update flake inputs and package pins, check every blueprint, and commit with jj";
+        flake-update = mkDotfilesApp "flake-update" "Update flake inputs and package pins, check the flake, build the selected blueprint's Home Manager configuration, and commit with jj";
       };
 
       checks = {

@@ -41,8 +41,10 @@ Run these from the repository root:
 - `nix build --no-link .#lint` - check Nix, tracked `.sh` and `.bash` files, and
   Python; a fast subset of `nix flake check`, which runs the same lint checks
 - `nix run .#package-update -- [--dry-run]` - update the pins of packaged tools
-- `nix run .#flake-update` - update `flake.lock` and the package pins, and
-  commit the result with jj
+- `nix run .#flake-update` - update `flake.lock` and the package pins, then
+  evaluate every blueprint, run `nix flake check`, and build the marker-selected
+  blueprint's Home Manager configuration, committing the result with jj only
+  when all three pass
 
 Build and switch apps use an explicit `--blueprint` first, then the Home
 Manager-managed blueprint marker. They run nh, which shows a package diff

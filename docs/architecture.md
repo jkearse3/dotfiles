@@ -123,8 +123,11 @@ store-backed home sources.
 The same script backs the `package-update` and `flake-update` apps.
 `package-update` runs every `packages/*/update.sh --latest` updater (`--dry-run`
 prints the new pins without editing files). `flake-update` updates `flake.lock`
-and runs the updaters in a jj change of its own, then builds `eval-blueprints`
-and commits the change with jj when anything changed.
+and runs the updaters in a jj change of its own. When anything changed, it
+builds `eval-blueprints`, runs `nix flake check`, and builds the Home Manager
+configuration of the blueprint the marker selects, then commits the change with
+jj. If any of these fails, it exits 1 and leaves the update uncommitted in `@`,
+so the fix lands in the same change.
 
 ## Module Interfaces
 
