@@ -30,10 +30,19 @@ let
   #
   # Pi's table carries whole specifiers, not prefixes, so each importable
   # subpath is its own entry.
+  #
+  # Pi resolves both the pi-ai root and `/compat` to its pi-ai extension view:
+  # the compat entry plus TypeBox's `Type`, `Static` and `TSchema`, which the
+  # pi-ai root no longer re-exports. Only the root maps to the view's
+  # declaration here, because that declaration re-exports `/compat`; mapping
+  # `/compat` to it too would make the view re-export itself. Extensions
+  # importing `/compat` therefore see the compat surface without TypeBox.
   moduleDeclarations = {
     "@earendil-works/pi-agent-core" = "@earendil-works/pi-agent-core/dist/index.d.ts";
-    "@earendil-works/pi-ai" = "@earendil-works/pi-ai/dist/index.d.ts";
+    "@earendil-works/pi-ai" =
+      "@earendil-works/pi-coding-agent/dist/core/extensions/pi-ai-extension-view.d.ts";
     "@earendil-works/pi-ai/compat" = "@earendil-works/pi-ai/dist/compat.d.ts";
+    "@earendil-works/pi-ai/models" = "@earendil-works/pi-ai/dist/models.d.ts";
     "@earendil-works/pi-ai/oauth" = "@earendil-works/pi-ai/dist/oauth.d.ts";
     "@earendil-works/pi-ai/providers/all" = "@earendil-works/pi-ai/dist/providers/all.d.ts";
     "@earendil-works/pi-coding-agent" = "@earendil-works/pi-coding-agent/dist/index.d.ts";

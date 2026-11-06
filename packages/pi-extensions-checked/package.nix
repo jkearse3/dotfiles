@@ -84,7 +84,7 @@ pkgs.runCommandLocal "pi-extensions-checked"
       # A runtime dependency of pi itself.
       chalk
       # A subpath pi's module table does not list.
-      @earendil-works/pi-ai/models
+      @earendil-works/pi-ai/bedrock-provider
       # The pre-rename spelling pi still aliases for older extensions.
       @mariozechner/pi-tui
     )
