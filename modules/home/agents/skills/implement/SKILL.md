@@ -73,8 +73,10 @@ description drafts and check logs, stay in the session scratchpad.
   trigger, evidence, and what changed; and any rewind with its abandoned change
   IDs.
 - `Landed notes`: for each `done` brief, the deviations and established patterns
-  later briefs must build on, from the implementer's summary, and the symbol
-  changes from its `done` return.
+  later briefs must build on, from the implementer's summary, the symbol changes
+  from its `done` return, and each check result accepted at Verify with its
+  exact command, its result, its reported commit ID (the entry commit), and the
+  finalized change ID.
 - `Refine`, written when Refine ends: applied proposals, restored ones with
   their failure evidence, unchecked revisions, and notes; or why it was skipped;
   or the state `diff-refine` reported when it stopped, then the recovery.
@@ -184,11 +186,12 @@ later stage migrates them; only the final stage must pass the brief's checks.
    only after its context is compacted or when told the file changed. It follows
    `coding-style`, edits only the working copy, performs no VCS mutation or
    delegation, runs the brief's checks, and returns `done` with each check's
-   exact command and result, a summary of what changed and why, and its symbol
-   changes: each symbol the revision renamed, moved, or removed that a later
-   brief names, or that there are none; `blocked` with the evidence or question;
-   or `rebrief` with the evidence that the briefs, including `done` ones, are
-   wrong.
+   exact command, its result, and `@`'s commit ID read with
+   `jj log -r @ --no-graph -T commit_id` immediately before running it, a
+   summary of what changed and why, and its symbol changes: each symbol the
+   revision renamed, moved, or removed that a later brief names, or that there
+   are none; `blocked` with the evidence or question; or `rebrief` with the
+   evidence that the briefs, including `done` ones, are wrong.
 
    Build a staged brief one stage at a time, in order, in the same `@`,
    confirming `@` as above only before the first stage. Before each stage,
@@ -198,10 +201,10 @@ later stage migrates them; only the final stage must pass the brief's checks.
    brief and the stage; it reads earlier stages' handoffs from `briefs.md`,
    builds only its stage, and runs that stage's checks. A non-final stage
    returns `stage-done` with what changed, the contract it hands on, its symbol
-   changes, and each check's exact command and result, or `blocked` or `rebrief`
-   as above; the final stage returns `done`, whose symbol changes cover every
-   stage. A non-final stage that returns `done`, or a final stage that returns
-   `stage-done`, is a stage failure. After each `stage-done`, judge
+   changes, and its checks reported as `done` reports them, or `blocked` or
+   `rebrief` as above; the final stage returns `done`, whose symbol changes
+   cover every stage. A non-final stage that returns `done`, or a final stage
+   that returns `stage-done`, is a stage failure. After each `stage-done`, judge
    `jj diff --from <recorded commit ID>` against the stage's scope and its
    reported checks, dispatching a rerun agent as in Verify when a report is
    missing, inconsistent with the diff, or doubtful. A diff outside the stage's
@@ -217,17 +220,22 @@ later stage migrates them; only the final stage must pass the brief's checks.
    the diff achieves the brief, changes nothing outside it, and passes the
    brief's checks; this session runs no checks. When a check report is missing,
    inconsistent with the diff, or doubtful, dispatch a fresh agent to rerun the
-   named checks and return each command and result. It edits no files beyond
-   what the checks themselves write, performs no VCS mutation or delegation, and
-   keeps scratch files in the session scratchpad. A check failing in its rerun
-   is a verification failure. If the rerun changed the working copy, such as
-   through a formatter run as a check, judge the diff again before finalizing.
-   Discard the attempt with `jj restore` on `@` whenever it ends without a
-   verified `done`; unlike abandoning, this empties `@` in place and keeps its
-   change ID and any bookmark on it. A `blocked` return then makes the brief
-   `blocked`, and a `rebrief` return goes to step 5. On a first verification
-   failure, dispatch one fresh implementer with the failure as evidence in the
-   emptied `@`; a second makes the brief `blocked`.
+   named checks and return each command, its result, and `@`'s commit ID read
+   with `jj log -r @ --no-graph -T commit_id` immediately before running it. It
+   edits no files beyond what the checks themselves write, performs no VCS
+   mutation or delegation, and keeps scratch files in the session scratchpad. A
+   check failing in its rerun is a verification failure. If the rerun changed
+   the working copy, such as through a formatter run as a check, judge the diff
+   again before finalizing. When the diff is verified, keep each accepted
+   check's exact command, result, and reported commit ID. The accepted results
+   are the brief's checks as the implementer reported them, or as the rerun
+   agent returned them when a rerun replaced them; a non-final stage's narrower
+   checks never count. Discard the attempt with `jj restore` on `@` whenever it
+   ends without a verified `done`; unlike abandoning, this empties `@` in place
+   and keeps its change ID and any bookmark on it. A `blocked` return then makes
+   the brief `blocked`, and a `rebrief` return goes to step 5. On a first
+   verification failure, dispatch one fresh implementer with the failure as
+   evidence in the emptied `@`; a second makes the brief `blocked`.
 
    A staged brief is verified once, after its final stage returns `done`, and
    has one retry budget for its stage failures and verification failures
@@ -250,8 +258,9 @@ later stage migrates them; only the final stage must pass the brief's checks.
    numbers, `briefs.md`, rebriefs, landed notes, check logs, planners,
    implementers, checkers, or the run directory. Mark the brief `done` with its
    change ID and add its entry to `Landed notes`, recording the implementer's
-   symbol changes there. If it stops because the changes are not one coherent
-   revision, treat that as a verification failure.
+   symbol changes and the check results Verify accepted there. If it stops
+   because the changes are not one coherent revision, treat that as a
+   verification failure.
 5. **Rebrief.** On a `rebrief` return, or when a landed revision shows the
    briefs are wrong, dispatch a fresh planner with `briefs.md` and the evidence
    to revise the `pending` briefs, and update them in `briefs.md` in place. When
@@ -310,8 +319,9 @@ its exclusions as context. Pass as user decisions the input's settled decisions
 and, from `briefs.md`, every answer and ruling the user gave during the run,
 including each `skipped` brief with the user's reason and each proposal the user
 declined during Refine. Pass each `restored` proposal with its failure evidence
-as context, without labeling it declined or decided. Skip this step when the
-user asked not to review.
+as context, without labeling it declined or decided. Pass every check result in
+`Landed notes`, with its reported commit ID and change ID, as check evidence.
+Skip this step when the user asked not to review.
 
 ## Report
 
