@@ -29,9 +29,12 @@
       inputs.nixpkgs.follows = "nixpkgs-unstable";
     };
 
+    # llm-agents keeps its own nixpkgs pin, which cache.numtide.com builds
+    # against. Following ours yields the same store paths only while the two
+    # pins happen to agree; once they diverge, the cache misses and the agent
+    # packages build locally.
     llm-agents = {
       url = "github:numtide/llm-agents.nix";
-      inputs.nixpkgs.follows = "nixpkgs-unstable";
     };
 
     nix-index-database = {
