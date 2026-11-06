@@ -67,9 +67,9 @@ description drafts and check logs, stay in the session scratchpad.
 - `Decisions during the run`: each user answer and ruling, and accepted rebrief
   evidence, dated.
 - `Briefs`: each brief with its fields and status from `Brief List`.
-- `Rebriefs`: the plan check's gaps, or that it found none; each rebrief's
-  trigger, evidence, and what changed; and any rewind with its abandoned change
-  IDs.
+- `Rebriefs`: the plan check's gaps, that it found none, or that it was skipped;
+  each rebrief's trigger, evidence, and what changed; and any rewind with its
+  abandoned change IDs.
 - `Landed notes`: for each `done` brief, the deviations and established patterns
   later briefs must build on, from the implementer's summary, the symbol changes
   from its `done` return, and each check result accepted at Verify with its
@@ -119,19 +119,22 @@ it or state why it cannot be split.
    mutation, scratch files in the repository, or delegation. It returns ordered
    draft briefs that produce the outcome, sized by the `Brief Size` rules, and
    any question whose answer is a user-owned decision that would change the
-   briefs. Write the draft briefs to `briefs.md` and check them before asking
-   the user anything.
+   briefs. Write the draft briefs to `briefs.md` and check a plan of two or more
+   briefs before asking the user anything.
 
-   Dispatch one fresh checker under the planner's read-only limits. Its prompt
-   gives the absolute path of `briefs.md`, and of the input when `Input` points
-   to it, and `finalize-changes`' Sequencing section verbatim; it may read the
-   workspace to confirm targets. It checks that every input criterion is proven
-   by some brief's checks; that every brief is independently valid and ordered
-   by Sequencing, relying on no later brief; that no brief contradicts an
-   exclusion, settled decision, or binding requirement; and that each brief is
-   self-contained enough for a fresh implementer to build without guessing. It
-   does not judge or attack the approach, which the run treats as settled. It
-   returns each gap with the brief and input item at fault, the failed check,
+   With a single brief, skip the checker, record under `Rebriefs` that the check
+   was skipped for a single-brief plan, and go straight to settling the
+   planner's questions. Otherwise dispatch one fresh checker under the planner's
+   read-only limits. Its prompt gives the absolute path of `briefs.md`, and of
+   the input when `Input` points to it, and `finalize-changes`' Sequencing
+   section verbatim; it may read the workspace to confirm targets. It checks
+   that every input criterion is proven by some brief's checks; that every brief
+   is independently valid and ordered by Sequencing, relying on no later brief;
+   that no brief contradicts an exclusion, settled decision, or binding
+   requirement; and that each brief is self-contained enough for a fresh
+   implementer to build without guessing. It does not judge or attack the
+   approach, which the run treats as settled. It returns each gap with the brief
+   and input item at fault, the failed check, any concrete fix it can spell out,
    and whether it needs a user-owned decision, or that it found none; record
    that result under `Rebriefs`.
 
@@ -139,17 +142,20 @@ it or state why it cannot be split.
    one revision. Merge a gap that a planner question already covers into that
    question. Ask the user the planner's questions and the gaps that need a
    user-owned decision together, in one ask before implementing, and record the
-   answers under `Decisions during the run`. Give those answers, as settled
+   answers under `Decisions during the run`. A gap needs replanning unless the
+   checker spelled out a concrete fix that only adds, corrects, or clarifies a
+   brief's fields without changing the set or order of briefs. When no answer
+   changes the briefs and no remaining gap needs replanning, apply the checker's
+   fixes to `briefs.md` directly. Otherwise give the answers, as settled
    decisions, and the remaining gaps to one fresh planner, prompted as in Break
    down, to revise the briefs once, and update `briefs.md` in place. With no
-   questions and no gaps, skip the ask and the revising planner; with gaps but
-   none needing the user, skip the ask and give the revising planner the gaps.
-   Do not run the checker again: confirm the revision closes each gap and
-   reflects each answer. For any gap it leaves open or returns as unresolvable,
-   and any new user-owned question it returns, ask the user before implementing
-   and offer decide, skip the affected brief, or stop, as step 6 does, recording
-   the answer under `Decisions during the run`. Then show the brief list and
-   continue without waiting for approval.
+   questions and no gaps, skip the ask and the revision; with gaps but none
+   needing the user, skip the ask. Do not run the checker again: confirm the
+   revision closes each gap and reflects each answer. For any gap it leaves open
+   or returns as unresolvable, and any new user-owned question it returns, ask
+   the user before implementing and offer decide, skip the affected brief, or
+   stop, as step 6 does, recording the answer under `Decisions during the run`.
+   Then show the brief list and continue without waiting for approval.
 
 2. **Implement.** For the earliest `pending` brief, confirm `@` is empty and
    sits on the last `done` revision, or on the stack base for the first brief,
