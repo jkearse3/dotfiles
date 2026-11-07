@@ -165,7 +165,7 @@
             "px": 28
           },
           "content": {
-            "mod": "workspace-status"
+            "mod": "prefix-status"
           }
         }
       ]

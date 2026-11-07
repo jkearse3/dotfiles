@@ -201,7 +201,17 @@ let
   # switch; panel sizes live in `layouts/.state/` and stay. The shipped
   # Changes button would fail here, with no `changes` node; it stays off
   # while `workspace.panels` (set by the welcome screen) leaves out
-  # `changes`.
+  # `changes`. `desk` also differs from `main` by drawing its status bar
+  # with `prefix-status` instead of the shipped `workspace-status`.
+  #
+  # `mods/prefix-status` is a clone of the shipped `workspace-status` mod at
+  # its `cloned_from` version, plus a "PREFIX" pill and key hints while
+  # prefix mode is on. The tree fails to build when the pinned app's
+  # shipped `workspace-status` files no longer match the hashes in
+  # `prefixStatusClonedFrom`: re-clone it
+  # (`herdr-app do mod.clone --name workspace-status --as prefix-status`),
+  # re-apply the prefix-mode change, and update `cloned_from.version` and
+  # those hashes. An app update that leaves the mod alone passes unchanged.
   #
   # The tree fails to build when a personal mod or layout is named like a
   # shipped one, which the app would overwrite on its next start, or starts
@@ -232,6 +242,11 @@ let
           chmod -R u+w $out/mods/"$name"
           rm -f $out/mods/"$name"/gpui-kit.d.ts $out/mods/"$name"/jsconfig.json
         done
+
+        if ! (cd ${herdrApp.src}/defaults/mods/workspace-status && sha256sum --check --quiet ${prefixStatusClonedFrom}); then
+          echo "herdr-app ${herdrApp.version} changed the shipped workspace-status mod that modules/home/terminal/herdr-app/mods/prefix-status was cloned from; re-clone it, re-apply the prefix-mode change, and update cloned_from.version in its mod.json and the hashes in prefixStatusClonedFrom" >&2
+          exit 1
+        fi
 
         shopt -s dotglob nullglob
         failed=
@@ -270,6 +285,13 @@ let
           exit 1
         fi
       '';
+
+  # `sha256sum --check` input for the shipped `workspace-status` files that
+  # `mods/prefix-status` was cloned from, as herdr-app 0.1.11 ships them.
+  prefixStatusClonedFrom = pkgs.writeText "herdr-app-prefix-status-cloned-from.sha256" ''
+    bdc4e1b468650c1b3bc1ee081fc78bab31cefbaf96933a9200faaec58b3c0f59  main.js
+    e8e0a91d23a0addf19f9f4dab48f597f252a1d44e5063e4d6ae884a88cbf735d  mod.json
+  '';
 
   # The app's shipped mods and layouts, which `deploy.sh` never removes, even
   # when an older switch deployed a personal entry by that name.
