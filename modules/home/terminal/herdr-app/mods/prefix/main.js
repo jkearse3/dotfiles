@@ -82,7 +82,7 @@ const LABELS = [
   ["tab.new", "new tab"],
   ["tab.select", "tab"],
   ["mod.open:find", "find"],
-  ["mod.open:picker", "picker"],
+  ["mod.open:goto", "picker"],
   ["pane.zoom", "zoom"],
   ["pane.close", "close"],
   ["app.help", "help"],

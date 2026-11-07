@@ -36,6 +36,9 @@
   sections = {
     global = {
       "ctrl-b" = "mod.open:prefix";
+      # The app's `cmd-p` opens its built-in picker; open `goto`, the personal
+      # clone with ctrl-j/ctrl-k, instead.
+      "cmd-p" = "mod.open:goto";
     };
     # While prefix mode is open, `ctrl-b` goes to the prefix mod as a
     # command instead of reopening it: this section's key context is deeper
@@ -59,9 +62,10 @@
     "ctrl-g" = "mod.open:jj-workspace-new";
     "shift-q" = "mod.open:jj-workspace-remove";
     "ctrl-q" = "mod.open:jj-workspace-remove";
-    # The TUI's workspace picker and go-to both open the app's built-in picker.
-    "w" = "mod.open:picker";
-    "g" = "mod.open:picker";
+    # The TUI's workspace picker and go-to both open `goto`, the personal
+    # clone of the app's picker with ctrl-j/ctrl-k.
+    "w" = "mod.open:goto";
+    "g" = "mod.open:goto";
     # The TUI user binding for finding agents and workspaces with fzf.
     "f" = "mod.open:find";
     # The TUI's detach: closing the window leaves its terminals running.

@@ -276,7 +276,10 @@ let
   # plus a "PREFIX" pill and key hints while prefix mode is on.
   #
   # `mods/goto` is a clone of the shipped `picker` mod (the "Go to…" menu of
-  # spaces and tabs), kept as a personal mod so its keys can be edited.
+  # spaces and tabs), plus ctrl-j/ctrl-k to move the selection. `keys.nix`
+  # opens it from `cmd-p` and prefix `w`/`g`; anything else that opens the
+  # built-in `picker` by name (other layouts, the palette's "Go to" entry,
+  # the sidebar search button) still shows the original.
   #
   # The tree fails to build when a personal mod or layout is named like a
   # shipped one, which the app would overwrite on its next start, or starts

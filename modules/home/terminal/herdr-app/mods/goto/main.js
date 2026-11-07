@@ -1,8 +1,8 @@
 // Go to a tab. Drops from the Terminals layout's space chip (popup, at: "top"). Spaces with
 // something that needs you come first, quiet spaces (no agent running)
-// fold into "earlier". Type to filter, ↑/↓ and Enter to go, ctrl+d to close
-// a tab, Esc to leave. Last rows: new work (a tab here, a space on this
-// computer or on each connected machine).
+// fold into "earlier". Type to filter, ↑/↓ or ctrl+j/ctrl+k and Enter to go,
+// ctrl+d to close a tab, Esc to leave. Last rows: new work (a tab here, a
+// space on this computer or on each connected machine).
 
 import { View, div, svg } from "gpui-kit";
 import { v_flex, h_flex, InputState, Input } from "gpui-base";
@@ -345,11 +345,17 @@ export default class Picker extends View {
       .text_size(13)
       .on_key_down((e, cx) => {
         const k = e.key;
+        // fzf's ctrl-j/ctrl-k: control alone, so cmd/alt/shift chords pass.
+        const m = e.modifiers;
+        const isControlOnly = m.control && !m.platform && !m.alt && !m.shift;
+        const isDown = k === "down" || (k === "j" && isControlOnly);
+        const isUp = k === "up" || (k === "k" && isControlOnly);
         if (k === "escape") return this.close();
-        if (k === "down") this.at = (this.at + 1) % pickable.length;
-        else if (k === "up")
-          this.at = (this.at + pickable.length - 1) % pickable.length;
-        else if (k === "d" && e.modifiers.control) {
+        if (isDown || isUp) {
+          // Wraps at the ends; an empty list has nothing to move to.
+          const n = pickable.length;
+          if (n > 0) this.at = (this.at + (isDown ? 1 : n - 1)) % n;
+        } else if (k === "d" && e.modifiers.control) {
           if (sel?.kind === "ctx") {
             this.close();
             run("tab.close", { id: sel.ctx.id });
