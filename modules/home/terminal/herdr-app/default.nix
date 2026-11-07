@@ -262,14 +262,18 @@ let
   # `changes`. `desk` also differs from `main` by drawing its status bar
   # with `prefix-status` instead of the shipped `workspace-status`.
   #
-  # `mods/prefix-status` is a clone of the shipped `workspace-status` mod at
-  # its `cloned_from` version, plus a "PREFIX" pill and key hints while
-  # prefix mode is on. The tree fails to build when the pinned app's
-  # shipped `workspace-status` files no longer match the hashes in
-  # `prefixStatusClonedFrom`: re-clone it
-  # (`herdr-app do mod.clone --name workspace-status --as prefix-status`),
-  # re-apply the prefix-mode change, and update `cloned_from.version` and
-  # those hashes. An app update that leaves the mod alone passes unchanged.
+  # A personal mod can be a clone: a copy of an upstream folder in the app's
+  # source, recorded in its `mod.json` `cloned_from`, that is kept editable
+  # here. Each clone is pinned in `clonedMods`, and the tree fails to build
+  # when the pinned app's upstream folder no longer matches the clone's pin,
+  # by a file's sha256 or by its exact file list (so an added file fails
+  # too). The error names the clone, its upstream and the app version, and
+  # says how to re-sync: re-clone or re-copy it, re-apply its edits, and
+  # update `cloned_from.version`, the hashes and the file list. An app update
+  # that leaves the upstream alone passes unchanged.
+  #
+  # `mods/prefix-status` is a clone of the shipped `workspace-status` mod,
+  # plus a "PREFIX" pill and key hints while prefix mode is on.
   #
   # The tree fails to build when a personal mod or layout is named like a
   # shipped one, which the app would overwrite on its next start, or starts
@@ -310,10 +314,7 @@ let
         fi
         cp ${prefixBindings} $out/mods/prefix/bindings.json
 
-        if ! (cd ${herdrApp.src}/defaults/mods/workspace-status && sha256sum --check --quiet ${prefixStatusClonedFrom}); then
-          echo "herdr-app ${herdrApp.version} changed the shipped workspace-status mod that modules/home/terminal/herdr-app/mods/prefix-status was cloned from; re-clone it, re-apply the prefix-mode change, and update cloned_from.version in its mod.json and the hashes in prefixStatusClonedFrom" >&2
-          exit 1
-        fi
+        ${clonedModsUpstreamCheck}
 
         shopt -s dotglob nullglob
         failed=
@@ -353,12 +354,49 @@ let
         fi
       '';
 
-  # `sha256sum --check` input for the shipped `workspace-status` files that
-  # `mods/prefix-status` was cloned from, as herdr-app 0.1.11 ships them.
-  prefixStatusClonedFrom = pkgs.writeText "herdr-app-prefix-status-cloned-from.sha256" ''
-    bdc4e1b468650c1b3bc1ee081fc78bab31cefbaf96933a9200faaec58b3c0f59  main.js
-    e8e0a91d23a0addf19f9f4dab48f597f252a1d44e5063e4d6ae884a88cbf735d  mod.json
-  '';
+  # The pin of each clone in `./mods`, keyed by the clone's folder name:
+  # - `upstream`: the folder it was copied from, relative to the app source.
+  # - `files`: every file that folder holds, mapped to its sha256 as the app
+  #   version in the clone's `cloned_from` ships it. The names are the
+  #   folder's exact file list.
+  # - `resync`: how to rebuild the clone from a changed upstream, before
+  #   updating `cloned_from.version`, the hashes and the file list.
+  clonedMods = {
+    prefix-status = {
+      upstream = "defaults/mods/workspace-status";
+      files = {
+        "main.js" = "bdc4e1b468650c1b3bc1ee081fc78bab31cefbaf96933a9200faaec58b3c0f59";
+        "mod.json" = "e8e0a91d23a0addf19f9f4dab48f597f252a1d44e5063e4d6ae884a88cbf735d";
+      };
+      resync = "re-clone it (herdr-app do mod.clone --name workspace-status --as prefix-status) and re-apply the prefix-mode change";
+    };
+  };
+
+  # Bash that exits 1 when any clone's upstream folder in the pinned app
+  # differs from its `clonedMods` pin, by a file's hash or by the file list.
+  clonedModsUpstreamCheck = lib.concatStrings (
+    lib.mapAttrsToList (
+      name: clone:
+      let
+        upstream = "${herdrApp.src}/${clone.upstream}";
+        hashes = pkgs.writeText "herdr-app-${name}-upstream.sha256" (
+          lib.concatStrings (lib.mapAttrsToList (file: hash: "${hash}  ${file}\n") clone.files)
+        );
+        fileList = pkgs.writeText "herdr-app-${name}-upstream-files.txt" (
+          lib.concatLines (lib.attrNames clone.files)
+        );
+        message = "herdr-app ${herdrApp.version} no longer ships ${clone.upstream} as modules/home/terminal/herdr-app/mods/${name} was cloned from it (see the hash or file-list mismatch above); ${clone.resync}, then update cloned_from.version in its mod.json and the hashes and file list in clonedMods.${name}";
+      in
+      # bash
+      ''
+        if ! (cd ${upstream} && sha256sum --check --quiet ${hashes}) \
+          || ! diff <(LC_ALL=C sort ${fileList}) <(find ${upstream} -mindepth 1 -printf '%P\n' | LC_ALL=C sort) >&2; then
+          echo ${lib.escapeShellArg message} >&2
+          exit 1
+        fi
+      ''
+    ) clonedMods
+  );
 
   # The app's shipped mods and layouts, which `deploy.sh` never removes, even
   # when an older switch deployed a personal entry by that name.
