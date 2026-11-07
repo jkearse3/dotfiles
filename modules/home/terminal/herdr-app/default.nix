@@ -2,6 +2,7 @@
   config,
   dotfilesPackages,
   lib,
+  mkSource,
   pkgs,
   ...
 }:
@@ -42,7 +43,10 @@ let
   '';
 in
 {
-  imports = [ ../../agents/skills.nix ];
+  imports = [
+    ../../agents/skills.nix
+    ../../lib/source.nix
+  ];
 
   home = {
     # The wrapped `hc` drops the Herdr TUI's pane variables, so a core first
@@ -54,7 +58,20 @@ in
       dotfilesPackages.herdr-app
       dotfilesPackages.herdr-core
     ];
-    file.".config/herdr-core/config.toml".source = coreConfig;
+    file = {
+      ".config/herdr-core/config.toml".source = coreConfig;
+      # Editable, because the app writes settings.json itself (zoom, fonts,
+      # sounds, core), following the link (herdr-app `src/persist.rs`), so
+      # those writes show up as working-tree diffs here. Theme picks are not
+      # among them: they go to the unmanaged `layouts/.state/`. Edits made
+      # here reach a running app on its poll, about 10 s, because its file
+      # watcher sees `~/.config/herdr-app`, not the link targets.
+      ".config/herdr-app/settings.json".source = mkSource ./settings.json;
+      # Tokyo Night as the Herdr TUI 0.9.5 draws it (`Palette::tokyo_night`
+      # in its `src/app/state.rs`), in the app's theme format; the app
+      # derives its panel colors from these.
+      ".config/herdr-app/themes/tokyo-night.json".source = mkSource ./themes/tokyo-night.json;
+    };
   };
   agents.extraSkills = {
     herdr-app = appSkill;
