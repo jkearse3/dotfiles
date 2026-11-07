@@ -123,7 +123,7 @@ export default class WorkspaceChrome extends View {
             this.button(
               "search",
               svg("mods/desk-chrome/search.svg").size(15),
-              () => run("mod.open", { name: "picker" }),
+              () => run("mod.open", { name: "goto" }),
             ),
           ),
         )

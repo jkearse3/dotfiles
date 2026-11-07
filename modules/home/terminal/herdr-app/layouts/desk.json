@@ -33,7 +33,7 @@
           },
           "window_drag": true,
           "content": {
-            "mod": "workspace-chrome"
+            "mod": "desk-chrome"
           }
         },
         {
@@ -71,7 +71,7 @@
             "px": 69
           },
           "content": {
-            "mod": "workspace-chrome",
+            "mod": "desk-chrome",
             "props": {
               "footer": true
             }

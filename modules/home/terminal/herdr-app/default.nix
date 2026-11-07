@@ -260,7 +260,9 @@ let
   # Changes button would fail here, with no `changes` node; it stays off
   # while `workspace.panels` (set by the welcome screen) leaves out
   # `changes`. `desk` also differs from `main` by drawing its status bar
-  # with `prefix-status` instead of the shipped `workspace-status`.
+  # with `prefix-status` instead of the shipped `workspace-status`, and its
+  # sidebar header and footer with `desk-chrome` instead of the shipped
+  # `workspace-chrome`.
   #
   # A personal mod can be a clone: a copy of an upstream folder in the app's
   # source, recorded in its `mod.json` `cloned_from`, that is kept editable
@@ -279,9 +281,9 @@ let
   # `mods/goto` is a clone of the shipped `picker` mod (the "Go to…" menu of
   # spaces and tabs), plus ctrl-j/ctrl-k to move the selection. `keys.nix`
   # opens it from `cmd-p` and prefix `w`/`g`, and the personal `palette`
-  # mod's "Go to" entry opens it too; anything else that opens the built-in
-  # `picker` by name (other layouts, the built-in palette's "Go to" entry,
-  # the sidebar search button) still shows the original.
+  # mod's "Go to" entry and the `desk-chrome` search button open it too;
+  # anything else that opens the built-in `picker` by name (other layouts,
+  # the built-in palette's "Go to" entry) still shows the original.
   #
   # `mods/palette` is a copy of the app's own command palette
   # (`defaults/frame/palette`, the `frame-palette` mod), which `mod.clone`
@@ -294,7 +296,10 @@ let
   #
   # `mods/desk-chrome` is a clone of the shipped `workspace-chrome` mod (the
   # sidebar header and footer), with its asset paths pointing at its own
-  # folder. No layout uses it yet.
+  # folder and its search button opening `goto`. `layouts/desk.json` uses it
+  # for both its sidebar header and footer; other layouts still use the
+  # original `workspace-chrome`, and `app.palette` and the app menu still
+  # show the original palette and picker.
   #
   # The tree fails to build when a personal mod or layout is named like a
   # shipped one, which the app would overwrite on its next start, or starts
