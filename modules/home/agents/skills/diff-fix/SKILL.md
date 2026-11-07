@@ -12,11 +12,11 @@ description: >-
 # Diff Fix
 
 Drive a finalized jj target to a literal full `diff-review` `pass` by
-alternating reviews by a fresh reviewer and verifier with one fresh fixer per
-round. This session coordinates: it keeps the findings list, coordinates each
-review, verifies and lands fixes, and asks the user. It never reviews or fixes
-itself beyond coordinating `diff-review`; if the host cannot start fresh agents,
-stop and report.
+alternating `diff-review` reviews with one fresh fixer per round. This session
+coordinates: it keeps the findings list, coordinates each review, verifies and
+lands fixes, and asks the user. It never reviews or fixes itself beyond
+coordinating `diff-review`; if the host cannot start fresh agents, stop and
+report.
 
 ## Target
 
@@ -24,10 +24,9 @@ Resolve the target as `diff-review` does, and require a jj repository, no
 `<target> & immutable()` revisions, and an empty `@` above the target. Record
 any bookmark name, and refer to the target and every owning revision by change
 ID, never commit ID, because each squash rewrites commits. The exceptions are
-the tip commit ID step 1 records before each review, which identifies the
-reviewed tree after squashes rewrite the tip, the commit IDs step 4 records
-before a reshape, and the entry commits fixers report and steps 6 and 7 record
-for check evidence, which identify the tree a check ran on.
+the commit IDs step 4 records before a reshape, and the entry commits fixers
+report and steps 6 and 7 record for check evidence, which identify the tree a
+check ran on.
 
 Take the declared criteria, context, any user decisions, and any check evidence,
 as `diff-review` defines it, from the request. Invoking this skill authorizes
@@ -62,29 +61,19 @@ against the change a landed fix made re-raises that fix's finding.
 
 ## Loop
 
-1. **Review.** Record the tip commit ID with
-   `jj log -r <tip change ID> --no-graph -T commit_id`. Review the whole target
-   on the first review, after step 4 reshapes the target, and when nothing
-   landed since a `delta-pass`. Otherwise review the fix delta: pass
-   `diff-review` a delta scope whose delta base is the tip commit ID recorded at
-   the previous review, whose delta tip is the one just recorded, and whose
-   changed revisions are those steps 6 and 7 recorded as changed since the last
-   review, with their replaced-description marks. Then clear that record. Follow
-   `diff-review` in this session as one that must stay independent of the
-   target, so one fresh reviewer and one fresh verifier review and this session
-   reviews no hunk itself. In either scope, pass the findings list as earlier
-   findings and the check evidence list as check evidence, and add each `open`
-   finding to the candidates under Verify: the verifier confirms it is still
-   present or declines it with a reason. Per finding the review returns
+1. **Review.** Review the whole target. Follow `diff-review` in this session as
+   one that must stay independent of the target, so fresh agents review and
+   verify and this session reviews no hunk itself. Pass the findings list as
+   earlier findings and the check evidence list as check evidence, and add each
+   `open` finding to the candidates under Verify: the verifier confirms it is
+   still present or declines it with a reason. Per finding the review returns
    category, location, mechanism, path set, any root cause, and owning revision
-   (the earliest target revision whose diff introduces the defect). A full
-   review's `pass` ends the run unless a finding is `needs-decision`; then
-   triage under step 2, ask under step 3, and end with `pass` unless the user
-   stops the run or a decision made a finding `open` or calls for a reshape;
-   such a decision continues with steps 4 to 8. `blocked` stops the run;
-   `non-pass` continues to step 2. On `delta-pass`, triage under step 2, then
-   continue from step 3 when any finding is `open` or `needs-decision`;
-   otherwise start a full review.
+   (the earliest target revision whose diff introduces the defect). A `pass`
+   ends the run unless a finding is `needs-decision`; then triage under step 2,
+   ask under step 3, and end with `pass` unless the user stops the run or a
+   decision made a finding `open` or calls for a reshape; such a decision
+   continues with steps 4 to 8. `blocked` stops the run; `non-pass` continues to
+   step 2.
 2. **Triage.** A finding a user decision covers takes that decision's effect. A
    reasoned decline settles a finding unless the user asked for that change.
    `design` and `question` findings, findings owned outside the target, findings
@@ -105,10 +94,9 @@ against the change a landed fix made re-raises that fix's finding.
      whose latest attempt is an evidenced rejection, and no user decision covers
      it;
    - the review returned `non-pass` and nothing is `open`;
-   - a `delta-pass` left a finding `needs-decision`;
-   - a full review's `pass` left a finding `needs-decision`;
-   - 10 `non-pass` reviews, delta or full, since the last user checkpoint, as a
-     runaway cap, unless a user decision set another limit.
+   - a `pass` left a finding `needs-decision`;
+   - 10 `non-pass` reviews since the last user checkpoint, as a runaway cap,
+     unless a user decision set another limit.
 4. **Reshape.** When a user decision calls for reordering, splitting, or moving
    changes between target revisions, follow `finalize-changes` before any fix
    this round, with the target as its explicit mutable history set and the
@@ -118,8 +106,7 @@ against the change a landed fix made re-raises that fix's finding.
    rewriting any of them, end the run as `blocked` and report the reshaped
    revisions, any conflicts, and the `finalize-changes` report, without further
    fixes. Otherwise re-resolve the target from its base to the reshaped tip,
-   mark the finding `fixed`, and go to step 8; the next review is full because
-   the reshape redraws every revision's diff.
+   mark the finding `fixed`, and go to step 8.
 5. **Fix.** Dispatch one fresh fixer for the round. For each owning revision
    with `open` findings, earliest first, run `jj new <owner>` and continue that
    fixer with the owner's change ID and findings; when the host cannot continue
@@ -133,11 +120,12 @@ against the change a landed fix made re-raises that fix's finding.
    back as their own findings. For a root-cause fix, it states the guarantee the
    code lacks and replaces the owner's earlier patches with one correction
    enforcing it at a single boundary when one exists. A root-cause correction
-   stays within `diff-review`'s correction scope; one needing code outside it
-   returns `needs-decision`. The fixer never returns description text. When the
-   owner's description became inaccurate, or a finding concerns the description,
-   it returns facts instead: which statements no longer hold and what behavior
-   was added, removed, or changed, citing the diff.
+   stays within the scope `diff-review`'s Findings section gives a correction;
+   one needing code outside that scope returns `needs-decision`. The fixer never
+   returns description text. When the owner's description became inaccurate, or
+   a finding concerns the description, it returns facts instead: which
+   statements no longer hold and what behavior was added, removed, or changed,
+   citing the diff.
 6. **Land.** Confirm the diff addresses each `fixed` finding at every path of
    its set the owner holds, changes nothing else, and passes checks; otherwise
    abandon the working copy and keep those findings `open` as unverified. A
@@ -151,31 +139,28 @@ against the change a landed fix made re-raises that fix's finding.
    Format and validate it with the options that reference gives. Then run
    `jj squash --from @ --into <owner>`, adding `--message "$desc"` for a
    replacement. A description-only finding squashes the empty working copy with
-   the composed message. Mark the landed findings `fixed`, and record the owner
-   as changed since the last review, marked when the squash replaced its
-   description. Then, for each check the fixer reported as passing for that
-   landing, add a check evidence entry with its reported commit ID as the entry
-   commit and the owner's change ID; the squash gives the owner the working
-   copy's tree, so an entry from an unchanged tree stays admissible.
+   the composed message. Mark the landed findings `fixed`. Then, for each check
+   the fixer reported as passing for that landing, add a check evidence entry
+   with its reported commit ID as the entry commit and the owner's change ID;
+   the squash gives the owner the working copy's tree, so an entry from an
+   unchanged tree stays admissible.
 7. **Resolve conflicts** before the next fix. After each landing, list
    `jj log -r 'descendants(<owner>) & conflicts()' --reversed`. While a target
    revision is conflicted, run `jj new` on the earliest one and continue the
    round's fixer under the step 5 rules with its change ID, its description, and
    the landed findings, to keep the revision's intent and carry the fix. Land
-   its resolution the same way, recording the revision as changed since the last
-   review and marking a replaced description, add check evidence for it as step
-   6 does with the resolved revision's change ID, and list again. Stop and ask
-   the user when a resolution fails verification or needs a decision. Then stop
-   when a descendant outside the target is newly conflicted.
+   its resolution the same way, add check evidence for it as step 6 does with
+   the resolved revision's change ID, and list again. Stop and ask the user when
+   a resolution fails verification or needs a decision. Then stop when a
+   descendant outside the target is newly conflicted.
 8. After all fixes, run `jj new <target tip>` and return to step 1.
 
 ## Report
 
 Lead with the outcome: `pass`, `blocked`, or `stopped by user`, with the last
-`diff-review` report and its scope, full or delta, and the number of full and
-delta reviews. Then list rewritten revisions, rebased descendants outside the
-target, where `@` ends, findings by status, checks run and skipped, and the
-check evidence list.
+`diff-review` report and the number of reviews. Then list rewritten revisions,
+rebased descendants outside the target, where `@` ends, findings by status,
+checks run and skipped, and the check evidence list.
 
 ## Boundaries
 
