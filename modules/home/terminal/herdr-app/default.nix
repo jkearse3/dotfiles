@@ -96,6 +96,77 @@ let
     bash ${./install-bundle-test.sh} ${installBundle}/bin/herdr-app-install-bundle
     ln -s ${installBundle} "$out"
   '';
+
+  # Every mod name the app will find installed, as a JSON array: the pinned
+  # app's shipped mods and each folder in `./mods`. The keys check below
+  # rejects any other name.
+  personalMods = lib.optionals (builtins.pathExists ./mods) (
+    lib.attrNames (lib.filterAttrs (_: type: type == "directory") (builtins.readDir ./mods))
+  );
+  modNames =
+    pkgs.runCommandLocal "herdr-app-mod-names.json" { nativeBuildInputs = [ pkgs.jq ]; } # bash
+      ''
+        find ${herdrApp.src}/defaults/mods -mindepth 1 -maxdepth 1 -type d -exec basename {} \; \
+          | jq -Rn --argjson personal ${lib.escapeShellArg (builtins.toJSON personalMods)} '[inputs] + $personal' > $out
+      '';
+
+  # The app never merges a user's keys.json with its defaults: it writes the
+  # defaults only when the file is missing (herdr-app `src/keys.rs` `load`).
+  # So the build merges the pinned app's defaults with `keys.nix` per
+  # section, and a new upstream default arrives with the next app update.
+  # The build fails on an override the app would reject or silently drop at
+  # runtime: an action that is not one of the app's commands (listed by
+  # `herdr-app commands`, which needs no window), `send:` or `terminal`; a
+  # `mod.open:` naming neither a shipped mod nor a personal one from `./mods`;
+  # or a binding of `ctrl-b` alone, which would swallow the chord prefix.
+  keysOverrides = pkgs.writeText "herdr-app-keys-overrides.json" (
+    builtins.toJSON (import ./keys.nix)
+  );
+  keysJson =
+    pkgs.runCommandLocal "herdr-app-keys.json" { nativeBuildInputs = [ pkgs.jq ]; } # bash
+      ''
+        ${herdrApp}/bin/herdr-app commands > commands.json
+        jq '[.[].name]' commands.json > command-names.json
+        jq -s '.[0] * .[1]' ${herdrApp.src}/defaults/keys.macos.json ${keysOverrides} > keys.json
+
+        jq -r \
+          --slurpfile commands command-names.json \
+          --slurpfile mods ${modNames} \
+          --slurpfile overrides ${keysOverrides} \
+          '
+            def action_problem($action):
+              ($action | index(":")) as $colon
+              | (if $colon == null then $action else $action[:$colon] end) as $name
+              | (if $colon == null then null else $action[$colon + 1:] end) as $argument
+              | if $action == "terminal" or ($action | startswith("send:")) then empty
+                elif ($name | IN($commands[0][]) | not) then "unknown action \($action | tojson)"
+                elif $name == "mod.open" and ($argument | IN($mods[0][]) | not) then "unknown mod in \($action | tojson)"
+                else empty
+                end;
+
+            (
+              $overrides[0] | to_entries[] | .key as $section
+              | .value | to_entries[]
+              | "\($section).\(.key): \(action_problem(.value))"
+            ),
+            (
+              to_entries[] | .key as $section
+              | if (.value | type) != "object" then "\($section): not an object of bindings"
+                else .value | to_entries[]
+                  | if (.value | type) != "string" then "\($section).\(.key): action is not a string"
+                    elif (.key | split(" ") | map(select(. != ""))) == ["ctrl-b"] then "\($section).\(.key): binds the ctrl-b chord prefix alone"
+                    else empty
+                    end
+                end
+            )
+          ' keys.json > problems.txt
+        if [ -s problems.txt ]; then
+          echo "herdr-app keys.json overrides (keys.nix) are invalid:" >&2
+          cat problems.txt >&2
+          exit 1
+        fi
+        cp keys.json $out
+      '';
 in
 {
   imports = [
@@ -134,6 +205,17 @@ in
       # and leaves every other entry there alone. A failure fails the switch.
       herdrAppBundle = lib.hm.dag.entryAfter [ "linkGeneration" ] ''
         run ${checkedInstallBundle}/bin/herdr-app-install-bundle ${herdrAppBundle}/Applications/Herdr.app ${lib.escapeShellArg "${config.home.homeDirectory}/Applications/Herdr.app"}
+      '';
+
+      # A copy, not a `home.file` link: the app reloads keys.json only when its
+      # mtime changes (herdr-app `src/window.rs`), and store files all share
+      # mtime 1, so a link would never reload. The escape hatch
+      # (`ctrl-alt-shift-escape`) also renames keys.json aside and writes the
+      # defaults, which the next switch overwrites like any other content.
+      herdrAppKeys = lib.hm.dag.entryAfter [ "linkGeneration" ] ''
+        run ${pkgs.coreutils}/bin/mkdir -p ${lib.escapeShellArg "${config.home.homeDirectory}/.config/herdr-app"}
+        run ${pkgs.coreutils}/bin/rm -f ${lib.escapeShellArg "${config.home.homeDirectory}/.config/herdr-app/keys.json"}
+        run ${pkgs.coreutils}/bin/install -m0644 ${keysJson} ${lib.escapeShellArg "${config.home.homeDirectory}/.config/herdr-app/keys.json"}
       '';
     };
   };
