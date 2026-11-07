@@ -41,6 +41,61 @@ let
       cat body.md
     } > $out/SKILL.md
   '';
+
+  # The package ships only `bin/herdr-app`, which Spotlight and the Dock
+  # cannot launch. This bundle follows upstream `scripts/install-macos`. Its
+  # executable is the real app binary, not the package's PATH wrapper, so the
+  # process belongs to the bundle and shows its name and icon in the Dock.
+  # Running from `Herdr.app/Contents/MacOS/Herdr`, the app links
+  # `~/.local/bin/herdr-app` to itself (herdr-app `src/core_bin/cli_link.rs`);
+  # the profile's `herdr-app` stays ahead of it on PATH.
+  herdrApp = dotfilesPackages.herdr-app;
+  herdrAppInfoPlist = pkgs.writeText "Info.plist" (
+    lib.generators.toPlist { escape = true; } {
+      CFBundleExecutable = "Herdr";
+      CFBundleIdentifier = "dev.herdr.app";
+      CFBundleName = "Herdr";
+      CFBundleDisplayName = "Herdr";
+      CFBundleIconFile = "Herdr";
+      CFBundlePackageType = "APPL";
+      CFBundleShortVersionString = herdrApp.version;
+      CFBundleVersion = herdrApp.version;
+      NSPrincipalClass = "NSApplication";
+      NSHighResolutionCapable = true;
+      # Finder and Dock launches do not get the login shell's PATH. The app
+      # looks for `hc` on PATH, and the profile's comes first so that it
+      # finds the wrapped one, which drops the TUI's pane variables. On those
+      # launches the app also puts the login shell's PATH in front
+      # (herdr-app `src/core_bin.rs` `fill_path`).
+      LSEnvironment.PATH = lib.concatStringsSep ":" [
+        "${config.home.profileDirectory}/bin"
+        "/usr/bin"
+        "/bin"
+        "/usr/sbin"
+        "/sbin"
+      ];
+    }
+  );
+  herdrAppBundle = pkgs.runCommandLocal "herdr-app-bundle" { } ''
+    contents=$out/Applications/Herdr.app/Contents
+    mkdir -p $contents/MacOS $contents/Resources
+    cp ${herdrAppInfoPlist} $contents/Info.plist
+    cp ${herdrApp}/bin/.herdr-app-wrapped $contents/MacOS/Herdr
+    cp ${herdrApp.src}/assets/icons/Herdr.icns $contents/Resources/Herdr.icns
+  '';
+
+  installBundle = pkgs.writeShellApplication {
+    name = "herdr-app-install-bundle";
+    runtimeInputs = [ pkgs.coreutils ];
+    text = builtins.readFile ./install-bundle.sh;
+  };
+
+  # The activation runs the script through this path, so failing fixtures
+  # fail the build.
+  checkedInstallBundle = pkgs.runCommandLocal "herdr-app-install-bundle-checked" { } ''
+    bash ${./install-bundle-test.sh} ${installBundle}/bin/herdr-app-install-bundle
+    ln -s ${installBundle} "$out"
+  '';
 in
 {
   imports = [
@@ -71,6 +126,15 @@ in
       # in its `src/app/state.rs`), in the app's theme format; the app
       # derives its panel colors from these.
       ".config/herdr-app/themes/tokyo-night.json".source = mkSource ./themes/tokyo-night.json;
+    };
+
+    activation = {
+      # `targets.darwin.copyApps` stays off (applications are managed outside
+      # Home Manager), so this step installs only `~/Applications/Herdr.app`
+      # and leaves every other entry there alone. A failure fails the switch.
+      herdrAppBundle = lib.hm.dag.entryAfter [ "linkGeneration" ] ''
+        run ${checkedInstallBundle}/bin/herdr-app-install-bundle ${herdrAppBundle}/Applications/Herdr.app ${lib.escapeShellArg "${config.home.homeDirectory}/Applications/Herdr.app"}
+      '';
     };
   };
   agents.extraSkills = {
