@@ -260,9 +260,10 @@ let
   # Changes button would fail here, with no `changes` node; it stays off
   # while `workspace.panels` (set by the welcome screen) leaves out
   # `changes`. `desk` also differs from `main` by drawing its status bar
-  # with `prefix-status` instead of the shipped `workspace-status`, and its
+  # with `prefix-status` instead of the shipped `workspace-status`, its
   # sidebar header and footer with `desk-chrome` instead of the shipped
-  # `workspace-chrome`.
+  # `workspace-chrome`, and its list of spaces with `desk-spaces` instead
+  # of the shipped `spaces`.
   #
   # A personal mod can be a clone: a copy of an upstream folder in the app's
   # source, recorded in its `mod.json` `cloned_from`, that is kept editable
@@ -302,7 +303,13 @@ let
   # show the original palette and picker.
   #
   # `mods/desk-spaces` is a clone of the shipped `spaces` mod (the
-  # sidebar's list of spaces).
+  # sidebar's list of spaces). In a jj checkout, where Git's HEAD is always
+  # detached, a space shows what the `jj-starship-prompt` terminal prompt
+  # shows: the nearest bookmark (main included), the distance from it, a
+  # conflict and edits in `@`, read with
+  # `--ignore-working-copy` so a look never writes a jj operation; jj
+  # workspaces list under their repo's main checkout. `layouts/desk.json`
+  # uses it; other layouts still use the original `spaces`.
   #
   # The tree fails to build when a personal mod or layout is named like a
   # shipped one, which the app would overwrite on its next start, or starts

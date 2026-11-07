@@ -1,6 +1,7 @@
 // Workspace spaces: stable colored avatars, worktrees under their checkout,
 // grouped by machine when more than one is known. After a space's name, the repo
-// its first terminal is in now, only where unusual: branch, ahead/behind. Agent state lives in the agents list, not here. Click to
+// its first terminal is in now, only where unusual: branch, ahead/behind (a jj
+// checkout shows what the terminal prompt shows instead). Agent state lives in the agents list, not here. Click to
 // switch, right-click for its menu, drag to reorder.
 
 import { View, div, svg } from "gpui-kit";
@@ -42,6 +43,17 @@ function place(s, ps) {
 const rowHeight = ({ tree }) => (tree ? 28 : 30);
 const where = (s, ps) => JSON.stringify([s.machine ?? null, place(s, ps)]);
 const base = (path) => path.replace(/\/+$/, "").split("/").pop();
+// `path` made absolute against `from`, without "." or ".." segments.
+const resolve = (from, path) => {
+  const out = [];
+  for (const part of (path.startsWith("/") ? path : `${from}/${path}`).split(
+    "/",
+  )) {
+    if (part === "..") out.pop();
+    else if (part && part !== ".") out.push(part);
+  }
+  return `/${out.join("/")}`;
+};
 // Changes made outside Herdr (an editor's save, a commit in another app): looked
 // for this often, in repos the list shows, while the window is in front.
 const FALLBACK = 60000;
@@ -198,6 +210,13 @@ export default class Spaces extends View {
     this.checked[key] = Date.now();
     this.unsure.delete(key);
     try {
+      // jj keeps Git's HEAD detached, so a jj checkout shows jj's own picture.
+      const jj = await this.checkJj(cwd, on);
+      if (jj) {
+        this.git[key] = jj.info;
+        if (!on) this.watch(jj.repo, cx, `${jj.repo}/op_heads`);
+        return;
+      }
       // No optional locks: a status that touched the index would wake the watch again.
       // Writes nothing under .git (index lock, fsmonitor cookie): watch() would wake on it.
       const r = await exec(
@@ -257,13 +276,104 @@ export default class Spaces extends View {
     }
   }
 
-  watch(repo, cx) {
+  // One jj checkout as the terminal prompt shows it (jj-starship-prompt in the
+  // dotfiles' starship module), with its shared repo folder; null where jj isn't
+  // installed or the place isn't a jj checkout, which leaves it to git. Every jj call
+  // passes --ignore-working-copy: a snapshot would write an operation on each look,
+  // which the op_heads watch would answer with another look.
+  async checkJj(cwd, on) {
+    const jj = (args) =>
+      exec(
+        "jj",
+        ["--ignore-working-copy", "--no-pager", "--color=never", ...args],
+        { cwd, on },
+      );
+    let root;
+    try {
+      root = await jj(["root"]);
+    } catch {
+      return null;
+    }
+    if (root.code !== 0) return null;
+    const top = root.stdout.trim();
+    // A secondary workspace's .jj/repo is a file naming the shared repo folder.
+    const pointer = await exec("cat", [`${top}/.jj/repo`], { cwd, on });
+    const repo =
+      pointer.code === 0
+        ? resolve(`${top}/.jj`, pointer.stdout.trim())
+        : `${top}/.jj/repo`;
+    // The bookmark names on the revisions `revset` selects (jjx bookmark nearest).
+    const names = async (revset) => {
+      const r = await jj([
+        "log",
+        "--no-graph",
+        "-r",
+        revset,
+        "-T",
+        'local_bookmarks.map(|b| json(b.name())).join("\\n") ++ if(local_bookmarks, "\\n")',
+      ]);
+      if (r.code !== 0) throw new Error(r.stderr);
+      return r.stdout
+        .split("\n")
+        .filter(Boolean)
+        .map((line) => JSON.parse(line));
+    };
+    const count = async (revset) => {
+      const r = await jj(["log", "--no-graph", "-r", revset, "-T", '"x"']);
+      if (r.code !== 0) throw new Error(r.stderr);
+      return r.stdout.length;
+    };
+    try {
+      // A bookmark at or after @ first (↓, the revisions from @ up to it), else the
+      // nearest at or before it (↑, its descendants up to @, an empty @ too).
+      const after = "roots(@:: & bookmarks())";
+      const before = "heads(::@ & bookmarks())";
+      let marks = await names(after);
+      let direction = "↓";
+      let distance = marks.length ? await count(`@..${after}`) : 0;
+      if (!marks.length) {
+        marks = await names(before);
+        direction = "↑";
+        distance = marks.length ? await count(`${before}::@ ~ ${before}`) : 0;
+      }
+      const at = await jj([
+        "log",
+        "--no-graph",
+        "-r",
+        "@",
+        "-T",
+        'change_id.shortest(8) ++ " " ++ if(conflict, "1", "0") ++ " " ++ if(empty, "1", "0")',
+      ]);
+      if (at.code !== 0) return null;
+      const [change, conflict, empty] = at.stdout.trim().split(" ");
+      const info = {
+        jj: true,
+        name: base(repo.replace(/\/\.jj\/repo$/, "")),
+        bookmark: marks.length
+          ? marks[0] + (marks.length > 1 ? `(+${marks.length - 1}b)` : "")
+          : null,
+        direction,
+        distance,
+        change,
+        conflict: conflict === "1",
+        modified: empty === "0",
+        repo: JSON.stringify([on, repo]),
+        linked: repo !== `${top}/.jj/repo`,
+      };
+      return { info, repo };
+    } catch {
+      return null;
+    }
+  }
+
+  // `dir` is what changes when the repo does: the git folder, or a jj repo's op_heads.
+  watch(repo, cx, dir = repo) {
     if (this.watching.has(repo)) return;
     this.watching.add(repo);
     cx.spawn(async (cx) => {
       try {
         while (this.watching.has(repo)) {
-          await watchFolder(repo);
+          await watchFolder(dir);
           const mine = JSON.stringify([null, repo]);
           if (this.watching.has(repo))
             this.refreshGit(
@@ -484,6 +594,49 @@ export default class Spaces extends View {
       );
   }
 
+  // A jj checkout, in the terminal prompt's words and colors: the nearest bookmark
+  // (purple, "(+1b)" when more share it), how far @ is from it (cyan \u2191 after it,
+  // \u2193 before it), a conflict (red \u26a0) and edits in @ (yellow \u25cf). The change
+  // ID shows only without a bookmark, where nothing else says where @ is. The repo
+  // shows as for git.
+  jjTail(g, tree, name, t) {
+    const same = (a) => a.toLowerCase() === name.toLowerCase();
+    const repo = tree || same(g.name) ? "" : g.name;
+    return h_flex()
+      .flex_1()
+      .min_w(0)
+      .gap(5)
+      .justify_end()
+      .items_center()
+      .text_size(11.5)
+      .text_color(t.dim)
+      .when(Boolean(repo), (el) => el.child(div().flex_none().child(repo)))
+      .child(
+        g.bookmark
+          ? div()
+              .min_w(0)
+              .truncate()
+              .font_semibold()
+              .text_color(t.ansi5)
+              .child(g.bookmark)
+          : div().flex_none().child(g.change),
+      )
+      .when(Boolean(g.bookmark) && g.distance > 0, (el) =>
+        el.child(
+          div()
+            .flex_none()
+            .text_color(t.ansi6)
+            .child(`${g.direction}${g.distance}`),
+        ),
+      )
+      .when(g.conflict, (el) =>
+        el.child(div().flex_none().text_color(t.ansi1).child("\u26a0")),
+      )
+      .when(g.modified, (el) =>
+        el.child(div().flex_none().text_color(t.ansi3).child("\u25cf")),
+      );
+  }
+
   row({ w, i, g, tree }, t) {
     const on = w.active;
     const colors = shared("space.colors") ?? {};
@@ -574,7 +727,13 @@ export default class Spaces extends View {
               .text_color(t.foreground)
               .child(w.name),
           )
-          .child(g ? this.gitTail(g, tree, w.name, t) : div().flex_1()),
+          .child(
+            g
+              ? g.jj
+                ? this.jjTail(g, tree, w.name, t)
+                : this.gitTail(g, tree, w.name, t)
+              : div().flex_1(),
+          ),
       );
   }
 
