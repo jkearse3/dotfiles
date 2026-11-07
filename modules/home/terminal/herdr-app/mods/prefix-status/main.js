@@ -1,8 +1,11 @@
 // A clone of the Herdr app's shipped `workspace-status` status bar (see
-// `cloned_from` in mod.json), so the shipped mod stays unedited. It adds one
-// thing: while prefix mode is on, the bar shows an accent "PREFIX" pill and
-// the prefix key hints the `prefix` mod publishes as `shared("prefix").hints`
-// (`[key, label]` pairs). Otherwise it draws exactly the shipped bar.
+// `cloned_from` in mod.json), so the shipped mod stays unedited. It changes
+// two things. While prefix mode is on, the bar shows an accent "PREFIX" pill
+// and the prefix key hints the `prefix` mod publishes as
+// `shared("prefix").hints` (`[key, label]` pairs). And its palette chip opens,
+// and its key hint shows the key of, the personal `palette` mod (the command
+// palette copy with ctrl-j/ctrl-k) instead of the built-in palette. Otherwise
+// it draws exactly the shipped bar.
 import { View, div, svg } from "gpui-kit";
 import { h_flex } from "gpui-base";
 import {
@@ -30,7 +33,7 @@ export default class WorkspaceStatus extends View {
     });
   }
 
-  // The palette key as actually bound, not a hardcoded one; without a
+  // The `palette` mod's key as actually bound, not a hardcoded one; without a
   // binding the hint stays useful ("commands") instead of lying.
   hint(t) {
     const mac = window()?.platform === "macos";
@@ -42,7 +45,7 @@ export default class WorkspaceStatus extends View {
       option: mac ? "⌥" : "Alt+",
     };
     const b = keys().find(
-      (k) => k.section === "global" && k.action === "app.palette",
+      (k) => k.section === "global" && k.action === "mod.open:palette",
     );
     const parts =
       b && b.keys.endsWith("--")
@@ -129,7 +132,7 @@ export default class WorkspaceStatus extends View {
         div()
           .id("palette")
           .text_color(t.dim)
-          .on_click(() => run("app.palette"))
+          .on_click(() => run("mod.open", { name: "palette" }))
           .child(this.hint(t)),
       );
   }

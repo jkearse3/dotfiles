@@ -2,7 +2,7 @@
 // Places (spaces, tabs) stay in the picker. Fuzzy: your letters in
 // order, word starts and runs rank higher. Empty: recent first, then every
 // group. Choices are entries of their own ("Layout: Zen"); commands that need
-// a name ask for it. Enter runs, ↑/↓ move, Esc closes.
+// a name ask for it. Enter runs, ↑/↓ or ctrl+j/ctrl+k move, Esc closes.
 // A personal copy of the app's own frame-palette mod (see cloned_from in mod.json).
 
 import { View, div, svg } from "gpui-kit";
@@ -45,7 +45,7 @@ const NAMED = [
   ["tab.new", {}, "Tab", "New tab", "tab agent new task"],
   [
     "mod.open",
-    { name: "picker" },
+    { name: "goto" },
     "Tab",
     "Go to space or tab…",
     "switch jump find",
@@ -458,11 +458,18 @@ export default class Palette extends View {
       .bg(t.popover)
       .on_key_down((e, cx) => {
         const k = e.key;
+        // fzf's ctrl-j/ctrl-k: control alone, so cmd/alt/shift chords pass.
+        const m = e.modifiers;
+        const isControlOnly = m.control && !m.platform && !m.alt && !m.shift;
+        const isDown = k === "down" || (k === "j" && isControlOnly);
+        const isUp = k === "up" || (k === "k" && isControlOnly);
         if (k === "escape") return this.close();
-        // Stops at the ends: wrapping jumps out of sight.
-        if (k === "down") this.at = Math.min(this.at + 1, rows.length - 1);
-        else if (k === "up") this.at = Math.max(this.at - 1, 0);
-        else if (k === "pagedown")
+        if (isDown || isUp) {
+          // Wraps at the ends; the list scrolls to keep the selection in view.
+          // An empty list has nothing to move to.
+          const n = rows.length;
+          if (n > 0) this.at = (this.at + (isDown ? 1 : n - 1)) % n;
+        } else if (k === "pagedown")
           this.at = Math.min(this.at + SHOWN, rows.length - 1);
         else if (k === "pageup") this.at = Math.max(this.at - SHOWN, 0);
         else return;

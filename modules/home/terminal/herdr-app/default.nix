@@ -273,18 +273,24 @@ let
   # that leaves the upstream alone passes unchanged.
   #
   # `mods/prefix-status` is a clone of the shipped `workspace-status` mod,
-  # plus a "PREFIX" pill and key hints while prefix mode is on.
+  # plus a "PREFIX" pill and key hints while prefix mode is on. Its palette
+  # chip and key hint open the personal `palette` mod, not `app.palette`.
   #
   # `mods/goto` is a clone of the shipped `picker` mod (the "Go to…" menu of
   # spaces and tabs), plus ctrl-j/ctrl-k to move the selection. `keys.nix`
-  # opens it from `cmd-p` and prefix `w`/`g`; anything else that opens the
-  # built-in `picker` by name (other layouts, the palette's "Go to" entry,
+  # opens it from `cmd-p` and prefix `w`/`g`, and the personal `palette`
+  # mod's "Go to" entry opens it too; anything else that opens the built-in
+  # `picker` by name (other layouts, the built-in palette's "Go to" entry,
   # the sidebar search button) still shows the original.
   #
   # `mods/palette` is a copy of the app's own command palette
   # (`defaults/frame/palette`, the `frame-palette` mod), which `mod.clone`
   # cannot clone: its asset path points at its own folder, and its `mod.json`
   # adds the popup overlay spec that `app.palette` opens the original with.
+  # It adds ctrl-j/ctrl-k and wrap-around to the selection, and its "Go to"
+  # entry opens `goto`. `keys.nix` opens it from `cmd-shift-p`, and the
+  # `prefix-status` chip opens it; `app.palette` and the app menu still show
+  # the original.
   #
   # The tree fails to build when a personal mod or layout is named like a
   # shipped one, which the app would overwrite on its next start, or starts

@@ -39,6 +39,9 @@
       # The app's `cmd-p` opens its built-in picker; open `goto`, the personal
       # clone with ctrl-j/ctrl-k, instead.
       "cmd-p" = "mod.open:goto";
+      # Likewise `cmd-shift-p` opens `palette`, the personal copy of the
+      # command palette with ctrl-j/ctrl-k, instead of `app.palette`.
+      "cmd-shift-p" = "mod.open:palette";
     };
     # While prefix mode is open, `ctrl-b` goes to the prefix mod as a
     # command instead of reopening it: this section's key context is deeper
