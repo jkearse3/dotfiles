@@ -28,6 +28,8 @@
     # The TUI's workspace picker and go-to both open the app's built-in picker.
     "ctrl-b w" = "mod.open:picker";
     "ctrl-b g" = "mod.open:picker";
+    # The TUI user binding for finding agents and workspaces with fzf.
+    "ctrl-b f" = "mod.open:find";
     # The TUI's detach: closing the window leaves its terminals running.
     "ctrl-b q" = "window.close";
 

@@ -290,6 +290,14 @@ let
     bash ${./deploy-test.sh} ${deploy}/bin/herdr-app-deploy
     ln -s ${deploy} "$out"
   '';
+
+  # The `find` launcher mod starts its CLI by the absolute store path this
+  # file maps CLI names to. A bare name would resolve on the core's PATH,
+  # which depends on whoever started the core. Read-only, because it holds
+  # store paths.
+  dotfilesPaths = (pkgs.formats.json { }).generate "herdr-app-dotfiles-paths.json" {
+    herdr-find = "${dotfilesPackages.herdr-find.cli}/bin/herdr-find";
+  };
 in
 {
   imports = [
@@ -320,6 +328,7 @@ in
       # in its `src/app/state.rs`), in the app's theme format; the app
       # derives its panel colors from these.
       ".config/herdr-app/themes/tokyo-night.json".source = mkSource ./themes/tokyo-night.json;
+      ".config/herdr-app/dotfiles-paths.json".source = dotfilesPaths;
     };
 
     activation = {
