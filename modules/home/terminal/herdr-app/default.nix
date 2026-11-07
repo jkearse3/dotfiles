@@ -281,6 +281,11 @@ let
   # built-in `picker` by name (other layouts, the palette's "Go to" entry,
   # the sidebar search button) still shows the original.
   #
+  # `mods/palette` is a copy of the app's own command palette
+  # (`defaults/frame/palette`, the `frame-palette` mod), which `mod.clone`
+  # cannot clone: its asset path points at its own folder, and its `mod.json`
+  # adds the popup overlay spec that `app.palette` opens the original with.
+  #
   # The tree fails to build when a personal mod or layout is named like a
   # shipped one, which the app would overwrite on its next start, or starts
   # with a dot, which the app ignores, or when `./layouts` holds anything but
@@ -383,6 +388,15 @@ let
         "mod.json" = "ca186ee1f13241f1f9b8facf092138214ca840a6a4d2865618a21934ffcda34d";
       };
       resync = "re-clone it (herdr-app do mod.clone --name picker --as goto) and re-apply its edits";
+    };
+    palette = {
+      upstream = "defaults/frame/palette";
+      files = {
+        "command.svg" = "d734fb3562cd3a137ac4428b03b6fb246f407950b53b7f362a4cf64ffb745a38";
+        "main.js" = "9b03ae0c36bec7168ecd58f555f9ee8b989e52f427eed5dfd4cf7af4ae34b734";
+        "mod.json" = "2574a840452fa1c3c4fd946e5ac62b44ddadc52af8908aa7affcc402022a8fd4";
+      };
+      resync = "re-copy it (mod.clone cannot clone frame mods), rewrite its frame/palette/ asset path to mods/palette/, re-add the overlay spec app.palette opens it with to mod.json, and re-apply its edits";
     };
   };
 
