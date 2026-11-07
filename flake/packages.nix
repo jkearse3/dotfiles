@@ -30,6 +30,10 @@
           inherit commit-message direnv-worktree worktree-include;
           inherit (unstablePkgs) jujutsu;
         };
+        herdr-app = inputs.llm-agents.packages.${system}.herdr-app;
+        herdr-core = pkgs.callPackage ../packages/herdr-core/package.nix {
+          upstream = inputs.llm-agents.packages.${system}.herdr-core;
+        };
         herdr-find = pkgs.callPackage ../packages/herdr-find/package.nix {
           inherit (inputs.llm-agents.packages.${system}) herdr;
         };
