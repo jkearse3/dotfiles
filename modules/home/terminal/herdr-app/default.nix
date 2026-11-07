@@ -292,6 +292,10 @@ let
   # `prefix-status` chip opens it; `app.palette` and the app menu still show
   # the original.
   #
+  # `mods/desk-chrome` is a clone of the shipped `workspace-chrome` mod (the
+  # sidebar header and footer), with its asset paths pointing at its own
+  # folder. No layout uses it yet.
+  #
   # The tree fails to build when a personal mod or layout is named like a
   # shipped one, which the app would overwrite on its next start, or starts
   # with a dot, which the app ignores, or when `./layouts` holds anything but
@@ -403,6 +407,45 @@ let
         "mod.json" = "2574a840452fa1c3c4fd946e5ac62b44ddadc52af8908aa7affcc402022a8fd4";
       };
       resync = "re-copy it (mod.clone cannot clone frame mods), rewrite its frame/palette/ asset path to mods/palette/, re-add the overlay spec app.palette opens it with to mod.json, and re-apply its edits";
+    };
+    desk-chrome = {
+      upstream = "defaults/mods/workspace-chrome";
+      files = {
+        "archive.svg" = "bcb4f7103eef0133d0fae701ed5b74c8a531e20f4d38d4f37a1a83af6b582540";
+        "branch.svg" = "45c696f0f646e9471e9c77aa9e237c17c784cb3d8aaecf47bf5c6e05e7e67fcd";
+        "check.svg" = "bb1d520e122285018a0b9d257b7f73d78156337a09706da2b5619a75c45aa231";
+        "chevron-down.svg" = "be2f2e86753c4c6bc19b1cc196611b18597cc7a553580ed2bdf80f26a5e2440d";
+        "chevron-left.svg" = "1a3db31d090bce6c795dbcbd1a95cb6bb074d0b2fcd8d26e5610211e10c8291f";
+        "chevron-right.svg" = "280d2c796344a22fb6cb7086edc90868a27c7812405cffb9be66a3c5835aa898";
+        "circle-check.svg" = "7d9e10a404a556a239ee33ad8a5b1e415ce39d505991760115d3a515cf387426";
+        "clock.svg" = "0f3d2e2b3668e96889f182ef6ab2fb66aa54d48472e83be98bd239d81f64a9cc";
+        "file-text.svg" = "b00717747452168438e35e9ec6828e779bcace9497e3f6dc63f7a618a80cf4f4";
+        "files.svg" = "d0cb1467cd6c7b726d19d13f7aabeebaf094991605bd9fd4a47a6d084a575d24";
+        "folder-plus.svg" = "b89f6eb87b75714f01b723971ba96ee6d6969d6a7cdb878989cd9981268d92eb";
+        "folder.svg" = "9d7567649afffe0523114fcff3ac9da0504ac24cabc35e0b1dc0a4d90a34beb8";
+        "git-branch.svg" = "d2f7cf0c6d1944b9453268f1155da2e93374fad83beeae5ab9a7d5e3584e2204";
+        "git-compare.svg" = "2bc47e7dc3c5df4cfaf82de1fdc5bf9f1bbc7f790170d5d434ed7c4ffc86295f";
+        "layers.svg" = "d63f7cec8a79eec4a60755af9f2549584a61c8e349ef9f7e9a6c4af2aeb73d9d";
+        "main.js" = "d32d05ae66b44890cb0625015b240fbba4cfe9b336c39fbadfb737aec64ae76c";
+        "minus.svg" = "709a2f4c02741159ea14691d4fb1cbcf68073b27ec4e738bc9a73d660f409d7c";
+        "mod.json" = "e8e0a91d23a0addf19f9f4dab48f597f252a1d44e5063e4d6ae884a88cbf735d";
+        "monitor.svg" = "cbb2f05267714ca1ffa6411cf102bbba7da13743654e4fe518429b181cf19099";
+        "panel-left.svg" = "2e67d422da7253a4efcfbc02e74c17104844d7fdb19d63210e18b2c03bfa0ab4";
+        "panel-right.svg" = "85a85f016e5be2c50a3906161d190df94e3770d22e9069abf21649c9b7f36b1a";
+        "pin-off.svg" = "265298d18044617313022b40f1e24bb4989fe1f18f33585786fc947bb1ab270a";
+        "pin.svg" = "d4b9b5f5ef7f89e819316110ba8d8aa1d1998a30b03b4eeaf3323682890778dc";
+        "plus.svg" = "109da7afa021037ac0278aa9f5e72fd53e2fa2ea1f8ea32fbf78e7d98e6301e6";
+        "search.svg" = "7be6e7a558041594b46f0c22ccf0fd8d1f02458933b8038523323c874c7ad50b";
+        "server.svg" = "41a942cb9c9011def4c0b9a05f4cd02f3fcc762e7617c09610bc23264786c3f7";
+        "settings.svg" = "2f8dba8fb2a34431d93f83409b1058e95bf8cf3a54906f90d534a2d1a814b6e2";
+        "sidebar.svg" = "2f5ce4d2f78c3740d874db721092360cd58b809dca2564ea3fb65480ed4a9471";
+        "spinner.svg" = "00130fbac061db08cc967fdf2ae1378211a591c57cfb8f9b4018ec823fefea2d";
+        "square-pen.svg" = "e46ff55127ad0510e9637cba346fcb5c672cf6e14e74815652358cece8a2889e";
+        "square.svg" = "e475514f8a336eaa799db562ec89a87eacc5e9202c1b1f0e0ab387b6334b0d1b";
+        "terminal.svg" = "a6f93e62a6ec412e6a214849be5b566cd21cff81d5570891c2e04e96c4dd964e";
+        "x.svg" = "c1e53fc9bbe1a0a0b8183bcacf5ab7dbf160fd1f082594de3dcbba1cd5a71614";
+      };
+      resync = "re-clone it (herdr-app do mod.clone --name workspace-chrome --as desk-chrome) and re-apply its edits";
     };
   };
 
