@@ -275,6 +275,9 @@ let
   # `mods/prefix-status` is a clone of the shipped `workspace-status` mod,
   # plus a "PREFIX" pill and key hints while prefix mode is on.
   #
+  # `mods/goto` is a clone of the shipped `picker` mod (the "Go to…" menu of
+  # spaces and tabs), kept as a personal mod so its keys can be edited.
+  #
   # The tree fails to build when a personal mod or layout is named like a
   # shipped one, which the app would overwrite on its next start, or starts
   # with a dot, which the app ignores, or when `./layouts` holds anything but
@@ -369,6 +372,14 @@ let
         "mod.json" = "e8e0a91d23a0addf19f9f4dab48f597f252a1d44e5063e4d6ae884a88cbf735d";
       };
       resync = "re-clone it (herdr-app do mod.clone --name workspace-status --as prefix-status) and re-apply the prefix-mode change";
+    };
+    goto = {
+      upstream = "defaults/mods/picker";
+      files = {
+        "main.js" = "dfeb29ce9f3c5fc2fb0098b7baac0c09fed5348f4297c846511bc647f5f564bb";
+        "mod.json" = "ca186ee1f13241f1f9b8facf092138214ca840a6a4d2865618a21934ffcda34d";
+      };
+      resync = "re-clone it (herdr-app do mod.clone --name picker --as goto) and re-apply its edits";
     };
   };
 
