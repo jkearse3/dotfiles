@@ -119,8 +119,19 @@ let
   # `herdr-app commands`, which needs no window), `send:` or `terminal`; a
   # `mod.open:` naming neither a shipped mod nor a personal one from `./mods`;
   # or a binding of `ctrl-b` alone, which would swallow the chord prefix.
+  #
+  # `keys.nix` keeps keys.json sections apart from its prefix bindings (the
+  # keystroke typed after `ctrl-b`). Until a prefix mode takes over `ctrl-b`,
+  # each prefix binding is bound as the `global` chord `ctrl-b <keystroke>`.
+  keysNix = import ./keys.nix;
   keysOverrides = pkgs.writeText "herdr-app-keys-overrides.json" (
-    builtins.toJSON (import ./keys.nix)
+    builtins.toJSON (
+      keysNix.sections
+      // {
+        global =
+          keysNix.sections.global // lib.mapAttrs' (key: lib.nameValuePair "ctrl-b ${key}") keysNix.prefix;
+      }
+    )
   );
   keysJson =
     pkgs.runCommandLocal "herdr-app-keys.json" { nativeBuildInputs = [ pkgs.jq ]; } # bash
