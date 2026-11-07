@@ -1,6 +1,8 @@
 {
   fzf,
   herdr,
+  herdr-app,
+  herdr-core,
   pkgs,
 }:
 let
@@ -15,12 +17,20 @@ let
     nativeBuildInputs = [ pkgs.makeWrapper ];
 
     # fzf's key bindings and preview call back into the CLI by its store path.
+    # The app host's herdr-app and hc come last on PATH, so the profile's hc
+    # (which drops the TUI's variables) and tests' fake executables win.
     postFixup = ''
       wrapProgram "$out/bin/herdr-find" \
         --prefix PATH : "${
           pkgs.lib.makeBinPath [
             fzf
             herdr
+          ]
+        }" \
+        --suffix PATH : "${
+          pkgs.lib.makeBinPath [
+            herdr-app
+            herdr-core
           ]
         }" \
         --set HERDR_FIND_BIN "$out/bin/herdr-find"
@@ -31,7 +41,7 @@ let
       runHook preInstallCheck
       HERDR_FIND="$out/bin/herdr-find" \
         python3 -B -m unittest discover -s tests -p 'test_*.py'
-      for command in rows preview pick open-popup; do
+      for command in rows preview pick open-popup serve show reset; do
         "$out/bin/herdr-find" "$command" --help > /dev/null
       done
       runHook postInstallCheck

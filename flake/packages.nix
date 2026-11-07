@@ -36,6 +36,7 @@
         };
         herdr-find = pkgs.callPackage ../packages/herdr-find/package.nix {
           inherit (inputs.llm-agents.packages.${system}) herdr;
+          inherit herdr-app herdr-core;
         };
         herdr-jj-workspaces = pkgs.callPackage ../packages/herdr-jj-workspaces/package.nix {
           inherit (inputs.llm-agents.packages.${system}) herdr;
