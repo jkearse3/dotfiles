@@ -153,7 +153,7 @@ notes for `diff-review` or `diff-fix`, and mixed-concern revisions as notes for
       refinement, or review. Format and validate it with the options that
       reference gives. Run `jj squash --from @ --into <owner>` with
       `--message "$desc"` for a replacement, or `--use-destination-message`
-      otherwise. Then, as `diff-fix`'s Loop step 7 does, list
+      otherwise. Then, as `diff-fix`'s Resolve conflicts step does, list
       `jj log -r 'descendants(<owner>) & conflicts()' --reversed`. A target
       revision in the list was left conflicted by this proposal; any other
       revision is a newly conflicted descendant outside the target.

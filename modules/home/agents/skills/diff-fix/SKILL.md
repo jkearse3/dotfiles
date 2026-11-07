@@ -3,7 +3,7 @@ name: diff-fix
 description: >-
   Repeatedly reviews a finalized local jj revision, range, stack, or bookmark
   with diff-review, fixes the findings through fresh subagents, and loops until
-  a full review passes. Use when the user asks to fix, converge, or
+  a review confirms no findings. Use when the user asks to fix, converge, or
   review-and-fix a finalized diff target in a jj repository. Not for working
   changes, Git-only checkouts, one-off bug fixes, read-only review, remote-only
   targets, or publication.
@@ -11,160 +11,98 @@ description: >-
 
 # Diff Fix
 
-Drive a finalized jj target to a literal full `diff-review` `pass` by
-alternating `diff-review` reviews with one fresh fixer per round. This session
-coordinates: it keeps the findings list, coordinates each review, verifies and
-lands fixes, and asks the user. It never reviews or fixes itself beyond
-coordinating `diff-review`; if the host cannot start fresh agents, stop and
-report.
+Review a finalized jj target, fix what the review confirms, and review again
+until a review confirms nothing. This session coordinates: it runs the loop,
+reads each fix's diff to land it, writes replacement descriptions, and asks the
+user. It never reads the target's hunks, reviews, or edits code; if the host
+cannot start fresh agents, stop and report.
+
+Rounds share only the user's decisions, every review's confirmed findings, and
+the last review's declined candidates. This session passes findings on without
+matching them; each review judges which still hold or keep recurring and finds
+again whatever else is still wrong.
 
 ## Target
 
 Resolve the target as `diff-review` does, and require a jj repository, no
-`<target> & immutable()` revisions, and an empty `@` above the target. Record
-any bookmark name, and refer to the target and every owning revision by change
-ID, never commit ID, because each squash rewrites commits. The exceptions are
-the commit IDs step 4 records before a reshape, and the entry commits fixers
-report and steps 6 and 7 record for check evidence, which identify the tree a
-check ran on.
+`<target> & immutable()` revisions, and an empty `@` above the target. Before
+each review and at the end, `@` is an empty child of the target's tip. Refer to
+revisions by change ID, since every squash rewrites commits.
 
-Take the declared criteria, context, any user decisions, and any check evidence,
-as `diff-review` defines it, from the request. Invoking this skill authorizes
-squashing fixes into target revisions and rebasing their descendants, and a user
-decision to reshape the target authorizes that reshape. It authorizes nothing
-outside the target and no publication.
-
-## Findings
-
-Keep a findings list in the conversation. Each finding has its mechanism, its
-location, path set, and any root cause from the latest review, its owning
-revision, a status (`open`, `fixed`, `settled`, or `needs-decision`), whether it
-is a root-cause fix, and its latest attempt or ruling with the evidence or
-reason. A finding stays `open` until its fix lands, a verifier declines it with
-a reason, it needs a decision, or the user decides it.
-
-The reviewer and fixer receive the criteria, context, and user decisions
-verbatim, plus the findings list; the verifier receives them plus, for each
-candidate, the entry it matches, if any. Settled findings and user decisions are
-earlier conclusions, re-raised only when the current code shows their reason no
-longer holds.
-
-Keep a check evidence list beside the findings list, starting with the caller's
-entries; every entry this session adds carries the change ID of the revision it
-checked. Adding an entry replaces any earlier entry with the same command and
-change ID. Keep a caller entry without a change ID as given and never replace
-it. Never otherwise prune entries: `diff-review`'s tree-equality test already
-makes stale ones inadmissible.
-
-Match findings across rounds by mechanism, not wording or line. A finding
-against the change a landed fix made re-raises that fix's finding.
+Take criteria, context, user decisions, and check evidence from the request.
+Invoking this skill authorizes squashing fixes into target revisions and
+rebasing their descendants, and a user decision to reshape the target authorizes
+that reshape. It authorizes nothing outside the target and no publication.
 
 ## Loop
 
-1. **Review.** Review the whole target. Follow `diff-review` in this session as
-   one that must stay independent of the target, so fresh agents review and
-   verify and this session reviews no hunk itself. Pass the findings list as
-   earlier findings and the check evidence list as check evidence, and add each
-   `open` finding to the candidates under Verify: the verifier confirms it is
-   still present or declines it with a reason. Per finding the review returns
-   category, location, mechanism, path set, any root cause, and owning revision
-   (the earliest target revision whose diff introduces the defect). A `pass`
-   ends the run unless a finding is `needs-decision`; then triage under step 2,
-   ask under step 3, and end with `pass` unless the user stops the run or a
-   decision made a finding `open` or calls for a reshape; such a decision
-   continues with steps 4 to 8. `blocked` stops the run; `non-pass` continues to
-   step 2.
-2. **Triage.** A finding a user decision covers takes that decision's effect. A
-   reasoned decline settles a finding unless the user asked for that change.
-   `design` and `question` findings, findings owned outside the target, findings
-   whose fix requires reordering, splitting, or moving changes between target
-   revisions, re-raised `needs-decision` findings, and findings that meet the
-   first Ask trigger are `needs-decision`. Any other finding whose mechanism
-   matches a `fixed` finding, whether it re-raises it or reaches a path its fix
-   missed, is `open` as a root-cause fix, with the earlier paths added to its
-   path set. Everything else is `open`.
-3. **Ask** the user when a trigger below holds, before fixing. Present the
-   `needs-decision` findings with their history and any unsatisfied criteria,
-   and offer: decide, continue, or stop. A decision calling for a change makes
-   the finding `open`, unless it calls for reordering, splitting, or moving
-   changes between target revisions, which step 4 handles; one to leave the code
-   as is settles it. Triggers:
-   - the review re-raises a `fixed` finding at the owning revision where its
-     latest fix, a root-cause fix, landed, a `settled` finding, or an `open` one
-     whose latest attempt is an evidenced rejection, and no user decision covers
-     it;
-   - the review returned `non-pass` and nothing is `open`;
-   - a `pass` left a finding `needs-decision`;
-   - 10 `non-pass` reviews since the last user checkpoint, as a runaway cap,
-     unless a user decision set another limit.
-4. **Reshape.** When a user decision calls for reordering, splitting, or moving
-   changes between target revisions, follow `finalize-changes` before any fix
-   this round, with the target as its explicit mutable history set and the
-   decision as its boundary intent; it preserves the aggregate tree. Record the
-   target's commit IDs first. If it stops and those commit IDs are unchanged,
-   keep the finding `needs-decision` with its reason. If it stops after
-   rewriting any of them, end the run as `blocked` and report the reshaped
-   revisions, any conflicts, and the `finalize-changes` report, without further
-   fixes. Otherwise re-resolve the target from its base to the reshaped tip,
-   mark the finding `fixed`, and go to step 8.
-5. **Fix.** Dispatch one fresh fixer for the round. For each owning revision
-   with `open` findings, earliest first, run `jj new <owner>` and continue that
-   fixer with the owner's change ID and findings; when the host cannot continue
-   an agent, dispatch a fresh fixer per owner instead. The fixer follows
-   `coding-style`, edits only the working copy, performs no VCS mutation or
-   delegation, and returns per finding `fixed` with each check it ran, its
-   result, and `@`'s commit ID read with `jj log -r @ --no-graph -T commit_id`
-   immediately before running it; `rejected` with concrete evidence; or
-   `needs-decision` with the question. The fixer corrects every path in a
-   finding's path set that the owner holds; paths later revisions introduce come
-   back as their own findings. For a root-cause fix, it states the guarantee the
-   code lacks and replaces the owner's earlier patches with one correction
-   enforcing it at a single boundary when one exists. A root-cause correction
-   stays within the scope `diff-review`'s Findings section gives a correction;
-   one needing code outside that scope returns `needs-decision`. The fixer never
-   returns description text. When the owner's description became inaccurate, or
-   a finding concerns the description, it returns facts instead: which
-   statements no longer hold and what behavior was added, removed, or changed,
-   citing the diff.
-6. **Land.** Confirm the diff addresses each `fixed` finding at every path of
-   its set the owner holds, changes nothing else, and passes checks; otherwise
-   abandon the working copy and keep those findings `open` as unverified. A
-   rejection without evidence stays `open` as unverified; a rejection of a
-   change the user asked for, or a `needs-decision` return, makes it
-   `needs-decision` with the question. When the fixer returned description
-   facts, this session rereads `finalize-changes`'
-   `references/revision-descriptions.md` and composes the complete replacement
-   from the owner's resulting diff, its current description, and the fixer's
-   facts. The replacement must not mention reviews, findings, rounds, or fixes.
-   Format and validate it with the options that reference gives. Then run
+1. **Review.** Resolve the target from its base to its current tip and follow
+   `diff-review` on the whole target in this session, with the request's
+   granularity, as a session that must stay independent of it: this session
+   dispatches its reviewers and verifier and never hands the whole review to one
+   subagent, which could not dispatch them. Give the review the criteria, the
+   context, the check evidence, every user decision so far, every earlier
+   review's confirmed findings as its earlier findings, the last review's
+   declined candidates with their evidence, and a request to run the
+   repository's checks at the tip. `blocked` stops the run.
+
+2. **Finish** when the review confirms no findings and no criterion
+   `not satisfied` that the user has not accepted. Areas a review leaves
+   uncovered and criteria it cannot decide, `blocked` or checkable only by a
+   person, never block finishing and go to the Report, not to the user.
+   Otherwise, after every fifth review, ask the user whether to continue before
+   fixing, giving each review's number of confirmed findings.
+3. **Fix** only the findings the review confirmed. Set aside for step 6 every
+   one that needs the user: one owned outside the target, one whose fix needs
+   reordering, splitting, or moving changes between revisions, and a `design` or
+   `question` finding no user decision settles. For the rest, visit each owning
+   revision, earliest first. Run `jj new <owner>` and dispatch a fresh fixer
+   with the owner's change ID, its findings, the criteria and context, and the
+   user's decisions. The fixer follows `coding-style`, edits only the working
+   copy, performs no VCS mutation or delegation, and fixes each finding's root
+   cause on every path the owner holds; the next review raises paths that later
+   revisions hold. It never writes description text; when a finding concerns the
+   owner's description or the description no longer holds, it returns the facts.
+   Per finding it returns `fixed` with each check it ran and the result,
+   `rejected` with evidence, or `needs-decision` with the question. Land each
+   owner before visiting the next.
+4. **Land.** For description facts, compose the replacement from the owner's
+   description, the facts, and the fix's diff as `finalize-changes`'
+   `references/revision-descriptions.md` requires, never mentioning reviews or
+   fixes. Confirm the fix's diff and any replacement fix each `fixed` finding,
+   change nothing else, and pass the fixer's checks; then run
    `jj squash --from @ --into <owner>`, adding `--message "$desc"` for a
-   replacement. A description-only finding squashes the empty working copy with
-   the composed message. Mark the landed findings `fixed`. Then, for each check
-   the fixer reported as passing for that landing, add a check evidence entry
-   with its reported commit ID as the entry commit and the owner's change ID;
-   the squash gives the owner the working copy's tree, so an entry from an
-   unchanged tree stays admissible.
-7. **Resolve conflicts** before the next fix. After each landing, list
-   `jj log -r 'descendants(<owner>) & conflicts()' --reversed`. While a target
-   revision is conflicted, run `jj new` on the earliest one and continue the
-   round's fixer under the step 5 rules with its change ID, its description, and
-   the landed findings, to keep the revision's intent and carry the fix. Land
-   its resolution the same way, add check evidence for it as step 6 does with
-   the resolved revision's change ID, and list again. Stop and ask the user when
-   a resolution fails verification or needs a decision. Then stop when a
-   descendant outside the target is newly conflicted.
-8. After all fixes, run `jj new <target tip>` and return to step 1.
+   replacement, or, when only the description changes,
+   `jj describe <owner> --message "$desc"`. Otherwise run `jj abandon @`; the
+   next review raises what is still wrong.
+5. **Resolve conflicts** after each landing. List
+   `jj log -r 'descendants(<owner>) & conflicts()' --reversed`. For the earliest
+   conflicted target revision, run `jj new` on it and dispatch a fresh fixer
+   under step 3's rules with the revision's description and the landed fix. Land
+   the resolution into the conflicted revision as step 4 lands a fix, confirming
+   it keeps the revision's intent and carries the landed fix, and list again.
+   When a resolution fails, leave the revision conflicted, stop fixing for this
+   round, and ask about it in step 6. Once no target revision is conflicted,
+   stop the run if a revision outside the target has become conflicted.
+6. **Ask** the user, at once, about the findings set aside in step 3, the
+   fixers' `rejected` and `needs-decision` returns with their evidence,
+   unresolved conflicts, and each criterion `not satisfied` that the user has
+   not accepted and no fix landed for this round, offering decide or stop. For a
+   decided reshape, a fresh agent follows `finalize-changes` with the target as
+   its mutable history set and the decision as its boundary intent and returns
+   its report; if it stops, stop the run and report its state.
+7. Return to step 1.
 
 ## Report
 
-Lead with the outcome: `pass`, `blocked`, or `stopped by user`, with the last
-`diff-review` report and the number of reviews. Then list rewritten revisions,
-rebased descendants outside the target, where `@` ends, findings by status,
-checks run and skipped, and the check evidence list.
+Lead with the outcome, `finished`, `blocked`, or `stopped by user`, and the
+number of reviews. Then list the last review's open findings, the areas it left
+uncovered and the criteria it could not decide, revisions rewritten and
+descendants rebased, and where `@` ends.
 
 ## Boundaries
 
 - Never push, publish, or mutate external systems.
 - Never rewrite references outside the target, except rebasing its descendants.
-- Never lower the pass bar, edit criteria, or phrase requests to suppress
+- Never lower the finding bar, edit criteria, or phrase requests to suppress
   findings.
