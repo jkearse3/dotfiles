@@ -12,6 +12,18 @@
 // this mod types into the terminal that was focused when prefix mode opened
 // (`ctrl-b ctrl-b` sends a literal ctrl-b).
 //
+// The popup reads most keystrokes in `on_key_down`, but the app's keymap
+// handles a keystroke it binds before that listener runs, and `global`
+// binds `ctrl-b` to `mod.open:prefix`, which would close the popup instead.
+// So `keys.nix` binds `ctrl-b` in the `mod:prefix` section, whose key
+// context (this mod's) is deeper and wins, to `prefix.ctrl-b`, which the
+// app delivers to `nextCommand()` here. The app reinstalls that binding on
+// every keys.json reload, so this mod binds no keys itself. The
+// build rejects any other prefix keystroke that `global`, a `layout:`
+// section, or `mod:prefix` binds, since the app would take it first. Esc is
+// the app's too (`overlay.close`): it closes the popup, and `close` turns
+// the PREFIX pill off.
+//
 // While prefix mode is on, the `prefix-status` status bar shows a "PREFIX"
 // pill and key hints built from the bindings: this mod publishes the hints
 // with `setShared("prefix", { hints })` and then runs `prefix-status.on`,
@@ -31,6 +43,7 @@ import {
   hc,
   layout,
   notify,
+  nextCommand,
   props,
   readTextFile,
   run,
@@ -38,6 +51,11 @@ import {
 } from "herdr";
 
 const TITLE = "Prefix";
+
+// The command keys.json's `mod:prefix` section sends (as `prefix.ctrl-b`)
+// for `ctrl-b` while prefix mode is open; it handles `ctrl-b` as the prefix
+// keystroke.
+const CTRL_B_COMMAND = "ctrl-b";
 
 // The status bar mod that shows the PREFIX pill and hints.
 const STATUS_MOD = "prefix-status";
@@ -176,6 +194,18 @@ export default class Prefix extends View {
       runStatusCommand("on");
       if (this.pendingKey) this.handleKey(this.pendingKey);
     });
+
+    // Runs while the popup is open: closing it cancels this loop, and
+    // nextCommand() rejects only when the app quits.
+    cx.spawn(async (_cx) => {
+      try {
+        for (;;) {
+          const command = await nextCommand();
+          if (command === CTRL_B_COMMAND)
+            this.receiveKey({ keystroke: "ctrl-b" });
+        }
+      } catch {}
+    });
   }
 
   // Runs however the popup goes: a key, Esc, a click outside, or quit. Turns
@@ -186,10 +216,15 @@ export default class Prefix extends View {
 
   onKey(e, cx) {
     cx.stop_propagation();
-    const key = {
+    this.receiveKey({
       keystroke: e.keystroke,
       key_char: e.key_char,
-    };
+    });
+  }
+
+  // Handles KEY now, or keeps it as `pendingKey` until the bindings load
+  // (only the first key pressed before then is kept).
+  receiveKey(key) {
     if (this.bindings) this.handleKey(key);
     else if (!this.pendingKey) this.pendingKey = key;
   }

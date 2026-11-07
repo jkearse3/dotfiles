@@ -2,22 +2,30 @@
 # bindings in `../herdr/config.toml`) for the Herdr app, as two attributes:
 #
 # - `sections`: keys.json sections (`global`, `terminal`, ...) mapping a key
-#   or chord to an action.
-# - `prefix`: the prefix bindings, mapping the keystroke typed after `ctrl-b`
-#   to an action. The module renders each one as the `global` chord
-#   `ctrl-b <keystroke>`.
+#   or chord to an action. `global` binds `ctrl-b` alone to
+#   `mod.open:prefix`, which opens prefix mode (the `prefix` mod), and
+#   `mod:prefix` binds it to `prefix.ctrl-b`, which the open prefix mod
+#   takes as a prefix keystroke.
+# - `prefix`: the prefix bindings, mapping the one keystroke typed in prefix
+#   mode to an action. The module writes them to the `prefix` mod's
+#   `bindings.json`; Esc or an unmapped keystroke leaves prefix mode without
+#   acting.
 #
 # A key that opens a personal mod (under `mods/`) is mapped only alongside
 # that mod, so keys whose mod is absent stay unbound. The module merges
-# these over the app's own `defaults/keys.macos.json`, so its `cmd-` keys stay
-# bound beside them, and fails the build on an action the app does not know.
+# `sections` over the app's own `defaults/keys.macos.json`, so its `cmd-`
+# keys stay bound beside them, and fails the build on an action the app does
+# not know, on `ctrl-b` bound to anything but `mod.open:prefix` (in
+# `mod:prefix`, anything but `prefix.ctrl-b`), on a
+# chord starting with `ctrl-b`, which prefix mode would keep from firing, and
+# on a prefix keystroke other than `ctrl-b` that `global`, a `layout:`
+# section, or `mod:prefix` also binds alone, which the app would take before
+# prefix mode sees it.
 #
-# A chord is space-separated keystrokes. The app waits for the next key after
-# `ctrl-b` with no timeout, and hands both keys to the terminal program when
-# the pair is unbound, so `ctrl-b` itself must never be bound alone. Spellings
-# follow the app's key parser (vendored gpui `Keystroke::parse`): `?` matches
-# shift-/ because macOS reports the shifted character, `-` is the minus key,
-# and shifted letters are `shift-<letter>`.
+# A chord is space-separated keystrokes. Spellings follow the app's key
+# parser (vendored gpui `Keystroke::parse`): `?` matches shift-/ because
+# macOS reports the shifted character, `-` is the minus key, and shifted
+# letters are `shift-<letter>`.
 #
 # TUI actions left unmapped because the app has no equivalent: reload config
 # (the app reloads its files live), open notification target, rename pane,
@@ -26,7 +34,15 @@
 # for panes).
 {
   sections = {
-    global = { };
+    global = {
+      "ctrl-b" = "mod.open:prefix";
+    };
+    # While prefix mode is open, `ctrl-b` goes to the prefix mod as a
+    # command instead of reopening it: this section's key context is deeper
+    # than `global`'s, and the app reinstalls it on every keys.json reload.
+    "mod:prefix" = {
+      "ctrl-b" = "prefix.ctrl-b";
+    };
   };
 
   prefix = {
@@ -82,6 +98,8 @@
     "b" = "layout.toggle:sidebar";
 
     # tmux's literal prefix: one `ctrl-b` (U+0002) typed into the terminal.
+    # `global` binds `ctrl-b` too; `mod:prefix` sends it to the prefix mod
+    # so this binding wins while prefix mode is open.
     "ctrl-b" = "send:" + builtins.fromJSON ''"\u0002"'';
   };
 }
