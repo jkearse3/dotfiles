@@ -123,7 +123,13 @@ let
   # `keys.nix` keeps keys.json sections apart from its prefix bindings (the
   # keystroke typed after `ctrl-b`). Until a prefix mode takes over `ctrl-b`,
   # each prefix binding is bound as the `global` chord `ctrl-b <keystroke>`.
+  # The `prefix` mod reads the prefix bindings from `prefixBindings`. The
+  # check validates their actions the same way, and also rejects a prefix
+  # binding the mod cannot run: a key that is not one keystroke, `terminal`,
+  # or a `send:` whose text is not exactly one control character
+  # U+0001-U+001A (the mod types it as its ctrl- key).
   keysNix = import ./keys.nix;
+  prefixBindings = pkgs.writeText "herdr-app-prefix-bindings.json" (builtins.toJSON keysNix.prefix);
   keysOverrides = pkgs.writeText "herdr-app-keys-overrides.json" (
     builtins.toJSON (
       keysNix.sections
@@ -144,6 +150,7 @@ let
           --slurpfile commands command-names.json \
           --slurpfile mods ${modNames} \
           --slurpfile overrides ${keysOverrides} \
+          --slurpfile prefix ${prefixBindings} \
           '
             def action_problem($action):
               ($action | index(":")) as $colon
@@ -169,10 +176,25 @@ let
                     else empty
                     end
                 end
+            ),
+            (
+              $prefix[0] | to_entries[]
+              | "prefix.\(.key): \(
+                  if (.key | test("^\\S+$") | not) then "not a single keystroke"
+                  elif (.value | type) != "string" then "action is not a string"
+                  elif .value == "terminal" then "terminal is not a prefix action"
+                  elif (.value | startswith("send:")) then
+                    (.value[5:] | explode) as $text
+                    | if ($text | length) == 1 and $text[0] >= 1 and $text[0] <= 26 then empty
+                      else "send: text must be one control character U+0001-U+001A"
+                      end
+                  else action_problem(.value)
+                  end
+                )"
             )
           ' keys.json > problems.txt
         if [ -s problems.txt ]; then
-          echo "herdr-app keys.json overrides (keys.nix) are invalid:" >&2
+          echo "herdr-app key bindings (keys.nix) are invalid:" >&2
           cat problems.txt >&2
           exit 1
         fi
@@ -235,6 +257,9 @@ let
   # `frame-` names are exempt (herdr-app `src/window.rs` `missing_mods` and
   # `open_menu`, `src/layout.rs`). The app loads only `*.json` layouts, so
   # only they are checked.
+  #
+  # The tree adds `mods/prefix/bindings.json`, the `prefix` mod's bindings
+  # generated from `keys.nix` (`prefixBindings`), so it deploys with the mod.
   deployTree =
     pkgs.runCommandLocal "herdr-app-deploy-tree" { nativeBuildInputs = [ pkgs.jq ]; } # bash
       ''
@@ -253,6 +278,12 @@ let
           chmod -R u+w $out/mods/"$name"
           rm -f $out/mods/"$name"/gpui-kit.d.ts $out/mods/"$name"/jsconfig.json
         done
+
+        if [[ -e ${./mods}/prefix/bindings.json ]]; then
+          echo "modules/home/terminal/herdr-app/mods/prefix/bindings.json is generated from keys.nix; do not commit one" >&2
+          exit 1
+        fi
+        cp ${prefixBindings} $out/mods/prefix/bindings.json
 
         if ! (cd ${herdrApp.src}/defaults/mods/workspace-status && sha256sum --check --quiet ${prefixStatusClonedFrom}); then
           echo "herdr-app ${herdrApp.version} changed the shipped workspace-status mod that modules/home/terminal/herdr-app/mods/prefix-status was cloned from; re-clone it, re-apply the prefix-mode change, and update cloned_from.version in its mod.json and the hashes in prefixStatusClonedFrom" >&2
