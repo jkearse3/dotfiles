@@ -1,5 +1,7 @@
 {
   herdr,
+  herdr-app,
+  herdr-core,
   jjx,
   jujutsu,
   pkgs,
@@ -20,8 +22,17 @@ let
       pkgs.git
     ];
 
+    # The app host's herdr-app and hc come last on PATH, so the profile's hc
+    # (which drops the TUI's variables) and tests' fake executables win.
     postFixup = ''
-      wrapProgram "$out/bin/herdr-jj-workspace" --prefix PATH : "${pkgs.lib.makeBinPath [ jjx ]}"
+      wrapProgram "$out/bin/herdr-jj-workspace" \
+        --prefix PATH : "${pkgs.lib.makeBinPath [ jjx ]}" \
+        --suffix PATH : "${
+          pkgs.lib.makeBinPath [
+            herdr-app
+            herdr-core
+          ]
+        }"
     '';
 
     doInstallCheck = true;
@@ -29,7 +40,7 @@ let
       runHook preInstallCheck
       HERDR_JJ_WORKSPACE="$out/bin/herdr-jj-workspace" \
         python3 -B -m unittest discover -s tests -p 'test_*.py'
-      for command in add remove; do
+      for command in add remove prompt-add prompt-remove; do
         "$out/bin/herdr-jj-workspace" "$command" --help > /dev/null
       done
       runHook postInstallCheck
