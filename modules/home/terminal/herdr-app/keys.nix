@@ -25,6 +25,13 @@
     "ctrl-b shift-n" = "space.new";
     "ctrl-b shift-w" = "space.rename";
     "ctrl-b shift-d" = "space.close";
+    # The TUI's new-worktree key and the user's jj-workspace keys all take the
+    # jj path: every checkout here is a jj workspace, and the app's own Git
+    # worktree commands would bypass jj.
+    "ctrl-b shift-g" = "mod.open:jj-workspace-new";
+    "ctrl-b ctrl-g" = "mod.open:jj-workspace-new";
+    "ctrl-b shift-q" = "mod.open:jj-workspace-remove";
+    "ctrl-b ctrl-q" = "mod.open:jj-workspace-remove";
     # The TUI's workspace picker and go-to both open the app's built-in picker.
     "ctrl-b w" = "mod.open:picker";
     "ctrl-b g" = "mod.open:picker";

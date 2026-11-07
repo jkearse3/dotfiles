@@ -183,6 +183,11 @@ let
   # file ... would be clobbered"; first remove each entry the deploy's
   # manifest `dotfiles-owned.txt` lists, then the manifest itself.
   #
+  # Remove jj workspaces with `ctrl-b ctrl-q` (`jj-workspace-remove`), not
+  # the app's Remove worktree menu item: it runs `git worktree remove` and
+  # leaves jj's record of the workspace, which `jj workspace forget <name>`
+  # clears.
+  #
   # `desk.json` is a clone of the shipped `main` layout at its `cloned_from`
   # version, without the Git Changes panel, whose commit box would make Git
   # commits behind jj's back. On an app update, compare that version's
@@ -291,12 +296,13 @@ let
     ln -s ${deploy} "$out"
   '';
 
-  # The `find` launcher mod starts its CLI by the absolute store path this
-  # file maps CLI names to. A bare name would resolve on the core's PATH,
-  # which depends on whoever started the core. Read-only, because it holds
-  # store paths.
+  # The launcher mods (`find`, `jj-workspace-new`, `jj-workspace-remove`)
+  # start their CLIs by the absolute store paths this file maps CLI names to.
+  # A bare name would resolve on the core's PATH, which depends on whoever
+  # started the core. Read-only, because it holds store paths.
   dotfilesPaths = (pkgs.formats.json { }).generate "herdr-app-dotfiles-paths.json" {
     herdr-find = "${dotfilesPackages.herdr-find.cli}/bin/herdr-find";
+    herdr-jj-workspace = "${dotfilesPackages.herdr-jj-workspaces.cli}/bin/herdr-jj-workspace";
   };
 in
 {
