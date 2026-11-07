@@ -301,6 +301,9 @@ let
   # original `workspace-chrome`, and `app.palette` and the app menu still
   # show the original palette and picker.
   #
+  # `mods/desk-spaces` is a clone of the shipped `spaces` mod (the
+  # sidebar's list of spaces).
+  #
   # The tree fails to build when a personal mod or layout is named like a
   # shipped one, which the app would overwrite on its next start, or starts
   # with a dot, which the app ignores, or when `./layouts` holds anything but
@@ -451,6 +454,14 @@ let
         "x.svg" = "c1e53fc9bbe1a0a0b8183bcacf5ab7dbf160fd1f082594de3dcbba1cd5a71614";
       };
       resync = "re-clone it (herdr-app do mod.clone --name workspace-chrome --as desk-chrome) and re-apply its edits";
+    };
+    desk-spaces = {
+      upstream = "defaults/mods/spaces";
+      files = {
+        "main.js" = "65f0f8bb48b8e9266266dc0adbd785c6d7372429db5ca9807cea2dfe0b48fefb";
+        "mod.json" = "8357ce89d375376872b6db414b9555b26936b2e9d61e44275dc2e2bfe2a5783e";
+      };
+      resync = "re-clone it (herdr-app do mod.clone --name spaces --as desk-spaces) and re-apply its edits";
     };
   };
 
