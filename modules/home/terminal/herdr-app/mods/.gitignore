@@ -1,0 +1,4 @@
+# The Herdr app writes its API typings and a jsconfig into every mod it loads,
+# and `herdr-app check` does too.
+/*/gpui-kit.d.ts
+/*/jsconfig.json
