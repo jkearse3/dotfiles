@@ -1,254 +1,178 @@
 ---
 name: implement
 description: >-
-  Implements a requested change in a jj repository as a stack of finalized
-  revisions, breaking the work into revision briefs and building each one
-  through a fresh implementer subagent so this session's context stays small,
-  then converging it with diff-fix. Use when the user asks to implement, build,
-  or carry out a change from any input: a request, issue, plan, note, or spec.
-  Not for one-off fixes to finalized revisions, read-only investigation or
-  review, Git-only checkouts, or publication.
+  Implements a requested change in a jj repository as finalized revisions: new
+  ones, changes folded into existing ones, or both. Plans a roadmap of
+  milestones, plans each milestone in detail from the code already landed,
+  builds each change through a fresh implementer subagent so this session's
+  context stays small, and converges the result with diff-fix. Use when the user
+  asks to implement, build, or carry out a change from any input: a request,
+  issue, plan, note, or spec. Not for fixing review findings (use diff-fix),
+  read-only investigation or review, Git-only checkouts, or publication.
 ---
 
 # Implement
 
-Turn any description of a change into a stack of finalized, independently valid
-revisions. This session coordinates: it keeps the run's state, judges and
-finalizes each revision, and asks the user. Subagents do the exploration, the
-editing, and the checks; if the host cannot start fresh agents, stop and report.
+Turn any description of a change into finalized, independently valid revisions
+on the user's current branch. This session coordinates: it keeps the run record,
+lands each change, and asks the user. Subagents plan, edit, and run checks; if
+the host cannot start fresh agents, stop and report.
+
+Plan coarsely across the whole task and in detail only for the next milestone,
+from the code that has landed, so no detailed plan is written against code that
+does not exist yet.
 
 ## Input
 
-Take what to implement from the user's request and context, in whatever form it
+Take what to implement from the request and context, in whatever form it
 arrives: the request itself, a file, an issue, a note, a plan, a spec, or the
 conversation. Draw from it the outcome, explicit criteria, exclusions, settled
 decisions, and binding requirements such as constraints and prescribed
 implementation details, and preserve their wording. Read a referenced artifact
-only as far as needed to hand it on; do not explore the codebase here.
+only as far as needed to hand it on; do not explore the codebase here. Treat the
+input's settled decisions as user decisions.
 
-Require a jj repository with an empty `@` and no unrelated working changes.
-Record `@-` as the stack base. Then, before the first planner, run
-`scripts/prepare-run.sh --workspace <workspace-root> <slug>` by its path,
-passing the workspace's absolute root and a slug of a few words for the outcome.
-It is independent of the current working directory, resolves the canonical root,
-prepares the ignored `.agent/implement/` store there, and reserves a new
-`<timestamp>-<slug>/` run directory. It succeeds with exit status 0 and prints
-the directory's absolute path on stdout; a jj `No matching entries` warning on
-stderr is benign. On any other status, such as 3 for ambiguous storage, stop and
-report its error; never fall back to the scratchpad or the workspace. Write
-`briefs.md`'s header and `Input` there. Establish a task-owned bookmark on `@`
-before the first revision and record it in the header. Refer to every revision
-by change ID.
+## Outcomes
 
-Invoking this skill authorizes creating and writing this run directory, and
-creating, finalizing, rewinding, and abandoning the new revisions and running
-`diff-fix` on them. It authorizes nothing outside the new stack and run
-directory and no publication.
+Hold these throughout the run, choosing the jj commands that achieve them. When
+one cannot be held, that needs the user.
 
-## Run Directory
+- **One branch.** The run works on the branch `@` sits on: the mutable ancestors
+  of `@-` (`mutable() & ::@-`), plus the revisions the run adds. It starts only
+  from an empty, undescribed `@` with one parent on a branch without merges or
+  undescribed revisions; otherwise stop and say why. When the request names a
+  revision off that branch, ask the user to check out its branch.
+- **Valid history.** Every revision the run creates or changes holds one
+  concern, is described as `finalize-changes`'
+  `references/revision-descriptions.md` requires, and is valid on its own as
+  `finalize-changes`' Sequencing section defines. A change lands in a new
+  revision or in the existing revision whose concern it belongs to, and later
+  revisions that use what it changed are updated to match.
+- **Nothing else moves.** No revision off the branch changes, and no other
+  workspace's working copy is rewritten or rebased. A fold, conflict resolution,
+  or `diff-fix` fix changes only revisions the user authored, pushed or not, or
+  the request names.
+- **A bookmark marks the tip.** Use a bookmark on `@`, or on `@-` when the
+  branch has revisions, asking when more than one qualifies; otherwise create
+  one. It always points at the branch's tip.
+- **A clean working copy.** Between changes, whenever the user is asked, and at
+  the end, `@` is an empty child of the tip and no unlanded attempt remains on
+  the branch.
+- **Resumable.** `run.md` holds enough to resume after compaction.
 
-The run directory holds the run's state and is kept after the run, whatever its
-outcome. `briefs.md` is the source of truth: after compaction, or whenever
-memory and the file could differ, reread it before acting. This session is the
-only writer; subagents read the directory and never write it. Write it before
-each dispatch that depends on it and after each status change, decision,
-rebrief, rewind, or bookmark change. Per-revision throwaway files, such as
-description drafts and check logs, stay in the session scratchpad.
+Before the first planner, run
+`scripts/prepare-run.sh --workspace <workspace-root> <slug>` by its path, with
+the workspace's absolute root and a slug of a few words for the outcome. It
+prepares the ignored `.agent/implement/` store, reserves a new run directory,
+and prints its absolute path; a jj `No matching entries` warning on stderr is
+benign. On a non-zero status, stop and report its error; never fall back to the
+scratchpad or the workspace.
 
-`briefs.md` holds, in order:
+Invoking this skill authorizes writing the run directory; creating revisions on
+the branch; rebasing its revisions, and changing and rewording those the user
+authored or the request names; discarding attempts that did not land; creating
+or moving the branch's bookmark; and running `diff-fix` on the branch. It
+authorizes nothing else and no publication.
 
-- A header: the workspace's absolute path, the stack base change ID, the task
-  bookmark, and the input source: a file's absolute path, an issue ID or URL, or
-  `conversation`.
+## Run Record
+
+`run.md` in the run directory is the source of truth: reread it after compaction
+or whenever memory and the file could differ. Only this session writes it,
+whenever its contents change; subagents read it. It holds:
+
+- a header: the workspace path, the branch's base, the bookmark, and the input's
+  source;
 - `Input`: the outcome, criteria, exclusions, settled decisions, and binding
-  requirements verbatim. Only when the input is a file under the canonical
-  root's `.agent/`, give instead its absolute path and which of its sections map
-  to each.
-- `Decisions during the run`: each user answer and ruling, and accepted rebrief
-  evidence, dated.
-- `Briefs`: each brief with its fields and status from `Brief List`.
-- `Rebriefs`: the plan check's gaps, that it found none, or that it was skipped;
-  each rebrief's trigger, evidence, and what changed; and any rewind with its
-  abandoned change IDs.
-- `Landed notes`: for each `done` brief, the deviations and established patterns
-  later briefs must build on, from the implementer's summary, the symbol changes
-  from its `done` return, and each check result accepted at Verify with its
-  exact command, its result, its reported commit ID (the entry commit), and the
-  finalized change ID.
-- `Outcome`, written at the end: `done`, `blocked`, or `stopped by user`, and
-  the `diff-fix` result or why it was skipped.
+  requirements verbatim, or, for an input file under the `.agent/` directory
+  that holds the run store, its path and which of its sections map to each;
+- `Decisions`: each user answer, dated;
+- `Roadmap`: the ordered milestones, each with its goal, the input criteria it
+  completes, and its status: `pending`, or `done` with the revisions it created
+  or changed;
+- `Current milestone`: its planned changes, each `pending` or `landed` with the
+  revision it created or changed and its check reports;
+- `Outcome`, written at the end, with the `diff-fix` result.
 
-`implementer.md` holds the implementer rules from step 2, including the rule to
-read each run file and the input once, the path of `briefs.md` and of the input
-when `Input` points to it, and the return contract. Write it once before the
-first implementer, and revise it only when those rules change.
-
-## Brief List
-
-Each brief is one revision concern: its goal, exact targets when known, concrete
-changes, preserved behavior, checks that prove it, and the briefs it depends on.
-Its status is `pending`, `done` with its change ID, `skipped` with the user's
-reason, or `blocked` with the question or evidence.
-
-Through the run directory, every subagent receives the input's outcome,
-criteria, exclusions, settled decisions, and binding requirements verbatim, plus
-the briefs before and after its own. Those are earlier conclusions, reopened
-only when the current code shows their reason no longer holds. Implementer
-prompts give the absolute paths of `briefs.md` and `implementer.md` and name the
-brief instead of repeating their contents. Planner prompts give the path of
-`briefs.md` for the input and brief list, and the `Brief Size` rules and
-`finalize-changes`' Sequencing section verbatim inline, since no run file holds
-them.
-
-## Brief Size
-
-Give each brief one concern, and split by concern, not by file type or layer,
-until a further split would leave a revision that cannot build or pass its
-checks alone. Give each user-visible change its own brief when it can land
-independently. Bound and order briefs by `finalize-changes`' Sequencing section,
-so every brief is safe to land on main by itself and relies on no later brief. A
-brief too large for one implementer to build in a focused session is split into
-more briefs, by concern.
-
-Recheck a brief that touches many unrelated files or mixes concerns, and split
-it or state why it cannot be split.
+Throwaway files, such as description drafts and check logs, stay in the session
+scratchpad.
 
 ## Loop
 
-1. **Break down.** Dispatch a fresh planner to explore read-only: no edits, VCS
-   mutation, scratch files in the repository, or delegation. It returns ordered
-   draft briefs that produce the outcome, sized by the `Brief Size` rules, and
-   any question whose answer is a user-owned decision that would change the
-   briefs. Write the draft briefs to `briefs.md` and check a plan of two or more
-   briefs before asking the user anything.
+Every planner works read-only, with no edits, VCS mutation, scratch files in the
+repository, or delegation. It gets the path of `run.md` and `finalize-changes`'
+Sequencing section verbatim, and returns any question whose answer is a
+user-owned decision. Ask the user each planner's questions at once, record the
+answers, and dispatch a fresh planner with them when they change its plan. When
+the user asked not to review, skip every `diff-fix`; a `diff-fix` result of
+`blocked` or `stopped by user` ends the run with that outcome.
 
-   With a single brief, skip the checker, record under `Rebriefs` that the check
-   was skipped for a single-brief plan, and go straight to settling the
-   planner's questions. Otherwise dispatch one fresh checker under the planner's
-   read-only limits. Its prompt gives the absolute path of `briefs.md`, and of
-   the input when `Input` points to it, and `finalize-changes`' Sequencing
-   section verbatim; it may read the workspace to confirm targets. It checks
-   that every input criterion is proven by some brief's checks; that every brief
-   is independently valid and ordered by Sequencing, relying on no later brief;
-   that no brief contradicts an exclusion, settled decision, or binding
-   requirement; and that each brief is self-contained enough for a fresh
-   implementer to build without guessing. It does not judge or attack the
-   approach, which the run treats as settled. It returns each gap with the brief
-   and input item at fault, the failed check, any concrete fix it can spell out,
-   and whether it needs a user-owned decision, or that it found none; record
-   that result under `Rebriefs`.
+When something needs the user, ask, offering decide or stop. A decision goes to
+a fresh planner, which revises the remaining changes and pending milestones to
+carry it out, for example by dropping a change and what depends on it or by
+adding one that fixes landed work. A revision that drops or changes an input
+criterion, settled decision, or binding requirement needs the user too. Stop
+ends the run and goes to Report.
 
-   Then settle the planner's questions and the checker's gaps with one ask and
-   one revision. Merge a gap that a planner question already covers into that
-   question. Ask the user the planner's questions and the gaps that need a
-   user-owned decision together, in one ask before implementing, and record the
-   answers under `Decisions during the run`. A gap needs replanning unless the
-   checker spelled out a concrete fix that only adds, corrects, or clarifies a
-   brief's fields without changing the set or order of briefs. When no answer
-   changes the briefs and no remaining gap needs replanning, apply the checker's
-   fixes to `briefs.md` directly. Otherwise give the answers, as settled
-   decisions, and the remaining gaps to one fresh planner, prompted as in Break
-   down, to revise the briefs once, and update `briefs.md` in place. With no
-   questions and no gaps, skip the ask and the revision; with gaps but none
-   needing the user, skip the ask. Do not run the checker again: confirm the
-   revision closes each gap and reflects each answer. For any gap it leaves open
-   or returns as unresolvable, and any new user-owned question it returns, ask
-   the user before implementing and offer decide, skip the affected brief, or
-   stop, as step 6 does, recording the answer under `Decisions during the run`.
-   Then show the brief list and continue without waiting for approval.
+1. **Roadmap.** Dispatch a fresh planner to explore as far as the roadmap needs
+   and return ordered milestones, and every user-owned decision the input leaves
+   open. A milestone is a coherent chunk of a few revisions that relies only on
+   earlier milestones; a small task is one milestone. Write the roadmap, show
+   it, and continue without waiting for approval.
+2. **Plan the milestone.** For the earliest `pending` milestone, dispatch a
+   fresh planner to read the branch as it now stands and return the milestone's
+   changes in order. Each change has a goal, its targets, the checks that prove
+   it, and where it lands: a new revision above a named revision, or a fold into
+   a named revision, either of which may be an earlier change of this plan. Give
+   each change one concern that one implementer can build in a focused session,
+   give each user-visible change its own revision when it can land
+   independently, and include the follow-up folds that keep later revisions
+   valid. The planner also returns evidence when a later milestone is wrong.
+3. **Build and land** each change in order. Put a fresh working copy where the
+   change belongs and dispatch a fresh implementer with the path of `run.md` and
+   the change. It follows `coding-style`, edits only the working copy, performs
+   no VCS mutation or delegation, and runs the change's checks on its final
+   edits. It never writes description text; when the revision's description no
+   longer accounts for it, it returns the facts. It returns `done` with each
+   check's command, result, and the commit it ran on, or `blocked` with the
+   evidence or question.
 
-2. **Implement.** For the earliest `pending` brief, confirm `@` is empty and
-   sits on the last `done` revision, or on the stack base for the first brief,
-   then dispatch a fresh implementer with that brief. It reads `implementer.md`,
-   `briefs.md`, and the input when `Input` points to it once each, whole, in
-   non-overlapping ranges when a file is too large for one read, and rereads one
-   only after its context is compacted or when told the file changed. It follows
-   `coding-style`, edits only the working copy, performs no VCS mutation or
-   delegation, runs the brief's checks, and returns `done` with each check's
-   exact command, its result, and `@`'s commit ID read with
-   `jj log -r @ --no-graph -T commit_id` immediately before running it, a
-   summary of what changed and why, and its symbol changes: each symbol the
-   revision renamed, moved, or removed that a later brief names, or that there
-   are none; `blocked` with the evidence or question; or `rebrief` with the
-   evidence that the briefs, including `done` ones, are wrong.
+   Land the change when its diff does what its plan says, changes nothing else,
+   and passed its checks on the tree that lands, composing any new description
+   from the diff and the facts. Resolve conflicts it causes in later revisions
+   as `diff-fix`'s Resolve conflicts step does. A change that does not land gets
+   one more fresh implementer with the failure; a second failure or a `blocked`
+   return needs the user.
 
-3. **Verify.** Judge from the diff and the implementer's reported checks that
-   the diff achieves the brief, changes nothing outside it, and passes the
-   brief's checks; this session runs no checks. When a check report is missing,
-   inconsistent with the diff, or doubtful, dispatch a fresh agent to rerun the
-   named checks and return each command, its result, and `@`'s commit ID read
-   with `jj log -r @ --no-graph -T commit_id` immediately before running it. It
-   edits no files beyond what the checks themselves write, performs no VCS
-   mutation or delegation, and keeps scratch files in the session scratchpad. A
-   check failing in its rerun is a verification failure. If the rerun changed
-   the working copy, such as through a formatter run as a check, judge the diff
-   again before finalizing. When the diff is verified, keep each accepted
-   check's exact command, result, and reported commit ID. The accepted results
-   are the brief's checks as the implementer reported them, or as the rerun
-   agent returned them when a rerun replaced them. Discard the attempt with
-   `jj restore` on `@` whenever it ends without a verified `done`; unlike
-   abandoning, this empties `@` in place and keeps its change ID and any
-   bookmark on it. A `blocked` return then makes the brief `blocked`, and a
-   `rebrief` return goes to step 5. On a first verification failure, dispatch
-   one fresh implementer with the failure as evidence in the emptied `@`; a
-   second makes the brief `blocked`.
-
-4. **Finalize.** Follow `finalize-changes` for the verified working changes with
-   single-revision intent, passing the implementer's summary as evidence of what
-   changed and why, never as text to copy, and moving the task bookmark to the
-   new tip. Compose the description from the diff under `finalize-changes`'
-   `references/revision-descriptions.md`; it must not mention brief names or
-   numbers, `briefs.md`, rebriefs, landed notes, check logs, planners,
-   implementers, checkers, or the run directory. Mark the brief `done` with its
-   change ID and add its entry to `Landed notes`, recording the implementer's
-   symbol changes and the check results Verify accepted there. If it stops
-   because the changes are not one coherent revision, treat that as a
-   verification failure.
-5. **Rebrief.** On a `rebrief` return, or when a landed revision shows the
-   briefs are wrong, dispatch a fresh planner with `briefs.md` and the evidence
-   to revise the `pending` briefs, and update them in `briefs.md` in place. When
-   the evidence shows a `done` revision took the wrong path, it also returns the
-   earliest such brief, and this session rewinds: make that brief and every
-   later `done` brief `pending` with its revised content and old change ID,
-   rebase `@` onto the last remaining `done` revision or the stack base with
-   `jj rebase -r @ -d <rev>`, and move the task bookmark back to that revision,
-   or to `@` when no `done` revision remains, with `--allow-backwards`. Record
-   the rebrief and any rewind under `Rebriefs`. Implementers may read the old
-   revisions as reference; abandon them before converging, or report them if the
-   run ends first. Show the revised brief list and continue without waiting for
-   approval. A rebrief that changes the outcome, criteria, a settled decision,
-   or a binding requirement needs the user.
-6. **Ask** the user when a brief is `blocked`, and offer: decide, skip, or stop.
-   A decision updates the brief and makes it `pending`. A skip makes it
-   `skipped` and rebriefs the `pending` briefs that depend on it, or skips them
-   too when the user says so. Record the decision or skip under
-   `Decisions during the run`.
-7. Repeat from step 2 until no brief is `pending`.
+4. **Finish the milestone.** Before a later milestone starts, the milestone's
+   change checks pass at the tip: a fresh agent that edits nothing reruns each
+   one that has not yet passed on the tip's tree, and a failure goes to a fresh
+   planner, which adds a change that fixes it. Then record the milestone's
+   revisions as they now stand and mark it `done`.
+5. **Adjust.** When a planner or a milestone's result shows the pending
+   milestones are wrong, dispatch a fresh planner to revise them, and record
+   why. When it shows a `done` milestone took the wrong path, that needs the
+   user.
+6. Repeat from step 2 until no milestone is `pending`.
 
 ## Converge
 
-Once no brief is `pending` and at least one is `done`, follow `diff-fix` on the
-new stack, from the stack base to the bookmark, with the input's criteria and
-binding requirements verbatim as its criteria and its exclusions as context.
-Pass as user decisions the input's settled decisions and, from `briefs.md`,
-every answer and ruling the user gave during the run, including each `skipped`
-brief with the user's reason. Pass every check result in `Landed notes`, with
-its reported commit ID and change ID, as check evidence. Skip this step when the
-user asked not to review.
+When the run created or changed a revision, follow `diff-fix` from the earliest
+such revision to the tip, with the input's criteria and binding requirements as
+its criteria, its exclusions as context, and the user decisions.
 
 ## Report
 
-Write `Outcome` to `briefs.md`. Then lead the report with the outcome: `done`,
-`blocked`, or `stopped by user`. List the finalized revisions in order with
-change IDs and descriptions, the bookmark, any rewind with its evidence and
-abandoned revisions, skipped or blocked briefs with their reasons, checks run
-and skipped, the `diff-fix` result, and the run directory's absolute path.
+A stop before `run.md` exists only says why. Otherwise write `Outcome` to
+`run.md`: `done`, `blocked`, or `stopped by user`. Lead the report with that
+outcome, and list the revisions created and changed, in branch order, with
+change IDs and descriptions; the bookmark; any revision left conflicted; the
+planned changes and milestones that did not land; the user decisions; the
+`diff-fix` result; and the run directory's absolute path.
 
 ## Boundaries
 
 - Never push, publish, or mutate external systems.
-- Never rewrite revisions outside the new stack.
-- Besides the new stack and the session scratchpad, write only the
-  `.agent/implement/` store, whose `.gitignore` `prepare-run.sh` creates, and
-  this run's directory. Never track, publish, or delete them.
+- Besides the branch and the session scratchpad, write only the
+  `.agent/implement/` store and this run's directory. Never track, publish, or
+  delete them.
 - Never let a subagent decide a user-owned question; return it to the user.

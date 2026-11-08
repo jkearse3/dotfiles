@@ -157,7 +157,7 @@ assert_eq "$non_colocated/default/.agent/implement" "$(dirname "$prepare_out")" 
 [[ -d $prepare_out ]] || fail 'non-colocated jj run directory exists'
 assert_eq '' "$(ls -A "$prepare_out")" 'run directory is created empty'
 assert_eq '*' "$(<"$non_colocated/default/.agent/implement/.gitignore")" 'run store ignores all contents'
-printf '%s\n' run >"$prepare_out/briefs.md"
+printf '%s\n' run >"$prepare_out/run.md"
 assert_jj_untracked 'non-colocated jj' "$non_colocated/default" "$non_colocated/second"
 
 # Fixture C resolves through Git to the main worktree.
@@ -166,7 +166,7 @@ make_jj_colocated "$colocated"
 run_prepare --workspace "$colocated/second" colocated
 assert_status 0 "$prepare_status" 'colocated jj reservation succeeds'
 assert_eq "$colocated/default/.agent/implement" "$(dirname "$prepare_out")" 'colocated jj run directory is under the main worktree'
-printf '%s\n' run >"$prepare_out/briefs.md"
+printf '%s\n' run >"$prepare_out/run.md"
 assert_jj_untracked 'colocated jj' "$colocated/default" "$colocated/second"
 
 # Fixture G resolves to the main worktree, normalizes slugs, and avoids
@@ -177,7 +177,7 @@ IMPLEMENT_TIMESTAMP=2026-01-02-030405 run_prepare --workspace "$plain/linked" 'F
 assert_status 0 "$prepare_status" 'Git reservation succeeds'
 assert_eq "$plain/main/.agent/implement/2026-01-02-030405-fast-run" "$prepare_out" 'Git run directory is under the main worktree with a normalized slug'
 first_run=$prepare_out
-printf '%s\n' run >"$first_run/briefs.md"
+printf '%s\n' run >"$first_run/run.md"
 assert_eq '' "$(git -C "$plain/main" status --porcelain)" 'Git main worktree status lists no run files'
 assert_eq '' "$(git -C "$plain/linked" status --porcelain)" 'Git linked worktree status lists no run files'
 
