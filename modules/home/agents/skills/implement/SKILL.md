@@ -125,9 +125,8 @@ ends the run and goes to Report.
    it, and where it lands: a new revision above a named revision, or a fold into
    a named revision, either of which may be an earlier change of this plan. Give
    each change one concern that one implementer can build in a focused session,
-   give each user-visible change its own revision when it can land
-   independently, and include the follow-up folds that keep later revisions
-   valid. The planner also returns evidence when a later milestone is wrong.
+   and include the follow-up folds that keep later revisions valid. The planner
+   also returns evidence when a later milestone is wrong.
 3. **Build and land** each change in order. Put a fresh working copy where the
    change belongs and dispatch a fresh implementer with the path of `run.md` and
    the change. It follows `coding-style`, edits only the working copy, performs

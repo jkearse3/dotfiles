@@ -81,6 +81,9 @@ existing revisions; these rules decide boundaries and order within it.
 
 - A revision is coherent when one description explains it as one reviewable
   concern without unrelated clauses.
+- Give each behavior change that a user, caller, or other system would notice
+  its own revision when it can land without the others, so it can be reviewed,
+  reverted, and bisected alone.
 - A revision is independently valid when it does not knowingly rely on a
   descendant revision to build, pass its applicable checks, preserve required
   behavior, or be safe to deploy and use if history stops there. Add a
