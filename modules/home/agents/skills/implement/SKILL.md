@@ -100,11 +100,12 @@ scratchpad.
 
 Every planner works read-only, with no edits, VCS mutation, scratch files in the
 repository, or delegation. It gets the path of `run.md` and `finalize-changes`'
-Sequencing section verbatim, and returns any question whose answer is a
-user-owned decision. Ask the user each planner's questions at once, record the
-answers, and dispatch a fresh planner with them when they change its plan. When
-the user asked not to review, skip every `diff-fix`; a `diff-fix` result of
-`blocked` or `stopped by user` ends the run with that outcome.
+Sequencing section verbatim, and returns its questions for the user and the
+defaults it chose instead of asking. Show the user each planner's defaults and
+ask its questions at once, record the answers, and dispatch a fresh planner with
+them when they change its plan. When the user asked not to review, skip every
+`diff-fix`; a `diff-fix` result of `blocked` or `stopped by user` ends the run
+with that outcome.
 
 When something needs the user, ask, offering decide or stop. A decision goes to
 a fresh planner, which revises the remaining changes and pending milestones to
@@ -115,9 +116,9 @@ ends the run and goes to Report.
 
 1. **Roadmap.** Dispatch a fresh planner to explore as far as the roadmap needs
    and return ordered milestones, and every user-owned decision the input leaves
-   open. A milestone is a coherent chunk of a few revisions that relies only on
-   earlier milestones; a small task is one milestone. Write the roadmap, show
-   it, and continue without waiting for approval.
+   open across the task. A milestone is a coherent chunk of a few revisions that
+   relies only on earlier milestones; a small task is one milestone. Write the
+   roadmap, show it, and continue without waiting for approval.
 2. **Plan the milestone.** For the earliest `pending` milestone, dispatch a
    fresh planner to read the branch as it now stands and return the milestone's
    changes in order. Each change has a goal, its targets, the checks that prove
