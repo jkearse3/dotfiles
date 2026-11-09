@@ -1,6 +1,6 @@
 # The merged `keys.json` the activation installs (`keysJson`), checked
-# against the app's commands and mods, and the `prefix` mod's bindings
-# (`prefixBindings`), both from `keys.nix`.
+# against the app's commands and mods, and the `prefix` mod's bindings and
+# hints (`prefixBindings`), both from `keys.nix`.
 {
   herdrApp,
   modNames,

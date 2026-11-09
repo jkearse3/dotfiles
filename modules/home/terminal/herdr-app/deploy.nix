@@ -55,8 +55,9 @@ let
   # `open_menu`, `src/layout.rs`). The app loads only `*.json` layouts, so
   # only they are checked.
   #
-  # The tree adds `mods/prefix/bindings.json`, the `prefix` mod's bindings
-  # generated from `keys.nix` (`prefixBindings`), so it deploys with the mod.
+  # The tree adds `mods/prefix/bindings.json`, the `prefix` mod's bindings and
+  # hints generated from `keys.nix` (`prefixBindings`), so it deploys with the
+  # mod.
   deployTree =
     pkgs.runCommandLocal "herdr-app-deploy-tree" { nativeBuildInputs = [ pkgs.jq ]; } # bash
       ''

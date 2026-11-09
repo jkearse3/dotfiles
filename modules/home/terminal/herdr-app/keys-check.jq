@@ -12,9 +12,10 @@
 # - `$mods`: every mod name the app will find installed, shipped or personal
 #   (from `./mods`).
 # - `$overrides`: the `sections` of `keys.nix`.
-# - `$prefix`: the prefix bindings, the `prefix` of `keys.nix` (the keystroke
-#   typed in prefix mode, mapped to an action), which the `prefix` mod reads
-#   from its `bindings.json`.
+# - `$prefix`: the `prefix` of `keys.nix`, which the `prefix` mod reads from
+#   its `bindings.json`: `bindings` (the prefix bindings, mapping the
+#   keystroke typed in prefix mode to an action) and `hints` (a list of
+#   `{action, label}` status bar hints).
 #
 # The rules catch what the app would reject or silently drop at runtime:
 #
@@ -39,6 +40,10 @@
 #    run: not `terminal`, and a `send:` carries exactly one control character
 #    U+0001-U+001A, which the mod types as its ctrl- key. Other actions
 #    follow rule 2.
+# 9. Every prefix hint is an object with string `action` and `label`, and
+#    some prefix binding uses its action, exactly or by command name (the
+#    part before `:`): the mod shows a hint only for a bound action, so any
+#    other hint is dead. Problems name the hint by its 0-based index.
 
 def action_problem($action):
   ($action | index(":")) as $colon
@@ -88,11 +93,11 @@ def action_problem($action):
   | select((.value | type) == "object")
   | .value | keys[]
   | select(test("\\s") | not) as $stroke
-  | select($stroke != "ctrl-b" and ($prefix[0] | has($stroke)))
+  | select($stroke != "ctrl-b" and ($prefix[0].bindings | has($stroke)))
   | "prefix.\($stroke): \($section) also binds \($stroke), and that app binding takes the key before prefix mode sees it"
 ),
 (
-  $prefix[0] | to_entries[]
+  $prefix[0].bindings | to_entries[]
   | "prefix.\(.key): \(
       if (.key | test("^\\S+$") | not) then "not a single keystroke"
       elif (.value | type) != "string" then "action is not a string"
@@ -105,4 +110,12 @@ def action_problem($action):
       else action_problem(.value)
       end
     )"
+),
+(
+  ($prefix[0].bindings | [.[] | strings]) as $actions
+  | $prefix[0].hints | to_entries[]
+  | if (.value | type) != "object" or (.value.action | type) != "string" or (.value.label | type) != "string" then "prefix.hints[\(.key)]: not an object with string action and label"
+    elif .value.action as $hint | any($actions[]; . == $hint or (split(":")[0]) == $hint) then empty
+    else "prefix.hints[\(.key)]: no prefix binding uses \(.value.action | tojson)"
+    end
 )

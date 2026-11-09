@@ -2,8 +2,8 @@
 # Fixtures for `keys-check.jq`, run as a build gate by the derivation in
 # `keys-json.nix`. Takes the jq program under test as its only argument and
 # runs it with the `jq` on PATH. Each fixture feeds the program small keys
-# sections and prefix bindings against fixed command and mod names, and
-# compares everything it prints with the expected problem lines.
+# sections and prefix bindings and hints against fixed command and mod
+# names, and compares everything it prints with the expected problem lines.
 set -euo pipefail
 export LC_ALL=C
 
@@ -21,8 +21,8 @@ fail() {
 }
 
 # Runs the check on KEYS (the merged keys.json, OVERRIDES unless given) with
-# OVERRIDES as the `keys.nix` sections and PREFIX as the prefix bindings, all
-# JSON, and fails fixture NAME unless it prints exactly the EXPECTED lines
+# OVERRIDES as the `keys.nix` sections and PREFIX as its `prefix` (bindings
+# and hints), all JSON, and fails fixture NAME unless it prints exactly the EXPECTED lines
 # (empty for none).
 expect_problems() {
 	local name=$1 overrides=$2 prefix=$3 expected=$4 keys=${5:-$2}
@@ -52,7 +52,7 @@ expect_problems() {
 # as required, so the check prints only the problem under test.
 global='"global": {"ctrl-b": "mod.open:prefix"}'
 mod_prefix='"mod:prefix": {"ctrl-b": "prefix.ctrl-b"}'
-prefix='{"ctrl-b": "send:\u0002", "c": "tab.new"}'
+prefix='{"bindings": {"ctrl-b": "send:\u0002", "c": "tab.new"}, "hints": []}'
 
 expect_problems "valid bindings" \
 	'{
@@ -60,7 +60,10 @@ expect_problems "valid bindings" \
 		"terminal": {"ctrl-x": "terminal", "ctrl-y": "send:x", "h": "alpha.cmd"},
 		'"$mod_prefix"'
 	}' \
-	'{"ctrl-b": "send:\u0002", "h": "app.help", "c": "tab.new"}' \
+	'{
+		"bindings": {"ctrl-b": "send:\u0002", "h": "app.help", "c": "tab.new", "o": "mod.open:alpha", "1": "tab.select:1"},
+		"hints": [{"action": "mod.open:alpha", "label": "alpha"}, {"action": "tab.select", "label": "tab"}]
+	}' \
 	'' \
 	'{
 		"global": {"ctrl-b": "mod.open:prefix", "cmd-1": "tab.select:3", "cmd-o": "mod.open:alpha", "cmd-z": "nonsense"},
@@ -144,30 +147,41 @@ expect_problems "prefix keystroke bound in a layout section" \
 
 expect_problems "prefix binding of a chord" \
 	'{'"$global"', '"$mod_prefix"'}' \
-	'{"ctrl-b": "send:\u0002", "g g": "tab.new"}' \
+	'{"bindings": {"ctrl-b": "send:\u0002", "g g": "tab.new"}, "hints": []}' \
 	'prefix.g g: not a single keystroke'
 
 expect_problems "prefix action not a string" \
 	'{'"$global"', '"$mod_prefix"'}' \
-	'{"ctrl-b": "send:\u0002", "c": 1}' \
+	'{"bindings": {"ctrl-b": "send:\u0002", "c": 1}, "hints": []}' \
 	'prefix.c: action is not a string'
 
 expect_problems "terminal as a prefix action" \
 	'{'"$global"', '"$mod_prefix"'}' \
-	'{"ctrl-b": "send:\u0002", "c": "terminal"}' \
+	'{"bindings": {"ctrl-b": "send:\u0002", "c": "terminal"}, "hints": []}' \
 	'prefix.c: terminal is not a prefix action'
 
 expect_problems "prefix send of two characters" \
 	'{'"$global"', '"$mod_prefix"'}' \
-	'{"ctrl-b": "send:\u0002", "c": "send:ab"}' \
+	'{"bindings": {"ctrl-b": "send:\u0002", "c": "send:ab"}, "hints": []}' \
 	'prefix.c: send: text must be one control character U+0001-U+001A'
 
 expect_problems "prefix send of a control character past ctrl-z" \
 	'{'"$global"', '"$mod_prefix"'}' \
-	'{"ctrl-b": "send:\u0002", "c": "send:\u001b"}' \
+	'{"bindings": {"ctrl-b": "send:\u0002", "c": "send:\u001b"}, "hints": []}' \
 	'prefix.c: send: text must be one control character U+0001-U+001A'
 
 expect_problems "unknown prefix action" \
 	'{'"$global"', '"$mod_prefix"'}' \
-	'{"ctrl-b": "send:\u0002", "c": "nonsense"}' \
+	'{"bindings": {"ctrl-b": "send:\u0002", "c": "nonsense"}, "hints": []}' \
 	'prefix.c: unknown action "nonsense"'
+
+expect_problems "prefix hint no binding uses" \
+	'{'"$global"', '"$mod_prefix"'}' \
+	'{"bindings": {"ctrl-b": "send:\u0002", "c": "tab.new"}, "hints": [{"action": "tab.new", "label": "new tab"}, {"action": "app.help", "label": "help"}]}' \
+	'prefix.hints[1]: no prefix binding uses "app.help"'
+
+expect_problems "prefix hint not an object with string action and label" \
+	'{'"$global"', '"$mod_prefix"'}' \
+	'{"bindings": {"ctrl-b": "send:\u0002", "c": "tab.new"}, "hints": ["tab.new", {"action": "tab.new"}]}' \
+	'prefix.hints[0]: not an object with string action and label
+prefix.hints[1]: not an object with string action and label'

@@ -5,12 +5,13 @@
 // `mod.json` size of 1 as a fraction of the window (full width, not 1px), and
 // an empty popup takes no height, so it covers no visible area.
 //
-// The bindings are the `prefix` attribute of the dotfiles' `keys.nix`, which
-// the Home Manager module validates and writes to `bindings.json` in this
-// folder (keystroke -> keys.json action). An action is a `name:value`
-// command, which `run` accepts as is, or `send:<control character>`, which
-// this mod types into the terminal that was focused when prefix mode opened
-// (`ctrl-b ctrl-b` sends a literal ctrl-b).
+// The Home Manager module validates the `prefix` attribute of the dotfiles'
+// `keys.nix` and writes it to `bindings.json` in this folder: `bindings`
+// maps a keystroke to a keys.json action, and `hints` lists the status bar's
+// `{action, label}` hints in the order it shows them. An action is a
+// `name:value` command, which `run` accepts as is, or `send:<control
+// character>`, which this mod types into the terminal that was focused when
+// prefix mode opened (`ctrl-b ctrl-b` sends a literal ctrl-b).
 //
 // The popup reads most keystrokes in `on_key_down`, but the app's keymap
 // handles a keystroke it binds before that listener runs, and `global`
@@ -73,22 +74,10 @@ function namesMod(node, name) {
   return Object.values(node).some((child) => namesMod(child, name));
 }
 
-// Hint labels, in the order the status bar shows them. Each entry matches a
-// bound action exactly, or else by its command name (the part before `:`).
-const LABELS = [
-  ["pane.split", "split"],
-  ["pane.go", "focus"],
-  ["tab.new", "new tab"],
-  ["tab.select", "tab"],
-  ["mod.open:find", "find"],
-  ["mod.open:goto", "go to"],
-  ["pane.zoom", "zoom"],
-  ["pane.close", "close"],
-  ["app.help", "help"],
-];
-
-// Reads `bindings.json` as a Map of keystroke -> action. Throws when the
-// file is missing or is not a JSON object, which a Home Manager switch fixes.
+// Reads `bindings.json` as `{ bindings, hints }`: a Map of keystroke ->
+// action, and the `{action, label}` hints. Throws when the file is missing,
+// or is not a JSON object whose `bindings` is an object and `hints` an
+// array, which a Home Manager switch fixes.
 async function loadBindings() {
   const path = `${appHome()}/mods/prefix/bindings.json`;
   const text = await readTextFile(path);
@@ -98,36 +87,44 @@ async function loadBindings() {
   } catch {
     // Reported below with the other unusable contents.
   }
-  if (parsed === null || typeof parsed !== "object" || Array.isArray(parsed)) {
+  const bindings = parsed?.bindings;
+  const hints = parsed?.hints;
+  if (
+    bindings === null ||
+    typeof bindings !== "object" ||
+    Array.isArray(bindings) ||
+    !Array.isArray(hints)
+  ) {
     throw new Error(
-      `${path} is missing or not a JSON object; run a Home Manager switch.`,
+      `${path} is missing or not a JSON object with bindings and hints; run a Home Manager switch.`,
     );
   }
-  return new Map(Object.entries(parsed));
+  return { bindings: new Map(Object.entries(bindings)), hints };
 }
 
-// The status bar's `[keys, label]` hints for BINDINGS, in LABELS order,
+// The status bar's `[keys, label]` hints for BINDINGS, in HINTS order,
 // skipping labels no keystroke is bound to, and ending with Esc.
-function hintsFor(bindings) {
-  const keysByLabel = new Map(LABELS.map(([, label]) => [label, []]));
+function hintsFor(bindings, hints) {
+  const keysByLabel = new Map(hints.map(({ label }) => [label, []]));
   for (const [key, action] of bindings) {
-    const label = labelFor(action);
+    const label = labelFor(action, hints);
     if (label) keysByLabel.get(label).push(key);
   }
 
-  const hints = [];
+  const shown = [];
   for (const [label, keys] of keysByLabel) {
-    if (keys.length > 0) hints.push([joinKeys(keys), label]);
+    if (keys.length > 0) shown.push([joinKeys(keys), label]);
   }
-  hints.push(["esc", "cancel"]);
-  return hints;
+  shown.push(["esc", "cancel"]);
+  return shown;
 }
 
-// The LABELS label for ACTION, or undefined when it has none.
-function labelFor(action) {
+// The label of the HINTS entry matching ACTION, exactly or else by its
+// command name (the part before `:`), or undefined when none matches.
+function labelFor(action, hints) {
   const command = action.split(":")[0];
-  const exact = LABELS.find(([match]) => match === action);
-  return (exact ?? LABELS.find(([match]) => match === command))?.[1];
+  const exact = hints.find((hint) => hint.action === action);
+  return (exact ?? hints.find((hint) => hint.action === command))?.label;
 }
 
 // Spells the keystrokes `keys` as one hint: `1–9` for three or more
@@ -177,8 +174,9 @@ export default class Prefix extends View {
     this.pendingKey = undefined;
 
     cx.spawn(async (_cx) => {
+      let hints;
       try {
-        this.bindings = await loadBindings();
+        ({ bindings: this.bindings, hints } = await loadBindings());
       } catch (error) {
         closeOverlay(overlay);
         notify({
@@ -189,7 +187,7 @@ export default class Prefix extends View {
         return;
       }
 
-      setShared("prefix", { hints: hintsFor(this.bindings) });
+      setShared("prefix", { hints: hintsFor(this.bindings, hints) });
       runStatusCommand("on");
       if (this.pendingKey) this.handleKey(this.pendingKey);
     });
