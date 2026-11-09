@@ -101,8 +101,9 @@ criterion the more decisive evidence, passing a disagreement on as a candidate.
      that handles it, and a failure must stay distinguishable from the success
      or absence it resembles wherever someone depends on telling them apart.
    - Compare the changed code with its siblings, such as neighboring handlers or
-     parallel commands. A check, guard, or step they have and it lacks is a
-     defect unless the difference is intended.
+     parallel commands. A check, guard, or step they have and it lacks matters
+     only when its absence makes the change fail as Findings question 2
+     describes.
    - Judge anything that grants trust or permission, such as an allowlist,
      access rule, privilege setting, or auth scope, by the widest input or
      action it admits, not the use it was written for.
@@ -113,16 +114,13 @@ criterion the more decisive evidence, passing a disagreement on as a candidate.
 4. **Sweep the whole change.** Search repository prose beyond the diff, such as
    docs, comments, help text, examples, and agent skills, for statements the
    target makes false about a name, default, option, or behavior it adds,
-   changes, or removes. Look for incomplete refactors or migrations,
-   inconsistent patterns, integration gaps, and material the target adds or
-   leaves behind that nothing uses or reaches, such as an uncalled helper or an
-   orphaned option. Report content whose presence alone does harm once
+   changes, or removes. Look for content whose presence alone does harm once
    published, such as credentials, personal data, or license-restricted
-   material, and text that relies on the session or plan that produced it, such
-   as plan or step numbers (`coding-style`'s Keep Repository Text
-   Self-Contained).
-5. **Check checks.** A new test must fail when the behavior it protects breaks;
-   report one that cannot.
+   material, and for text that only makes sense with the session or plan that
+   produced it, such as plan, milestone, or step labels.
+5. **Check protection.** For each behavior that must keep working, as Findings
+   question 2 defines it, find the check that would fail if it broke. Report one
+   that nothing protects.
 6. **Check intent and landing safety.** When reviewing as a whole, the aggregate
    diff must account for the intent the request and context state, such as a PR
    body; report a material mismatch. Otherwise, per revision, each revision must
@@ -145,9 +143,7 @@ that check.
 
 Load these only when the target triggers them:
 
-- `references/code.md` when the target changes code, or adds or changes names or
-  terms in any text; outside code, apply only its Names and Unrelated churn
-  tests.
+- `references/code.md` when the target changes code.
 - `references/dependencies.md` when it changes a dependency version, lockfile,
   or package source.
 
@@ -159,32 +155,53 @@ early.
 
 ## Findings
 
-A finding is a concrete defect that a realistic trigger reaches: normal use, a
-realistic failure, or an attacker at a trust boundary. Report every defect you
-can tie to a trigger and a mechanism, including ones you are unsure of or judge
-minor, since Verify filters false positives; omit taste, unsupported future
-uses, and advice to "consider". Every confirmed finding must be addressed before
-merge.
+Review exists to stop a change from hurting someone after it merges. A finding
+names who gets hurt, how, and the real path that gets there: normal use,
+real-world input, a real failure, or an attacker at a trust boundary. A
+contrived input or a hypothetical future edit is not a real path; future edits
+count only in question 2's rule on protecting what must keep working. Report
+only defects that answer one of these questions:
 
-Defects include wrong or unsafe behavior, a broken build or check, data loss, a
-compatibility break, false or misleading repository text, an unmet criterion, a
-broken binding rule, a failing name, a missing check that would let a regression
-in changed behavior go unnoticed, and an action nobody intended that a caller,
-user, system, or agent following instructions takes or undergoes, such as an
-unapproved change, a side effect, or an unneeded prompt.
+1. **Does it do what was asked?** A criterion the target misses or only partly
+   meets.
+2. **Does it work, and does everything else still work?**
+   - The new behavior works: on every real path it gives the right result; when
+     it fails, it says so rather than hiding the failure or passing it off as
+     success; and it is fast enough for its real workload. Work that grows with
+     real data on a frequent or large-scale path counts, such as a query in a
+     loop or loading everything into memory; a path that could merely be faster
+     does not.
+   - Nothing that worked before breaks: callers, configuration, keys, and stored
+     data keep working, and no setting silently stops doing anything.
+   - What must keep working is protected: the criteria, behavior other code,
+     users, or stored data depend on, and failure paths that would lose data or
+     give silently wrong results. When nothing would catch such behavior
+     breaking, the missing check is a finding. Checks need not catch every
+     possible edit.
+3. **Is it safe?** A security hole, leaked secrets or personal data, a
+   destructive or surprising side effect, including an action nobody approved
+   that a user, system, or agent following instructions takes, or permissions
+   wider than needed.
+4. **Does its text hold up for a reader who has only the codebase?** Comments,
+   docs, help text, names, prompts, skills, and descriptions that state
+   something false, and text that only makes sense with context outside the
+   repository, such as planning terms or references to the session that produced
+   it. Tracker references, such as ticket IDs, are fine.
+5. **Can it land?** A failing build or check, a revision that relies on a
+   descendant, or a description that does not account for its diff or breaks the
+   description rules step 6 applies.
+
+Nothing else is a finding: style the repository's tooling does not enforce,
+refactoring and reuse ideas, duplication, dead code for its own sake,
+optimizations the workload does not need, and advice to "consider". Report every
+defect that answers a question, including ones you are unsure of, since Verify
+filters false positives. Every confirmed finding must be addressed before merge.
 
 Judge each artifact the way its consumer uses it: code by what it does when it
 runs, and text, including instructions such as prompts, skills, and docs, by
 what a reasonable reader does after reading it in context. A finding about text
 quotes it and names the wrong action or belief that reader would take; a reading
 the surrounding text resolves is not a finding.
-
-A rule binds when the request, the Context input, or the repository's own
-instructions state it, such as its formatting rules, and not when only
-user-level or host instructions the repository does not adopt state it. The
-revision-description rules step 6 applies bind in every repository. The defect
-tests in this skill and its references find defects by their effect, so they
-apply in every repository.
 
 A decision or requirement settles what it decides, not consequences it shows no
 sign of having weighed: harm the decided shape causes is still a finding.
@@ -209,8 +226,9 @@ root cause: report one finding that proposes a simpler structure, with those
 defects as its path set, instead of a patch per defect. Defects that merely sit
 in the same place stay separate findings.
 
-Give each a category: `bug`, `safety`, `compatibility`, `accuracy`, `coverage`,
-`clarity`, `design`, or `question`.
+Give each a category by the question it answers: `requirement` (1), `bug`,
+`regression`, or `coverage` (2), `safety` (3), `text` (4), or `landing` (5); or
+`design` or `question` as below.
 
 **Correction.** Give the smallest change that fixes the root cause, never a
 workaround that hides the symptom, such as special-casing one input, swallowing
@@ -227,9 +245,9 @@ different approach, make the finding `design`: state the real fix and what it
 touches, the contained workaround and the risk it leaves, and whether the
 approach itself needs another solution.
 
-Report each finding with its location, category, realistic trigger, mechanism,
-path set, root cause, owning revision (the earliest target revision whose diff
-introduces it), correction, and decisive evidence.
+Report each finding with its location, category, trigger, mechanism, path set,
+root cause, owning revision (the earliest target revision whose diff introduces
+it), correction, and decisive evidence.
 
 ## Verify
 
@@ -241,9 +259,10 @@ Otherwise dispatch one fresh read-only verifier with the resolved commit IDs,
 the inputs, the trust rule, every merged candidate, the Findings section, and
 any reference or `coding-style` section a candidate cites. It tries to refute
 each on its own evidence, using only code and text it read and never a guard or
-mitigation it assumes exists, and returns `confirmed` with decisive
-trigger-to-effect evidence and any corrected field, or `declined` with the
-disproving evidence. It never declines a description-rule violation as
+mitigation it assumes exists, and declines one that answers none of the Findings
+questions or whose trigger is not a real path. It returns `confirmed` with
+decisive trigger-to-effect evidence and any corrected field, or `declined` with
+the disproving evidence. It never declines a description-rule violation as
 inconsequential. Give returns without evidence to one fresh verifier; report a
 candidate still unresolved as `question`. Report only confirmed findings.
 
