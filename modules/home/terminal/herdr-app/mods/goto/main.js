@@ -156,8 +156,11 @@ export default class Picker extends View {
     this.close();
     if (r.kind === "ctx") run("tab.select", { id: r.ctx.id });
     else if (r.kind === "new") run("tab.new");
-    else if (r.kind === "space")
-      run("space.new", r.machine ? { machine: r.machine } : {});
+    // The folder picker (`space-new`) lists this computer's folders, so a
+    // space on another machine is made without one.
+    else if (r.kind === "space" && r.machine)
+      run("space.new", { machine: r.machine });
+    else if (r.kind === "space") run("mod.open", { name: "space-new" });
   }
 
   glyph(t, st) {

@@ -72,7 +72,7 @@ const NAMED = [
     `Swap pane ${d}`,
     "move",
   ]),
-  ["space.new", {}, "Space", "New space", "workspace"],
+  ["mod.open", { name: "space-new" }, "Space", "New space", "workspace folder"],
   ["space.rename", {}, "Space", "Rename space", "workspace"],
   ["space.close", {}, "Space", "Close space", "workspace kill"],
   ["space.next", {}, "Space", "Next space", "workspace"],
@@ -126,7 +126,9 @@ const NAMED = [
 ];
 
 // Commands that act on something you point at (ids, terminals): not for a list.
+// `space.new` is listed as "New space", which opens the folder picker instead.
 const HIDDEN = new Set([
+  "space.new",
   "space.move",
   "tab.move",
   "space.select",

@@ -42,6 +42,10 @@
       # Likewise `cmd-shift-p` opens `palette`, the personal copy of the
       # command palette with ctrl-j/ctrl-k, instead of `app.palette`.
       "cmd-shift-p" = "mod.open:palette";
+      # The app's `cmd-n` makes a space in the focused terminal's folder; open
+      # `space-new`, the folder picker, which offers that folder first,
+      # instead.
+      "cmd-n" = "mod.open:space-new";
     };
     # While prefix mode is open, `ctrl-b` goes to the prefix mod as a
     # command instead of reopening it: this section's key context is deeper
@@ -55,8 +59,8 @@
     "?" = "app.help";
     "s" = "app.settings";
 
-    # The TUI's new-workspace key picks the folder with fzf (`space-new`);
-    # `cmd-n` still makes a space in the focused terminal's folder.
+    # The TUI's new-workspace key picks the folder with fzf (`space-new`),
+    # like `cmd-n`.
     "shift-n" = "mod.open:space-new";
     "shift-w" = "space.rename";
     "shift-d" = "space.close";

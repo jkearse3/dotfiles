@@ -41,6 +41,13 @@ function place(s, ps) {
   const tabs = new Set((s.tabs ?? []).map((c) => c.id));
   return ps.find((p) => tabs.has(p.tab) && p.cwd)?.cwd || s.folder;
 }
+// Makes a space on `machine`, or on this computer when it is null. Here the
+// folder picker (`space-new`) asks for its folder first; it lists only this
+// computer's folders, so a space on another machine is made without one.
+const newSpace = (machine) =>
+  machine
+    ? run("space.new", { machine })
+    : run("mod.open", { name: "space-new" });
 // A row's height: `two` when its repo status takes a second line under the name.
 const rowHeight = ({ tree, two }) => (two ? (tree ? 38 : 40) : tree ? 28 : 30);
 const where = (s, ps) => JSON.stringify([s.machine ?? null, place(s, ps)]);
@@ -519,7 +526,7 @@ export default class Spaces extends View {
                   .hover((s) => s.bg(t.hover).text_color(t.foreground))
                   .on_click((_e, cx) => {
                     cx.stop_propagation();
-                    run("space.new", m ? { machine: m } : {});
+                    newSpace(m);
                   })
                   .child("+"),
               ),
@@ -550,7 +557,7 @@ export default class Spaces extends View {
         .text_size(12)
         .text_color(t.dim)
         .hover((s) => s.bg(t.hover).text_color(t.foreground))
-        .on_click(() => run("space.new", m ? { machine: m } : {}))
+        .on_click(() => newSpace(m))
         .child(svg("mods/workspace-chrome/plus.svg").size(12))
         .when(!collapsed, (el) => el.child("New space there"));
       return [
@@ -808,7 +815,7 @@ export default class Spaces extends View {
               .justify_center()
               .rounded(6)
               .hover((s) => s.bg(t.hover).text_color(t.foreground))
-              .on_click(() => run("space.new"))
+              .on_click(() => newSpace(null))
               .child(svg("mods/workspace-chrome/plus.svg").size(14)),
           ),
       )
