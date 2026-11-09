@@ -171,6 +171,7 @@ let
   sharedModFiles =
     let
       launchers = [
+        "find"
         "jj-workspace-new"
         "jj-workspace-pick"
         "jj-workspace-remove"
