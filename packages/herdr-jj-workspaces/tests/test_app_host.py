@@ -370,8 +370,37 @@ class AppHostTests(unittest.TestCase):
                 "herdr-app ls",
                 "hc get t2 --json",
                 "herdr-app ls",
+                "hc get t1 --json",
                 'herdr-app do space.close {"id": "sp2", "confirmed": true}',
                 'herdr-app do space.select {"id": "sp1"}',
+            ],
+        )
+
+    def test_remove_with_focus_shows_space_now_in_primary_checkout(self) -> None:
+        self.add_feature()
+        plain = self.root / "plain"
+        plain.mkdir()
+        # sp3 was made in the primary checkout but has left it; sp4 was made
+        # elsewhere and has since moved into it.
+        self.set_world(
+            app_space("sp3", self.repo, "t3"),
+            app_space("sp2", self.workspace, "t2"),
+            app_space("sp4", plain, "t4"),
+        )
+        self.set_record(terminal_record("t3", self.repo, plain, "sp3"))
+        self.set_record(terminal_record("t4", plain, self.repo / "src", "sp4"))
+
+        result = self.run_cli("remove", "--host", "app", "--workspace", "sp2", "--focus")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(
+            self.calls()[2:],
+            [
+                "herdr-app ls",
+                "hc get t3 --json",
+                "hc get t2 --json",
+                "hc get t4 --json",
+                'herdr-app do space.close {"id": "sp2", "confirmed": true}',
+                'herdr-app do space.select {"id": "sp4"}',
             ],
         )
 
@@ -451,6 +480,7 @@ class AppHostTests(unittest.TestCase):
             (repository / ".jj").mkdir(parents=True)
         unplaced = app_space("sp6", plain, "t6")
         unplaced["folder"] = ""
+        unplaced["tabs"] = list[object]()
         on_other_machine = app_space("sp5", remote, "t5")
         on_other_machine["machine"] = "m1"
         self.set_world(
@@ -461,6 +491,8 @@ class AppHostTests(unittest.TestCase):
             on_other_machine,
             unplaced,
         )
+        self.set_record(terminal_record("t3", plain, plain, "sp3"))
+        self.set_record(terminal_record("t4", other, other, "sp4"))
 
         result = self.run_cli("prompt-add", "--host", "app", "--pick", stdin="second\n", FAKE_FZF_CHOICE="1")
         self.assertEqual(result.returncode, 0, result.stderr)
@@ -470,8 +502,34 @@ class AppHostTests(unittest.TestCase):
         self.assertEqual(self.workspace_names(), ["default", "feature", "second"])
         self.assertEqual(
             self.calls(),
-            ["herdr-app ls", "herdr-app ls", f'herdr-app do space.new {{"folder": "{second}"}}'],
+            [
+                "herdr-app ls",
+                "hc get t2 --json",
+                "hc get t3 --json",
+                "hc get t4 --json",
+                "hc get t1 --json",
+                "herdr-app ls",
+                f'herdr-app do space.new {{"folder": "{second}"}}',
+            ],
         )
+
+    def test_prompt_add_pick_lists_repositories_spaces_are_now_in(self) -> None:
+        plain = self.root / "plain"
+        plain.mkdir()
+        other = self.root / "home" / "other"
+        (other / ".jj").mkdir(parents=True)
+        # sp3 was made outside any repository and has since moved into other;
+        # sp1 was made in the primary checkout and has since left it.
+        self.set_world(
+            app_space("sp3", plain, "t3"),
+            app_space("sp1", self.repo, "t1", shown=True),
+        )
+        self.set_record(terminal_record("t3", plain, other, "sp3"))
+        self.set_record(terminal_record("t1", self.repo, plain, "sp1"))
+
+        result = self.run_cli("prompt-add", "--host", "app", "--pick")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(self.fzf_input.read_text().splitlines(), ["~/other"])
 
     def test_prompt_add_pick_closed_without_choosing_creates_nothing(self) -> None:
         for status in ("1", "130"):
@@ -480,7 +538,7 @@ class AppHostTests(unittest.TestCase):
                 self.assertEqual(result.returncode, 0, result.stderr)
                 self.assertEqual(self.fzf_input.read_text().splitlines(), [str(self.repo)])
                 self.assertEqual(self.workspace_names(), ["default"])
-                self.assertEqual(self.calls(), ["herdr-app ls"])
+                self.assertEqual(self.calls(), ["herdr-app ls", "hc get t1 --json", "hc get t2 --json"])
 
     def test_prompt_add_pick_fzf_failure_waits_for_enter(self) -> None:
         result = self.run_cli("prompt-add", "--host", "app", "--pick", stdin="\n", FAKE_FZF_STATUS="2")
@@ -493,6 +551,7 @@ class AppHostTests(unittest.TestCase):
         plain = self.root / "plain"
         plain.mkdir()
         self.set_world(app_space("sp3", plain, "t3", shown=True))
+        self.set_record(terminal_record("t3", plain, plain, "sp3"))
         result = self.run_cli("prompt-add", "--host", "app", "--pick", stdin="\n", FAKE_FZF_CHOICE="1")
         self.assertEqual(result.returncode, 1)
         self.assertIn("no space on this machine is in a jj repository; run jjx ensure", result.stderr)

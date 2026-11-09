@@ -369,14 +369,16 @@ def pick_app_source() -> JjCheckout | None:
     """Ask in fzf which repository of the app's spaces on this machine a new jj workspace is made from.
 
     fzf lists, in sidebar order, the primary checkout of each jj repository a
-    space's folder is in, once even when several spaces show its checkouts.
-    Returns that primary checkout, or None when the user closes fzf without
-    choosing. Raises WorkspaceError, before running fzf, when no window is
-    open or no space is in a jj repository, and when fzf fails.
+    space is now in (see ``_app_space_live_folder``), once even when several
+    spaces show its checkouts. Returns that primary checkout, or None when the
+    user closes fzf without choosing. Raises WorkspaceError, before running
+    fzf, when no window is open, hc fails, or no space is in a jj repository,
+    and when fzf fails.
     """
     repositories: dict[str, JjCheckout] = {}
     for space in _app_spaces():
-        checkout = find_jj_checkout(Path(space.folder)) if space.folder != "" else None
+        folder = _app_space_live_folder(space)
+        checkout = find_jj_checkout(Path(folder)) if folder != "" else None
         if checkout is not None:
             primary_root = checkout.primary_root.resolve()
             primary = JjCheckout(root=primary_root, primary_root=primary_root)
@@ -468,7 +470,7 @@ def resolve_app_target(space_id: str) -> AppTarget:
 def app_remove(target: AppTarget, *, focus: bool) -> str:
     """Remove TARGET's jj workspace and close its app space.
 
-    With FOCUS, then shows a space made in the repository's primary checkout,
+    With FOCUS, then shows a space now in the repository's primary checkout,
     when there is one. Returns jjx's report.
     """
     primary_space_id = _app_primary_space_id(target.primary_root) if focus else ""
@@ -534,8 +536,10 @@ def _terminal_folder(address: str) -> str:
 class AppSpace:
     """A space of the app window on this machine, from ``herdr-app ls``.
 
-    FOLDER is the folder it was made in; FIRST_TERMINAL is the address of its
-    first tab's first terminal, or "" when it shows none.
+    FOLDER is the folder it was made in, which stays put when its terminals
+    ``cd`` elsewhere (``_app_space_live_folder`` returns where it is now);
+    FIRST_TERMINAL is the address of its first tab's first terminal, or ""
+    when it shows none.
     """
 
     space_id: str
@@ -570,10 +574,31 @@ def _app_spaces() -> list[AppSpace]:
     return spaces
 
 
+def _app_space_live_folder(space: AppSpace) -> str:
+    """Return where SPACE is now: its first terminal's folder, else the folder it was made in.
+
+    Falls back to ``space.folder`` when the space shows no terminal or hc
+    reports no folder for it; returns "" when neither is known. Raises
+    WorkspaceError when hc fails.
+    """
+    if space.first_terminal != "":
+        folder = _terminal_folder(space.first_terminal)
+        if folder != "":
+            return folder
+    return space.folder
+
+
 def _app_primary_space_id(primary_root: Path) -> str:
-    """Return the first space made in PRIMARY_ROOT, or "" when there is none."""
+    """Return the first space now in the primary checkout PRIMARY_ROOT, or "" when there is none.
+
+    A space counts when its live folder (see ``_app_space_live_folder``) is
+    PRIMARY_ROOT or a folder inside it that no other jj workspace claims.
+    Raises WorkspaceError when hc fails.
+    """
     for space in _app_spaces():
-        if space.folder != "" and Path(space.folder).resolve() == primary_root.resolve():
+        folder = _app_space_live_folder(space)
+        checkout = find_jj_checkout(Path(folder)) if folder != "" else None
+        if checkout is not None and checkout.root.resolve() == primary_root.resolve():
             return space.space_id
     return ""
 
