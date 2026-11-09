@@ -6,6 +6,9 @@
 // stays one line. Agent state lives in the agents list, not here. Click to
 // switch, right-click for its menu, drag to reorder.
 // Started as a copy of the app's shipped `spaces` mod (herdr-app 0.1.11).
+//
+// `paths.js` beside this file is copied in at build time from `mod-lib/`
+// (deploy.nix `sharedModFiles`); edit it there. This source folder lacks it.
 
 import { View, div, svg } from "gpui-kit";
 import { v_flex, h_flex } from "gpui-base";
@@ -24,6 +27,7 @@ import {
   window,
   layout,
 } from "herdr";
+import { place } from "./paths.js";
 
 function find(node, id) {
   if (node?.id === id) return node;
@@ -37,12 +41,6 @@ function find(node, id) {
 // The sidebar's rail goes by its width, not a flag: dragging its edge narrows it too.
 const narrow = () => (find(layout(), "sidebar")?.size?.px ?? Infinity) < 160;
 
-// Where a space is now: its first terminal's live folder, else where it was made.
-// `ps`: panes(), read once by the caller (each read copies every pane).
-function place(s, ps) {
-  const tabs = new Set((s.tabs ?? []).map((c) => c.id));
-  return ps.find((p) => tabs.has(p.tab) && p.cwd)?.cwd || s.folder;
-}
 // Makes a space on `machine`, or on this computer when it is null. Here the
 // folder picker (`space-new`) asks for its folder first; it lists only this
 // computer's folders, so a space on another machine is made without one.

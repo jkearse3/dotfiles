@@ -178,7 +178,7 @@ let
       ];
       files = {
         "launcher.js" = launchers;
-        "paths.js" = launchers;
+        "paths.js" = launchers ++ [ "desk-spaces" ];
       };
       libFiles = lib.attrNames (builtins.readDir ./mod-lib);
       unknownMods = lib.subtractLists personalMods (lib.unique (lib.concatLists (lib.attrValues files)));
