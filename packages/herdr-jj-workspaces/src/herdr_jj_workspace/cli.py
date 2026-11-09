@@ -511,13 +511,23 @@ def app_space_folder(space_id: str) -> Path:
     if space.first_terminal == "":
         raise WorkspaceError(f"Herdr app space {space_id} shows no terminal")
 
-    record = _app_json("hc", "get", space.first_terminal, "--json")
-    folder = _string(_object(record.get("foreground")).get("cwd"))
-    if folder == "":
-        folder = _string(record.get("cwd"))
+    folder = _terminal_folder(space.first_terminal)
     if folder == "":
         raise WorkspaceError(f"hc reported no folder for terminal {space.first_terminal}")
     return Path(folder)
+
+
+def _terminal_folder(address: str) -> str:
+    """Return where terminal ADDRESS is now, from ``hc get``.
+
+    Prefers its foreground process's folder over the terminal's own, and
+    returns "" when hc reports neither. Raises WorkspaceError when hc fails.
+    """
+    record = _app_json("hc", "get", address, "--json")
+    folder = _string(_object(record.get("foreground")).get("cwd"))
+    if folder == "":
+        folder = _string(record.get("cwd"))
+    return folder
 
 
 @dataclass(frozen=True)
