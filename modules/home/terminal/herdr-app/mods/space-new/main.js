@@ -1,8 +1,14 @@
 // Opens `herdr-space-new` in a popup terminal, so a key binding (`ctrl-b
 // shift-n`) can make a space: `mod.open` takes only a mod name. The picker
-// lists the folders under the home directory in fzf, and Enter makes an
-// unnamed space in the picked one, which the app names after where its
-// first terminal is; Esc makes nothing.
+// lists in fzf the focused terminal's live folder first, then the folders
+// under the home directory, so Enter with an empty query makes the space
+// where you are, as the app's plain `cmd-n` does. Enter makes an unnamed
+// space in the picked folder, which the app names after where its first
+// terminal is; Esc makes nothing. With no terminal of this machine focused (a
+// mod pane, or a terminal of another machine), the picker lists the shown
+// space's current folder first: its first terminal's live folder, else the
+// folder it was made in. With no shown space, or one on another machine,
+// whose folder means nothing here, the picker starts from home.
 //
 // The order matters. The launcher waits for `hc run` while still open,
 // because closing it cancels its pending tasks and would leave the started
@@ -13,18 +19,22 @@
 //
 // The app documents imports only from a mod's own folder (herdr-app
 // `defaults/AGENTS.md`), so `cliPath` and `startTerminal` are copied into
-// each launcher that uses them rather than shared.
+// each launcher that uses them rather than shared, `place` copies
+// desk-spaces' rule, and `focusedFolder` follows the app's own `files` mod.
 
 import { View, div } from "gpui-kit";
 import {
   appHome,
   closeOverlay,
+  focused,
   hc,
   home,
   notify,
   openOverlay,
+  panes,
   props,
   readTextFile,
+  spaces,
 } from "herdr";
 
 const TITLE = "New space";
@@ -41,6 +51,28 @@ async function cliPath(name) {
     );
   }
   return path;
+}
+
+// The focused terminal's live folder when that terminal is on this machine,
+// else null: a mod pane, no focus, or a terminal of another machine.
+function focusedFolder() {
+  const f = focused();
+  if (!f) return null;
+  const machine = f.pane
+    ? spaces().find((s) => s.id === f.space)?.machine
+    : f.terminal?.includes("/")
+      ? f.terminal.split("/")[0]
+      : null;
+  if (machine !== null) return null; // undefined (space not found) counts as unknown
+  const pane = f.pane ? panes().find((p) => p.pane === f.pane) : null;
+  return pane?.cwd || f.cwd || null;
+}
+
+// Where SPACE is now: its first terminal's live folder, else the folder it
+// was made in, which may be empty.
+function place(space) {
+  const tabs = new Set((space.tabs ?? []).map((t) => t.id));
+  return panes().find((p) => tabs.has(p.tab) && p.cwd)?.cwd || space.folder;
 }
 
 // Starts ARGV in FOLDER in a new core terminal and returns its address. No
@@ -75,11 +107,19 @@ export default class SpaceNew extends View {
     const overlay = props()?.overlay;
     if (!overlay) return;
 
+    // The picker lists this machine's folders, so with a remote space shown
+    // it starts from home. Otherwise the focused terminal's folder is where
+    // the user is; without one, where the shown space is now.
+    const space = spaces().find((s) => s.active);
+    const folder =
+      (space && space.machine === null && (focusedFolder() || place(space))) ||
+      home();
+
     cx.spawn(async (_cx) => {
       let terminal;
       try {
         const cli = await cliPath("herdr-space-new");
-        terminal = await startTerminal(home(), [cli]);
+        terminal = await startTerminal(home(), [cli, folder]);
       } catch (error) {
         closeOverlay(overlay);
         notify({

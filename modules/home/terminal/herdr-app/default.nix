@@ -528,9 +528,10 @@ let
 
   # The folder picker the `space-new` mod runs in a popup terminal. It takes
   # its tools as arguments so the fixtures can pass fakes; `spaceNew` passes
-  # the real ones.
+  # the real ones. GNU grep drops the folder offered first from `fd`'s list.
   spaceNewPicker = pkgs.writeShellApplication {
     name = "herdr-space-new-picker";
+    runtimeInputs = [ pkgs.gnugrep ];
     text = builtins.readFile ./space-new.sh;
   };
 
@@ -541,8 +542,9 @@ let
     ln -s ${spaceNewPicker} "$out"
   '';
 
+  # Takes the picker's remaining arguments: the folder offered first.
   spaceNew = pkgs.writeShellScript "herdr-space-new" ''
-    exec ${checkedSpaceNewPicker}/bin/herdr-space-new-picker ${pkgs.fd}/bin/fd ${pkgs.fzf}/bin/fzf ${herdrApp}/bin/herdr-app
+    exec ${checkedSpaceNewPicker}/bin/herdr-space-new-picker ${pkgs.fd}/bin/fd ${pkgs.fzf}/bin/fzf ${herdrApp}/bin/herdr-app "$@"
   '';
 
   # The launcher mods (`find`, `jj-workspace-new`, `jj-workspace-pick`,
