@@ -1,9 +1,11 @@
-// Workspace spaces: stable colored avatars, worktrees under their checkout,
-// grouped by machine when more than one is known. On a dimmed second line under a
-// space's name, the repo its first terminal is in now, only where unusual: branch,
-// ahead/behind (a jj checkout shows what the terminal prompt shows instead); a
-// space with nothing to show stays one line. Agent state lives in the agents list,
-// not here. Click to switch, right-click for its menu, drag to reorder.
+// Workspace spaces: stable colored avatars, Git worktrees and jj workspaces
+// under their repo's main checkout, grouped by machine when more than one is
+// known. On a dimmed second line under a space's name, the repo its first
+// terminal is in now, only where unusual: branch, ahead/behind (a jj checkout
+// shows what the terminal prompt shows instead); a space with nothing to show
+// stays one line. Agent state lives in the agents list, not here. Click to
+// switch, right-click for its menu, drag to reorder.
+// Started as a copy of the app's shipped `spaces` mod (herdr-app 0.1.11).
 
 import { View, div, svg } from "gpui-kit";
 import { v_flex, h_flex } from "gpui-base";

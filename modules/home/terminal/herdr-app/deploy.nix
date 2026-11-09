@@ -26,11 +26,6 @@ let
   # file ... would be clobbered"; first remove each entry the deploy's
   # manifest `dotfiles-owned.txt` lists, then the manifest itself.
   #
-  # Remove jj workspaces with `ctrl-b ctrl-q` (`jj-workspace-remove`), not
-  # the app's Remove worktree menu item: it runs `git worktree remove` and
-  # leaves jj's record of the workspace, which `jj workspace forget <name>`
-  # clears.
-  #
   # `desk.json` started as a copy of the shipped `main` layout without the
   # Git Changes panel, whose commit box would make Git commits behind jj's
   # back. Showing it is a one-time step with the window open,
@@ -47,45 +42,6 @@ let
   # sidebar header and footer with `desk-chrome` instead of the shipped
   # `workspace-chrome`, and its list of spaces with `desk-spaces` instead
   # of the shipped `spaces`.
-  #
-  # `mods/prefix-status` is a clone of the shipped `workspace-status` mod,
-  # plus a "PREFIX" pill and key hints while prefix mode is on. Its palette
-  # chip and key hint open the personal `palette` mod, not `app.palette`.
-  #
-  # `mods/goto` is a clone of the shipped `picker` mod (the "Go to…" menu of
-  # spaces and tabs), plus ctrl-j/ctrl-k to move the selection. `keys.nix`
-  # opens it from `cmd-p` and prefix `w`/`g`, and the personal `palette`
-  # mod's "Go to" entry and the `desk-chrome` search button open it too;
-  # anything else that opens the built-in `picker` by name (other layouts,
-  # the built-in palette's "Go to" entry) still shows the original.
-  #
-  # `mods/palette` is a copy of the app's own command palette
-  # (`defaults/frame/palette`, the `frame-palette` mod), which `mod.clone`
-  # cannot clone: its asset path points at its own folder, and its `mod.json`
-  # adds the popup overlay spec that `app.palette` opens the original with.
-  # It adds ctrl-j/ctrl-k and wrap-around to the selection, and its "Go to"
-  # entry opens `goto`. `keys.nix` opens it from `cmd-shift-p`, and the
-  # `prefix-status` chip opens it; `app.palette` and the app menu still show
-  # the original.
-  #
-  # `mods/desk-chrome` is a clone of the shipped `workspace-chrome` mod (the
-  # sidebar header and footer), with its asset paths pointing at its own
-  # folder and its search button opening `goto`. `layouts/desk.json` uses it
-  # for both its sidebar header and footer; other layouts still use the
-  # original `workspace-chrome`, and `app.palette` and the app menu still
-  # show the original palette and picker.
-  #
-  # `mods/desk-spaces` is a clone of the shipped `spaces` mod (the
-  # sidebar's list of spaces). In a jj checkout, where Git's HEAD is always
-  # detached, a space shows what the `jj-starship-prompt` terminal prompt
-  # shows: the nearest bookmark (main included), the distance from it, a
-  # conflict and edits in `@`, read with
-  # `--ignore-working-copy` so a look never writes a jj operation; jj
-  # workspaces list under their repo's main checkout. Each repo space's
-  # status (git: repo · branch, ahead/behind; jj: as the prompt shows it)
-  # sits on a second dimmed line under the space name, and spaces with
-  # nothing to show stay one line. `layouts/desk.json` uses it; other
-  # layouts still use the original `spaces`.
   #
   # The tree fails to build when a personal mod or layout is named like a
   # shipped one, which the app would overwrite on its next start, or starts

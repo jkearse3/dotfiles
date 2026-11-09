@@ -2,8 +2,14 @@
 // Places (spaces, tabs) stay in the picker. Fuzzy: your letters in
 // order, word starts and runs rank higher. Empty: recent first, then every
 // group. Choices are entries of their own ("Layout: Zen"); commands that need
-// a name ask for it. Enter runs, ↑/↓ or ctrl+j/ctrl+k move, Esc closes.
-// Started as a copy of the app's own frame-palette mod (herdr-app 0.1.11).
+// a name ask for it. Enter runs, ↑/↓ or ctrl+j/ctrl+k move (wrapping at the
+// ends), Esc closes. Its "Go to" entry opens the `goto` mod.
+//
+// Started as a copy of the app's own frame-palette mod (herdr-app 0.1.11),
+// which `mod.clone` cannot clone: the copy's asset path points at its own
+// folder, and its `mod.json` carries the popup overlay spec that `app.palette`
+// opens the original with. `cmd-shift-p` and the `prefix-status` palette chip
+// open this copy; `app.palette` and the app menu still show the original.
 
 import { View, div, svg } from "gpui-kit";
 import { v_flex, h_flex, InputState, Input } from "gpui-base";

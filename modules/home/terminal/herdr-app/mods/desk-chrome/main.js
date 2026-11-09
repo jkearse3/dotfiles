@@ -1,3 +1,8 @@
+// The sidebar's header and footer in the `desk` layout. Started as a copy of
+// the app's shipped `workspace-chrome` mod (herdr-app 0.1.11), with its asset
+// paths pointing at its own folder and its search button opening the `goto`
+// mod instead of the built-in picker.
+
 import { View, div, image, svg } from "gpui-kit";
 import { h_flex, v_flex } from "gpui-base";
 import {

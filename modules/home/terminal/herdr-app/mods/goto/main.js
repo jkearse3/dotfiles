@@ -3,6 +3,12 @@
 // fold into "earlier". Type to filter, ↑/↓ or ctrl+j/ctrl+k and Enter to go,
 // ctrl+d to close a tab, Esc to leave. Last rows: new work (a tab here, a
 // space on this computer or on each connected machine).
+//
+// Started as a copy of the app's shipped `picker` mod (herdr-app 0.1.11).
+// `cmd-p`, prefix `w` and `g`, the `palette` mod's "Go to" entry, and the
+// `desk-chrome` search button open it. Anything that opens `picker` by name,
+// such as other layouts or the built-in palette's "Go to" entry, still shows
+// the original.
 
 import { View, div, svg } from "gpui-kit";
 import { v_flex, h_flex, InputState, Input } from "gpui-base";

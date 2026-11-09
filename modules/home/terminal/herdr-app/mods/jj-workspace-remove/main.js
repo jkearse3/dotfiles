@@ -5,6 +5,10 @@
 // refuses primary checkouts and plain Git worktrees. The popup terminal has
 // no space label, so the launcher names the space with `--workspace`.
 //
+// Remove jj workspaces this way rather than with the app's Remove worktree
+// menu item: that item runs `git worktree remove` and leaves jj's record of
+// the workspace, which `jj workspace forget <name>` then has to clear.
+//
 // The order matters. The launcher waits for `hc run` while still open,
 // because closing it cancels its pending tasks and would leave the started
 // terminal with no popup. Then, in one synchronous turn, it closes itself

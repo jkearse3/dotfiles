@@ -1,11 +1,10 @@
 // Started as a copy of the Herdr app's shipped `workspace-status` status bar
 // (herdr-app 0.1.11). It changes two things. While prefix mode is on, the bar
-// shows an accent "PREFIX" pill
-// and the prefix key hints the `prefix` mod publishes as
-// `shared("prefix").hints` (`[key, label]` pairs). And its palette chip opens,
-// and its key hint shows the key of, the personal `palette` mod (the command
-// palette copy with ctrl-j/ctrl-k) instead of the built-in palette. Otherwise
-// it draws the bar as 0.1.11 shipped it.
+// shows an accent "PREFIX" pill and the prefix key hints the `prefix` mod
+// publishes as `shared("prefix").hints` (`[key, label]` pairs). And its
+// palette chip opens, and its key hint shows the key of, the personal
+// `palette` mod (the command palette copy with ctrl-j/ctrl-k) instead of the
+// built-in palette. Otherwise it draws the bar as 0.1.11 shipped it.
 import { View, div, svg } from "gpui-kit";
 import { h_flex } from "gpui-base";
 import {
