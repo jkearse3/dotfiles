@@ -567,6 +567,83 @@ class AppHostTests(unittest.TestCase):
         self.assertEqual(self.calls(), [])
         self.assertFalse(self.fzf_input.exists())
 
+    def test_prompt_add_pick_lists_first_folders_repository_first(self) -> None:
+        other = self.root / "home" / "other"
+        third = self.root / "home" / "third"
+        for repository in (other, third):
+            (repository / ".jj").mkdir(parents=True)
+        (third / "sub").mkdir()
+        self.set_world(
+            app_space("sp1", self.repo, "t1", shown=True),
+            app_space("sp4", other, "t4"),
+        )
+        self.set_record(terminal_record("t4", other, other, "sp4"))
+        without_first = self.run_cli("prompt-add", "--host", "app", "--pick")
+        self.assertEqual(without_first.returncode, 0, without_first.stderr)
+        calls_without_first = self.calls()
+
+        result = self.run_cli("prompt-add", "--host", "app", "--pick", "--first", str(third / "sub"))
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(self.fzf_input.read_text().splitlines(), ["~/third", str(self.repo), "~/other"])
+        self.assertEqual(self.calls(), calls_without_first)
+
+    def test_prompt_add_pick_first_enter_picks_its_repository_once(self) -> None:
+        self.add_feature()
+        other = self.root / "home" / "other"
+        (other / ".jj").mkdir(parents=True)
+        self.set_world(
+            app_space("sp4", other, "t4"),
+            app_space("sp1", self.repo, "t1", shown=True),
+            app_space("sp2", self.workspace, "t2"),
+        )
+        self.set_record(terminal_record("t4", other, other, "sp4"))
+
+        result = self.run_cli(
+            "prompt-add",
+            "--host",
+            "app",
+            "--pick",
+            "--first",
+            str(self.workspace),
+            stdin="second\n",
+            FAKE_FZF_CHOICE="1",
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(self.fzf_input.read_text().splitlines(), [str(self.repo), "~/other"])
+        second = self.workspace.parent / "second"
+        self.assertEqual(self.workspace_names(), ["default", "feature", "second"])
+        self.assertEqual(self.calls()[-1], f'herdr-app do space.new {{"folder": "{second}"}}')
+
+    def test_prompt_add_pick_first_outside_repository_lists_as_before(self) -> None:
+        plain = self.root / "plain"
+        plain.mkdir()
+        without_first = self.run_cli("prompt-add", "--host", "app", "--pick")
+        self.assertEqual(without_first.returncode, 0, without_first.stderr)
+        listed_without_first = self.fzf_input.read_text().splitlines()
+
+        for first in (plain, plain / "gone"):
+            with self.subTest(first=first.name):
+                result = self.run_cli("prompt-add", "--host", "app", "--pick", "--first", str(first))
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertEqual(self.fzf_input.read_text().splitlines(), listed_without_first)
+
+    def test_prompt_add_pick_first_without_jj_spaces_still_lists_it(self) -> None:
+        plain = self.root / "plain"
+        plain.mkdir()
+        self.set_world(app_space("sp3", plain, "t3", shown=True))
+        self.set_record(terminal_record("t3", plain, plain, "sp3"))
+
+        result = self.run_cli("prompt-add", "--host", "app", "--pick", "--first", str(self.repo / "src"))
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(self.fzf_input.read_text().splitlines(), [str(self.repo)])
+
+    def test_prompt_add_first_needs_pick(self) -> None:
+        result = self.run_cli("prompt-add", "--host", "app", "--first", str(self.repo), stdin="\n")
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("--first needs --pick", result.stderr)
+        self.assertEqual(self.calls(), [])
+        self.assertFalse(self.fzf_input.exists())
+
     def test_prompt_remove_declined_changes_nothing(self) -> None:
         self.add_feature()
         result = self.run_cli("prompt-remove", "--host", "app", "--workspace", "sp2", stdin="n\n", HC_TERMINAL_ID="")

@@ -18,7 +18,8 @@ CLI, or ``app``, the Herdr desktop app through ``herdr-app`` and herdr-core's
 space ID; a new jj workspace comes from the repository of the process's working
 directory unless ``--workspace`` names a space, and opens as a new space.
 ``prompt-add --pick`` instead asks in fzf which repository of the app's spaces
-on this machine to use.
+on this machine to use, listing first the repository of the folder ``--first``
+names.
 """
 
 from __future__ import annotations
@@ -365,24 +366,33 @@ FZF_NO_MATCH = 1
 FZF_INTERRUPTED = 130
 
 
-def pick_app_source() -> JjCheckout | None:
+def pick_app_source(first: Path | None = None) -> JjCheckout | None:
     """Ask in fzf which repository of the app's spaces on this machine a new jj workspace is made from.
 
-    fzf lists, in sidebar order, the primary checkout of each jj repository a
-    space is now in (see ``_app_space_live_folder``), once even when several
-    spaces show its checkouts. Returns that primary checkout, or None when the
-    user closes fzf without choosing. Raises WorkspaceError, before running
-    fzf, when no window is open, hc fails, or no space is in a jj repository,
-    and when fzf fails.
+    fzf lists the primary checkout of FIRST's jj repository first, so Enter
+    with an empty query picks it, even when no space is in that repository;
+    a FIRST in no jj repository, or None, adds nothing. Then it lists, in
+    sidebar order, the primary checkout of each jj repository a space is now
+    in (see ``_app_space_live_folder``). Each repository appears once, even
+    when several spaces show its checkouts. Returns the chosen primary
+    checkout, or None when the user closes fzf without choosing. Raises
+    WorkspaceError, before running fzf, when no window is open, hc fails, or
+    neither FIRST nor any space is in a jj repository, and when fzf fails.
     """
     repositories: dict[str, JjCheckout] = {}
+
+    def add(checkout: JjCheckout | None) -> None:
+        if checkout is None:
+            return
+        primary_root = checkout.primary_root.resolve()
+        primary = JjCheckout(root=primary_root, primary_root=primary_root)
+        _ = repositories.setdefault(_home_relative(primary_root), primary)
+
+    if first is not None:
+        add(find_jj_checkout(first.absolute()))
     for space in _app_spaces():
         folder = _app_space_live_folder(space)
-        checkout = find_jj_checkout(Path(folder)) if folder != "" else None
-        if checkout is not None:
-            primary_root = checkout.primary_root.resolve()
-            primary = JjCheckout(root=primary_root, primary_root=primary_root)
-            _ = repositories.setdefault(_home_relative(primary_root), primary)
+        add(find_jj_checkout(Path(folder)) if folder != "" else None)
     if len(repositories) == 0:
         raise WorkspaceError("no space on this machine is in a jj repository; run jjx ensure in one first")
 
@@ -687,8 +697,11 @@ def _command_remove(arguments: argparse.Namespace) -> int:
 
 def _command_prompt_add(arguments: argparse.Namespace) -> int:
     pick = cast(bool, arguments.pick)
+    first = cast(Path | None, arguments.first)
+    if first is not None and not pick:
+        raise WorkspaceError("--first needs --pick")
     if _host(arguments) == "app":
-        app_source = pick_app_source() if pick else resolve_app_source(Path.cwd())
+        app_source = pick_app_source(first) if pick else resolve_app_source(Path.cwd())
         if app_source is None:
             return 0
         print(f"New jj workspace for {app_source.primary_root.name}\n")
@@ -805,6 +818,12 @@ def _parser() -> argparse.ArgumentParser:
             "in the app, choose the repository in fzf among those of the spaces "
             "on this machine instead of using the working directory"
         ),
+    )
+    _ = prompt_add.add_argument(
+        "--first",
+        metavar="FOLDER",
+        type=Path,
+        help="with --pick, list FOLDER's repository first, so Enter with an empty query picks it",
     )
     prompt_add.set_defaults(handler=_command_prompt_add, popup=True)
 
