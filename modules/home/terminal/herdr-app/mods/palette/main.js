@@ -80,6 +80,13 @@ const NAMED = [
   ]),
   ["mod.open", { name: "space-new" }, "Space", "New space", "workspace folder"],
   ["space.rename", {}, "Space", "Rename space", "workspace"],
+  [
+    "mod.open",
+    { name: "space-rename-all" },
+    "Space",
+    "Rename spaces…",
+    "workspace rename all bulk names",
+  ],
   ["space.close", {}, "Space", "Close space", "workspace kill"],
   ["space.next", {}, "Space", "Next space", "workspace"],
   ["space.prev", {}, "Space", "Previous space", "workspace"],

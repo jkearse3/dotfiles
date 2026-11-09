@@ -57,6 +57,8 @@
       # like `cmd-n`.
       "shift-n" = "mod.open:space-new";
       "shift-w" = "space.rename";
+      # Renames every space at once in a dialog.
+      "ctrl-w" = "mod.open:space-rename-all";
       "shift-d" = "space.close";
       # New jj workspaces: `ctrl-g` (the TUI user binding) uses the focused
       # terminal's repository, and `shift-g` picks with fzf among the focused

@@ -1,0 +1,4 @@
+{
+  "place": "none",
+  "overlay": { "kind": "dialog", "width": 560, "modal": true }
+}

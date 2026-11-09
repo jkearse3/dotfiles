@@ -658,7 +658,8 @@ export default class Spaces extends View {
   // space was renamed so rows read alike: the folder its first terminal's
   // checkout (or, outside a repo, the folder itself) is named after, after its
   // repo ("dotfiles / ws3", just "dotfiles" when they match). Null only when
-  // there is no folder to name.
+  // there is no folder to name. The `space-rename-all` mod's rows say the
+  // same (its `checkoutLabel` and `checkout`); change them together.
   checkoutLine(w, g, t) {
     const path = g ? g.top : place(w);
     const folder = !w.machine && path === home() ? "~" : base(path ?? "");
