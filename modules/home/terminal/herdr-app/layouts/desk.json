@@ -1,9 +1,5 @@
 {
   "id": "root",
-  "cloned_from": {
-    "name": "main",
-    "version": "0.1.11"
-  },
   "type": "row",
   "titlebar": "none",
   "traffic_lights": [12, 16],

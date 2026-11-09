@@ -3,7 +3,7 @@
 // order, word starts and runs rank higher. Empty: recent first, then every
 // group. Choices are entries of their own ("Layout: Zen"); commands that need
 // a name ask for it. Enter runs, ↑/↓ or ctrl+j/ctrl+k move, Esc closes.
-// A personal copy of the app's own frame-palette mod (see cloned_from in mod.json).
+// Started as a copy of the app's own frame-palette mod (herdr-app 0.1.11).
 
 import { View, div, svg } from "gpui-kit";
 import { v_flex, h_flex, InputState, Input } from "gpui-base";

@@ -246,13 +246,11 @@ let
   # leaves jj's record of the workspace, which `jj workspace forget <name>`
   # clears.
   #
-  # `desk.json` is a clone of the shipped `main` layout at its `cloned_from`
-  # version, without the Git Changes panel, whose commit box would make Git
-  # commits behind jj's back. On an app update, compare that version's
-  # `defaults/layouts/main.json` with the new one, and if it changed,
-  # re-clone it without that panel. Showing it is a one-time step with the
-  # window open, `herdr-app do layout.switch --name desk` (or the
-  # palette); the app remembers the shown layout. The escape hatch
+  # `desk.json` started as a copy of the shipped `main` layout without the
+  # Git Changes panel, whose commit box would make Git commits behind jj's
+  # back. Showing it is a one-time step with the window open,
+  # `herdr-app do layout.switch --name desk` (or the palette); the app
+  # remembers the shown layout. The escape hatch
   # (`ctrl-alt-shift-escape`) renames it aside and returns to `main`; the
   # next switch puts the file back, and showing it again is the same step.
   # The app's structural rewrites (a mod docking) last until the next
@@ -264,16 +262,6 @@ let
   # sidebar header and footer with `desk-chrome` instead of the shipped
   # `workspace-chrome`, and its list of spaces with `desk-spaces` instead
   # of the shipped `spaces`.
-  #
-  # A personal mod can be a clone: a copy of an upstream folder in the app's
-  # source, recorded in its `mod.json` `cloned_from`, that is kept editable
-  # here. Each clone is pinned in `clonedMods`, and the tree fails to build
-  # when the pinned app's upstream folder no longer matches the clone's pin,
-  # by a file's sha256 or by its exact file list (so an added file fails
-  # too). The error names the clone, its upstream and the app version, and
-  # says how to re-sync: re-clone or re-copy it, re-apply its edits, and
-  # update `cloned_from.version`, the hashes and the file list. An app update
-  # that leaves the upstream alone passes unchanged.
   #
   # `mods/prefix-status` is a clone of the shipped `workspace-status` mod,
   # plus a "PREFIX" pill and key hints while prefix mode is on. Its palette
@@ -353,8 +341,6 @@ let
         fi
         cp ${prefixBindings} $out/mods/prefix/bindings.json
 
-        ${clonedModsUpstreamCheck}
-
         shopt -s dotglob nullglob
         failed=
         for path in ${./layouts}/*; do
@@ -392,114 +378,6 @@ let
           exit 1
         fi
       '';
-
-  # The pin of each clone in `./mods`, keyed by the clone's folder name:
-  # - `upstream`: the folder it was copied from, relative to the app source.
-  # - `files`: every file that folder holds, mapped to its sha256 as the app
-  #   version in the clone's `cloned_from` ships it. The names are the
-  #   folder's exact file list.
-  # - `resync`: how to rebuild the clone from a changed upstream, before
-  #   updating `cloned_from.version`, the hashes and the file list.
-  clonedMods = {
-    prefix-status = {
-      upstream = "defaults/mods/workspace-status";
-      files = {
-        "main.js" = "bdc4e1b468650c1b3bc1ee081fc78bab31cefbaf96933a9200faaec58b3c0f59";
-        "mod.json" = "e8e0a91d23a0addf19f9f4dab48f597f252a1d44e5063e4d6ae884a88cbf735d";
-      };
-      resync = "re-clone it (herdr-app do mod.clone --name workspace-status --as prefix-status) and re-apply the prefix-mode change";
-    };
-    goto = {
-      upstream = "defaults/mods/picker";
-      files = {
-        "main.js" = "dfeb29ce9f3c5fc2fb0098b7baac0c09fed5348f4297c846511bc647f5f564bb";
-        "mod.json" = "ca186ee1f13241f1f9b8facf092138214ca840a6a4d2865618a21934ffcda34d";
-      };
-      resync = "re-clone it (herdr-app do mod.clone --name picker --as goto) and re-apply its edits";
-    };
-    palette = {
-      upstream = "defaults/frame/palette";
-      files = {
-        "command.svg" = "d734fb3562cd3a137ac4428b03b6fb246f407950b53b7f362a4cf64ffb745a38";
-        "main.js" = "9b03ae0c36bec7168ecd58f555f9ee8b989e52f427eed5dfd4cf7af4ae34b734";
-        "mod.json" = "2574a840452fa1c3c4fd946e5ac62b44ddadc52af8908aa7affcc402022a8fd4";
-      };
-      resync = "re-copy it (mod.clone cannot clone frame mods), rewrite its frame/palette/ asset path to mods/palette/, re-add the overlay spec app.palette opens it with to mod.json, and re-apply its edits";
-    };
-    desk-chrome = {
-      upstream = "defaults/mods/workspace-chrome";
-      files = {
-        "archive.svg" = "bcb4f7103eef0133d0fae701ed5b74c8a531e20f4d38d4f37a1a83af6b582540";
-        "branch.svg" = "45c696f0f646e9471e9c77aa9e237c17c784cb3d8aaecf47bf5c6e05e7e67fcd";
-        "check.svg" = "bb1d520e122285018a0b9d257b7f73d78156337a09706da2b5619a75c45aa231";
-        "chevron-down.svg" = "be2f2e86753c4c6bc19b1cc196611b18597cc7a553580ed2bdf80f26a5e2440d";
-        "chevron-left.svg" = "1a3db31d090bce6c795dbcbd1a95cb6bb074d0b2fcd8d26e5610211e10c8291f";
-        "chevron-right.svg" = "280d2c796344a22fb6cb7086edc90868a27c7812405cffb9be66a3c5835aa898";
-        "circle-check.svg" = "7d9e10a404a556a239ee33ad8a5b1e415ce39d505991760115d3a515cf387426";
-        "clock.svg" = "0f3d2e2b3668e96889f182ef6ab2fb66aa54d48472e83be98bd239d81f64a9cc";
-        "file-text.svg" = "b00717747452168438e35e9ec6828e779bcace9497e3f6dc63f7a618a80cf4f4";
-        "files.svg" = "d0cb1467cd6c7b726d19d13f7aabeebaf094991605bd9fd4a47a6d084a575d24";
-        "folder-plus.svg" = "b89f6eb87b75714f01b723971ba96ee6d6969d6a7cdb878989cd9981268d92eb";
-        "folder.svg" = "9d7567649afffe0523114fcff3ac9da0504ac24cabc35e0b1dc0a4d90a34beb8";
-        "git-branch.svg" = "d2f7cf0c6d1944b9453268f1155da2e93374fad83beeae5ab9a7d5e3584e2204";
-        "git-compare.svg" = "2bc47e7dc3c5df4cfaf82de1fdc5bf9f1bbc7f790170d5d434ed7c4ffc86295f";
-        "layers.svg" = "d63f7cec8a79eec4a60755af9f2549584a61c8e349ef9f7e9a6c4af2aeb73d9d";
-        "main.js" = "d32d05ae66b44890cb0625015b240fbba4cfe9b336c39fbadfb737aec64ae76c";
-        "minus.svg" = "709a2f4c02741159ea14691d4fb1cbcf68073b27ec4e738bc9a73d660f409d7c";
-        "mod.json" = "e8e0a91d23a0addf19f9f4dab48f597f252a1d44e5063e4d6ae884a88cbf735d";
-        "monitor.svg" = "cbb2f05267714ca1ffa6411cf102bbba7da13743654e4fe518429b181cf19099";
-        "panel-left.svg" = "2e67d422da7253a4efcfbc02e74c17104844d7fdb19d63210e18b2c03bfa0ab4";
-        "panel-right.svg" = "85a85f016e5be2c50a3906161d190df94e3770d22e9069abf21649c9b7f36b1a";
-        "pin-off.svg" = "265298d18044617313022b40f1e24bb4989fe1f18f33585786fc947bb1ab270a";
-        "pin.svg" = "d4b9b5f5ef7f89e819316110ba8d8aa1d1998a30b03b4eeaf3323682890778dc";
-        "plus.svg" = "109da7afa021037ac0278aa9f5e72fd53e2fa2ea1f8ea32fbf78e7d98e6301e6";
-        "search.svg" = "7be6e7a558041594b46f0c22ccf0fd8d1f02458933b8038523323c874c7ad50b";
-        "server.svg" = "41a942cb9c9011def4c0b9a05f4cd02f3fcc762e7617c09610bc23264786c3f7";
-        "settings.svg" = "2f8dba8fb2a34431d93f83409b1058e95bf8cf3a54906f90d534a2d1a814b6e2";
-        "sidebar.svg" = "2f5ce4d2f78c3740d874db721092360cd58b809dca2564ea3fb65480ed4a9471";
-        "spinner.svg" = "00130fbac061db08cc967fdf2ae1378211a591c57cfb8f9b4018ec823fefea2d";
-        "square-pen.svg" = "e46ff55127ad0510e9637cba346fcb5c672cf6e14e74815652358cece8a2889e";
-        "square.svg" = "e475514f8a336eaa799db562ec89a87eacc5e9202c1b1f0e0ab387b6334b0d1b";
-        "terminal.svg" = "a6f93e62a6ec412e6a214849be5b566cd21cff81d5570891c2e04e96c4dd964e";
-        "x.svg" = "c1e53fc9bbe1a0a0b8183bcacf5ab7dbf160fd1f082594de3dcbba1cd5a71614";
-      };
-      resync = "re-clone it (herdr-app do mod.clone --name workspace-chrome --as desk-chrome) and re-apply its edits";
-    };
-    desk-spaces = {
-      upstream = "defaults/mods/spaces";
-      files = {
-        "main.js" = "65f0f8bb48b8e9266266dc0adbd785c6d7372429db5ca9807cea2dfe0b48fefb";
-        "mod.json" = "8357ce89d375376872b6db414b9555b26936b2e9d61e44275dc2e2bfe2a5783e";
-      };
-      resync = "re-clone it (herdr-app do mod.clone --name spaces --as desk-spaces) and re-apply its edits";
-    };
-  };
-
-  # Bash that exits 1 when any clone's upstream folder in the pinned app
-  # differs from its `clonedMods` pin, by a file's hash or by the file list.
-  clonedModsUpstreamCheck = lib.concatStrings (
-    lib.mapAttrsToList (
-      name: clone:
-      let
-        upstream = "${herdrApp.src}/${clone.upstream}";
-        hashes = pkgs.writeText "herdr-app-${name}-upstream.sha256" (
-          lib.concatStrings (lib.mapAttrsToList (file: hash: "${hash}  ${file}\n") clone.files)
-        );
-        fileList = pkgs.writeText "herdr-app-${name}-upstream-files.txt" (
-          lib.concatLines (lib.attrNames clone.files)
-        );
-        message = "herdr-app ${herdrApp.version} no longer ships ${clone.upstream} as modules/home/terminal/herdr-app/mods/${name} was cloned from it (see the hash or file-list mismatch above); ${clone.resync}, then update cloned_from.version in its mod.json and the hashes and file list in clonedMods.${name}";
-      in
-      # bash
-      ''
-        if ! (cd ${upstream} && sha256sum --check --quiet ${hashes}) \
-          || ! diff <(LC_ALL=C sort ${fileList}) <(find ${upstream} -mindepth 1 -printf '%P\n' | LC_ALL=C sort) >&2; then
-          echo ${lib.escapeShellArg message} >&2
-          exit 1
-        fi
-      ''
-    ) clonedMods
-  );
 
   # The app's shipped mods and layouts, which `deploy.sh` never removes, even
   # when an older switch deployed a personal entry by that name.

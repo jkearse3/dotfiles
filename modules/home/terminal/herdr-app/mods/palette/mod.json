@@ -7,9 +7,5 @@
     "offset": 60,
     "width": 620,
     "height": 0.85
-  },
-  "cloned_from": {
-    "name": "frame-palette",
-    "version": "0.1.11"
   }
 }
