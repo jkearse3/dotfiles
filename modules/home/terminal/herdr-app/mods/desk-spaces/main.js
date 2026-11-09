@@ -1,8 +1,9 @@
 // Workspace spaces: stable colored avatars, worktrees under their checkout,
-// grouped by machine when more than one is known. After a space's name, the repo
-// its first terminal is in now, only where unusual: branch, ahead/behind (a jj
-// checkout shows what the terminal prompt shows instead). Agent state lives in the agents list, not here. Click to
-// switch, right-click for its menu, drag to reorder.
+// grouped by machine when more than one is known. On a dimmed second line under a
+// space's name, the repo its first terminal is in now, only where unusual: branch,
+// ahead/behind (a jj checkout shows what the terminal prompt shows instead); a
+// space with nothing to show stays one line. Agent state lives in the agents list,
+// not here. Click to switch, right-click for its menu, drag to reorder.
 
 import { View, div, svg } from "gpui-kit";
 import { v_flex, h_flex } from "gpui-base";
@@ -40,7 +41,8 @@ function place(s, ps) {
   const tabs = new Set((s.tabs ?? []).map((c) => c.id));
   return ps.find((p) => tabs.has(p.tab) && p.cwd)?.cwd || s.folder;
 }
-const rowHeight = ({ tree }) => (tree ? 28 : 30);
+// A row's height: `two` when its repo status takes a second line under the name.
+const rowHeight = ({ tree, two }) => (two ? (tree ? 38 : 40) : tree ? 28 : 30);
 const where = (s, ps) => JSON.stringify([s.machine ?? null, place(s, ps)]);
 const base = (path) => path.replace(/\/+$/, "").split("/").pop();
 // `path` made absolute against `from`, without "." or ".." segments.
@@ -562,20 +564,21 @@ export default class Spaces extends View {
     });
   }
 
-  // Only what's unusual, after the name: "herdr \u00b7 spike \u21912 \u21931". The repo or
-  // branch goes when the name already says it (a worktree is named after its branch),
-  // and master/main go: nearly every space is on one.
+  // The second line under the name, only what's unusual:
+  // "herdr \u00b7 spike \u21912 \u21931". The repo or branch goes when the name
+  // already says it (a worktree is named after its branch), and master/main go:
+  // nearly every space is on one. Null when nothing is left to show, which keeps
+  // the row one line.
   gitTail(g, tree, name, t) {
     const raw = g.branch ?? "detached";
     const same = (a) => a.toLowerCase() === name.toLowerCase();
     const branch = same(raw) || raw === "master" || raw === "main" ? "" : raw;
     const repo = tree || same(g.name) ? "" : g.name;
     const where = [repo, branch].filter(Boolean).join(" \u00b7 ");
+    if (!where && !g.ahead && !g.behind) return null;
     return h_flex()
-      .flex_1()
       .min_w(0)
       .gap(5)
-      .justify_end()
       .items_center()
       .text_size(11.5)
       .text_color(t.dim)
@@ -594,19 +597,17 @@ export default class Spaces extends View {
       );
   }
 
-  // A jj checkout, in the terminal prompt's words and colors: the nearest bookmark
-  // (purple, "(+1b)" when more share it), how far @ is from it (cyan \u2191 after it,
-  // \u2193 before it), a conflict (red \u26a0) and edits in @ (yellow \u25cf). The change
-  // ID shows only without a bookmark, where nothing else says where @ is. The repo
-  // shows as for git.
+  // The second line under the name for a jj checkout, never empty, in the terminal
+  // prompt's words and colors: the nearest bookmark (purple, "(+1b)" when more share
+  // it), how far @ is from it (cyan \u2191 after it, \u2193 before it), a conflict
+  // (red \u26a0) and edits in @ (yellow \u25cf). The change ID shows only without a
+  // bookmark, where nothing else says where @ is. The repo shows as for git.
   jjTail(g, tree, name, t) {
     const same = (a) => a.toLowerCase() === name.toLowerCase();
     const repo = tree || same(g.name) ? "" : g.name;
     return h_flex()
-      .flex_1()
       .min_w(0)
       .gap(5)
-      .justify_end()
       .items_center()
       .text_size(11.5)
       .text_color(t.dim)
@@ -642,11 +643,16 @@ export default class Spaces extends View {
     const colors = shared("space.colors") ?? {};
     const color = colors[w.id] ?? "ansi6";
     const fill = color.startsWith("#") ? color : (MARK[color] ?? t[color]);
+    const tail = g
+      ? g.jj
+        ? this.jjTail(g, tree, w.name, t)
+        : this.gitTail(g, tree, w.name, t)
+      : null;
     return v_flex()
       .relative()
       .id(`space-${w.id}`)
       .px(8)
-      .h(rowHeight({ tree }))
+      .h(rowHeight({ tree, two: Boolean(tail) }))
       .flex_none()
       .justify_center()
       .rounded(8)
@@ -720,19 +726,18 @@ export default class Spaces extends View {
             ),
           )
           .child(
-            div()
-              .flex_shrink(0)
-              .max_w(150)
-              .truncate()
-              .text_color(t.foreground)
-              .child(w.name),
-          )
-          .child(
-            g
-              ? g.jj
-                ? this.jjTail(g, tree, w.name, t)
-                : this.gitTail(g, tree, w.name, t)
-              : div().flex_1(),
+            v_flex()
+              .flex_1()
+              .min_w(0)
+              .gap(1)
+              .child(
+                div()
+                  .min_w(0)
+                  .truncate()
+                  .text_color(t.foreground)
+                  .child(w.name),
+              )
+              .when(Boolean(tail), (el) => el.child(tail)),
           ),
       );
   }

@@ -308,8 +308,11 @@ let
   # shows: the nearest bookmark (main included), the distance from it, a
   # conflict and edits in `@`, read with
   # `--ignore-working-copy` so a look never writes a jj operation; jj
-  # workspaces list under their repo's main checkout. `layouts/desk.json`
-  # uses it; other layouts still use the original `spaces`.
+  # workspaces list under their repo's main checkout. Each repo space's
+  # status (git: repo · branch, ahead/behind; jj: as the prompt shows it)
+  # sits on a second dimmed line under the space name, and spaces with
+  # nothing to show stay one line. `layouts/desk.json` uses it; other
+  # layouts still use the original `spaces`.
   #
   # The tree fails to build when a personal mod or layout is named like a
   # shipped one, which the app would overwrite on its next start, or starts
