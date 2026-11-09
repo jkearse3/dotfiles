@@ -3,7 +3,8 @@
 // space's repository: `mod.open` takes only a mod name. The prompt asks for
 // a name, runs `jjx workspace add` from `trunk()`, and opens and focuses the
 // new space. It takes the repository from its working directory, so the
-// launcher starts it in the space's folder.
+// launcher starts it in the space's folder. `jj-workspace-pick` (`ctrl-b
+// shift-g`) picks the repository with fzf instead.
 //
 // The order matters. The launcher waits for `hc run` while still open,
 // because closing it cancels its pending tasks and would leave the started
