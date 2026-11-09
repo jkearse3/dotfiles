@@ -1,12 +1,13 @@
 // Opens `herdr-jj-workspace prompt-add --host app --pick` in a popup
 // terminal, so a key binding (`ctrl-b shift-g`) can create a jj workspace in
 // a repository picked with fzf: `mod.open` takes only a mod name. The picker
-// lists the jj repositories of the spaces open on this machine, one line per
-// repository however many of its workspaces are open; Enter asks for a name,
-// runs `jjx workspace add` from `trunk()`, and opens and focuses the new
-// space; Esc closes the popup without creating anything. `jj-workspace-new`
-// (`ctrl-b ctrl-g`) skips the picker and uses the focused terminal's
-// repository.
+// lists the focused terminal's jj repository first, so Enter with an empty
+// query picks it, then the jj repositories of the spaces open on this
+// machine, one line per repository however many of its workspaces are open.
+// Enter asks for a name, runs `jjx workspace add` from `trunk()`, and opens
+// and focuses the new space; Esc closes the popup without creating anything.
+// `jj-workspace-new` (`ctrl-b ctrl-g`) skips the picker and uses the focused
+// terminal's repository.
 //
 // The order matters. The launcher waits for `hc run` while still open,
 // because closing it cancels its pending tasks and would leave the started
@@ -17,18 +18,22 @@
 //
 // The app documents imports only from a mod's own folder (herdr-app
 // `defaults/AGENTS.md`), so `cliPath` and `startTerminal` are copied into
-// each launcher that uses them rather than shared.
+// each launcher that uses them rather than shared, and `focusedFolder`
+// follows the app's own `files` mod.
 
 import { View, div } from "gpui-kit";
 import {
   appHome,
   closeOverlay,
+  focused,
   hc,
   home,
   notify,
   openOverlay,
+  panes,
   props,
   readTextFile,
+  spaces,
 } from "herdr";
 
 const TITLE = "New jj workspace";
@@ -45,6 +50,21 @@ async function cliPath(name) {
     );
   }
   return path;
+}
+
+// The focused terminal's live folder when that terminal is on this machine,
+// else null: a mod pane, no focus, or a terminal of another machine.
+function focusedFolder() {
+  const f = focused();
+  if (!f) return null;
+  const machine = f.pane
+    ? spaces().find((s) => s.id === f.space)?.machine
+    : f.terminal?.includes("/")
+      ? f.terminal.split("/")[0]
+      : null;
+  if (machine !== null) return null; // undefined (space not found) counts as unknown
+  const pane = f.pane ? panes().find((p) => p.pane === f.pane) : null;
+  return pane?.cwd || f.cwd || null;
 }
 
 // Starts ARGV in FOLDER in a new core terminal and returns its address. No
@@ -79,18 +99,21 @@ export default class JjWorkspacePick extends View {
     const overlay = props()?.overlay;
     if (!overlay) return;
 
+    const first = focusedFolder();
     cx.spawn(async (_cx) => {
       let terminal;
       try {
         const cli = await cliPath("herdr-jj-workspace");
-        // The picker reads its repositories from the app's spaces, not from
-        // its working directory.
+        // The picker reads its repositories from the app's spaces and takes
+        // the focused folder as an option, not as its working directory, so
+        // a removed folder cannot stop `hc run`.
         terminal = await startTerminal(home(), [
           cli,
           "prompt-add",
           "--host",
           "app",
           "--pick",
+          ...(first ? ["--first", first] : []),
         ]);
       } catch (error) {
         closeOverlay(overlay);

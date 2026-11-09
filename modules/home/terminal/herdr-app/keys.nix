@@ -65,11 +65,11 @@
     "shift-w" = "space.rename";
     "shift-d" = "space.close";
     # New jj workspaces: `ctrl-g` (the TUI user binding) uses the focused
-    # terminal's repository, and `shift-g` picks with fzf among the
-    # repositories of the spaces open on this machine. Both take the jj path,
-    # never the app's own Git worktree commands, which would bypass jj: every
-    # checkout here is a jj workspace. In the TUI, `shift-g` stays Herdr's Git
-    # new-worktree key.
+    # terminal's repository, and `shift-g` picks with fzf among the focused
+    # terminal's repository and those of the spaces open on this machine, the
+    # focused one first. Both take the jj path, never the app's own Git
+    # worktree commands, which would bypass jj: every checkout here is a jj
+    # workspace. In the TUI, `shift-g` stays Herdr's Git new-worktree key.
     "shift-g" = "mod.open:jj-workspace-pick";
     "ctrl-g" = "mod.open:jj-workspace-new";
     "shift-q" = "mod.open:jj-workspace-remove";
