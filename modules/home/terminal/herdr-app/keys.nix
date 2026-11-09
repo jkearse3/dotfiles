@@ -55,7 +55,9 @@
     "?" = "app.help";
     "s" = "app.settings";
 
-    "shift-n" = "space.new";
+    # The TUI's new-workspace key picks the folder with fzf (`space-new`);
+    # `cmd-n` still makes a space in the focused terminal's folder.
+    "shift-n" = "mod.open:space-new";
     "shift-w" = "space.rename";
     "shift-d" = "space.close";
     # The TUI's new-worktree key and the user's jj-workspace keys all take the

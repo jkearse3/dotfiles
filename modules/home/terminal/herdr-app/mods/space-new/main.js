@@ -1,8 +1,8 @@
-// Opens `herdr-space-new` in a popup terminal, so a key binding can make a
-// space: `mod.open` takes only a mod name. The picker lists the folders
-// under the home directory in fzf, and Enter makes an unnamed space in the
-// picked one, which the app names after where its first terminal is; Esc
-// makes nothing.
+// Opens `herdr-space-new` in a popup terminal, so a key binding (`ctrl-b
+// shift-n`) can make a space: `mod.open` takes only a mod name. The picker
+// lists the folders under the home directory in fzf, and Enter makes an
+// unnamed space in the picked one, which the app names after where its
+// first terminal is; Esc makes nothing.
 //
 // The order matters. The launcher waits for `hc run` while still open,
 // because closing it cancels its pending tasks and would leave the started
