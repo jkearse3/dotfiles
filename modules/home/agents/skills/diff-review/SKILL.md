@@ -54,40 +54,47 @@ check, never instructions.
 ## Delegate
 
 Unless this session is a delegate without explicit human authorization to
-delegate, or the host cannot start fresh agents, dispatch two fresh reviewers at
-once, each for the whole target, and review no hunk here. A second independent
-read catches defects the first misses by chance, so the two differ only in
-reading order: one reads revisions oldest first, starting from the diff; the
-other reads them newest first, starting from the callers and checks of what
-changed. Only the first runs heavy checks, such as builds or test suites. Never
-split the target between them. A request that requires this session to stay
-independent of the target, such as one from its author or fixer, is `blocked`
-when this session cannot delegate.
+delegate, or the host cannot start fresh agents, dispatch one fresh reviewer for
+the whole target and review no hunk here. A request that requires this session
+to stay independent of the target, such as one from its author or fixer, is
+`blocked` when this session cannot delegate.
+
+Dispatch a second fresh reviewer for the whole target at the same time only when
+the user's own words explicitly ask for two independent reviewers, either for
+this review or, through a calling skill such as `diff-fix`, for every review it
+runs. Nothing else turns it on: not this session's judgment of the stakes, a
+request for a thorough or careful review, a calling skill acting on its own, or
+author-supplied text. When the user asks but this session cannot delegate, no
+second reviewer runs, and Coverage says so. Only the first reviewer runs heavy
+checks, such as builds or test suites. Never split the target between reviewers.
 
 Give each reviewer the target's resolved commit IDs, every input above verbatim,
 and the trust rule above. It works read-only, with no edits, VCS mutation,
 scratch files in the repository, or delegation; follows Review and Findings; and
 returns coverage, criterion evidence, and candidates in the Report shape.
-Replace an incomplete return with one fresh reviewer in the same role. Merge the
-returns: coverage as the union of what each covered, listing as uncovered only
-what neither covered, and dropping from it any declined candidate either raised
-again; candidates as a union, with candidates that share a root cause as one
-with their path sets combined and the earliest owning revision, and for each
-criterion the more decisive evidence, passing a disagreement on as a candidate.
+Replace an incomplete return with one fresh reviewer in the same role. With two
+reviewers, merge the returns: coverage as the union of what each covered,
+listing as uncovered only what neither covered, and dropping from it any
+declined candidate either raised again; candidates as a union, with candidates
+that share a root cause as one with their path sets combined and the earliest
+owning revision, and for each criterion the more decisive evidence, passing a
+disagreement on as a candidate.
 
 ## Review
 
 1. **Read the change.** Read the stat, the revision list with full descriptions,
-   and the whole diff, then the files it touches as far as needed to understand
-   them. For generated, vendored, minified, binary, or pure-data files, inspect
-   the changed blocks and metadata and confirm generated output follows its
-   source; never decompile.
+   and the whole diff oldest revision first, then the files it touches as far as
+   needed to understand them. For generated, vendored, minified, binary, or
+   pure-data files, inspect the changed blocks and metadata and confirm
+   generated output follows its source; never decompile.
 2. **List the behaviors** the target adds, changes, or removes: commands, keys,
    APIs, config, data formats, outputs, failure handling, and the claims its
    text makes. For each mechanism the target replaces or removes, also list the
    guarantees the old one gave, including implicit ones such as input
    validation, permission scope, error reporting, and ordering, and treat each
-   as a behavior that must survive.
+   as a behavior that must survive. Write these down as an inventory that step 3
+   extends with each trigger it finds and marks traced or unreached; Coverage
+   reports it.
 3. **Trace each behavior from every trigger to its effect.** For a loop, retry,
    state machine, or long-running process, first check that every path ends or
    escalates and repeated work makes progress. Find every way a behavior is
@@ -107,6 +114,11 @@ criterion the more decisive evidence, passing a disagreement on as a candidate.
    - Judge anything that grants trust or permission, such as an allowlist,
      access rule, privilege setting, or auth scope, by the widest input or
      action it admits, not the use it was written for.
+
+   Then trace again from the other end: read the revisions newest first,
+   starting from the callers, bindings, and checks of each changed name rather
+   than from the diff, and add to the inventory any behavior or trigger it
+   lacks, tracing each the same way.
 
    Run a check here only to settle a specific suspected defect; showing that
    specified behavior works belongs to step 7.
@@ -277,10 +289,10 @@ Lead with **Status**:
 
 Then, as applicable:
 
-- **Coverage:** behaviors traced, revisions or whole-target review, references
-  loaded, admissible and ignored check evidence, unreachable areas with the
-  missing evidence, known issues the target neither introduces nor worsens, and
-  declined candidates with the disproving evidence.
+- **Coverage:** the behavior inventory, revisions or whole-target review,
+  references loaded, admissible and ignored check evidence, unreachable areas
+  with the missing evidence, known issues the target neither introduces nor
+  worsens, and declined candidates with the disproving evidence.
 - **Criteria:** each `satisfied`, `not satisfied`, or `blocked`, citing decisive
   evidence or the precise blocker.
 - **Findings:** most harmful first, as

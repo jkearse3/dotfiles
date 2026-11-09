@@ -39,12 +39,13 @@ that reshape. It authorizes nothing outside the target and no publication.
 1. **Review.** Resolve the target from its base to its current tip and follow
    `diff-review` on the whole target in this session, with the request's
    granularity, as a session that must stay independent of it: this session
-   dispatches its reviewers and verifier and never hands the whole review to one
+   dispatches its reviewer and verifier and never hands the whole review to one
    subagent, which could not dispatch them. Give the review the criteria, the
-   context, the check evidence, every user decision so far, every earlier
-   review's confirmed findings as its earlier findings, the last review's
-   declined candidates with their evidence, and a request to run the
-   repository's checks at the tip. `blocked` stops the run.
+   context, the check evidence, any request in the user's own words for two
+   independent reviewers, every user decision so far, every earlier review's
+   confirmed findings as its earlier findings, the last review's declined
+   candidates with their evidence, and a request to run the repository's checks
+   at the tip. `blocked` stops the run.
 
 2. **Finish** when the review confirms no findings and no criterion
    `not satisfied` that the user has not accepted. Areas a review leaves
