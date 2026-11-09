@@ -285,8 +285,9 @@ export default class Spaces extends View {
     }
   }
 
-  // One jj checkout as the terminal prompt shows it (jj-starship-prompt in the
-  // dotfiles' starship module), with its shared repo folder; null where jj isn't
+  // One jj checkout as the terminal prompt shows it, with its shared repo
+  // folder. modules/home/shell/starship/jj-starship-prompt.sh mirrors this
+  // bookmark and distance rule; change both together. Returns null where jj isn't
   // installed or the place isn't a jj checkout, which leaves it to git. Every jj call
   // passes --ignore-working-copy: a snapshot would write an operation on each look,
   // which the op_heads watch would answer with another look.

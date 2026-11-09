@@ -2,8 +2,10 @@
 
 # Build a jj status line for the starship prompt.
 # Outputs ANSI-colored segments: bookmark, distance arrow, change ID, conflict, modification.
-# The desk-spaces Herdr app mod (modules/home/terminal/herdr-app/mods/desk-spaces)
-# copies these rules for the sidebar's list of spaces; change both together.
+# `checkJj` in the desk-spaces Herdr app mod
+# (modules/home/terminal/herdr-app/mods/desk-spaces/main.js) mirrors this
+# script's bookmark and distance rule for the sidebar's list of spaces; change
+# both together.
 
 # ANSI color codes.
 COLOR_RESET=$'\033[0m'
@@ -45,7 +47,8 @@ count_changes_in_revset() {
 }
 
 # Resolve the nearest bookmark, its distance count, and direction.
-# Checks behind first (preferred), falls back to ahead.
+# Prefers the nearest bookmark at or after @ (↓, counting the revisions from @
+# up to it), else the nearest at or before @ (↑, counting its descendants up to @).
 # Outputs: "bookmark distance_count direction" (space-delimited) or nothing.
 resolve_branch_distance() {
 	local lines bookmark count
