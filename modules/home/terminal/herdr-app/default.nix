@@ -523,13 +523,33 @@ let
     ln -s ${deploy} "$out"
   '';
 
-  # The launcher mods (`find`, `jj-workspace-new`, `jj-workspace-remove`)
-  # start their CLIs by the absolute store paths this file maps CLI names to.
-  # A bare name would resolve on the core's PATH, which depends on whoever
-  # started the core. Read-only, because it holds store paths.
+  # The folder picker the `space-new` mod runs in a popup terminal. It takes
+  # its tools as arguments so the fixtures can pass fakes; `spaceNew` passes
+  # the real ones.
+  spaceNewPicker = pkgs.writeShellApplication {
+    name = "herdr-space-new-picker";
+    text = builtins.readFile ./space-new.sh;
+  };
+
+  # The `space-new` mod runs the picker through this path, so failing
+  # fixtures fail the build.
+  checkedSpaceNewPicker = pkgs.runCommandLocal "herdr-space-new-picker-checked" { } ''
+    bash ${./space-new-test.sh} ${spaceNewPicker}/bin/herdr-space-new-picker ${pkgs.fd}/bin/fd
+    ln -s ${spaceNewPicker} "$out"
+  '';
+
+  spaceNew = pkgs.writeShellScript "herdr-space-new" ''
+    exec ${checkedSpaceNewPicker}/bin/herdr-space-new-picker ${pkgs.fd}/bin/fd ${pkgs.fzf}/bin/fzf ${herdrApp}/bin/herdr-app
+  '';
+
+  # The launcher mods (`find`, `jj-workspace-new`, `jj-workspace-remove`,
+  # `space-new`) start their CLIs by the absolute store paths this file maps
+  # CLI names to. A bare name would resolve on the core's PATH, which depends
+  # on whoever started the core. Read-only, because it holds store paths.
   dotfilesPaths = (pkgs.formats.json { }).generate "herdr-app-dotfiles-paths.json" {
     herdr-find = "${dotfilesPackages.herdr-find.cli}/bin/herdr-find";
     herdr-jj-workspace = "${dotfilesPackages.herdr-jj-workspaces.cli}/bin/herdr-jj-workspace";
+    herdr-space-new = "${spaceNew}";
   };
 in
 {
