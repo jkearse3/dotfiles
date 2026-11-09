@@ -57,7 +57,11 @@ let
 
   spaceNew = import ./space-new.nix { inherit herdrApp pkgs; };
 
-  dotfilesPaths = import ./dotfiles-paths.nix { inherit dotfilesPackages pkgs spaceNew; };
+  dotfilesPaths = import ./dotfiles-paths.nix {
+    inherit dotfilesPackages pkgs spaceNew;
+    # The user's interactive jj, so the sidebar reads repositories with it.
+    jujutsu = config.programs.jujutsu.package;
+  };
 in
 {
   imports = [

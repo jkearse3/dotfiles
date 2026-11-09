@@ -27,7 +27,7 @@ import {
   window,
   layout,
 } from "herdr";
-import { place } from "./paths.js";
+import { cliPath, place } from "./paths.js";
 
 function find(node, id) {
   if (node?.id === id) return node;
@@ -292,9 +292,13 @@ export default class Spaces extends View {
   // passes --ignore-working-copy: a snapshot would write an operation on each look,
   // which the op_heads watch would answer with another look.
   async checkJj(cwd, on) {
+    // On this machine, the user's jj by its store path, since the app's PATH
+    // depends on how the app was started; another machine resolves its own
+    // `jj`. A dotfiles-paths.json without the entry leaves the bare name.
+    const program = on ? "jj" : await cliPath("jj").catch(() => "jj");
     const jj = (args) =>
       exec(
-        "jj",
+        program,
         ["--ignore-working-copy", "--no-pager", "--color=never", ...args],
         { cwd, on },
       );
