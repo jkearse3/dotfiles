@@ -18,11 +18,10 @@
 // So `keys.nix` binds `ctrl-b` in the `mod:prefix` section, whose key
 // context (this mod's) is deeper and wins, to `prefix.ctrl-b`, which the
 // app delivers to `nextCommand()` here. The app reinstalls that binding on
-// every keys.json reload, so this mod binds no keys itself. The
-// build rejects any other prefix keystroke that `global`, a `layout:`
-// section, or `mod:prefix` binds, since the app would take it first. Esc is
-// the app's too (`overlay.close`): it closes the popup, and `close` turns
-// the PREFIX pill off.
+// every keys.json reload, so this mod binds no keys itself. The build's
+// `keys-check.jq` rejects any other prefix keystroke the app would take
+// first. Esc is the app's too (`overlay.close`): it closes the popup, and
+// `close` turns the PREFIX pill off.
 //
 // While prefix mode is on, the `prefix-status` status bar shows a "PREFIX"
 // pill and key hints built from the bindings: this mod publishes the hints
@@ -247,10 +246,10 @@ export default class Prefix extends View {
     if (then) then();
   }
 
-  // Runs one bound action. The build guarantees a `send:` action carries
-  // exactly one control character (U+0001-U+001A), typed as its ctrl- key
-  // into the captured terminal; with no terminal captured it does nothing,
-  // and a failed `hc keys` shows an error notification.
+  // Runs one bound action. The build's `keys-check.jq` guarantees a `send:`
+  // action carries exactly one control character (U+0001-U+001A), typed as
+  // its ctrl- key into the captured terminal; with no terminal captured it
+  // does nothing, and a failed `hc keys` shows an error notification.
   perform(action) {
     if (!action.startsWith("send:")) return run(action);
 

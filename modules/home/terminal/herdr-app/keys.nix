@@ -11,16 +11,9 @@
 #   `bindings.json`; Esc or an unmapped keystroke leaves prefix mode without
 #   acting.
 #
-# A key that opens a personal mod (under `mods/`) is mapped only alongside
-# that mod, so keys whose mod is absent stay unbound. The module merges
-# `sections` over the app's own `defaults/keys.macos.json`, so its `cmd-`
-# keys stay bound beside them, and fails the build on an action the app does
-# not know, on `ctrl-b` bound to anything but `mod.open:prefix` (in
-# `mod:prefix`, anything but `prefix.ctrl-b`), on a
-# chord starting with `ctrl-b`, which prefix mode would keep from firing, and
-# on a prefix keystroke other than `ctrl-b` that `global`, a `layout:`
-# section, or `mod:prefix` also binds alone, which the app would take before
-# prefix mode sees it.
+# The module merges `sections` over the app's own `defaults/keys.macos.json`,
+# so its `cmd-` keys stay bound beside them, and fails the build on bindings
+# that break the rules stated in `keys-check.jq`.
 #
 # A chord is space-separated keystrokes. Spellings follow the app's key
 # parser (vendored gpui `Keystroke::parse`): `?` matches shift-/ because
