@@ -67,6 +67,19 @@ printf 'herdr %s\\n' "$*" >> "$STUB_LOG"
 exit 1
 """
 
+# fzf, named by $HERDR_JJ_WORKSPACE_FZF_PATH: records its input lines in
+# $FAKE_FZF_INPUT, then prints input line $FAKE_FZF_CHOICE and exits 0, or, with
+# no choice, exits 130 as fzf does on Esc; $FAKE_FZF_STATUS overrides the status.
+FAKE_FZF = """\
+#!/bin/sh
+cat > "$FAKE_FZF_INPUT"
+if [ -n "${FAKE_FZF_CHOICE:-}" ]; then
+  sed -n "${FAKE_FZF_CHOICE}p" "$FAKE_FZF_INPUT"
+  exit "${FAKE_FZF_STATUS:-0}"
+fi
+exit "${FAKE_FZF_STATUS:-130}"
+"""
+
 
 def app_space(space_id: str, folder: Path, terminal: str, *, shown: bool = False) -> dict[str, object]:
     """Return a space on this machine with one tab showing TERMINAL, shaped like one in ``herdr-app ls``."""
@@ -121,13 +134,15 @@ class AppHostTests(unittest.TestCase):
         home.mkdir()
         stubs = self.root / "stubs"
         stubs.mkdir()
-        for name, script in (("herdr-app", FAKE_HERDR_APP), ("hc", FAKE_HC), ("herdr", FAKE_HERDR)):
+        fakes = (("herdr-app", FAKE_HERDR_APP), ("hc", FAKE_HC), ("herdr", FAKE_HERDR), ("fzf", FAKE_FZF))
+        for name, script in fakes:
             stub = stubs / name
             _ = stub.write_text(script)
             stub.chmod(0o755)
         self.log = self.root / "stub.log"
         self.records = self.root / "records"
         self.records.mkdir()
+        self.fzf_input = self.root / "fzf.input"
         self.repo = self.root / "repo"
         self.workspace = home / ".herdr" / "worktrees" / "repo" / "feature"
         gitconfig = self.root / "gitconfig"
@@ -151,6 +166,8 @@ class AppHostTests(unittest.TestCase):
             "STUB_LOG": str(self.log),
             "HC_STUB_RECORDS": str(self.records),
             "HC_TERMINAL_ID": "t1",
+            "HERDR_JJ_WORKSPACE_FZF_PATH": str(stubs / "fzf"),
+            "FAKE_FZF_INPUT": str(self.fzf_input),
         }
         _ = subprocess.run(
             ["git", "init", "--initial-branch=main", str(self.repo)], env=self.env, check=True, capture_output=True
@@ -422,6 +439,74 @@ class AppHostTests(unittest.TestCase):
         self.assertEqual(result.returncode, 1)
         self.assertIn("Press enter to close.", result.stderr)
         self.assertEqual(self.workspace_names(), ["default"])
+
+    def test_prompt_add_pick_lists_each_local_jj_repository_once(self) -> None:
+        self.add_feature()
+        plain = self.root / "plain"
+        plain.mkdir()
+        # find_jj_checkout needs only a .jj directory to count a folder as a primary checkout.
+        other = self.root / "home" / "other"
+        remote = self.root / "home" / "remote"
+        for repository in (other, remote):
+            (repository / ".jj").mkdir(parents=True)
+        unplaced = app_space("sp6", plain, "t6")
+        unplaced["folder"] = ""
+        on_other_machine = app_space("sp5", remote, "t5")
+        on_other_machine["machine"] = "m1"
+        self.set_world(
+            app_space("sp2", self.workspace, "t2"),
+            app_space("sp3", plain, "t3"),
+            app_space("sp4", other, "t4"),
+            app_space("sp1", self.repo, "t1", shown=True),
+            on_other_machine,
+            unplaced,
+        )
+
+        result = self.run_cli("prompt-add", "--host", "app", "--pick", stdin="second\n", FAKE_FZF_CHOICE="1")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(self.fzf_input.read_text().splitlines(), [str(self.repo), "~/other"])
+        self.assertIn("New jj workspace for repo", result.stdout)
+        second = self.workspace.parent / "second"
+        self.assertEqual(self.workspace_names(), ["default", "feature", "second"])
+        self.assertEqual(
+            self.calls(),
+            ["herdr-app ls", "herdr-app ls", f'herdr-app do space.new {{"folder": "{second}"}}'],
+        )
+
+    def test_prompt_add_pick_closed_without_choosing_creates_nothing(self) -> None:
+        for status in ("1", "130"):
+            with self.subTest(status=status):
+                result = self.run_cli("prompt-add", "--host", "app", "--pick", FAKE_FZF_STATUS=status)
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertEqual(self.fzf_input.read_text().splitlines(), [str(self.repo)])
+                self.assertEqual(self.workspace_names(), ["default"])
+                self.assertEqual(self.calls(), ["herdr-app ls"])
+
+    def test_prompt_add_pick_fzf_failure_waits_for_enter(self) -> None:
+        result = self.run_cli("prompt-add", "--host", "app", "--pick", stdin="\n", FAKE_FZF_STATUS="2")
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("fzf exited with status 2", result.stderr)
+        self.assertIn("Press enter to close.", result.stderr)
+        self.assertEqual(self.workspace_names(), ["default"])
+
+    def test_prompt_add_pick_without_jj_spaces_fails_before_fzf(self) -> None:
+        plain = self.root / "plain"
+        plain.mkdir()
+        self.set_world(app_space("sp3", plain, "t3", shown=True))
+        result = self.run_cli("prompt-add", "--host", "app", "--pick", stdin="\n", FAKE_FZF_CHOICE="1")
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("no space on this machine is in a jj repository; run jjx ensure", result.stderr)
+        self.assertIn("Press enter to close.", result.stderr)
+        self.assertFalse(self.fzf_input.exists())
+
+    def test_prompt_add_pick_needs_app_host(self) -> None:
+        result = self.run_cli(
+            "prompt-add", "--host", "tui", "--pick", stdin="\n", HERDR_PLUGIN_CONTEXT_JSON='{"workspace_id": "w1"}'
+        )
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("--pick needs the app host", result.stderr)
+        self.assertEqual(self.calls(), [])
+        self.assertFalse(self.fzf_input.exists())
 
     def test_prompt_remove_declined_changes_nothing(self) -> None:
         self.add_feature()

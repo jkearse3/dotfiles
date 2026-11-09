@@ -17,6 +17,8 @@ CLI, or ``app``, the Herdr desktop app through ``herdr-app`` and herdr-core's
 ``hc``. Under ``app``, a workspace is an app space and ``--workspace`` takes a
 space ID; a new jj workspace comes from the repository of the process's working
 directory unless ``--workspace`` names a space, and opens as a new space.
+``prompt-add --pick`` instead asks in fzf which repository of the app's spaces
+on this machine to use.
 """
 
 from __future__ import annotations
@@ -265,13 +267,18 @@ def _run(
     command: Sequence[str],
     *,
     cwd: Path | None = None,
+    stdin_text: str | None = None,
     stderr: int | None = subprocess.PIPE,
 ) -> subprocess.CompletedProcess[str]:
-    """Run COMMAND capturing stdout, and stderr unless STDERR is None."""
+    """Run COMMAND capturing stdout, and stderr unless STDERR is None.
+
+    STDIN_TEXT, when given, is written to its stdin; otherwise it inherits this
+    process's.
+    """
     _ = sys.stdout.flush()
     try:
         return subprocess.run(
-            command, cwd=cwd, check=False, stdout=subprocess.PIPE, stderr=stderr, text=True
+            command, cwd=cwd, input=stdin_text, check=False, stdout=subprocess.PIPE, stderr=stderr, text=True
         )
     except OSError as error:
         raise WorkspaceError(f"could not run {command[0]}: {error}") from error
@@ -350,6 +357,58 @@ def resolve_app_source(folder: Path) -> JjCheckout:
     if checkout is None:
         raise WorkspaceError(f"{folder} is not in a jj repository; run jjx ensure in its repository first")
     return checkout
+
+
+# fzf's exit statuses when the user closes it without choosing: no line matched
+# the query, or the user pressed Esc or ctrl-c.
+FZF_NO_MATCH = 1
+FZF_INTERRUPTED = 130
+
+
+def pick_app_source() -> JjCheckout | None:
+    """Ask in fzf which repository of the app's spaces on this machine a new jj workspace is made from.
+
+    fzf lists, in sidebar order, the primary checkout of each jj repository a
+    space's folder is in, once even when several spaces show its checkouts.
+    Returns that primary checkout, or None when the user closes fzf without
+    choosing. Raises WorkspaceError, before running fzf, when no window is
+    open or no space is in a jj repository, and when fzf fails.
+    """
+    repositories: dict[str, JjCheckout] = {}
+    for space in _app_spaces():
+        checkout = find_jj_checkout(Path(space.folder)) if space.folder != "" else None
+        if checkout is not None:
+            primary_root = checkout.primary_root.resolve()
+            primary = JjCheckout(root=primary_root, primary_root=primary_root)
+            _ = repositories.setdefault(_home_relative(primary_root), primary)
+    if len(repositories) == 0:
+        raise WorkspaceError("no space on this machine is in a jj repository; run jjx ensure in one first")
+
+    command = [_fzf(), "--scheme=path", "--prompt=New jj workspace> "]
+    result = _run(command, stdin_text="".join(f"{line}\n" for line in repositories), stderr=None)
+    if result.returncode in (FZF_NO_MATCH, FZF_INTERRUPTED):
+        return None
+    if result.returncode != 0:
+        raise WorkspaceError(f"fzf exited with status {result.returncode}")
+
+    chosen = repositories.get(result.stdout.removesuffix("\n"))
+    if chosen is None:
+        raise WorkspaceError(f"fzf printed {result.stdout!r}, which is not a listed repository")
+    return chosen
+
+
+def _home_relative(path: Path) -> str:
+    """Return PATH with the home directory written as ``~``."""
+    try:
+        relative = path.relative_to(Path.home())
+    except ValueError:
+        return str(path)
+    return "~" if relative == Path() else f"~/{relative}"
+
+
+def _fzf() -> str:
+    fzf = os.environ.get("HERDR_JJ_WORKSPACE_FZF_PATH", "")
+    return fzf if fzf != "" else "fzf"
 
 
 def app_create(source: JjCheckout, name: str, *, focus: bool) -> dict[str, str]:
@@ -592,13 +651,18 @@ def _command_remove(arguments: argparse.Namespace) -> int:
 
 
 def _command_prompt_add(arguments: argparse.Namespace) -> int:
+    pick = cast(bool, arguments.pick)
     if _host(arguments) == "app":
-        app_source = resolve_app_source(Path.cwd())
+        app_source = pick_app_source() if pick else resolve_app_source(Path.cwd())
+        if app_source is None:
+            return 0
         print(f"New jj workspace for {app_source.primary_root.name}\n")
         name = input("Name: ")
         _ = app_create(app_source, name, focus=True)
         return 0
 
+    if pick:
+        raise WorkspaceError("--pick needs the app host")
     source = resolve_source(_plugin_workspace())
     print(f"New jj workspace for {source.repo_name}\n")
     name = input("Name: ")
@@ -699,6 +763,14 @@ def _parser() -> argparse.ArgumentParser:
 
     prompt_add = commands.add_parser("prompt-add", help="popup for add, from the working directory in the app")
     _add_host_option(prompt_add)
+    _ = prompt_add.add_argument(
+        "--pick",
+        action="store_true",
+        help=(
+            "in the app, choose the repository in fzf among those of the spaces "
+            "on this machine instead of using the working directory"
+        ),
+    )
     prompt_add.set_defaults(handler=_command_prompt_add, popup=True)
 
     prompt_remove = commands.add_parser("prompt-remove", help="popup for remove")

@@ -1,4 +1,5 @@
 {
+  fzf,
   herdr,
   herdr-app,
   herdr-core,
@@ -23,9 +24,11 @@ let
     ];
 
     # The app host's herdr-app and hc come last on PATH, so the profile's hc
-    # (which drops the TUI's variables) and tests' fake executables win.
+    # (which drops the TUI's variables) and tests' fake executables win. Tests
+    # replace fzf through $HERDR_JJ_WORKSPACE_FZF_PATH.
     postFixup = ''
       wrapProgram "$out/bin/herdr-jj-workspace" \
+        --set-default HERDR_JJ_WORKSPACE_FZF_PATH "${pkgs.lib.getExe fzf}" \
         --prefix PATH : "${pkgs.lib.makeBinPath [ jjx ]}" \
         --suffix PATH : "${
           pkgs.lib.makeBinPath [
