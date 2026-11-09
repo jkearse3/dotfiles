@@ -7,7 +7,8 @@
 }:
 # The launcher mods (`find`, `jj-workspace-new`, `jj-workspace-pick`,
 # `jj-workspace-remove`, `space-new`) start their CLIs by the absolute store
-# paths this file maps CLI names to. A bare name would resolve on the core's
+# paths this file maps CLI names to, which `cliPath` in `mod-lib/paths.js`
+# reads. A bare name would resolve on the core's
 # PATH, which depends on whoever started the core. Read-only, because it
 # holds store paths.
 (pkgs.formats.json { }).generate "herdr-app-dotfiles-paths.json" {

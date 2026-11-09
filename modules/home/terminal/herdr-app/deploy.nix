@@ -58,6 +58,15 @@ let
   # The tree adds `mods/prefix/bindings.json`, the `prefix` mod's bindings and
   # hints generated from `keys.nix` (`prefixBindings`), so it deploys with the
   # mod.
+  #
+  # Mods share source through `./mod-lib`: the tree copies each file there
+  # into the folder of every mod `sharedModFiles` lists for it, where the mod
+  # imports it as `./<file>`. The app refuses imports that leave a mod's own
+  # folder (gpui-kit `engine/quickjs/mod.rs`, `AppModules`'s
+  # `Resolver::resolve`), so the copy is how mods share code. Edit shared code
+  # in `./mod-lib`; the tree fails to build when a mod folder in `./mods`
+  # commits a file of that name itself, and when a deployed mod's `.js` file
+  # imports a `./` module its deployed folder does not hold.
   deployTree =
     pkgs.runCommandLocal "herdr-app-deploy-tree" { nativeBuildInputs = [ pkgs.jq ]; } # bash
       ''
@@ -76,6 +85,39 @@ let
           chmod -R u+w $out/mods/"$name"
           rm -f $out/mods/"$name"/gpui-kit.d.ts $out/mods/"$name"/jsconfig.json
         done
+
+        ${lib.concatStrings (
+          lib.mapAttrsToList (
+            file: receivers:
+            lib.concatMapStrings (mod: ''
+              if [[ -e ${./mods}/${mod}/${file} ]]; then
+                echo "modules/home/terminal/herdr-app/mods/${mod}/${file} is copied from mod-lib/${file}; do not commit one" >&2
+                exit 1
+              fi
+              cp ${./mod-lib}/${file} $out/mods/${mod}/
+            '') receivers
+          ) sharedModFiles
+        )}
+
+        missingImport=
+        for file in $out/mods/*/*.js; do
+          mod=''${file%/*}
+          mod=''${mod##*/}
+          while read -r module; do
+            if [[ -e ''${file%/*}/$module ]]; then
+              continue
+            fi
+            if [[ -e ${./mod-lib}/$module ]]; then
+              echo "herdr-app mod $mod in modules/home/terminal/herdr-app/mods: ''${file##*/} imports ./$module, which the deploy tree does not hold; list $mod for $module in deploy.nix sharedModFiles" >&2
+            else
+              echo "herdr-app mod $mod in modules/home/terminal/herdr-app/mods: ''${file##*/} imports ./$module, which is neither in the mod's folder nor in modules/home/terminal/herdr-app/mod-lib" >&2
+            fi
+            missingImport=1
+          done < <(sed -nE "s/.*(from|^[[:space:]]*import)[[:space:]]*[\"']\\.\\/([^\"']+)[\"'].*/\\2/p" "$file")
+        done
+        if [[ -n $missingImport ]]; then
+          exit 1
+        fi
 
         if [[ -e ${./mods}/prefix/bindings.json ]]; then
           echo "modules/home/terminal/herdr-app/mods/prefix/bindings.json is generated from keys.nix; do not commit one" >&2
@@ -120,6 +162,33 @@ let
           exit 1
         fi
       '';
+
+  # Which mods receive each file of `./mod-lib`, copied into their folders by
+  # `deployTree`. `launcher.js` imports `./paths.js`, so every mod that
+  # receives `launcher.js` receives `paths.js` too. Evaluation fails when
+  # `./mod-lib` holds a file not listed here, or the reverse, and when a
+  # listed mod is not a folder in `./mods`.
+  sharedModFiles =
+    let
+      launchers = [
+        "jj-workspace-new"
+        "jj-workspace-pick"
+        "jj-workspace-remove"
+        "space-new"
+      ];
+      files = {
+        "launcher.js" = launchers;
+        "paths.js" = launchers;
+      };
+      libFiles = lib.attrNames (builtins.readDir ./mod-lib);
+      unknownMods = lib.subtractLists personalMods (lib.unique (lib.concatLists (lib.attrValues files)));
+    in
+    if libFiles != lib.attrNames files then
+      throw "modules/home/terminal/herdr-app/mod-lib holds ${builtins.toJSON libFiles}, but deploy.nix sharedModFiles lists ${builtins.toJSON (lib.attrNames files)}; list each file with the mods that receive it"
+    else if unknownMods != [ ] then
+      throw "deploy.nix sharedModFiles lists ${builtins.toJSON unknownMods}, which are not mod folders in modules/home/terminal/herdr-app/mods"
+    else
+      files;
 
   # The app's shipped mods and layouts, which `deploy.sh` never removes, even
   # when an older switch deployed a personal entry by that name.
