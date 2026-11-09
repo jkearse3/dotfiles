@@ -1,10 +1,11 @@
 // Workspace spaces: stable colored avatars, Git worktrees and jj workspaces
 // under their repo's main checkout, grouped by machine when more than one is
-// known. On a dimmed second line under a space's name, the repo its first
-// terminal is in now, only where unusual: branch, ahead/behind (a jj checkout
-// shows what the terminal prompt shows instead); a space with nothing to show
-// stays one line. Agent state lives in the agents list, not here. Click to
-// switch, right-click for its menu, drag to reorder.
+// known. Every space shows the checkout its first terminal is in now on a
+// dimmed line under its name ("dotfiles / ws3"), so a renamed space still
+// says which checkout it holds. On a dimmed line under that, only where
+// unusual: branch, ahead/behind (a jj checkout shows what the terminal prompt
+// shows instead); a space with nothing more to show leaves it out. Agent
+// state lives in the agents list, not here. Click to switch, right-click for its menu, drag to reorder.
 // Started as a copy of the app's shipped `spaces` mod (herdr-app 0.1.11).
 //
 // `paths.js` beside this file is copied in at build time from `mod-lib/`
@@ -26,6 +27,7 @@ import {
   watchFolder,
   window,
   layout,
+  home,
 } from "herdr";
 import { cliPath, place } from "./paths.js";
 
@@ -48,8 +50,6 @@ const newSpace = (machine) =>
   machine
     ? run("space.new", { machine })
     : run("mod.open", { name: "space-new" });
-// A row's height: `two` when its repo status takes a second line under the name.
-const rowHeight = ({ tree, two }) => (two ? (tree ? 38 : 40) : tree ? 28 : 30);
 const where = (s, ps) => JSON.stringify([s.machine ?? null, place(s, ps)]);
 const base = (path) => path.replace(/\/+$/, "").split("/").pop();
 // `path` made absolute against `from`, without "." or ".." segments.
@@ -89,7 +89,7 @@ export function tone(t, status) {
 
 export default class Spaces extends View {
   init(_props, cx) {
-    this.git = {}; // where() -> { name, branch, ahead, behind, repo, linked }, null: not a repo
+    this.git = {}; // where() -> { name, top, branch, ahead, behind, repo, linked }, null: not a repo
     this.checked = {}; // where() -> when it was last looked at
     this.unsure = new Set(); // where()s git couldn't answer for (a machine away)
     this.pending = new Set(); // where()s to look at next
@@ -257,16 +257,18 @@ export default class Spaces extends View {
         { cwd, on },
       );
       const repo = common.stdout.trim();
+      const checkoutTop = top.stdout.trim();
       const name = repo.endsWith("/.git")
         ? base(repo.slice(0, -5))
         : base(repo).replace(/\.git$/, "");
       const info = {
         name,
+        top: checkoutTop,
         branch: null,
         ahead: 0,
         behind: 0,
         repo: JSON.stringify([on, repo]),
-        linked: repo !== `${top.stdout.trim()}/.git`,
+        linked: repo !== `${checkoutTop}/.git`,
       };
       for (const line of r.stdout.split("\n")) {
         if (line.startsWith("# branch.head ")) info.branch = line.slice(14);
@@ -363,6 +365,7 @@ export default class Spaces extends View {
       const info = {
         jj: true,
         name: base(repo.replace(/\/\.jj\/repo$/, "")),
+        top,
         bookmark: marks.length
           ? marks[0] + (marks.length > 1 ? `(+${marks.length - 1}b)` : "")
           : null,
@@ -576,16 +579,17 @@ export default class Spaces extends View {
     });
   }
 
-  // The second line under the name, only what's unusual:
-  // "herdr \u00b7 spike \u21912 \u21931". The repo or branch goes when the name
-  // already says it (a worktree is named after its branch), and master/main go:
-  // nearly every space is on one. Null when nothing is left to show, which keeps
-  // the row one line.
-  gitTail(g, tree, name, t) {
+  // The repo status line under the name, only what's unusual:
+  // "herdr \u00b7 spike \u21912 \u21931". The repo goes when `quietRepo` (a
+  // worktree row under its repo, or a checkout line above that names it) or when
+  // the name already says it; the branch goes when the name says it (a worktree
+  // is named after its branch), and master/main go: nearly every space is on
+  // one. Null when nothing is left to show, which keeps the row shorter.
+  gitTail(g, quietRepo, name, t) {
     const raw = g.branch ?? "detached";
     const same = (a) => a.toLowerCase() === name.toLowerCase();
     const branch = same(raw) || raw === "master" || raw === "main" ? "" : raw;
-    const repo = tree || same(g.name) ? "" : g.name;
+    const repo = quietRepo || same(g.name) ? "" : g.name;
     const where = [repo, branch].filter(Boolean).join(" \u00b7 ");
     if (!where && !g.ahead && !g.behind) return null;
     return h_flex()
@@ -614,9 +618,9 @@ export default class Spaces extends View {
   // it), how far @ is from it (cyan \u2191 after it, \u2193 before it), a conflict
   // (red \u26a0) and edits in @ (yellow \u25cf). The change ID shows only without a
   // bookmark, where nothing else says where @ is. The repo shows as for git.
-  jjTail(g, tree, name, t) {
+  jjTail(g, quietRepo, name, t) {
     const same = (a) => a.toLowerCase() === name.toLowerCase();
-    const repo = tree || same(g.name) ? "" : g.name;
+    const repo = quietRepo || same(g.name) ? "" : g.name;
     return h_flex()
       .min_w(0)
       .gap(5)
@@ -650,21 +654,50 @@ export default class Spaces extends View {
       );
   }
 
+  // The checkout line under every space's name, shown whether or not the
+  // space was renamed so rows read alike: the folder its first terminal's
+  // checkout (or, outside a repo, the folder itself) is named after, after its
+  // repo ("dotfiles / ws3", just "dotfiles" when they match). Null only when
+  // there is no folder to name.
+  checkoutLine(w, g, t) {
+    const path = g ? g.top : place(w);
+    const folder = !w.machine && path === home() ? "~" : base(path ?? "");
+    const same = (a, b) => a.toLowerCase() === b.toLowerCase();
+    if (!folder) return null;
+    const text = !g
+      ? folder
+      : same(g.name, folder)
+        ? g.name
+        : `${g.name} / ${folder}`;
+    return div()
+      .min_w(0)
+      .truncate()
+      .text_size(11.5)
+      .text_color(t.dim)
+      .child(text);
+  }
+
   row({ w, i, g, tree }, t) {
     const on = w.active;
     const colors = shared("space.colors") ?? {};
     const color = colors[w.id] ?? "ansi6";
     const fill = color.startsWith("#") ? color : (MARK[color] ?? t[color]);
+    const checkout = this.checkoutLine(w, g, t);
+    const quietRepo = Boolean(tree) || Boolean(checkout);
     const tail = g
       ? g.jj
-        ? this.jjTail(g, tree, w.name, t)
-        : this.gitTail(g, tree, w.name, t)
+        ? this.jjTail(g, quietRepo, w.name, t)
+        : this.gitTail(g, quietRepo, w.name, t)
       : null;
+    // The row is as tall as its lines of text (the name, then the checkout
+    // line and the repo status when shown, set close together) with even
+    // padding, a worktree's a little tighter; the avatar or branch mark lines
+    // up with the name.
     return v_flex()
       .relative()
       .id(`space-${w.id}`)
       .px(8)
-      .h(rowHeight({ tree, two: Boolean(tail) }))
+      .py(tree ? 5 : 6)
       .flex_none()
       .justify_center()
       .rounded(8)
@@ -712,13 +745,15 @@ export default class Spaces extends View {
       .child(
         h_flex()
           .gap(9)
-          .items_center()
+          .items_start()
           .when(Boolean(tree), (el) =>
             el
               .pl(22)
               .child(
                 svg("mods/workspace-chrome/branch.svg")
+                  .mt(2)
                   .size(13)
+                  .flex_none()
                   .text_color(t.dim),
               ),
           )
@@ -741,7 +776,7 @@ export default class Spaces extends View {
             v_flex()
               .flex_1()
               .min_w(0)
-              .gap(1)
+              .line_height(1.3)
               .child(
                 div()
                   .min_w(0)
@@ -749,6 +784,7 @@ export default class Spaces extends View {
                   .text_color(t.foreground)
                   .child(w.name),
               )
+              .when(Boolean(checkout), (el) => el.child(checkout))
               .when(Boolean(tail), (el) => el.child(tail)),
           ),
       );
