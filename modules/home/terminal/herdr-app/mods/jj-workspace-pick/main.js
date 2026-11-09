@@ -5,7 +5,8 @@
 // repository however many of its workspaces are open; Enter asks for a name,
 // runs `jjx workspace add` from `trunk()`, and opens and focuses the new
 // space; Esc closes the popup without creating anything. `jj-workspace-new`
-// (`ctrl-b ctrl-g`) skips the picker and uses the shown space's repository.
+// (`ctrl-b ctrl-g`) skips the picker and uses the focused terminal's
+// repository.
 //
 // The order matters. The launcher waits for `hc run` while still open,
 // because closing it cancels its pending tasks and would leave the started

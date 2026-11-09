@@ -1,10 +1,12 @@
 // Opens `herdr-jj-workspace prompt-add --host app` in a popup terminal, so a
-// key binding (`ctrl-b ctrl-g`) can create a jj workspace from the shown
-// space's repository: `mod.open` takes only a mod name. The prompt asks for
+// key binding (`ctrl-b ctrl-g`) can create a jj workspace from the focused
+// terminal's repository: `mod.open` takes only a mod name. The prompt asks for
 // a name, runs `jjx workspace add` from `trunk()`, and opens and focuses the
 // new space. It takes the repository from its working directory, so the
-// launcher starts it in the space's folder. `jj-workspace-pick` (`ctrl-b
-// shift-g`) picks the repository with fzf instead.
+// launcher starts it in the focused terminal's live folder, else where the
+// space is now (its first terminal's live folder), else the folder the space
+// was made in. `jj-workspace-pick` (`ctrl-b shift-g`) picks the repository
+// with fzf instead.
 //
 // The order matters. The launcher waits for `hc run` while still open,
 // because closing it cancels its pending tasks and would leave the started
@@ -15,16 +17,19 @@
 //
 // The app documents imports only from a mod's own folder (herdr-app
 // `defaults/AGENTS.md`), so `cliPath` and `startTerminal` are copied into
-// each launcher that uses them rather than shared.
+// each launcher that uses them rather than shared, `place` copies
+// desk-spaces' rule, and `focusedFolder` follows the app's own `files` mod.
 
 import { View, div } from "gpui-kit";
 import {
   appHome,
   closeOverlay,
+  focused,
   hc,
   home,
   notify,
   openOverlay,
+  panes,
   props,
   readTextFile,
   spaces,
@@ -44,6 +49,28 @@ async function cliPath(name) {
     );
   }
   return path;
+}
+
+// The focused terminal's live folder when that terminal is on this machine,
+// else null: a mod pane, no focus, or a terminal of another machine.
+function focusedFolder() {
+  const f = focused();
+  if (!f) return null;
+  const machine = f.pane
+    ? spaces().find((s) => s.id === f.space)?.machine
+    : f.terminal?.includes("/")
+      ? f.terminal.split("/")[0]
+      : null;
+  if (machine !== null) return null; // undefined (space not found) counts as unknown
+  const pane = f.pane ? panes().find((p) => p.pane === f.pane) : null;
+  return pane?.cwd || f.cwd || null;
+}
+
+// Where SPACE is now: its first terminal's live folder, else the folder it
+// was made in, which may be empty.
+function place(space) {
+  const tabs = new Set((space.tabs ?? []).map((t) => t.id));
+  return panes().find((p) => tabs.has(p.tab) && p.cwd)?.cwd || space.folder;
 }
 
 // Starts ARGV in FOLDER in a new core terminal and returns its address. No
@@ -91,9 +118,11 @@ export default class JjWorkspaceNew extends View {
       notify({ title: TITLE, body: problem, level: "warning" });
       return;
     }
-    // An empty folder means home, where the prompt reports that there is no
-    // jj repository.
-    const folder = space.folder || home();
+    // The focused terminal's folder is the repository the user means. Without
+    // one, the space's first terminal's folder is, since after a `cd` it
+    // differs from the folder the space was made in. No folder at all means
+    // home, where the prompt reports that there is no jj repository.
+    const folder = focusedFolder() || place(space) || home();
 
     cx.spawn(async (_cx) => {
       let terminal;
