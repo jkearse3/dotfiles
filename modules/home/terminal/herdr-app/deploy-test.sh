@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Fixtures for `deploy.sh`, run as a build gate by the derivation in
-# `default.nix`. Takes the deploy executable under test as its only argument.
+# `deploy.nix`. Takes the deploy executable under test as its only argument.
 # Each fixture deploys a read-only tree, as one in the Nix store is, into a
 # scratch app home that also holds shipped mods and layouts, app state and an
 # unowned mod, which must come through every deploy unchanged.

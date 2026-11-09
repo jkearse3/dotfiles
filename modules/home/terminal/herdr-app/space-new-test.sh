@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Fixtures for `space-new.sh`, run as a build gate by the derivation in
-# `default.nix`. Takes the picker executable under test and the real `fd` it
+# `space-new.nix`. Takes the picker executable under test and the real `fd` it
 # runs with. Each fixture runs the picker in a scratch home with a fake fzf,
 # which records the folders it was offered and answers with a set pick (or
 # the first folder offered) and exit status, and a fake herdr-app, which records its arguments, so no

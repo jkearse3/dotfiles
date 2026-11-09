@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Fixtures for `install-bundle.sh`, run as a build gate by the derivation in
-# `default.nix`. Takes the installer executable under test as its only
+# `bundle.nix`. Takes the installer executable under test as its only
 # argument. Each fixture installs a fake read-only bundle into a scratch
 # Applications folder with fake `lsregister` and `codesign` that log their
 # calls, so nothing is signed or registered for real.
