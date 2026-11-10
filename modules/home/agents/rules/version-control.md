@@ -37,6 +37,12 @@ migrations, and revision-local fixes in the earliest revision whose concern
 requires them. Repair a known-failing revision; retaining one requires explicit
 user approval.
 
+Never add attribution to commit messages, revision descriptions, or pull request
+text: no `Co-authored-by` trailer and no "Generated with" line, even when a
+harness supplies one. Add a co-author only when the user names one; the agent
+`jj` and `git` commands reject a `Co-authored-by` trailer otherwise, and
+`AGENT_ALLOW_CO_AUTHOR=1` on the command admits that requested co-author.
+
 Before new work, establish a task-owned Git branch or jj bookmark for that
 change set. In jj, inspect `@` directly; bookmark an empty `@`, or create and
 bookmark an empty child. Stack on current work unless the user specifies another

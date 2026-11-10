@@ -334,6 +334,54 @@ expect_agent_failure "$git_push_blocked" git --git-dir="$git_push_repo/.git" pus
 expect_agent_failure "$git_push_blocked" git --git-dir "$git_push_repo/.git" --no-pager push -f origin git-pushed
 [[ $("$real_git" --git-dir "$push_remote" rev-parse git-pushed) == "$remote_before" ]]
 
+# A message carrying a Co-authored-by trailer is refused before git or jj
+# records it, whichever way the message arrives and whoever it names;
+# ordinary messages, other trailers, and a "Generated with" line pass, and the
+# override admits a requested co-author.
+attribution_blocked='commit message carries a Co-authored-by trailer'
+claude_trailer=$'subject\n\nbody\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>'
+generated_line=$'subject\n\n\xf0\x9f\xa4\x96 Generated with [Claude Code](https://claude.com/claude-code)'
+attribution_git_repo="$workdir/attribution-git-repo"
+run_agent git init -q "$attribution_git_repo"
+run_agent git -C "$attribution_git_repo" config user.name 'Test User'
+run_agent git -C "$attribution_git_repo" config user.email test@example.com
+printf 'tracked\n' >"$attribution_git_repo/tracked"
+run_agent git -C "$attribution_git_repo" add tracked
+run_agent git -C "$attribution_git_repo" commit -q -m initial
+head_before=$(run_agent git -C "$attribution_git_repo" rev-parse HEAD)
+printf 'attributed\n' >>"$attribution_git_repo/tracked"
+expect_agent_failure "$attribution_blocked" git -C "$attribution_git_repo" commit -q -am "$claude_trailer"
+expect_agent_failure "$attribution_blocked" git -C "$attribution_git_repo" commit -q -a --message="$claude_trailer"
+expect_agent_failure "$attribution_blocked" git -C "$attribution_git_repo" commit -q -a -m subject -m 'Co-authored-by: Codex <codex@openai.com>'
+printf '%s\n' "$claude_trailer" >"$workdir/attributed-message"
+expect_agent_failure "$attribution_blocked" git -C "$attribution_git_repo" commit -q -a -F "$workdir/attributed-message"
+# shellcheck disable=SC2016 # The child shell expands its own positional arguments.
+expect_agent_failure "$attribution_blocked" bash -c 'printf "%s\n" "$2" | git -C "$1" commit -q -a -F -' bash "$attribution_git_repo" "$claude_trailer"
+[[ $(run_agent git -C "$attribution_git_repo" rev-parse HEAD) == "$head_before" ]]
+expect_agent_failure "$attribution_blocked" git -C "$attribution_git_repo" commit -q -a -m subject -m 'Co-authored-by: Ada Lovelace <ada@example.com>'
+[[ $(run_agent git -C "$attribution_git_repo" rev-parse HEAD) == "$head_before" ]]
+run_agent git -C "$attribution_git_repo" commit -q -a -m subject -m 'Signed-off-by: Test User <test@example.com>'
+AGENT_ALLOW_CO_AUTHOR=1 run_agent git -C "$attribution_git_repo" commit -q --allow-empty -m subject -m 'Co-authored-by: Ada Lovelace <ada@example.com>'
+[[ $(run_agent git -C "$attribution_git_repo" log -1 --format='%(trailers:key=Co-authored-by,valueonly)') == 'Ada Lovelace <ada@example.com>' ]]
+# shellcheck disable=SC2016 # The child shell expands its own positional arguments.
+run_agent bash -c 'printf "piped subject\n" | git -C "$1" commit -q --allow-empty -F -' bash "$attribution_git_repo"
+[[ $(run_agent git -C "$attribution_git_repo" log -1 --format=%s) == 'piped subject' ]]
+run_agent git -C "$attribution_git_repo" grep -q -F attributed
+
+attribution_repo="$workdir/attribution-repo"
+run_agent jj --quiet git init "$attribution_repo"
+expect_agent_failure "$attribution_blocked" jj -R "$attribution_repo" describe -m "$claude_trailer"
+expect_agent_failure "$attribution_blocked" jj -R "$attribution_repo" commit --message="$claude_trailer"
+expect_agent_failure "$attribution_blocked" jj -R "$attribution_repo" new -m"$claude_trailer"
+# shellcheck disable=SC2016 # The child shell expands its own positional arguments.
+expect_agent_failure "$attribution_blocked" bash -c 'printf "%s\n" "$2" | jj -R "$1" describe --stdin' bash "$attribution_repo" "$claude_trailer"
+[[ -z $(run_agent jj -R "$attribution_repo" log --no-graph -r @ -T description) ]]
+# shellcheck disable=SC2016 # The child shell expands its own positional arguments.
+run_agent bash -c 'printf "stdin subject\n\nbody\n" | jj --quiet -R "$1" describe --stdin' bash "$attribution_repo"
+[[ $(run_agent jj -R "$attribution_repo" log --no-graph -r @ -T description) == $'stdin subject\n\nbody' ]]
+run_agent jj --quiet -R "$attribution_repo" describe -m "$generated_line"
+run_agent jj --quiet -R "$attribution_repo" log -r 'description(substring-i:"co-authored-by: claude")'
+
 GIT_AGENT_ALLOW_PUSH=1 run_agent git -C "$git_push_repo" push -q -f "$push_remote" git-pushed
 [[ $("$real_git" --git-dir "$push_remote" rev-parse git-pushed) == "$local_head" ]]
 
