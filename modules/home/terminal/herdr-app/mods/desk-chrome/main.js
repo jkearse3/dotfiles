@@ -132,7 +132,7 @@ export default class WorkspaceChrome extends View {
             ),
           ),
         )
-        // On the macOS rail the traffic lights fill the row; the agents list's » unfolds it.
+        // On the macOS rail the traffic lights fill the row; the spaces list's » unfolds it.
         .when(!(collapsed && window()?.platform === "macos"), (el) =>
           el.child(
             this.button(

@@ -202,6 +202,10 @@
             unstablePkgs.callPackage ../modules/home/vcs/jj/migrate-jj-sign-on-push/package.nix
               { };
 
+          # The deploy tree copies `mod-lib/names.js` into mods, and the home
+          # build runs no test of it.
+          herdr-app-names = unstablePkgs.callPackage ../modules/home/terminal/herdr-app/names-check.nix { };
+
           # Runs the Neovim configuration's plenary specs on the lockfile-pinned
           # plugins.
           neovim = unstablePkgs.callPackage ../modules/home/neovim/nvim/tests/check.nix {

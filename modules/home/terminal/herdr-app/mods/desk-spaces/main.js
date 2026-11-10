@@ -1,35 +1,81 @@
-// Workspace spaces: stable colored avatars, Git worktrees and jj workspaces
-// under their repo's main checkout, grouped by machine when more than one is
-// known. Every space shows the checkout its first terminal is in now on a
-// dimmed line under its name ("dotfiles / ws3"), so a renamed space still
-// says which checkout it holds. On a dimmed line under that, only where
-// unusual: branch, ahead/behind (a jj checkout shows what the terminal prompt
-// shows instead); a space with nothing more to show leaves it out. Agent
-// state lives in the agents list, not here. Click to switch, right-click for its menu, drag to reorder.
-// Started as a copy of the app's shipped `spaces` mod (herdr-app 0.1.11).
+// Spaces with their agents under them, the `desk` layout's sidebar list:
+// - The spaces: a stable color tick each, Git worktrees and jj workspaces under
+//   their repo's main checkout, grouped by machine when more than one is
+//   known. Under each space's name, the checkout its first terminal is in
+//   ("dotfiles / ws3"), then, only where unusual, its branch and
+//   ahead/behind (a jj checkout shows what the terminal prompt shows). Every
+//   agent of a space has a row beneath it, one agent or many (sub-agents
+//   under their agent), saying what it is (`agentName`) and, on a dim line,
+//   where it is and what it is doing now or how far along it is. The chevron
+//   on the space's name line folds them; folded, it shows the count in the
+//   most urgent status's color. A space whose agents are all quiet (none
+//   working or blocked) gets a "conflict" badge on its checkout line for a
+//   jj conflict, else "review" for unshipped work.
+// - "Needs you", a tray of fixed height at the bottom, so the spaces above
+//   never move when it changes: every blocked agent, then every agent that
+//   finished while you weren't looking (`done`, which the app turns `idle`
+//   once you look), newest first. Click one to focus it.
+// - The narrow rail shows each space's most urgent agent status and the `»`
+//   that widens the sidebar again (`desk-chrome` relies on it).
+// The agent next/previous keys walk "Needs you" first, then the tree.
+// Click to switch, right-click for its menu, drag a space to reorder.
 //
-// `paths.js` beside this file is copied in at build time from `mod-lib/`
-// (deploy.nix `sharedModFiles`); edit it there. This source folder lacks it.
+// Started as a copy of the app's shipped `spaces` mod plus the agent rows of
+// its shipped `agents` mod (herdr-app 0.1.11).
+//
+// This file holds the view and its state; `checkouts.js` looks up each
+// space's Git or jj checkout, `agents.js` gathers agents and tracks their
+// status changes, and `rows.js` draws the rows.
+//
+// `paths.js` (imported by `checkouts.js` and `rows.js`) and `names.js`
+// (imported by `agents.js`) beside these files are copied in at build time
+// from `mod-lib/` (deploy.nix `sharedModFiles`); edit them there. This source
+// folder lacks them.
 
 import { View, div, svg } from "gpui-kit";
 import { v_flex, h_flex } from "gpui-base";
 import {
+  agents,
+  focused,
+  setAgentOrder,
   spaces,
   machines,
   panes,
   run,
   openOverlay,
-  exec,
   hc,
   theme,
   shared,
   setShared,
-  watchFolder,
   window,
   layout,
-  home,
 } from "herdr";
-import { cliPath, place } from "./paths.js";
+import { Checkouts, where } from "./checkouts.js";
+import {
+  AgentHistory,
+  RANK,
+  gatherAgents,
+  needsYou,
+  topStatus,
+} from "./agents.js";
+import {
+  ROW_GAP,
+  ROW_X,
+  TEXT_X,
+  TICK_X,
+  agentRow,
+  assignSpaceColors,
+  avatarFill,
+  checkoutBadge,
+  checkoutLine,
+  compact,
+  focusBar,
+  gitTail,
+  hoverFill,
+  jjTail,
+  needsYouRows,
+  subRow,
+} from "./rows.js";
 
 function find(node, id) {
   if (node?.id === id) return node;
@@ -40,7 +86,8 @@ function find(node, id) {
   return null;
 }
 
-// The sidebar's rail goes by its width, not a flag: dragging its edge narrows it too.
+// The sidebar's rail goes by its width, not a flag: dragging its edge narrows
+// it too.
 const narrow = () => (find(layout(), "sidebar")?.size?.px ?? Infinity) < 160;
 
 // Makes a space on `machine`, or on this computer when it is null. Here the
@@ -50,53 +97,34 @@ const newSpace = (machine) =>
   machine
     ? run("space.new", { machine })
     : run("mod.open", { name: "space-new" });
-const where = (s, ps) => JSON.stringify([s.machine ?? null, place(s, ps)]);
-const base = (path) => path.replace(/\/+$/, "").split("/").pop();
-// `path` made absolute against `from`, without "." or ".." segments.
-const resolve = (from, path) => {
-  const out = [];
-  for (const part of (path.startsWith("/") ? path : `${from}/${path}`).split(
-    "/",
-  )) {
-    if (part === "..") out.pop();
-    else if (part && part !== ".") out.push(part);
-  }
-  return `/${out.join("/")}`;
-};
-// Changes made outside Herdr (an editor's save, a commit in another app): looked
-// for this often, in repos the list shows, while the window is in front.
-const FALLBACK = 60000;
 
-// What a stored color name looks like on an avatar (the same in every mod
-// that draws space avatars): one strong color per hue, light and dark alike.
-const MARK = {
-  ansi6: "#22a99a",
-  ansi3: "#e3814f",
-  ansi4: "#5b8def",
-  ansi5: "#8b7cf6",
-  ansi2: "#3fae6a",
-  ansi1: "#d9649a",
-};
+// `toggleSidebar` is copied from the shipped `agents` mod.
 
-// A space speaks up only when something in it needs you.
-export function glyph(status) {
-  return status === "blocked" || status === "done" ? "●" : "·";
+// To the rail (on macOS wide enough for the traffic lights), or back to the
+// width it had.
+function toggleSidebar() {
+  const width = find(layout(), "sidebar")?.size?.px;
+  if (!narrow()) setShared("sidebar.width", width);
+  // Mods edited before the rail went by width still read the flag.
+  setShared("sidebar.collapsed", !narrow());
+  run("layout.resize", {
+    id: "sidebar",
+    px: narrow()
+      ? (shared("sidebar.width") ?? 268)
+      : window()?.platform === "macos"
+        ? 76
+        : 44,
+  });
 }
 
-export function tone(t, status) {
-  return t[status] ?? t.unknown;
-}
-
-export default class Spaces extends View {
+export default class SpacesAndAgents extends View {
   init(_props, cx) {
-    this.git = {}; // where() -> { name, top, branch, ahead, behind, repo, linked }, null: not a repo
-    this.checked = {}; // where() -> when it was last looked at
-    this.unsure = new Set(); // where()s git couldn't answer for (a machine away)
-    this.pending = new Set(); // where()s to look at next
-    this.busy = {}; // pane -> an agent working or a program in front of its shell
-    this.ready = {}; // machine -> its layout was readable at the last look
-    this.at = {}; // space -> its where() at the last look
-    this.watching = new Set(); // local repos' git folders
+    // Machines whose spaces are folded away under their header.
+    this.folded = new Set(
+      JSON.parse(localStorage.getItem("machines.folded") ?? "[]"),
+    );
+    // Each space's checkout, looked up while this runs (see `Checkouts`).
+    this.checkouts = new Checkouts(this.folded);
     // Spaces made while this runs wait (at most a moment) for their git, so a
     // worktree appears under its repo instead of jumping there.
     this.shown = new Set(spaces().map((s) => s.id));
@@ -104,13 +132,23 @@ export default class Spaces extends View {
     this.pressed = null;
     this.over = null;
     this.machines = [];
-    this.folded = new Set(
-      JSON.parse(localStorage.getItem("machines.folded") ?? "[]"),
+    // Space id -> its machine (null: this computer), for spaces whose agent
+    // rows are folded away.
+    this.foldedSpaces = JSON.parse(
+      localStorage.getItem("spaces.folded") ?? "{}",
     );
+    // Each agent's last status change (kept across restarts) and the focused
+    // agent's held next/previous rank.
+    this.history = new AgentHistory();
+    // Space id -> its agents as listed this render (see `gatherAgents`).
+    this.crews = new Map();
+    this.listed = new Map(); // agent address -> its status this render
+    // Agent durations count in minutes.
+    cx.timer.every(30000, (cx) => cx.notify());
     this.refreshMachines(cx);
     cx.timer.every(15000, (cx) => this.refreshMachines(cx));
     // `git status` walks the whole tree, on another machine a process there:
-    // only when its answer could have changed (see `due`).
+    // only when its answer could have changed (see `Checkouts.due`).
     cx.timer.every(250, (cx) => this.checkNew(cx));
   }
 
@@ -118,61 +156,9 @@ export default class Spaces extends View {
     const now = Date.now();
     const sp = spaces();
     for (const s of sp) if (!this.shown.has(s.id)) this.born[s.id] ??= now;
-    const due = this.due(now, sp, panes());
-    if (due.size) this.refreshGit(due, cx);
+    const due = this.checkouts.due(now, sp, panes());
+    if (due.size) this.checkouts.refreshGit(due, cx);
     if (sp.some((s) => !this.shown.has(s.id))) cx.notify();
-  }
-
-  // Places whose git could have changed: new ones (a new space, a cd), where a
-  // command or an agent's turn just ended (a checkout, a commit, edits), those on
-  // a machine that is back, and repos in view whose fallback is due.
-  due(now, sp, ps) {
-    // Moved there: what it knew of that place may be old.
-    const at = {};
-    for (const s of sp) at[s.id] = where(s, ps);
-    const keys = new Set(Object.values(at).filter((k) => JSON.parse(k)[1]));
-    const due = new Set([...keys].filter((k) => !(k in this.git)));
-    for (const [id, k] of Object.entries(at))
-      if (this.at[id] && this.at[id] !== k && keys.has(k)) due.add(k);
-    this.at = at;
-    const spaceOf = {};
-    for (const s of sp) for (const t of s.tabs ?? []) spaceOf[t.id] = s;
-    const busy = {};
-    for (const p of ps) {
-      if (!p.terminal || !spaceOf[p.tab]) continue;
-      busy[p.pane] =
-        p.status === "working" || !(p.program?.shell || p.program?.agent);
-      if (this.busy[p.pane] && !busy[p.pane])
-        this.sameRepo(at[spaceOf[p.tab].id], keys).forEach((k) => due.add(k));
-    }
-    this.busy = busy;
-    for (const m of machines()) {
-      const ready = m.layout === "ready";
-      if (ready && this.ready[m.name] === false)
-        for (const k of keys) if (JSON.parse(k)[0] === m.name) due.add(k);
-      this.ready[m.name] = ready;
-    }
-    if (window().active) {
-      for (const k of keys) {
-        const asks = this.git[k] || this.unsure.has(k);
-        if (
-          asks &&
-          !this.folded.has(JSON.parse(k)[0]) &&
-          now - (this.checked[k] ?? 0) > FALLBACK
-        )
-          due.add(k);
-      }
-    }
-    return due;
-  }
-
-  // `key` and the other places in its repo (a commit there moves their ahead/behind).
-  sameRepo(key, keys) {
-    const repo = this.git[key]?.repo;
-    return [
-      key,
-      ...(repo ? [...keys].filter((k) => this.git[k]?.repo === repo) : []),
-    ];
   }
 
   refreshMachines(cx) {
@@ -185,222 +171,6 @@ export default class Spaces extends View {
           );
       } catch {}
       cx.notify();
-    });
-  }
-
-  // One look at a time, each place once however often it was asked for meanwhile.
-  refreshGit(keys, cx) {
-    for (const k of keys) this.pending.add(k);
-    if (this.refreshing) return;
-    this.refreshing = true;
-    cx.spawn(async (cx) => {
-      while (this.pending.size) {
-        const keys = [...this.pending];
-        this.pending.clear();
-        for (const key of keys) await this.check(key, cx);
-      }
-      const used = new Set(
-        Object.values(this.git)
-          .filter(Boolean)
-          .map((g) => JSON.parse(g.repo))
-          .filter(([on]) => !on)
-          .map(([, repo]) => repo),
-      );
-      for (const repo of this.watching)
-        if (!used.has(repo)) this.watching.delete(repo);
-      this.refreshing = false;
-      cx.notify();
-    });
-  }
-
-  // One place's git: branch, ahead/behind, its repo.
-  async check(key, cx) {
-    const [on, cwd] = JSON.parse(key);
-    this.checked[key] = Date.now();
-    this.unsure.delete(key);
-    try {
-      // jj keeps Git's HEAD detached, so a jj checkout shows jj's own picture.
-      const jj = await this.checkJj(cwd, on);
-      if (jj) {
-        this.git[key] = jj.info;
-        if (!on) this.watch(jj.repo, cx, `${jj.repo}/op_heads`);
-        return;
-      }
-      // No optional locks: a status that touched the index would wake the watch again.
-      // Writes nothing under .git (index lock, fsmonitor cookie): watch() would wake on it.
-      const r = await exec(
-        "git",
-        [
-          "--no-optional-locks",
-          "-c",
-          "core.fsmonitor=false",
-          "status",
-          "--porcelain=v2",
-          "--branch",
-        ],
-        { cwd, on },
-      );
-      if (r.code !== 0) {
-        // Only git's own "no" is remembered as no repo; anything else is asked again.
-        if (!/not a git repository/i.test(r.stderr)) this.unsure.add(key);
-        this.git[key] = null;
-        return;
-      }
-      // The repo's own .git folder names it; a worktree's top differs from it.
-      const top = await exec("git", ["rev-parse", "--show-toplevel"], {
-        cwd,
-        on,
-      });
-      const common = await exec(
-        "git",
-        ["rev-parse", "--path-format=absolute", "--git-common-dir"],
-        { cwd, on },
-      );
-      const repo = common.stdout.trim();
-      const checkoutTop = top.stdout.trim();
-      const name = repo.endsWith("/.git")
-        ? base(repo.slice(0, -5))
-        : base(repo).replace(/\.git$/, "");
-      const info = {
-        name,
-        top: checkoutTop,
-        branch: null,
-        ahead: 0,
-        behind: 0,
-        repo: JSON.stringify([on, repo]),
-        linked: repo !== `${checkoutTop}/.git`,
-      };
-      for (const line of r.stdout.split("\n")) {
-        if (line.startsWith("# branch.head ")) info.branch = line.slice(14);
-        else if (line.startsWith("# branch.ab ")) {
-          const [a, b] = line.slice(12).split(" ");
-          info.ahead = Math.abs(parseInt(a, 10)) || 0;
-          info.behind = Math.abs(parseInt(b, 10)) || 0;
-        }
-      }
-      this.git[key] = info;
-      if (!on) this.watch(repo, cx);
-    } catch {
-      // Couldn't ask (the machine is away): keep what it showed, look again later.
-      this.git[key] ??= null;
-      this.unsure.add(key);
-    }
-  }
-
-  // One jj checkout as the terminal prompt shows it, with its shared repo
-  // folder. modules/home/shell/starship/jj-starship-prompt.sh mirrors this
-  // bookmark and distance rule; change both together. Returns null where jj isn't
-  // installed or the place isn't a jj checkout, which leaves it to git. Every jj call
-  // passes --ignore-working-copy: a snapshot would write an operation on each look,
-  // which the op_heads watch would answer with another look.
-  async checkJj(cwd, on) {
-    // On this machine, the user's jj by its store path, since the app's PATH
-    // depends on how the app was started; another machine resolves its own
-    // `jj`. A dotfiles-paths.json without the entry leaves the bare name.
-    const program = on ? "jj" : await cliPath("jj").catch(() => "jj");
-    const jj = (args) =>
-      exec(
-        program,
-        ["--ignore-working-copy", "--no-pager", "--color=never", ...args],
-        { cwd, on },
-      );
-    let root;
-    try {
-      root = await jj(["root"]);
-    } catch {
-      return null;
-    }
-    if (root.code !== 0) return null;
-    const top = root.stdout.trim();
-    // A secondary workspace's .jj/repo is a file naming the shared repo folder.
-    const pointer = await exec("cat", [`${top}/.jj/repo`], { cwd, on });
-    const repo =
-      pointer.code === 0
-        ? resolve(`${top}/.jj`, pointer.stdout.trim())
-        : `${top}/.jj/repo`;
-    // The bookmark names on the revisions `revset` selects (jjx bookmark nearest).
-    const names = async (revset) => {
-      const r = await jj([
-        "log",
-        "--no-graph",
-        "-r",
-        revset,
-        "-T",
-        'local_bookmarks.map(|b| json(b.name())).join("\\n") ++ if(local_bookmarks, "\\n")',
-      ]);
-      if (r.code !== 0) throw new Error(r.stderr);
-      return r.stdout
-        .split("\n")
-        .filter(Boolean)
-        .map((line) => JSON.parse(line));
-    };
-    const count = async (revset) => {
-      const r = await jj(["log", "--no-graph", "-r", revset, "-T", '"x"']);
-      if (r.code !== 0) throw new Error(r.stderr);
-      return r.stdout.length;
-    };
-    try {
-      // A bookmark at or after @ first (↓, the revisions from @ up to it), else the
-      // nearest at or before it (↑, its descendants up to @, an empty @ too).
-      const after = "roots(@:: & bookmarks())";
-      const before = "heads(::@ & bookmarks())";
-      let marks = await names(after);
-      let direction = "↓";
-      let distance = marks.length ? await count(`@..${after}`) : 0;
-      if (!marks.length) {
-        marks = await names(before);
-        direction = "↑";
-        distance = marks.length ? await count(`${before}::@ ~ ${before}`) : 0;
-      }
-      const at = await jj([
-        "log",
-        "--no-graph",
-        "-r",
-        "@",
-        "-T",
-        'change_id.shortest(8) ++ " " ++ if(conflict, "1", "0") ++ " " ++ if(empty, "1", "0")',
-      ]);
-      if (at.code !== 0) return null;
-      const [change, conflict, empty] = at.stdout.trim().split(" ");
-      const info = {
-        jj: true,
-        name: base(repo.replace(/\/\.jj\/repo$/, "")),
-        top,
-        bookmark: marks.length
-          ? marks[0] + (marks.length > 1 ? `(+${marks.length - 1}b)` : "")
-          : null,
-        direction,
-        distance,
-        change,
-        conflict: conflict === "1",
-        modified: empty === "0",
-        repo: JSON.stringify([on, repo]),
-        linked: repo !== `${top}/.jj/repo`,
-      };
-      return { info, repo };
-    } catch {
-      return null;
-    }
-  }
-
-  // `dir` is what changes when the repo does: the git folder, or a jj repo's op_heads.
-  watch(repo, cx, dir = repo) {
-    if (this.watching.has(repo)) return;
-    this.watching.add(repo);
-    cx.spawn(async (cx) => {
-      try {
-        while (this.watching.has(repo)) {
-          await watchFolder(dir);
-          const mine = JSON.stringify([null, repo]);
-          if (this.watching.has(repo))
-            this.refreshGit(
-              Object.keys(this.git).filter((k) => this.git[k]?.repo === mine),
-              cx,
-            );
-        }
-      } catch {
-        this.watching.delete(repo);
-      }
     });
   }
 
@@ -421,12 +191,12 @@ export default class Spaces extends View {
       ps = panes();
     const ready = (w) =>
       this.shown.has(w.id) ||
-      where(w, ps) in this.git ||
+      where(w, ps) in this.checkouts.git ||
       Date.now() - (this.born[w.id] ??= Date.now()) > 1500;
     for (const w of sp)
       if (!this.shown.has(w.id) && ready(w)) this.shown.add(w.id);
     const list = sp
-      .map((w, i) => ({ w, i, g: this.git[where(w, ps)] ?? null }))
+      .map((w, i) => ({ w, i, g: this.checkouts.git[where(w, ps)] ?? null }))
       .filter((r) => this.shown.has(r.w.id));
     const mains = new Set(
       list.filter((r) => r.g && !r.g.linked).map((r) => r.g.repo),
@@ -448,15 +218,42 @@ export default class Spaces extends View {
   }
 
   // The rows, under a header per machine once one isn't this computer.
-  grouped(t, collapsed) {
-    const rows = this.ordered();
-    const draw = (r) => (collapsed ? this.compact(r, t) : this.row(r, t));
-    const remote = [
-      ...new Set([
-        ...rows.map((r) => r.w.machine).filter(Boolean),
-        ...this.machines.map((m) => m.name),
-      ]),
-    ].sort();
+  // Each space row comes with its agent rows (none on the rail).
+  grouped(t, collapsed, rows, now) {
+    // Each space with its agent rows is one group. A hairline above each
+    // space that isn't a worktree sets it apart from the one before; a
+    // worktree stays under its repo's. Every group keeps 4px below its last
+    // row, so a focused row's fill clears the next hairline. The active
+    // space's color tick grows into a rail down its whole group: the space
+    // you are in, apart from the accent bar on the one row holding focus.
+    const draw = (r) => {
+      if (collapsed) return [compact(r, t, this.spaceStatus(r.w))];
+      const rows = [this.row(r, t), ...this.agentRows(r, t, now)];
+      // A space's color in the gutter left of its rows: a tick beside its
+      // name, or, for the active space, the rail. A worktree has its branch
+      // mark instead of a tick.
+      const mark = div()
+        .absolute()
+        .left(TICK_X)
+        .top(r.tree ? 6 : 11)
+        .w(3)
+        .rounded(2)
+        .bg(avatarFill(r.w.id, t));
+      return [
+        v_flex()
+          .id(`space-group-${r.w.id}`)
+          .relative()
+          .flex_none()
+          .pl(ROW_X)
+          .pb(4)
+          .gap(ROW_GAP)
+          .when(!r.tree, (el) => el.pt(4).border_t(1).border_color(t.border))
+          .children(rows)
+          .when(r.w.active, (el) => el.child(mark.bottom(10)))
+          .when(!r.w.active && !r.tree, (el) => el.child(mark.h(16))),
+      ];
+    };
+    const groups = this.machineGroups(rows);
     const loading = (m) => {
       const layout = machines().find((k) => k.name === m)?.layout;
       return (
@@ -475,13 +272,11 @@ export default class Spaces extends View {
         .text_size(12)
         .text_color(t.dim)
         .child(collapsed ? "…" : "Loading…");
-    if (!remote.length)
+    if (groups.length === 1)
       return loading(null) && !rows.length
         ? [loadingRow(null)]
-        : rows.map(draw);
-    const machineNames = [null, ...remote];
-    return machineNames.flatMap((m) => {
-      const mine = rows.filter((r) => (r.w.machine ?? null) === m);
+        : rows.flatMap(draw);
+    return groups.flatMap(([m, mine]) => {
       const machine = this.machines.find((k) => k.name === m);
       const connected = !m || machine?.state === "connected";
       const folded = this.folded.has(m);
@@ -495,7 +290,7 @@ export default class Spaces extends View {
         .text_size(11)
         .text_color(t.dim)
         .cursor_pointer()
-        .hover((s) => s.bg(t.hover))
+        .hover((s) => s.bg(hoverFill(t)))
         .on_click((_e, cx) => {
           folded ? this.folded.delete(m) : this.folded.add(m);
           localStorage.setItem(
@@ -573,137 +368,61 @@ export default class Spaces extends View {
         ...(folded
           ? []
           : mine.length
-            ? mine.map(draw)
+            ? mine.flatMap(draw)
             : [loading(m) ? loadingRow(m) : empty]),
       ];
     });
   }
 
-  // The repo status line under the name, only what's unusual:
-  // "herdr \u00b7 spike \u21912 \u21931". The repo goes when `quietRepo` (a
-  // worktree row under its repo, or a checkout line above that names it) or when
-  // the name already says it; the branch goes when the name says it (a worktree
-  // is named after its branch), and master/main go: nearly every space is on
-  // one. Null when nothing is left to show, which keeps the row shorter.
-  gitTail(g, quietRepo, name, t) {
-    const raw = g.branch ?? "detached";
-    const same = (a) => a.toLowerCase() === name.toLowerCase();
-    const branch = same(raw) || raw === "master" || raw === "main" ? "" : raw;
-    const repo = quietRepo || same(g.name) ? "" : g.name;
-    const where = [repo, branch].filter(Boolean).join(" \u00b7 ");
-    if (!where && !g.ahead && !g.behind) return null;
-    return h_flex()
-      .min_w(0)
-      .gap(5)
-      .items_center()
-      .text_size(11.5)
-      .text_color(t.dim)
-      .when(Boolean(where), (el) =>
-        el.child(div().min_w(0).truncate().child(where)),
-      )
-      .when(g.ahead > 0, (el) =>
-        el.child(
-          div().flex_none().text_color(t.ansi2).child(`\u2191${g.ahead}`),
-        ),
-      )
-      .when(g.behind > 0, (el) =>
-        el.child(
-          div().flex_none().text_color(t.ansi1).child(`\u2193${g.behind}`),
-        ),
-      );
-  }
-
-  // The second line under the name for a jj checkout, never empty, in the terminal
-  // prompt's words and colors: the nearest bookmark (purple, "(+1b)" when more share
-  // it), how far @ is from it (cyan \u2191 after it, \u2193 before it), a conflict
-  // (red \u26a0) and edits in @ (yellow \u25cf). The change ID shows only without a
-  // bookmark, where nothing else says where @ is. The repo shows as for git.
-  jjTail(g, quietRepo, name, t) {
-    const same = (a) => a.toLowerCase() === name.toLowerCase();
-    const repo = quietRepo || same(g.name) ? "" : g.name;
-    return h_flex()
-      .min_w(0)
-      .gap(5)
-      .items_center()
-      .text_size(11.5)
-      .text_color(t.dim)
-      .when(Boolean(repo), (el) => el.child(div().flex_none().child(repo)))
-      .child(
-        g.bookmark
-          ? div()
-              .min_w(0)
-              .truncate()
-              .font_semibold()
-              .text_color(t.ansi5)
-              .child(g.bookmark)
-          : div().flex_none().child(g.change),
-      )
-      .when(Boolean(g.bookmark) && g.distance > 0, (el) =>
-        el.child(
-          div()
-            .flex_none()
-            .text_color(t.ansi6)
-            .child(`${g.direction}${g.distance}`),
-        ),
-      )
-      .when(g.conflict, (el) =>
-        el.child(div().flex_none().text_color(t.ansi1).child("\u26a0")),
-      )
-      .when(g.modified, (el) =>
-        el.child(div().flex_none().text_color(t.ansi3).child("\u25cf")),
-      );
-  }
-
-  // The checkout line under every space's name, shown whether or not the
-  // space was renamed so rows read alike: the folder its first terminal's
-  // checkout (or, outside a repo, the folder itself) is named after, after its
-  // repo ("dotfiles / ws3", just "dotfiles" when they match). Null only when
-  // there is no folder to name. The `space-rename-all` mod's rows say the
-  // same (its `checkoutLabel` and `checkout`); change them together.
-  checkoutLine(w, g, t) {
-    const path = g ? g.top : place(w);
-    const folder = !w.machine && path === home() ? "~" : base(path ?? "");
-    const same = (a, b) => a.toLowerCase() === b.toLowerCase();
-    if (!folder) return null;
-    const text = !g
-      ? folder
-      : same(g.name, folder)
-        ? g.name
-        : `${g.name} / ${folder}`;
-    return div()
-      .min_w(0)
-      .truncate()
-      .text_size(11.5)
-      .text_color(t.dim)
-      .child(text);
+  // `rows` by machine, in the order `grouped` draws them: [machine, its rows]
+  // pairs, this computer (null) first, then every other machine by name, each
+  // one with spaces in `rows` or listed by `hc machine ls` (`this.machines`),
+  // so a pair's rows may be empty. Without other machines, the one pair holds
+  // every row. Each machine's rows keep their order in `rows`.
+  machineGroups(rows) {
+    const remote = [
+      ...new Set([
+        ...rows.map((r) => r.w.machine).filter(Boolean),
+        ...this.machines.map((m) => m.name),
+      ]),
+    ].sort();
+    if (!remote.length) return [[null, rows]];
+    return [null, ...remote].map((m) => [
+      m,
+      rows.filter((r) => (r.w.machine ?? null) === m),
+    ]);
   }
 
   row({ w, i, g, tree }, t) {
+    // The active space says so by its name, bold and bright, and by its rail
+    // (`grouped`). Its row holds the focus mark when no agent row of it does:
+    // a shell has focus, or its agent rows are folded away.
     const on = w.active;
-    const colors = shared("space.colors") ?? {};
-    const color = colors[w.id] ?? "ansi6";
-    const fill = color.startsWith("#") ? color : (MARK[color] ?? t[color]);
-    const checkout = this.checkoutLine(w, g, t);
+    const holdsFocus = on && !this.agentRowFocused(w);
+    const checkout = checkoutLine(w, g, t);
+    const badge = checkoutBadge(this.crew(w), g, t);
     const quietRepo = Boolean(tree) || Boolean(checkout);
     const tail = g
       ? g.jj
-        ? this.jjTail(g, quietRepo, w.name, t)
-        : this.gitTail(g, quietRepo, w.name, t)
+        ? jjTail(g, quietRepo, w.name, t)
+        : gitTail(g, quietRepo, w.name, t)
       : null;
+    const foldToggle = this.foldToggle(w, t);
     // The row is as tall as its lines of text (the name, then the checkout
     // line and the repo status when shown, set close together) with even
-    // padding, a worktree's a little tighter; the avatar or branch mark lines
-    // up with the name.
+    // padding, a worktree's a little tighter; a worktree's branch mark lines
+    // up with its name. The color tick or rail is the group's (`grouped`).
     return v_flex()
       .relative()
       .id(`space-${w.id}`)
-      .px(8)
+      .pl(tree ? 0 : TEXT_X - ROW_X)
+      .pr(8)
       .py(tree ? 5 : 6)
       .flex_none()
       .justify_center()
-      .rounded(8)
-      .when(on, (el) => el.bg(t.selected))
-      .when(!on, (el) => el.hover((s) => s.bg(t.hover)))
+      .rounded(6)
+      .hover((s) => s.bg(hoverFill(t)))
+      .when(holdsFocus, (el) => el.bg(t.hover).child(focusBar(t)))
       .when(this.pressed === i && this.over !== i, (el) => el.opacity(0.5))
       .when(
         this.pressed !== null && this.over === i && this.pressed !== i,
@@ -749,7 +468,7 @@ export default class Spaces extends View {
           .items_start()
           .when(Boolean(tree), (el) =>
             el
-              .pl(22)
+              .pl(16)
               .child(
                 svg("mods/workspace-chrome/branch.svg")
                   .mt(2)
@@ -758,80 +477,167 @@ export default class Spaces extends View {
                   .text_color(t.dim),
               ),
           )
-          .when(!tree, (el) =>
-            el.child(
-              h_flex()
-                .size(18)
-                .flex_none()
-                .rounded(5)
-                .bg(fill)
-                .items_center()
-                .justify_center()
-                .text_size(10.5)
-                .font_bold()
-                .text_color("#ffffff")
-                .child([...w.name][0]?.toUpperCase() ?? "?"),
-            ),
-          )
           .child(
             v_flex()
               .flex_1()
               .min_w(0)
               .line_height(1.3)
               .child(
-                div()
+                h_flex()
                   .min_w(0)
-                  .truncate()
-                  .text_color(t.foreground)
-                  .child(w.name),
+                  .gap(6)
+                  .items_center()
+                  .child(
+                    div()
+                      .flex_1()
+                      .min_w(0)
+                      .truncate()
+                      .text_color(on ? t.foreground : t.muted)
+                      .when(on, (el) => el.font_semibold())
+                      .child(w.name),
+                  )
+                  .when(Boolean(foldToggle), (el) => el.child(foldToggle)),
               )
-              .when(Boolean(checkout), (el) => el.child(checkout))
+              .when(Boolean(checkout) || Boolean(badge), (el) =>
+                el.child(
+                  h_flex()
+                    .min_w(0)
+                    .gap(6)
+                    .items_center()
+                    .child(
+                      div()
+                        .flex_1()
+                        .min_w(0)
+                        .when(Boolean(checkout), (el) => el.child(checkout)),
+                    )
+                    .when(Boolean(badge), (el) => el.child(badge)),
+                ),
+              )
               .when(Boolean(tail), (el) => el.child(tail)),
           ),
       );
   }
 
-  compact({ w, i }, t) {
+  crew(w) {
+    return this.crews.get(w.id) ?? [];
+  }
+
+  // The most urgent status among a space's agents, null without agents.
+  spaceStatus(w) {
+    return topStatus(this.crew(w).map((m) => m.status));
+  }
+
+  // Whether focus sits on one of the space's agent rows (an agent, or a
+  // sub-agent shown in its place): never when its agent rows are folded away.
+  agentRowFocused(w) {
+    if (w.id in this.foldedSpaces) return false;
+    const shown = focused()?.agent;
+    return this.crew(w).some(
+      (m) => m.a.focused || m.subs.some((s) => s.t.address === shown),
+    );
+  }
+
+  setSpaceFolded(w, folded) {
+    if (folded) this.foldedSpaces[w.id] = w.machine ?? null;
+    else delete this.foldedSpaces[w.id];
+    localStorage.setItem("spaces.folded", JSON.stringify(this.foldedSpaces));
+  }
+
+  // Forgets folds of spaces that are gone. Only on machines whose layout is
+  // read: while one loads, its spaces aren't listed yet.
+  pruneFoldedSpaces(sp) {
+    const ids = new Set(sp.map((s) => s.id));
+    const ready = new Set(
+      machines()
+        .filter((m) => m.layout === "ready")
+        .map((m) => m.name),
+    );
+    const gone = Object.entries(this.foldedSpaces).filter(
+      ([id, machine]) => !ids.has(id) && ready.has(machine),
+    );
+    if (!gone.length) return;
+    for (const [id] of gone) delete this.foldedSpaces[id];
+    localStorage.setItem("spaces.folded", JSON.stringify(this.foldedSpaces));
+  }
+
+  // The end of the name line of a space with agents: a chevron that folds
+  // their rows and, folded, adds how many agents in the most urgent one's
+  // color. Pressing it neither selects nor drags the space.
+  foldToggle(w, t) {
+    const crew = this.crew(w);
+    if (!crew.length) return null;
+    const keep = (_e, cx) => cx.stop_propagation();
+    const open = !(w.id in this.foldedSpaces);
+    const top = this.spaceStatus(w);
     return h_flex()
-      .id(`space-${w.id}`)
-      .h(26)
+      .id(`space-fold-${w.id}`)
       .flex_none()
-      .justify_center()
-      .gap(4)
-      .when(w.active, (el) => el.bg(t.raised))
-      .hover((s) => s.bg(t.hover))
-      .on_click(() => run("space.select", { id: w.id }))
+      .h(18)
+      .px(3)
+      .gap(3)
+      .items_center()
+      .rounded(4)
+      .text_size(11)
+      .text_color(open ? t.dim : (t[top] ?? t.dim))
+      .cursor_pointer()
+      .hover((s) => s.bg(t.hover).text_color(t.foreground))
+      .on_mouse_down("left", keep)
+      .on_click((_e, cx) => {
+        cx.stop_propagation();
+        this.setSpaceFolded(w, open);
+        cx.notify();
+      })
+      .when(!open, (el) => el.child(String(crew.length)))
       .child(
-        div()
-          .text_color(w.active ? t.foreground : t.muted)
-          .child(String(i + 1)),
-      )
-      .child(div().text_color(tone(t, w.status)).child(glyph(w.status)));
+        svg(`mods/workspace-chrome/chevron-${open ? "down" : "right"}.svg`)
+          .size(11)
+          .flex_none(),
+      );
+  }
+
+  // The agent rows under an unfolded space, their icons under the start of
+  // its name (past its color tick, or a worktree's branch mark).
+  agentRows({ w, tree }, t, now) {
+    if (w.id in this.foldedSpaces) return [];
+    const indent = tree ? 52 : TEXT_X;
+    const shown = focused()?.agent;
+    return this.crew(w).flatMap((m) => [
+      agentRow(m, indent, t, now, this.history.since(m.a)),
+      ...m.subs.map((s) => subRow(t, s, shown, indent + 4, this.listed)),
+    ]);
   }
 
   render() {
     const t = theme();
     const collapsed = narrow();
-    const palette = ["ansi6", "ansi3", "ansi4", "ansi5", "ansi2", "ansi1"];
     const sp = spaces();
-    const ids = new Set(sp.map((p) => p.id));
-    const kept = Object.fromEntries(
-      Object.entries(shared("space.colors") ?? {}).filter(([id]) =>
-        ids.has(id),
-      ),
+    assignSpaceColors(sp);
+
+    const now = Date.now();
+    const list = agents();
+    this.history.track(list, now);
+    this.history.hold(list);
+    this.pruneFoldedSpaces(sp);
+    const { byAddress, crews, listed } = gatherAgents(list, sp);
+    this.crews = crews;
+    this.listed = listed;
+    const tray = needsYou(list, (a) => RANK[a.status] ?? 0);
+
+    // Next/previous agent: "Needs you", then the tree in the machine order
+    // `grouped` draws, folded machines and spaces included. The focused agent
+    // keeps its "Needs you" slot here after looking turns it from done to
+    // idle (`orderRank`), so stepping on reaches the one after it, though the
+    // tray itself drops it. An agent whose space isn't shown yet is left out
+    // here; the app appends it.
+    const rows = this.ordered();
+    const treeOrder = this.machineGroups(rows).flatMap(([, mine]) =>
+      mine.flatMap((r) => this.crew(r.w).map((m) => m.a.address)),
     );
-    let changed =
-      Object.keys(kept).length !==
-      Object.keys(shared("space.colors") ?? {}).length;
-    for (const p of sp) {
-      if (kept[p.id] || p.name === "~") continue;
-      const uses = (c) => Object.values(kept).filter((v) => v === c).length;
-      kept[p.id] = palette.reduce((best, c) =>
-        uses(c) < uses(best) ? c : best,
-      );
-      changed = true;
-    }
-    if (changed) setShared("space.colors", kept);
+    const trayOrder = needsYou(list, (a) => this.history.orderRank(a)).map(
+      (a) => a.address,
+    );
+    setAgentOrder([...new Set([...trayOrder, ...treeOrder])]);
+
     return v_flex()
       .size_full()
       .min_h(0)
@@ -846,7 +652,9 @@ export default class Spaces extends View {
           .justify_between()
           .text_size(11.5)
           .text_color(t.dim)
-          .when(!collapsed, (el) => el.child("Spaces"))
+          .when(!collapsed, (el) =>
+            el.child(div().text_size(10.5).font_semibold().child("SPACES")),
+          )
           .child(
             div()
               .id("space-new")
@@ -873,7 +681,43 @@ export default class Spaces extends View {
             this.pressed = null;
             cx.notify();
           })
-          .children(this.grouped(t, collapsed)),
+          .children(this.grouped(t, collapsed, rows, now)),
+      )
+      .when(!collapsed, (el) =>
+        el.child(
+          v_flex()
+            .id("needs-you-tray")
+            .flex_none()
+            .px(8)
+            .pt(4)
+            .pb(8)
+            .gap(ROW_GAP)
+            .border_t(1)
+            .border_color(t.border)
+            .children(
+              needsYouRows(tray, byAddress, t, now, (a) =>
+                this.history.since(a),
+              ),
+            ),
+        ),
+      )
+      .when(collapsed, (el) =>
+        el.child(
+          h_flex()
+            .h(28)
+            .flex_none()
+            .items_center()
+            .justify_center()
+            .child(
+              div()
+                .id("collapse")
+                .text_size(13)
+                .text_color(t.dim)
+                .hover((s) => s.text_color(t.foreground))
+                .on_click(toggleSidebar)
+                .child("»"),
+            ),
+        ),
       );
   }
 }

@@ -40,8 +40,9 @@ let
   # `changes`. `desk` also differs from `main` by drawing its status bar
   # with `prefix-status` instead of the shipped `workspace-status`, its
   # sidebar header and footer with `desk-chrome` instead of the shipped
-  # `workspace-chrome`, and its list of spaces with `desk-spaces` instead
-  # of the shipped `spaces`.
+  # `workspace-chrome`, and its sidebar with one list, `desk-spaces`, each
+  # space with its agents under it, instead of the shipped `spaces` over
+  # the shipped `agents`.
   #
   # The tree fails to build when a personal mod or layout is named like a
   # shipped one, which the app would overwrite on its next start, or starts
@@ -179,6 +180,7 @@ let
       ];
       files = {
         "launcher.js" = launchers;
+        "names.js" = [ "desk-spaces" ];
         "paths.js" = launchers ++ [
           "desk-spaces"
           "space-rename-all"

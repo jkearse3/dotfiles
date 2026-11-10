@@ -34,32 +34,15 @@
           }
         },
         {
-          "id": "sidebar-lists",
-          "type": "column",
-          "children": [
-            {
-              "id": "spaces",
-              "type": "block",
-              "size": {
-                "weight": 1
-              },
-              "min": 90,
-              "content": {
-                "mod": "desk-spaces"
-              }
-            },
-            {
-              "id": "agents",
-              "type": "block",
-              "size": {
-                "weight": 1
-              },
-              "min": 90,
-              "content": {
-                "mod": "agents"
-              }
-            }
-          ]
+          "id": "spaces",
+          "type": "block",
+          "size": {
+            "weight": 1
+          },
+          "min": 90,
+          "content": {
+            "mod": "desk-spaces"
+          }
         },
         {
           "id": "sidebar-footer",
