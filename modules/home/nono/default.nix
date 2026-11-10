@@ -11,9 +11,22 @@ let
   # nono's "protected state root" guard. The failure is internal to nono's
   # own checkPhase and is unrelated to the wrapper code below. Skip checks
   # locally; upstream remains unchanged.
-  nono = pkgs.nono.overrideAttrs (_: {
-    doCheck = false;
-  });
+  #
+  # nixpkgs' cargo setup hook exports AWS_LC_SYS_USE_SYSTEM=1, so nono's
+  # aws-lc-sys dependency links a system AWS-LC instead of building its
+  # vendored copy, and the nono 0.80.0 package provides none. Add aws-lc
+  # until the assertion below fires (i.e. nixpkgs moves nono off 0.80.0,
+  # whose successor adds aws-lc itself).
+  nono =
+    assert lib.assertMsg (pkgs.nono.version == "0.80.0") (
+      "modules/home/nono/default.nix adds aws-lc to nono for 0.80.0 only: "
+      + "nono=${pkgs.nono.version}. Check whether upstream now provides it "
+      + "and drop the addition."
+    );
+    pkgs.nono.overrideAttrs (old: {
+      doCheck = false;
+      buildInputs = (old.buildInputs or [ ]) ++ [ pkgs.aws-lc ];
+    });
   dockerConfig = pkgs.writeTextDir "config.json" (
     builtins.toJSON {
       cliPluginsExtraDirs = [ "/Applications/Docker.app/Contents/Resources/cli-plugins" ];

@@ -131,9 +131,13 @@ workspace's `--repo` jj config:
 
 - With `commit.gpgSign=true`, `gpg.format=ssh`, and a configured
   `user.signingKey`, jj gets `signing.backend = "ssh"`, the selected
-  `signing.key`, and `git.sign-on-push = true`.
-- Otherwise jj gets `signing.backend = "none"` and `git.sign-on-push = false`;
-  non-SSH signing shapes are deliberately not guessed at.
+  `signing.key`, and `revsets.git-sign-on-push = "~signed() & mine()"`.
+- Otherwise jj gets `signing.backend = "none"` and
+  `revsets.git-sign-on-push = "none()"`; non-SSH signing shapes are deliberately
+  not guessed at.
+
+`jjx ensure` also removes a repo-level `git.sign-on-push` left by earlier
+versions, which jj deprecates in favor of `revsets.git-sign-on-push`.
 
 If Git resolves no complete identity, nothing is mirrored. For a freshly
 initialized workspace whose empty working-copy commit still carries jj's default

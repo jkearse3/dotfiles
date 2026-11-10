@@ -80,7 +80,7 @@ let
           behavior = "drop";
           backend = "none";
         };
-        git.sign-on-push = false;
+        revsets.git-sign-on-push = "none()";
       }
     else
       {
@@ -92,7 +92,7 @@ let
           backend = "ssh";
           key = identity.signingKey;
         };
-        git.sign-on-push = true;
+        revsets.git-sign-on-push = "~signed() & mine()";
       };
   repositoryScopeRoots = map (scope: scope.root) policy.repositoryScopes;
   normalizedRepositoryScopeRoots = map (

@@ -25,6 +25,7 @@
             inputs.nix-index-database.overlays.nix-index
             (import ../overlays/moreutils.nix)
             (import ../overlays/tokscale.nix)
+            (import ../overlays/pyrefly.nix)
           ];
         };
       };

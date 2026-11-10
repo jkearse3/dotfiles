@@ -7,10 +7,11 @@
   profileDirectory,
 }:
 let
-  # The package ships only `bin/herdr-app`, which Spotlight and the Dock
-  # cannot launch. This bundle follows upstream `scripts/install-macos`. Its
-  # executable is the real app binary, not the package's PATH wrapper, so the
-  # process belongs to the bundle and shows its name and icon in the Dock.
+  # The package's own `Applications/Herdr.app` stays in the store, and its
+  # executable is a PATH wrapper that execs the store copy of the real binary,
+  # `.Herdr-wrapped`. This bundle follows upstream `scripts/install-macos`
+  # instead and copies that real binary in as its executable, so the process
+  # belongs to the installed bundle and shows its name and icon in the Dock.
   # Running from `Herdr.app/Contents/MacOS/Herdr`, the app links
   # `~/.local/bin/herdr-app` to itself (herdr-app `src/core_bin/cli_link.rs`);
   # the profile's `herdr-app` stays ahead of it on PATH.
@@ -44,7 +45,7 @@ let
     contents=$out/Applications/Herdr.app/Contents
     mkdir -p $contents/MacOS $contents/Resources
     cp ${herdrAppInfoPlist} $contents/Info.plist
-    cp ${herdrApp}/bin/.herdr-app-wrapped $contents/MacOS/Herdr
+    cp ${herdrApp}/Applications/Herdr.app/Contents/MacOS/.Herdr-wrapped $contents/MacOS/Herdr
     cp ${herdrApp.src}/assets/icons/Herdr.icns $contents/Resources/Herdr.icns
   '';
 

@@ -68,6 +68,7 @@ import stat
 import subprocess
 import sys
 import tempfile
+import tomllib
 from collections.abc import Sequence
 from dataclasses import dataclass
 from enum import Enum
@@ -729,8 +730,13 @@ def _apply_identity(checkout: GitCheckout, identity: GitIdentity) -> None:
     ``config set`` records values without creating a jj operation, so this is
     safe to repeat on an already-compatible workspace. Signing reproduces the
     jj settings the identity policy would render: an SSH backend with the key
-    and push-time signing when Git signs, or an inert backend otherwise.
+    and push-time signing of own unsigned commits when Git signs, or an inert
+    backend that signs nothing on push otherwise. A ``git.sign-on-push`` value
+    written by earlier versions is removed first, because jj deprecates it in
+    favor of ``revsets.git-sign-on-push`` and warns on every command while it
+    remains.
     """
+    _remove_legacy_sign_on_push(checkout)
     settings: list[tuple[str, str]] = [
         ("user.name", identity.name),
         ("user.email", identity.email),
@@ -739,15 +745,63 @@ def _apply_identity(checkout: GitCheckout, identity: GitIdentity) -> None:
         settings += [
             ("signing.backend", "ssh"),
             ("signing.key", identity.signing_key),
-            ("git.sign-on-push", "true"),
+            ("revsets.git-sign-on-push", "~signed() & mine()"),
         ]
     else:
         settings += [
             ("signing.backend", "none"),
-            ("git.sign-on-push", "false"),
+            ("revsets.git-sign-on-push", "none()"),
         ]
     for key, value in settings:
         _jj_config_set(checkout, key, value)
+
+
+def _remove_legacy_sign_on_push(checkout: GitCheckout) -> None:
+    """Unset a repository-local ``git.sign-on-push`` left by earlier versions.
+
+    The repository config file is read directly because jj reports the
+    deprecated key only through warnings; a missing file means nothing is set.
+    """
+    config_path = _line(
+        [
+            "jj",
+            "--no-pager",
+            "--color=never",
+            "--ignore-working-copy",
+            "-R",
+            os.fspath(checkout.root),
+            "config",
+            "path",
+            "--repo",
+        ]
+    )
+    try:
+        with open(config_path, "rb") as config_file:
+            repo_config = tomllib.load(config_file)
+    except FileNotFoundError:
+        return
+    except (OSError, tomllib.TOMLDecodeError) as error:
+        raise EnsureError(
+            f"could not read jj repository config {config_path}: {error}"
+        ) from error
+
+    git_table = repo_config.get("git")
+    if not isinstance(git_table, dict) or "sign-on-push" not in git_table:
+        return
+    _ = _run(
+        [
+            "jj",
+            "--no-pager",
+            "--color=never",
+            "--ignore-working-copy",
+            "-R",
+            os.fspath(checkout.root),
+            "config",
+            "unset",
+            "--repo",
+            "git.sign-on-push",
+        ]
+    )
 
 
 def _align_working_copy_author(checkout: GitCheckout, identity: GitIdentity) -> None:
