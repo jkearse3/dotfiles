@@ -136,9 +136,6 @@ workspace's `--repo` jj config:
   `revsets.git-sign-on-push = "none()"`; non-SSH signing shapes are deliberately
   not guessed at.
 
-`jjx ensure` also removes a repo-level `git.sign-on-push` left by earlier
-versions, which jj deprecates in favor of `revsets.git-sign-on-push`.
-
 If Git resolves no complete identity, nothing is mirrored. For a freshly
 initialized workspace whose empty working-copy commit still carries jj's default
 author, the author is realigned once via `jj metaedit --update-author`; a

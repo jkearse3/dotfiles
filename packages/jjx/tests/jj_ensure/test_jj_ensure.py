@@ -8,7 +8,6 @@ from contextlib import AbstractContextManager
 import io
 import os
 import subprocess
-import tomllib
 import unittest
 from pathlib import Path
 from tempfile import TemporaryDirectory
@@ -417,26 +416,6 @@ class EnsureBehaviorTests(RepositoryFixture):
         self.assertEqual(self.jj_config(linked, "signing.key"), str(key))
         self.assertEqual(
             self.jj_config(linked, "revsets.git-sign-on-push"), "~signed() & mine()"
-        )
-
-    def test_removes_legacy_sign_on_push_from_repo_config(self) -> None:
-        linked = self.linked("linked")
-        _ = cli.ensure(linked)
-        _ = run(
-            "jj", "-R", str(linked), "config", "set", "--repo", "git.sign-on-push", "true"
-        )
-        config_path = Path(
-            run("jj", "-R", str(linked), "config", "path", "--repo")
-            .stdout.decode()
-            .strip()
-        )
-        self.assertIn("sign-on-push = true", config_path.read_text())
-        self.assertEqual(cli.ensure(linked), linked)
-        with config_path.open("rb") as config_file:
-            repo_config = tomllib.load(config_file)
-        self.assertNotIn("sign-on-push", repo_config.get("git", {}))
-        self.assertEqual(
-            self.jj_config(linked, "revsets.git-sign-on-push"), "none()"
         )
 
     def test_reconfigures_existing_workspace_without_rewriting_author(self) -> None:

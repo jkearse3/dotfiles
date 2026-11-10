@@ -1,6 +1,7 @@
 preset = "all"
 project-includes = [
   "modules/home/agents/skills/**/scripts",
+  "modules/home/vcs/jj/migrate-jj-sign-on-push",
   "packages/commit-message",
   "packages/direnv-worktree",
   "packages/herdr-find",

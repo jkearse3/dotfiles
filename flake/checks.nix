@@ -196,6 +196,12 @@
             test = "secret-wrappers";
           };
 
+          # The home build runs this jj config migration's fixture test, but
+          # `nix flake check` does not build a home configuration.
+          migrate-jj-sign-on-push =
+            unstablePkgs.callPackage ../modules/home/vcs/jj/migrate-jj-sign-on-push/package.nix
+              { };
+
           # Runs the Neovim configuration's plenary specs on the lockfile-pinned
           # plugins.
           neovim = unstablePkgs.callPackage ../modules/home/neovim/nvim/tests/check.nix {

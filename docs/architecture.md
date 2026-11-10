@@ -151,6 +151,19 @@ mapped to the `dotfiles` alias, so neither a consumer nor a blueprint changes
 when the provider does. See [Secrets](secrets.md) for the full boundary and
 commissioning workflow.
 
+## Home Migrations
+
+A home migration rewrites user state that an older configuration or tool left
+behind, such as a deprecated key in files the configuration does not own. It
+lives beside the module whose state it migrates, as a `home.activation.migrate*`
+step after `writeBoundary` that runs its command through `run`, so a dry run
+only prints it. The command is safe to rerun on every switch: it changes only
+files still in the old shape and prints one line per file it changes. A comment
+on the step states when to delete it. The command's fixture test runs in the
+derivation the activation step runs, which is also registered as a flake check,
+as `modules/home/vcs/jj/migrate-jj-sign-on-push` is. Migrations keep no ledger
+of applied migrations and no order between them.
+
 ## Extension Rules
 
 Add a package implementation under `packages/` and register it explicitly in
@@ -160,8 +173,9 @@ that no derivation builds by registering it explicitly in `flake/checks.nix`;
 when the check needs more than running a script with some tools, define it in a
 `check.nix` next to its tests and register that file there. Add reusable policy
 under the appropriate `modules/` subtree, then import it explicitly from a
-blueprint composition. Add a blueprint as another typed declaration in
-`blueprints/default.nix`. Add flake integration as a flake-parts module under
-`flake/` and import it explicitly from `flake.nix`; `flake.nix` imports no
-repository file outside `flake/`. Do not derive blueprints from hostnames or
-discover modules from the filesystem.
+blueprint composition. Add a migration of user state as a
+[home migration](#home-migrations) in the module that owns that state. Add a
+blueprint as another typed declaration in `blueprints/default.nix`. Add flake
+integration as a flake-parts module under `flake/` and import it explicitly from
+`flake.nix`; `flake.nix` imports no repository file outside `flake/`. Do not
+derive blueprints from hostnames or discover modules from the filesystem.
