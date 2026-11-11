@@ -13,11 +13,13 @@
 // copies in `mod-lib/`.
 
 import { View, div } from "gpui-kit";
+import type { AsyncContext, Context } from "gpui-kit";
+import type { Props } from "gpui-shell";
 import { home, spaces } from "herdr";
 import { launch } from "./launcher.js";
 
 export default class JjWorkspaceRemove extends View {
-  init(_props, cx) {
+  init(_props: Props | undefined, cx: AsyncContext): void {
     launch(cx, {
       title: "Remove jj workspace",
       prepare() {
@@ -40,7 +42,7 @@ export default class JjWorkspaceRemove extends View {
     });
   }
 
-  render(_cx) {
+  render(_cx: Context) {
     return div();
   }
 }
