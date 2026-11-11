@@ -9,7 +9,7 @@
 # The launcher mods (`find`, `jj-workspace-new`, `jj-workspace-pick`,
 # `jj-workspace-remove`, `space-new`) start their CLIs, and `desk-spaces` and
 # `space-rename-all` run local spaces' `jj`, by the absolute store paths this
-# file maps program names to, which `cliPath` in `mod-lib/paths.js` reads. A
+# file maps program names to, which `cliPath` in `mod-lib/paths.ts` reads. A
 # bare name would resolve on the PATH of whichever process runs it: the core
 # for the launchers' `hc run`, the app for those two mods' `exec`. Each PATH
 # depends on how that process was started. Read-only, because it holds store

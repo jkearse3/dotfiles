@@ -2,9 +2,10 @@
 // (`agentActivity`), whatever program it runs.
 //
 // Each mod that uses this file links it into its own folder
-// (`mods/<mod>/names.js` -> `../../mod-lib/names.js`), and the deploy tree
-// copies the file in place of the link. The app refuses imports that leave a
-// mod's own folder; `./names.js` beside the importing file is allowed.
+// (`mods/<mod>/names.ts` -> `../../mod-lib/names.ts`), and the herdr-app-mods
+// build copies the file in place of the link and strips its types to
+// `names.js`. The app refuses imports that leave a mod's own folder;
+// `./names.js` beside the importing file is allowed.
 //
 // No one field names every agent. The status report's message (OSC 7501) is
 // free text each agent fills its own way: Claude Code's is the step it is on
@@ -13,13 +14,36 @@
 // pi as "pi - <folder>". So each agent gets a rule in `TOPICS`, and the
 // fallbacks are the same for all.
 
+import type { AgentInfo } from "herdr";
+
+// The agent's status report (OSC 7501) as a `terminals()` entry carries it.
+interface AgentReport {
+  app?: string;
+  state?: string;
+  msg?: string;
+}
+
+// The fields of a `terminals()` entry these rules read: the name someone gave
+// the terminal and the agent's report. The app's typings type the entries as
+// `any`; `hc get` prints the report as `status` instead of `report`.
+interface TerminalEntry {
+  name?: string;
+  report?: AgentReport;
+  status?: string | AgentReport;
+}
+
+// One agent's rule for what it says about itself, given its `agents()` entry
+// and its `terminals()` entry (may be undefined): the text, or null.
+type AgentRule = (a: AgentInfo, k: TerminalEntry | undefined) => string | null;
+
 // Leading decoration (Claude Code's "✳ ", spinners) and surrounding spaces.
-const clean = (s) => (s ?? "").replace(/^[^\p{L}\p{N}]+/u, "").trim();
+const clean = (s: string | null | undefined): string =>
+  (s ?? "").replace(/^[^\p{L}\p{N}]+/u, "").trim();
 
 // `text` cleaned when it says what the agent is on, else null: not when it is
 // empty, only the program's name, a path, a shell's user@host, or the program
 // and a folder ("pi - dotfiles").
-function useful(text, a) {
+function useful(text: string | null | undefined, a: AgentInfo): string | null {
   const s = clean(text);
   if (!s) return null;
   const program = [a.program?.name, a.program?.key, a.app, "π"]
@@ -38,11 +62,11 @@ function useful(text, a) {
 
 // The agent's report from `terminals()`: { app, state, msg }. The app's
 // typings call it `report`; `hc get` prints the same object as `status`.
-const reportOf = (k) =>
+const reportOf = (k: TerminalEntry | undefined): AgentReport | null =>
   k?.report ?? (typeof k?.status === "object" ? k.status : null);
 
 // Per agent, by the app it reports (`AgentInfo.app`): where it says its topic.
-const TOPICS = {
+const TOPICS: Record<string, AgentRule> = {
   "claude-code": (a) => a.title,
   opencode: (a) => clean(a.title).replace(/^OC \| /, ""),
   // pi reports its session name (set with /name) while working or done.
@@ -57,7 +81,7 @@ const TOPICS = {
 // else its own topic by its rule in `TOPICS`, else its title when that says
 // something, else its program, else its address. Never its tab: that says
 // where the agent is, which a mod shows apart from what the agent is.
-export function agentName(a, k) {
+export function agentName(a: AgentInfo, k: TerminalEntry | undefined): string {
   return (
     clean(k?.name) ||
     useful(TOPICS[a.app]?.(a, k), a) ||
@@ -70,7 +94,7 @@ export function agentName(a, k) {
 // Per agent, by the app it reports: where it says what it is doing now. Only
 // agents whose report message is their current step have a rule; pi's
 // message is its session name (`TOPICS`), so pi has none.
-const ACTIVITIES = {
+const ACTIVITIES: Record<string, AgentRule> = {
   "claude-code": (_a, k) => {
     const r = reportOf(k);
     return r?.state === "working" ? r.msg : null;
@@ -80,6 +104,9 @@ const ACTIVITIES = {
 // What agent `a` is doing now, by its rule in `ACTIVITIES` (given its
 // `terminals()` entry `k`, which may be undefined), cleaned; null for an agent
 // without a rule or one that isn't saying.
-export function agentActivity(a, k) {
+export function agentActivity(
+  a: AgentInfo,
+  k: TerminalEntry | undefined,
+): string | null {
   return clean(ACTIVITIES[a.app]?.(a, k)) || null;
 }

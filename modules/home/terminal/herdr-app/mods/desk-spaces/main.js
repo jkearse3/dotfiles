@@ -27,7 +27,7 @@
 // space's Git or jj checkout, `agents.js` gathers agents and tracks their
 // status changes, and `rows.js` draws the rows.
 //
-// `paths.js` (imported by `checkouts.js` and `rows.js`) and `names.js`
+// `paths.ts` (imported by `checkouts.js` and `rows.js`) and `names.ts`
 // (imported by `agents.js`) beside these files are links to the shared copies
 // in `mod-lib/`.
 

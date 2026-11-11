@@ -1,11 +1,11 @@
-// Tests `agentName` and `agentActivity` from mod-lib/names.js against the
+// Tests `agentName` and `agentActivity` from mod-lib/names.ts against the
 // agents() and terminals() entry shapes the Herdr app hands mods. Run with
 // `node --test`; flake/checks.nix registers it as the `herdr-app-names` check
 // through names-check.nix.
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import { agentActivity, agentName } from "./mod-lib/names.js";
+import { agentActivity, agentName } from "./mod-lib/names.ts";
 
 // An agents() entry running `app`, with `fields` overriding the defaults.
 function agent(app, fields = {}) {

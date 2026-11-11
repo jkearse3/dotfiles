@@ -10,7 +10,7 @@
 // folder it was made in. With no shown space, or one on another machine,
 // whose folder means nothing here, the picker starts from home.
 //
-// `launcher.js` and `paths.js` beside this file are links to the shared
+// `launcher.ts` and `paths.ts` beside this file are links to the shared
 // copies in `mod-lib/`.
 
 import { View, div } from "gpui-kit";

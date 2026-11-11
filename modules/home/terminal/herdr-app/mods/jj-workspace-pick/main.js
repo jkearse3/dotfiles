@@ -9,7 +9,7 @@
 // `jj-workspace-new` (`ctrl-b ctrl-g`) skips the picker and uses the focused
 // terminal's repository.
 //
-// `launcher.js` and `paths.js` beside this file are links to the shared
+// `launcher.ts` and `paths.ts` beside this file are links to the shared
 // copies in `mod-lib/`.
 
 import { View, div } from "gpui-kit";

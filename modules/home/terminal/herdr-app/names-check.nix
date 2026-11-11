@@ -1,4 +1,4 @@
-# Runs `names-test.mjs`, the tests of `mod-lib/names.js`, with Node's test
+# Runs `names-test.mjs`, the tests of `mod-lib/names.ts`, with Node's test
 # runner. The source holds only those two files, so editing other herdr-app
 # files does not rebuild the check.
 #
@@ -14,7 +14,7 @@ let
     root = ./.;
     fileset = lib.fileset.unions [
       ./names-test.mjs
-      ./mod-lib/names.js
+      ./mod-lib/names.ts
     ];
   };
 in

@@ -8,7 +8,7 @@
 // was made in. `jj-workspace-pick` (`ctrl-b shift-g`) picks the repository
 // with fzf instead.
 //
-// `launcher.js` and `paths.js` beside this file are links to the shared
+// `launcher.ts` and `paths.ts` beside this file are links to the shared
 // copies in `mod-lib/`.
 
 import { View, div } from "gpui-kit";

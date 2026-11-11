@@ -20,12 +20,12 @@
 // finds it by name.
 //
 // The launcher waits for `hc` while still open, because closing it cancels
-// its pending tasks; `showPopup` in `launcher.js` says why it then closes
+// its pending tasks; `showPopup` in `launcher.ts` says why it then closes
 // itself before opening the popup. The reuse path awaits nothing between
 // reading `terminals()` and opening the popup, so the terminal it found
 // cannot end in between unnoticed and the frame appears at once.
 //
-// `launcher.js` and `paths.js` beside this file are links to the shared
+// `launcher.ts` and `paths.ts` beside this file are links to the shared
 // copies in `mod-lib/`.
 
 import { View, div } from "gpui-kit";
