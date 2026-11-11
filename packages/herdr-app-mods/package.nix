@@ -13,7 +13,10 @@
 # link, no link dangles, and every `mod-lib` file reaches at least one mod.
 #
 # The build then:
-# 1. rejects `.d.ts` sources, which stripping would turn into `.d.js` modules;
+# 1. rejects JavaScript sources (`.js`, `.mjs`, `.cjs`), because every mod and
+#    `mod-lib` file is written in TypeScript and the deployed `.js` files are
+#    built from it, and rejects `.d.ts` sources, which stripping would turn
+#    into `.d.js` modules;
 # 2. runs `tsc -p tsconfig.json` over the sources with `.herdr-app-types`
 #    linked to herdr-app-mod-types, as the dev shell links it, and fails on
 #    any diagnostic;
@@ -45,12 +48,11 @@ let
   # `.ts`. Usage: `node strip-mod-types.mjs <built mod folder> <source path>`,
   # where the source path names the mod folder in errors. Stripping replaces
   # each type with spaces, so the script fails unless the output has the
-  # source's length and its newlines at the same offsets; it also fails when
-  # `x.js` already sits beside `x.ts`, which would be overwritten.
+  # source's length and its newlines at the same offsets.
   # It lives here rather than in a committed file so the formatter cannot
   # reflow it.
   stripModTypes = pkgs.writeText "strip-mod-types.mjs" ''
-    import { existsSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
+    import { readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
     import { stripTypeScriptTypes } from "node:module";
     import { join } from "node:path";
 
@@ -63,12 +65,6 @@ let
     for (const tsPath of tsPaths) {
       const sourcePath = `''${sourceModDir}/''${tsPath}`;
       const jsPath = `''${tsPath.slice(0, -".ts".length)}.js`;
-      if (existsSync(join(builtModDir, jsPath))) {
-        console.error(`''${sourcePath} sits beside ''${sourceModDir}/''${jsPath}; keep only one of them`);
-        failed = true;
-        continue;
-      }
-
       const typeScript = readFileSync(join(builtModDir, tsPath), "utf8");
       let javaScript;
       try {
@@ -147,12 +143,16 @@ pkgs.runCommandLocal "herdr-app-mods" { } ''
     exit 1
   fi
 
-  declarationFailed=
+  sourceFileFailed=
+  while IFS= read -r -d "" javaScriptPath; do
+    echo "modules/home/terminal/herdr-app/''${javaScriptPath#${modSources}/} is JavaScript; write it as a .ts module, which the build strips to .js" >&2
+    sourceFileFailed=1
+  done < <(find ${modSources}/mods ${modSources}/mod-lib '(' -name '*.js' -o -name '*.mjs' -o -name '*.cjs' ')' -print0)
   while IFS= read -r -d "" declarationPath; do
     echo "modules/home/terminal/herdr-app/''${declarationPath#${modSources}/} is a declaration file, which would deploy as a .d.js module; move its types into a .ts module and import them with import type" >&2
-    declarationFailed=1
+    sourceFileFailed=1
   done < <(find ${modSources}/mods ${modSources}/mod-lib -name '*.d.ts' -print0)
-  if [[ -n $declarationFailed ]]; then
+  if [[ -n $sourceFileFailed ]]; then
     exit 1
   fi
 
