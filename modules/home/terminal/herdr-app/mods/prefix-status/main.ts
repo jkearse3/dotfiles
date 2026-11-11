@@ -6,6 +6,8 @@
 // `palette` mod (the command palette copy with ctrl-j/ctrl-k) instead of the
 // built-in palette. Otherwise it draws the bar as 0.1.11 shipped it.
 import { View, div, svg } from "gpui-kit";
+import type { AsyncContext, Color } from "gpui-kit";
+import type { Props } from "gpui-shell";
 import { h_flex } from "gpui-base";
 import {
   spaces,
@@ -18,10 +20,23 @@ import {
   nextCommand,
 } from "herdr";
 
+// The theme's colors by name. The app's typings type `theme()` as
+// `Record<string, string>`, though every value is a color.
+type ThemeColors = Record<string, Color>;
+
+// What the `prefix` mod publishes as `shared("prefix")`: its key hints as
+// `[key, label]` pairs, in the order the bar shows them.
+interface PrefixShared {
+  hints?: [string, string][];
+}
+
 export default class WorkspaceStatus extends View {
+  // Whether prefix mode is on, so the bar shows the PREFIX pill and hints.
+  declare prefix: boolean;
+
   // Prefix mode is on between the `prefix` mod's "prefix-status.on" and
   // ".off" commands; a command, unlike setShared, reliably redraws the bar.
-  init(_props, cx) {
+  init(_props: Props | undefined, cx: AsyncContext): void {
     this.prefix = false;
     cx.spawn(async (cx) => {
       for (;;) {
@@ -34,9 +49,9 @@ export default class WorkspaceStatus extends View {
 
   // The `palette` mod's key as actually bound, not a hardcoded one; without a
   // binding the hint stays useful ("commands") instead of lying.
-  hint(t) {
+  hint(t: ThemeColors): string {
     const mac = window()?.platform === "macos";
-    const mod = {
+    const mod: Record<string, string> = {
       cmd: mac ? "⌘" : "Ctrl+",
       ctrl: mac ? "⌃" : "Ctrl+",
       shift: mac ? "⇧" : "Shift+",
@@ -57,13 +72,13 @@ export default class WorkspaceStatus extends View {
   }
 
   render() {
-    const t = theme();
+    const t = theme() as ThemeColors;
     const space = spaces().find((s) => s.active);
     const list = agents();
     const needs = list.filter((a) => a.status === "blocked").length;
     // Prefix mode (the `prefix` mod): the bar turns into tmux-style key hints.
     if (this.prefix) {
-      const hint = (k, what) =>
+      const hint = (k: string, what: string) =>
         h_flex()
           .gap(5)
           .items_center()
@@ -88,10 +103,12 @@ export default class WorkspaceStatus extends View {
             .child("PREFIX"),
         )
         .children(
-          (shared("prefix")?.hints ?? []).map(([k, what]) => hint(k, what)),
+          ((shared("prefix") as PrefixShared)?.hints ?? []).map(([k, what]) =>
+            hint(k, what),
+          ),
         );
     }
-    const label = (icon, text) =>
+    const label = (icon: string, text: string) =>
       h_flex()
         .gap(6)
         .items_center()
