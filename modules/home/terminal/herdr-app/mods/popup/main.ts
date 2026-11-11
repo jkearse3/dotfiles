@@ -23,6 +23,8 @@
 // replaced with this popup's overlay id.
 
 import { View, div } from "gpui-kit";
+import type { AsyncContext, Color, Context } from "gpui-kit";
+import type { Props } from "gpui-shell";
 import { h_flex } from "gpui-base";
 import {
   closeOverlay,
@@ -36,9 +38,30 @@ import {
 
 const OVERLAY_PLACEHOLDER = "{overlay}";
 
+// The theme's colors by name. The app's typings type `theme()` as
+// `Record<string, string>`, though every value is a color.
+type ThemeColors = Record<string, Color>;
+
+// An `openCommand` or `closeCommand` prop.
+interface PopupCommand {
+  command: string;
+  args?: string[];
+}
+
+// This block's props, as the header describes them. All are absent when
+// `herdr-app check` renders the mod.
+interface PopupProps {
+  overlay?: string;
+  title?: string;
+  terminal?: string;
+  keepTerminal?: boolean;
+  openCommand?: PopupCommand;
+  closeCommand?: PopupCommand;
+}
+
 // Runs a `{ command, args }` prop through `exec`, with the overlay
 // placeholder in ARGS replaced by OVERLAY.
-function execCommand({ command, args = [] }, overlay) {
+function execCommand({ command, args = [] }: PopupCommand, overlay: string) {
   return exec(
     command,
     args.map((arg) => (arg === OVERLAY_PLACEHOLDER ? overlay : arg)),
@@ -46,30 +69,30 @@ function execCommand({ command, args = [] }, overlay) {
 }
 
 export default class Popup extends View {
-  init(_props, cx) {
+  init(_props: Props | undefined, cx: AsyncContext): void {
     // `herdr-app check` renders the mod with no props, outside an overlay.
     // Start nothing then.
-    const { overlay, title, openCommand } = props() ?? {};
+    const { overlay, title, openCommand }: PopupProps = props() ?? {};
     if (!overlay || !openCommand) return;
 
     cx.spawn(async (_cx) => {
-      let body;
+      let body: string;
       try {
         const r = await execCommand(openCommand, overlay);
         if (r.code === 0) return;
         body =
           r.stderr.trim() || `${openCommand.command} exited with ${r.code}`;
       } catch (error) {
-        body = String(error?.message ?? error);
+        body = String((error as Error)?.message ?? error);
       }
       notify({ title: title ?? "Popup", body, level: "error" });
       closeOverlay(overlay);
     });
   }
 
-  render(_cx) {
-    const t = theme();
-    const { title, overlay } = props() ?? {};
+  render(_cx: Context) {
+    const t = theme() as ThemeColors;
+    const { title, overlay }: PopupProps = props() ?? {};
     return h_flex()
       .size_full()
       .px(12)
@@ -110,8 +133,9 @@ export default class Popup extends View {
   // gone, and killing it would show an error toast. A close within
   // milliseconds of opening, before the terminal is listed, therefore leaves
   // it running; that is accepted.
-  async close(_cx) {
-    const { overlay, terminal, keepTerminal, closeCommand } = props() ?? {};
+  async close(_cx: AsyncContext): Promise<void> {
+    const { overlay, terminal, keepTerminal, closeCommand }: PopupProps =
+      props() ?? {};
     const closing = closeCommand
       ? execCommand(closeCommand, overlay).catch(() => {})
       : undefined;
