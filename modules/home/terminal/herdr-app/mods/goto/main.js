@@ -139,7 +139,8 @@ export default class Picker extends View {
     const busy = groups.filter((p) => p.w.status && p.ctxs.length);
     const quiet = groups.filter((p) => !p.w.status && p.ctxs.length);
     busy.sort(
-      (a, b) => (b.w.status === "blocked") - (a.w.status === "blocked"),
+      (a, b) =>
+        Number(b.w.status === "blocked") - Number(a.w.status === "blocked"),
     );
     const out = [];
     const add = (p) => {
