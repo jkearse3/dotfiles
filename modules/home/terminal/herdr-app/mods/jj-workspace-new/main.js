@@ -8,9 +8,8 @@
 // was made in. `jj-workspace-pick` (`ctrl-b shift-g`) picks the repository
 // with fzf instead.
 //
-// `launcher.js` and `paths.js` beside this file are copied in at build time
-// from `mod-lib/` (deploy.nix `sharedModFiles`); edit them there. This source
-// folder lacks them.
+// `launcher.js` and `paths.js` beside this file are links to the shared
+// copies in `mod-lib/`.
 
 import { View, div } from "gpui-kit";
 import { home, spaces } from "herdr";

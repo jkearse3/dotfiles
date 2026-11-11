@@ -8,8 +8,7 @@
 // name, after where its first terminal is.
 // `ctrl-b shift-w` renames only the shown space.
 //
-// `paths.js` beside this file is copied in at build time from `mod-lib/`
-// (deploy.nix `sharedModFiles`); edit it there. This source folder lacks it.
+// `paths.js` beside this file is a link to the shared copy in `mod-lib/`.
 
 import { View, div } from "gpui-kit";
 import { v_flex, h_flex, InputState, Input } from "gpui-base";

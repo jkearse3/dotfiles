@@ -2,9 +2,9 @@
 // (`cliPath`), the focused terminal's folder (`focusedFolder`), and where a
 // space is now (`place`).
 //
-// The deploy tree copies this file into each mod folder that deploy.nix
-// `sharedModFiles` lists, at build time, so edit it here rather than in a
-// deployed copy. It is copied because the app refuses imports that leave a
+// Each mod that uses this file links it into its own folder
+// (`mods/<mod>/paths.js` -> `../../mod-lib/paths.js`), and the deploy tree
+// copies the file in place of the link. The app refuses imports that leave a
 // mod's own folder; `./paths.js` beside the importing file is allowed.
 
 import { appHome, focused, panes, readTextFile, spaces } from "herdr";

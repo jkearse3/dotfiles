@@ -28,9 +28,8 @@
 // status changes, and `rows.js` draws the rows.
 //
 // `paths.js` (imported by `checkouts.js` and `rows.js`) and `names.js`
-// (imported by `agents.js`) beside these files are copied in at build time
-// from `mod-lib/` (deploy.nix `sharedModFiles`); edit them there. This source
-// folder lacks them.
+// (imported by `agents.js`) beside these files are links to the shared copies
+// in `mod-lib/`.
 
 import { View, div, svg } from "gpui-kit";
 import { v_flex, h_flex } from "gpui-base";

@@ -6,10 +6,10 @@
 // launcher supplies only its title and how it chooses the program, arguments
 // and folder.
 //
-// The deploy tree copies this file, with the `paths.js` it imports, into each
-// mod folder that deploy.nix `sharedModFiles` lists, at build time, so edit
-// it here rather than in a deployed copy. It is copied because the app
-// refuses imports that leave a mod's own folder; `./launcher.js` beside the
+// Each mod that uses this file links it, with the `paths.js` it imports, into
+// its own folder (`mods/<mod>/launcher.js` -> `../../mod-lib/launcher.js`),
+// and the deploy tree copies the file in place of the link. The app refuses
+// imports that leave a mod's own folder; `./launcher.js` beside the
 // importing file is allowed.
 
 import { closeOverlay, hc, notify, openOverlay, props } from "herdr";

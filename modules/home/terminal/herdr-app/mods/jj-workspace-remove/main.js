@@ -9,9 +9,8 @@
 // menu item: that item runs `git worktree remove` and leaves jj's record of
 // the workspace, which `jj workspace forget <name>` then has to clear.
 //
-// `launcher.js` and `paths.js` beside this file are copied in at build time
-// from `mod-lib/` (deploy.nix `sharedModFiles`); edit them there. This source
-// folder lacks them.
+// `launcher.js` and `paths.js` beside this file are links to the shared
+// copies in `mod-lib/`.
 
 import { View, div } from "gpui-kit";
 import { home, spaces } from "herdr";

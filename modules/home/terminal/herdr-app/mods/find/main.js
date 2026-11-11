@@ -25,9 +25,8 @@
 // reading `terminals()` and opening the popup, so the terminal it found
 // cannot end in between unnoticed and the frame appears at once.
 //
-// `launcher.js` and `paths.js` beside this file are copied in at build time
-// from `mod-lib/` (deploy.nix `sharedModFiles`); edit them there. This source
-// folder lacks them.
+// `launcher.js` and `paths.js` beside this file are links to the shared
+// copies in `mod-lib/`.
 
 import { View, div } from "gpui-kit";
 import { focused, hc, home, spaces, terminals } from "herdr";

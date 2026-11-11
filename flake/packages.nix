@@ -16,6 +16,17 @@
       # The pi module delivers this directory to pi; the packages below build
       # its npm dependencies, check its sources, and assemble its locked tree.
       piExtensions = ../modules/home/agents/pi/extensions;
+
+      # The personal herdr-app mods and the shared code they link to, laid out
+      # as in `modules/home/terminal/herdr-app` so the mods' relative links to
+      # `../../mod-lib` resolve.
+      herdrAppModSources = pkgs.lib.fileset.toSource {
+        root = ../modules/home/terminal/herdr-app;
+        fileset = pkgs.lib.fileset.unions [
+          ../modules/home/terminal/herdr-app/mods
+          ../modules/home/terminal/herdr-app/mod-lib
+        ];
+      };
     in
     {
       # `rec` lets package recipes explicitly inject sibling repository packages
@@ -31,6 +42,10 @@
           inherit (unstablePkgs) jujutsu;
         };
         herdr-app = inputs.llm-agents.packages.${system}.herdr-app;
+        herdr-app-mods-checked = pkgs.callPackage ../packages/herdr-app-mods-checked/package.nix {
+          inherit herdr-app;
+          modSources = herdrAppModSources;
+        };
         herdr-core = pkgs.callPackage ../packages/herdr-core/package.nix {
           upstream = inputs.llm-agents.packages.${system}.herdr-core;
         };

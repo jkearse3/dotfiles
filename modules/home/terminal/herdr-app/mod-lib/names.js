@@ -1,9 +1,9 @@
 // What to call an agent (`agentName`) and what it is doing now
 // (`agentActivity`), whatever program it runs.
 //
-// The deploy tree copies this file into each mod folder that deploy.nix
-// `sharedModFiles` lists, at build time, so edit it here rather than in a
-// deployed copy. It is copied because the app refuses imports that leave a
+// Each mod that uses this file links it into its own folder
+// (`mods/<mod>/names.js` -> `../../mod-lib/names.js`), and the deploy tree
+// copies the file in place of the link. The app refuses imports that leave a
 // mod's own folder; `./names.js` beside the importing file is allowed.
 //
 // No one field names every agent. The status report's message (OSC 7501) is

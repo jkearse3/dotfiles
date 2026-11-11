@@ -158,10 +158,13 @@
       };
     in
     {
-      # Builds every lint check and the pi extension checks, so
-      # `nix build .#lint` runs all lint without the slower tests.
+      # Builds every lint check, the pi extension checks, and the herdr-app mod
+      # checks, so `nix build .#lint` runs all lint without the slower tests.
       packages.lint = unstablePkgs.linkFarm "lint" (
-        lintChecks // { inherit (config.packages) pi-extensions-checked; }
+        lintChecks
+        // {
+          inherit (config.packages) herdr-app-mods-checked pi-extensions-checked;
+        }
       );
 
       # treefmt-nix contributes the `treefmt` check; the module system merges it
