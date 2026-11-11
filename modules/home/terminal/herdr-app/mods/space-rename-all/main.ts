@@ -11,6 +11,14 @@
 // `paths.ts` beside this file is a link to the shared copy in `mod-lib/`.
 
 import { View, div } from "gpui-kit";
+import type {
+  AsyncContext,
+  Color,
+  Context,
+  FocusHandle,
+  KeyEvent,
+} from "gpui-kit";
+import type { Props } from "gpui-shell";
 import { v_flex, h_flex, InputState, Input } from "gpui-base";
 import {
   closeOverlay,
@@ -24,10 +32,42 @@ import {
   spaces,
   theme,
 } from "herdr";
+import type { SpaceInfo } from "herdr";
 import { cliPath, place } from "./paths.js";
 
+// The theme's colors by name. The app's typings type `theme()` as
+// `Record<string, string>`, though every value is a color.
+type ThemeColors = Record<string, Color>;
+
+// One space's row in the dialog; `init` describes its fields.
+interface RenameRow {
+  id: string;
+  initial: string;
+  input: InputState;
+  machine: string | null;
+  path: string;
+  automatic: string | null;
+  checkout: Checkout | null;
+  focused: boolean;
+}
+
+// A checkout's root folder (`top`) and its repo's name.
+interface Checkout {
+  top: string;
+  name: string;
+}
+
 export default class SpaceRenameAll extends View {
-  init(_props, cx) {
+  declare rows: RenameRow[];
+  // The last focused row's index in `rows`, -1 once no row is left.
+  declare current: number;
+  declare scroll: number;
+  declare handle: FocusHandle;
+  // The list's laid-out height in logical px, once it has been laid out.
+  declare rowsLaidOutHeight: number | undefined;
+  declare rehoming: boolean | undefined;
+
+  init(_props: Props | undefined, cx: AsyncContext): void {
     const ps = panes();
     // One row per space as the dialog opened: `initial` is the name a field
     // starts with, empty for a space nobody named; `automatic` the name an
@@ -36,7 +76,7 @@ export default class SpaceRenameAll extends View {
     // terminal's checkout once known (see `checkout`); and `focused` whether
     // its field holds the keyboard now. `this.current` stays on the last
     // focused row after the keyboard leaves it, so Tab still moves from there.
-    this.rows = spaces().map((space, i) => {
+    this.rows = spaces().map((space, i): RenameRow => {
       const initial = space.named ? space.name : "";
       // The field's own placeholder is fixed at creation, before a renamed
       // space's automatic name is known, so `render` draws the hint instead.
@@ -114,7 +154,7 @@ export default class SpaceRenameAll extends View {
   // Scrolls the list just far enough to show ROW whole. Focus moving to a row
   // calls this, so moving between fields never leaves the field taking keys
   // out of sight.
-  reveal(row) {
+  reveal(row: RenameRow): void {
     const top = this.live().indexOf(row) * ROW_PITCH;
     if (top < 0) return;
     const visible = this.shownHeight(this.live().length);
@@ -127,7 +167,7 @@ export default class SpaceRenameAll extends View {
   // ROWS_MAX_H, less when the window is too short for the dialog to hold that
   // and layout squeezes the list (`rowsLaidOutHeight`, measured after each
   // layout, unknown before the first frame).
-  shownHeight(count) {
+  shownHeight(count: number): number {
     return Math.min(
       ROWS_MAX_H,
       rowsHeight(count),
@@ -140,7 +180,7 @@ export default class SpaceRenameAll extends View {
   // Enter and Esc keep working. Focusing is refused during render, so it
   // happens on the next turn; `rehoming` keeps renders before then from
   // queueing it again.
-  rehome(cx) {
+  rehome(cx: Context): void {
     if (this.rehoming) return;
     this.rehoming = true;
     cx.timer.after(0, () => {
@@ -165,7 +205,7 @@ export default class SpaceRenameAll extends View {
       run("space.rename", { id: r.id, name: r.input.value().trim() });
   }
 
-  key(e, cx) {
+  key(e: KeyEvent, cx: Context): void {
     const k = e.key;
     // fzf's ctrl-j/ctrl-k, as in the palette: control alone, so cmd/alt/shift
     // chords pass.
@@ -188,8 +228,8 @@ export default class SpaceRenameAll extends View {
     cx.stop_propagation();
   }
 
-  render(cx) {
-    const t = theme();
+  render(cx: Context) {
+    const t = theme() as ThemeColors;
     const shown = this.live();
     if (this.current >= 0 && !shown.includes(this.rows[this.current]))
       this.rehome(cx);
@@ -202,9 +242,14 @@ export default class SpaceRenameAll extends View {
     const visible = this.shownHeight(shown.length);
     const maxScroll = total - visible;
     this.scroll = Math.max(0, Math.min(this.scroll, maxScroll));
-    const colors = shared("space.colors") ?? {};
+    const colors = (shared("space.colors") as Record<string, string>) ?? {};
     const byId = new Map(spaces().map((s) => [s.id, s]));
-    const button = (id, text, primary, action) =>
+    const button = (
+      id: string,
+      text: string,
+      primary: boolean,
+      action: () => void,
+    ) =>
       h_flex()
         .id(id)
         .h(32)
@@ -221,10 +266,12 @@ export default class SpaceRenameAll extends View {
         .hover((s) => s.opacity(0.88))
         .on_click(action)
         .child(text);
-    const row = (r) => {
+    const row = (r: RenameRow) => {
       const space = byId.get(r.id);
       const color = colors[r.id] ?? "ansi6";
-      const fill = color.startsWith("#") ? color : (MARK[color] ?? t[color]);
+      const fill = color.startsWith("#")
+        ? (color as Color)
+        : (MARK[color] ?? t[color]);
       return h_flex()
         .id(`row-${r.id}`)
         .h(ROW_H)
@@ -322,7 +369,7 @@ export default class SpaceRenameAll extends View {
           // A short window caps the dialog's height, and the list gives up the
           // difference; the scroll range and `reveal` follow what it kept.
           .on_size_change((size, cx) => {
-            this.rowsLaidOutHeight = size.height / settings().zoom;
+            this.rowsLaidOutHeight = size.height / (settings().zoom as number);
             if (this.current >= 0) this.reveal(this.rows[this.current]);
             cx.notify();
           })
@@ -365,7 +412,8 @@ const ROWS_MAX_H = 420;
 const ROW_PITCH = ROW_H + ROW_GAP;
 
 // The height COUNT rows take stacked, gaps between them.
-const rowsHeight = (count) => Math.max(0, count * ROW_PITCH - ROW_GAP);
+const rowsHeight = (count: number): number =>
+  Math.max(0, count * ROW_PITCH - ROW_GAP);
 
 // What desk-spaces' checkout line says for SPACE, on every row here:
 // "dotfiles / ws3" for a checkout whose folder differs from its repo's name,
@@ -375,12 +423,12 @@ const rowsHeight = (count) => Math.max(0, count * ROW_PITCH - ROW_GAP);
 // was made in (empty for a new space on another machine until its terminal
 // reports one); `row.checkout` its checkout, null until known or outside a
 // repo.
-function checkoutLabel(space, row) {
+function checkoutLabel(space: SpaceInfo, row: RenameRow): string {
   const c = row.checkout;
   const path = c?.top ?? row.path;
   const folder =
     !path || (!space.machine && path === home()) ? "~" : base(path);
-  const same = (a, b) => a.toLowerCase() === b.toLowerCase();
+  const same = (a: string, b: string) => a.toLowerCase() === b.toLowerCase();
   const text = !c || same(c.name, folder) ? folder : `${c.name} / ${folder}`;
   return space.machine ? `${space.machine} · ${text}` : text;
 }
@@ -392,7 +440,7 @@ function checkoutLabel(space, row) {
 // machine's home. Mirrors the app's automatic space name (its model.rs
 // `space_name`), which reads the folder from window.rs `folder_info`: the
 // same git command, run only away from this machine's home.
-async function automaticName(cwd, on) {
+async function automaticName(cwd: string, on: string | null): Promise<string> {
   let top = cwd;
   if (cwd && (on || cwd !== home()))
     try {
@@ -415,7 +463,10 @@ async function automaticName(cwd, on) {
 // after the repo it belongs to. A jj checkout is read as jj sees it, else a
 // Git one; null outside a repo or when neither answers (the machine is away).
 // Mirrors desk-spaces' `check` and `checkJj` naming; change both together.
-async function checkout(cwd, on) {
+async function checkout(
+  cwd: string,
+  on: string | null,
+): Promise<Checkout | null> {
   try {
     // On this machine, the user's jj by its store path, since the app's PATH
     // depends on how the app was started; another machine resolves its own
@@ -425,7 +476,7 @@ async function checkout(cwd, on) {
       program,
       ["--ignore-working-copy", "--no-pager", "--color=never", "root"],
       { cwd, on },
-    ).catch(() => null);
+    ).catch((): null => null);
     if (root?.code === 0) {
       const top = root.stdout.trim();
       // A secondary workspace's .jj/repo is a file naming the shared repo folder.
@@ -462,7 +513,7 @@ async function checkout(cwd, on) {
 
 // What a stored color name looks like on an avatar (the same in every mod
 // that draws space avatars): one strong color per hue, light and dark alike.
-const MARK = {
+const MARK: Record<string, Color> = {
   ansi6: "#22a99a",
   ansi3: "#e3814f",
   ansi4: "#5b8def",
@@ -471,11 +522,12 @@ const MARK = {
   ansi1: "#d9649a",
 };
 
-const base = (path) => path.replace(/\/+$/, "").split("/").pop();
+const base = (path: string): string =>
+  path.replace(/\/+$/, "").split("/").pop();
 
 // `path` made absolute against `from`, without "." or ".." segments.
-const resolve = (from, path) => {
-  const out = [];
+const resolve = (from: string, path: string): string => {
+  const out: string[] = [];
   for (const part of (path.startsWith("/") ? path : `${from}/${path}`).split(
     "/",
   )) {
