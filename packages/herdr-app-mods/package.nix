@@ -1,28 +1,31 @@
-# Gate for the personal herdr-app mods: this builds only when every mod in
-# `modules/home/terminal/herdr-app/mods` loads in the pinned app and the mods'
-# links to their shared code in `mod-lib` follow the rules below.
+# The personal herdr-app mods as the herdr-app home module deploys them, one
+# folder per mod in `modules/home/terminal/herdr-app/mods`, built only when
+# every mod loads in the pinned app and the mods' links to their shared code in
+# `mod-lib` follow the rules below.
 #
 # A mod imports shared code as `./<file>`, because the app refuses imports
 # that leave a mod's own folder (gpui-kit `engine/quickjs/mod.rs`,
 # `AppModules`'s `Resolver::resolve`). Each such file in a mod folder is a
-# relative link to `../../mod-lib/<file>`; the deploy tree copies the target in
-# place of the link. The link rules keep that layout: a mod file named like a
-# `mod-lib` file is exactly that link, a mod folder holds no other link, no
-# link dangles, and every `mod-lib` file reaches at least one mod.
+# relative link to `../../mod-lib/<file>`, and each output folder holds the
+# link's target in its place. The link rules keep that layout: a mod file
+# named like a `mod-lib` file is exactly that link, a mod folder holds no other
+# link, no link dangles, and every `mod-lib` file reaches at least one mod.
 #
-# `herdr-app check` then loads each mod from a copy with its links resolved,
-# as the deploy tree holds it, so a missing shared file or an import of a name
-# the app does not export fails here.
+# Each output folder also drops the typings the app writes into a mod folder
+# it loads (`gpui-kit.d.ts`, `jsconfig.json`), which the app writes again on
+# load. `herdr-app check` then loads each built mod, so a missing shared file
+# or an import of a name the app does not export fails here.
 #
 # This is a package rather than only part of the home build because
-# `nix flake check` builds no home configuration. The herdr-app home module's
-# deploy tree references this output, so a failing mod also fails the switch.
+# `nix flake check` builds no home configuration, and it builds this package.
+# The herdr-app home module's deploy tree copies the mods from this output, so
+# a failing mod also fails the switch.
 {
   herdr-app,
   modSources,
   pkgs,
 }:
-pkgs.runCommandLocal "herdr-app-mods-checked" { } ''
+pkgs.runCommandLocal "herdr-app-mods" { } ''
   shopt -s dotglob nullglob
 
   # `modSources` holds `mods` and `mod-lib` as they sit in
@@ -66,18 +69,23 @@ pkgs.runCommandLocal "herdr-app-mods-checked" { } ''
     exit 1
   fi
 
-  # `check` writes typings into the mod folder and state under `$HOME`, so it
-  # runs on a writable copy with the links resolved, as the deploy tree holds
-  # the mod, and with HOME in the build's temporary directory. Every mod is
-  # checked before the build fails, so one run reports them all.
-  mkdir "$TMPDIR/home" "$TMPDIR/mods"
+  # Each mod is built with its links resolved and without the app's typings.
+  # `check` writes typings into the folder it checks and state under `$HOME`,
+  # so it runs on a scratch copy of each built mod with HOME in the build's
+  # temporary directory. Every mod is checked before the build fails, so one
+  # run reports them all.
+  mkdir "$TMPDIR/built" "$TMPDIR/checked" "$TMPDIR/home"
   checkFailed=
   for modPath in ${modSources}/mods/*/; do
     mod=''${modPath%/}
     mod=''${mod##*/}
-    cp -RL "$modPath" "$TMPDIR/mods/$mod"
-    chmod -R u+w "$TMPDIR/mods/$mod"
-    if ! output=$(HOME=$TMPDIR/home ${herdr-app}/bin/herdr-app check "$TMPDIR/mods/$mod" 2>&1); then
+
+    cp -RL "$modPath" "$TMPDIR/built/$mod"
+    chmod -R u+w "$TMPDIR/built/$mod"
+    rm -f "$TMPDIR/built/$mod/gpui-kit.d.ts" "$TMPDIR/built/$mod/jsconfig.json"
+
+    cp -R "$TMPDIR/built/$mod" "$TMPDIR/checked/$mod"
+    if ! output=$(HOME=$TMPDIR/home ${herdr-app}/bin/herdr-app check "$TMPDIR/checked/$mod" 2>&1); then
       printf 'herdr-app mod %s in modules/home/terminal/herdr-app/mods fails herdr-app check:\n%s\n' "$mod" "$output" >&2
       checkFailed=1
     fi
@@ -86,5 +94,6 @@ pkgs.runCommandLocal "herdr-app-mods-checked" { } ''
     exit 1
   fi
 
-  touch $out
+  mkdir $out
+  cp -R "$TMPDIR/built"/. $out/
 ''

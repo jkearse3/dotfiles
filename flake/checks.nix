@@ -158,12 +158,13 @@
       };
     in
     {
-      # Builds every lint check, the pi extension checks, and the herdr-app mod
-      # checks, so `nix build .#lint` runs all lint without the slower tests.
+      # Builds every lint check, the pi extension checks, and the herdr-app mods,
+      # whose build checks them, so `nix build .#lint` runs all lint without
+      # the slower tests.
       packages.lint = unstablePkgs.linkFarm "lint" (
         lintChecks
         // {
-          inherit (config.packages) herdr-app-mods-checked pi-extensions-checked;
+          inherit (config.packages) herdr-app-mods pi-extensions-checked;
         }
       );
 

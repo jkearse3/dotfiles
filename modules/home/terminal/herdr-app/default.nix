@@ -41,7 +41,7 @@ let
 
   inherit
     (import ./deploy.nix {
-      herdrAppModsChecked = dotfilesPackages.herdr-app-mods-checked;
+      herdrAppMods = dotfilesPackages.herdr-app-mods;
       inherit
         herdrApp
         lib

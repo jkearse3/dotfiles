@@ -4,7 +4,7 @@
 # (`checkedDeploy`).
 {
   herdrApp,
-  herdrAppModsChecked,
+  herdrAppMods,
   lib,
   modNames,
   personalMods,
@@ -66,26 +66,14 @@ let
   # `../../mod-lib/<file>`, and imports it as `./<file>`. The app refuses
   # imports that leave a mod's own folder (gpui-kit `engine/quickjs/mod.rs`,
   # `AppModules`'s `Resolver::resolve`), and a deployed link would point out
-  # of the folder, so the tree copies each mod with its links resolved. The
-  # tree depends on `herdrAppModsChecked` (`packages/herdr-app-mods-checked`),
-  # which fails when a link breaks the rules there or a mod fails
+  # of the folder, so the tree copies the built mods from `herdrAppMods`
+  # (`packages/herdr-app-mods`), which resolves the links, drops the app's
+  # typings, and fails when a link breaks the rules there or a mod fails
   # `herdr-app check`, so a mod that would not load fails the build.
-  #
-  # `modSources` holds `./mods` beside `./mod-lib`, so the mods' links
-  # resolve when the tree copies them.
-  modSources = lib.fileset.toSource {
-    root = ./.;
-    fileset = lib.fileset.unions [
-      ./mods
-      ./mod-lib
-    ];
-  };
 
   deployTree =
     pkgs.runCommandLocal "herdr-app-deploy-tree" { nativeBuildInputs = [ pkgs.jq ]; } # bash
       ''
-        test -e ${herdrAppModsChecked}
-
         mkdir -p $out/mods $out/layouts
 
         for name in ${lib.escapeShellArgs personalMods}; do
@@ -97,9 +85,8 @@ let
             echo "herdr-app mod folder $name in modules/home/terminal/herdr-app/mods is named like a mod shipped with herdr-app ${herdrApp.version}; rename it" >&2
             exit 1
           fi
-          cp -RL ${modSources}/mods/"$name" $out/mods/"$name"
+          cp -R ${herdrAppMods}/"$name" $out/mods/"$name"
           chmod -R u+w $out/mods/"$name"
-          rm -f $out/mods/"$name"/gpui-kit.d.ts $out/mods/"$name"/jsconfig.json
         done
 
         if [[ -e ${./mods}/prefix/bindings.json ]]; then

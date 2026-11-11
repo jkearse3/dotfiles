@@ -45,7 +45,7 @@
         herdr-app-mod-types = pkgs.callPackage ../packages/herdr-app-mod-types/package.nix {
           inherit herdr-app;
         };
-        herdr-app-mods-checked = pkgs.callPackage ../packages/herdr-app-mods-checked/package.nix {
+        herdr-app-mods = pkgs.callPackage ../packages/herdr-app-mods/package.nix {
           inherit herdr-app;
           modSources = herdrAppModSources;
         };
