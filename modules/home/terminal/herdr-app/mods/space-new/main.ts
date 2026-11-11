@@ -14,12 +14,14 @@
 // copies in `mod-lib/`.
 
 import { View, div } from "gpui-kit";
+import type { AsyncContext, Context } from "gpui-kit";
+import type { Props } from "gpui-shell";
 import { home, spaces } from "herdr";
 import { launch } from "./launcher.js";
 import { focusedFolder, place } from "./paths.js";
 
 export default class SpaceNew extends View {
-  init(_props, cx) {
+  init(_props: Props | undefined, cx: AsyncContext): void {
     launch(cx, {
       title: "New space",
       prepare() {
@@ -41,7 +43,7 @@ export default class SpaceNew extends View {
     });
   }
 
-  render(_cx) {
+  render(_cx: Context) {
     return div();
   }
 }
