@@ -1,8 +1,10 @@
 result*
 .direnv/
-# Matches generated dependency directories and the Pi extension type symlink;
-# trailing-slash patterns would not cover symlinks with these names.
+# Matches generated dependency directories and the dev shell's type symlinks
+# for Pi extensions and herdr-app mods; trailing-slash patterns would not cover
+# symlinks with these names.
 node_modules
 .pi-types
+.herdr-app-types
 __pycache__/
 *.py[cod]

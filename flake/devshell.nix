@@ -36,6 +36,10 @@
         # `node_modules`; this separate link cannot be confused with packages npm
         # owns. The link is replaced whenever the shell starts so a Pi version
         # bump cannot leave editors pinned to stale declarations.
+        #
+        # The herdr-app mods' `jsconfig.json` extends `.herdr-app-types` the same
+        # way, linked per checkout for the same reason, and replaced on every
+        # start so a herdr-app bump cannot leave editors on the old app's API.
         shellHook = ''
           piRepoRoot="$(${unstablePkgs.git}/bin/git rev-parse --show-toplevel 2>/dev/null || true)"
           if [ -z "$piRepoRoot" ]; then
@@ -51,6 +55,21 @@
             unset piExtensionTypes
           fi
           unset piRepoRoot
+
+          herdrAppRepoRoot="$(${unstablePkgs.git}/bin/git rev-parse --show-toplevel 2>/dev/null || true)"
+          if [ -z "$herdrAppRepoRoot" ]; then
+            echo "devshell: herdr-app mod types not linked; not inside a git worktree" >&2
+          elif [ ! -d "$herdrAppRepoRoot/modules/home/terminal/herdr-app" ]; then
+            echo "devshell: herdr-app mod types not linked; $herdrAppRepoRoot/modules/home/terminal/herdr-app is missing" >&2
+          else
+            herdrAppModTypes="$herdrAppRepoRoot/modules/home/terminal/herdr-app/.herdr-app-types"
+            if [ -d "$herdrAppModTypes" ] && [ ! -L "$herdrAppModTypes" ]; then
+              rm -rf "$herdrAppModTypes"
+            fi
+            ln -sfn ${config.packages.herdr-app-mod-types} "$herdrAppModTypes"
+            unset herdrAppModTypes
+          fi
+          unset herdrAppRepoRoot
         '';
       };
     };

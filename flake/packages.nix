@@ -42,6 +42,9 @@
           inherit (unstablePkgs) jujutsu;
         };
         herdr-app = inputs.llm-agents.packages.${system}.herdr-app;
+        herdr-app-mod-types = pkgs.callPackage ../packages/herdr-app-mod-types/package.nix {
+          inherit herdr-app;
+        };
         herdr-app-mods-checked = pkgs.callPackage ../packages/herdr-app-mods-checked/package.nix {
           inherit herdr-app;
           modSources = herdrAppModSources;
