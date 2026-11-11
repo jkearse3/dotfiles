@@ -49,7 +49,7 @@ export default class WorkspaceStatus extends View {
 
   // The `palette` mod's key as actually bound, not a hardcoded one; without a
   // binding the hint stays useful ("commands") instead of lying.
-  hint(t: ThemeColors): string {
+  hint(): string {
     const mac = window()?.platform === "macos";
     const mod: Record<string, string> = {
       cmd: mac ? "⌘" : "Ctrl+",
@@ -150,7 +150,7 @@ export default class WorkspaceStatus extends View {
           .id("palette")
           .text_color(t.dim)
           .on_click(() => run("mod.open", { name: "palette" }))
-          .child(this.hint(t)),
+          .child(this.hint()),
       );
   }
 }

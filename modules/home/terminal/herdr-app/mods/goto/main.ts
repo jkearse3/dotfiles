@@ -24,7 +24,6 @@ import {
   settings,
   props,
   closeOverlay,
-  openOverlay,
   shared,
   setShared,
 } from "herdr";

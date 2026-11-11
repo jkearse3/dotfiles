@@ -16,7 +16,12 @@
     // `init`, after construction. These mods declare that state with
     // `declare` fields, which TypeScript treats as assigned, so the check
     // costs nothing there and catches values that can be null or undefined.
-    "strictNullChecks": true
+    "strictNullChecks": true,
+    // A local, import, or parameter nothing reads is an error, so dead code
+    // cannot linger. Prefix a parameter with `_` when a signature requires
+    // it but the body does not use it.
+    "noUnusedLocals": true,
+    "noUnusedParameters": true
   },
   // The declarations are listed rather than included because they live
   // outside the source globs, and every mod imports their modules.
