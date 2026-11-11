@@ -1,0 +1,33 @@
+{
+  // `.herdr-app-types` is the dev shell's gitignored link to the
+  // herdr-app-mod-types package: the pinned herdr-app's typings and the
+  // compiler options it expects a mod to be checked with. Editors read this
+  // file to type every mod and the shared mod-lib at once, and the
+  // herdr-app-mods build checks the mods with it: `tsc -p tsconfig.json`.
+  "extends": "./.herdr-app-types/jsconfig.json",
+  "compilerOptions": {
+    // The mods are still being moved from JavaScript to TypeScript: `allowJs`
+    // lets a `.ts` file import an unconverted `.js` module, and `checkJs`
+    // keeps the unconverted files out of the strict check.
+    "allowJs": true,
+    "checkJs": false,
+    // The build strips types without compiling, so syntax that stripping
+    // cannot erase, such as `enum`, is an error here.
+    "erasableSyntaxOnly": true,
+    // An import used only for types must say `import type`, so stripping
+    // removes it instead of leaving a runtime import of a type.
+    "verbatimModuleSyntax": true
+  },
+  // The declarations are listed rather than included because they live
+  // outside the source globs, and every mod imports their modules.
+  "files": ["./.herdr-app-types/gpui-kit.d.ts"],
+  "include": [
+    "mods/**/*.ts",
+    "mod-lib/**/*.ts",
+    "mods/**/*.js",
+    "mod-lib/**/*.js"
+  ],
+  // The app writes its typings into every mod folder it loads, including a
+  // checkout's when it is pointed at one; they would declare the API twice.
+  "exclude": ["mods/*/gpui-kit.d.ts"]
+}

@@ -27,6 +27,7 @@
           unstablePkgs.secretspec
           unstablePkgs.shellcheck
           unstablePkgs.statix
+          unstablePkgs.typescript
         ];
 
         # Editors resolve pi's modules through this link, which the extensions'
@@ -37,7 +38,7 @@
         # owns. The link is replaced whenever the shell starts so a Pi version
         # bump cannot leave editors pinned to stale declarations.
         #
-        # The herdr-app mods' `jsconfig.json` extends `.herdr-app-types` the same
+        # The herdr-app mods' `tsconfig.json` extends `.herdr-app-types` the same
         # way, linked per checkout for the same reason, and replaced on every
         # start so a herdr-app bump cannot leave editors on the old app's API.
         shellHook = ''

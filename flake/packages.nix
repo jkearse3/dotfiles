@@ -17,14 +17,16 @@
       # its npm dependencies, check its sources, and assemble its locked tree.
       piExtensions = ../modules/home/agents/pi/extensions;
 
-      # The personal herdr-app mods and the shared code they link to, laid out
-      # as in `modules/home/terminal/herdr-app` so the mods' relative links to
+      # The personal herdr-app mods, the shared code they link to, and the
+      # project config that type-checks them, laid out as in
+      # `modules/home/terminal/herdr-app` so the mods' relative links to
       # `../../mod-lib` resolve.
       herdrAppModSources = pkgs.lib.fileset.toSource {
         root = ../modules/home/terminal/herdr-app;
         fileset = pkgs.lib.fileset.unions [
           ../modules/home/terminal/herdr-app/mods
           ../modules/home/terminal/herdr-app/mod-lib
+          ../modules/home/terminal/herdr-app/tsconfig.json
         ];
       };
     in
@@ -46,7 +48,9 @@
           inherit herdr-app;
         };
         herdr-app-mods = pkgs.callPackage ../packages/herdr-app-mods/package.nix {
-          inherit herdr-app;
+          inherit herdr-app herdr-app-mod-types;
+          inherit (unstablePkgs) typescript;
+          nodejs = unstablePkgs.nodejs_24;
           modSources = herdrAppModSources;
         };
         herdr-core = pkgs.callPackage ../packages/herdr-core/package.nix {
