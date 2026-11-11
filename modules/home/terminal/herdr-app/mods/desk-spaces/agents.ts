@@ -48,10 +48,14 @@ export const kidStatus = (
 };
 
 // The most urgent of `statuses` (blocked > done > working > idle), or null
-// when none ranks.
-export const topStatus = (statuses: AgentStatus[]): AgentStatus | null =>
+// when none ranks. A null status ranks as none.
+export const topStatus = (
+  statuses: (AgentStatus | null)[],
+): AgentStatus | null =>
   statuses.reduce<AgentStatus | null>(
-    (top, s) => ((RANK[s] ?? 0) > (RANK[top] ?? 0) ? s : top),
+    // A null status indexes as "null", which `RANK` lacks: it ranks 0.
+    (top, s) =>
+      (RANK[s as AgentStatus] ?? 0) > (RANK[top as AgentStatus] ?? 0) ? s : top,
     null,
   );
 
@@ -114,7 +118,7 @@ export function gatherAgents(list: AgentInfo[], sp: SpaceInfo[]): Crews {
     };
     byAddress.set(a.address, member);
     if (!crews.has(a.space)) crews.set(a.space, []);
-    crews.get(a.space).push(member);
+    crews.get(a.space)!.push(member);
   }
   return { byAddress, crews, listed };
 }

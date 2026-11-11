@@ -158,7 +158,8 @@ function glyph(status: AgentStatus | null): string {
 }
 
 function tone(t: ThemeColors, status: AgentStatus | null): Color {
-  return t[status] ?? t.unknown;
+  // A null status indexes as "null", which no theme color has.
+  return t[status as AgentStatus] ?? t.unknown;
 }
 
 // The checkout line under every space's name, shown whether or not the
@@ -333,6 +334,8 @@ export function agentRow(
   const pic = icon(a.program, 14, t.foreground);
   const when = a.status === "working" ? 0 : since;
   const idle = a.status === "idle" && !a.focused;
+  // Null when there is nothing to say; the row's `when(Boolean(doing))`
+  // leaves its line out then.
   const doing = activity || (turn != null ? `turn ${turn}` : null);
   return h_flex()
     .id(`agent-${a.address}`)
@@ -349,7 +352,7 @@ export function agentRow(
     .hover((s) => s.bg(hoverFill(t)))
     .when(a.focused, (el) => el.bg(t.hover).child(focusBar(t)))
     .on_click(() => run("pane.focus", { pane: a.pane }))
-    .when(Boolean(pic), (el) => el.child(div().mt(2).child(pic)))
+    .when(Boolean(pic), (el) => el.child(div().mt(2).child(pic!)))
     .child(
       v_flex()
         .flex_1()
@@ -390,8 +393,8 @@ export function agentRow(
               .truncate()
               .text_size(11.5)
               .text_color(activity ? t.muted : t.dim)
-              .tooltip(doing)
-              .child(doing),
+              .tooltip(doing!)
+              .child(doing!),
           ),
         )
         .child(
@@ -422,11 +425,11 @@ function tabText(spot: AgentSpot): string {
 }
 
 // A sub-agent's row: `s` a `tree` entry, `shown` the focused agent's
-// address, `listed` the agent statuses `gatherAgents` returns.
+// address (null or undefined when none has focus), `listed` the agent statuses `gatherAgents` returns.
 export function subRow(
   t: ThemeColors,
   s: SubAgent,
-  shown: string | null,
+  shown: string | null | undefined,
   indent: number,
   listed: Map<string, Status>,
 ): Element {
@@ -461,7 +464,7 @@ export function subRow(
           .when(l === "└" || l === "├", (el) => el.border_b(1.5).rounded_bl(6)),
       ),
     )
-    .when(Boolean(pic), (el) => el.child(div().mr(8).child(pic)))
+    .when(Boolean(pic), (el) => el.child(div().mr(8).child(pic!)))
     .child(
       div()
         .flex_1()
@@ -575,7 +578,7 @@ export function needsYouRows(
           .rounded(1)
           .bg(avatarFill(a.space, t)),
       )
-      .when(Boolean(pic), (el) => el.child(div().mt(2).child(pic)))
+      .when(Boolean(pic), (el) => el.child(div().mt(2).child(pic!)))
       .child(
         v_flex()
           .flex_1()

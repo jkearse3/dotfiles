@@ -248,7 +248,8 @@ export default class SpacesAndAgents extends View {
       .map((w, i) => ({ w, i, g: this.checkouts.git[where(w, ps)] ?? null }))
       .filter((r) => this.shown.has(r.w.id));
     const mains = new Set(
-      list.filter((r) => r.g && !r.g.linked).map((r) => r.g.repo),
+      // The filter kept only rows with a checkout.
+      list.filter((r) => r.g && !r.g.linked).map((r) => r.g!.repo),
     );
     const nested = (r: Omit<SpaceRow, "tree">) =>
       r.g?.linked && mains.has(r.g.repo);
@@ -259,7 +260,9 @@ export default class SpacesAndAgents extends View {
       out.push({ ...r, tree: null });
       if (!r.g || r.g.linked || placed.has(r.g.repo)) continue;
       placed.add(r.g.repo);
-      const kids = list.filter((k) => nested(k) && k.g.repo === r.g.repo);
+      // `nested` holds only with a checkout, and the `continue` above
+      // skipped a row without one.
+      const kids = list.filter((k) => nested(k) && k.g!.repo === r.g!.repo);
       kids.forEach((k, n) =>
         out.push({ ...k, tree: n === kids.length - 1 ? "└─" : "├─" }),
       );
@@ -489,8 +492,9 @@ export default class SpacesAndAgents extends View {
               .right(0)
               .h(2)
               .bg(t.accent)
-              .when(this.pressed < i, (line) => line.bottom(0))
-              .when(this.pressed > i, (line) => line.top(0)),
+              // The `when` above shows this line only while `pressed` is set.
+              .when(this.pressed! < i, (line) => line.bottom(0))
+              .when(this.pressed! > i, (line) => line.top(0)),
           ),
       )
       .on_mouse_down("left", () => {
@@ -498,7 +502,8 @@ export default class SpacesAndAgents extends View {
         this.over = i;
       })
       .on_mouse_move((_e, cx) => {
-        const source = spaces()[this.pressed];
+        // A null `pressed` (no drag) indexes as "null": no space.
+        const source = spaces()[this.pressed as number];
         const over =
           source && (source.machine ?? null) === (w.machine ?? null) ? i : null;
         if (this.pressed !== null && this.over !== over) {
@@ -551,7 +556,8 @@ export default class SpacesAndAgents extends View {
                       .when(on, (el) => el.font_semibold())
                       .child(w.name),
                   )
-                  .when(Boolean(foldToggle), (el) => el.child(foldToggle)),
+                  // `when` runs this only for a space with a fold toggle.
+                  .when(Boolean(foldToggle), (el) => el.child(foldToggle!)),
               )
               .when(Boolean(checkout) || Boolean(badge), (el) =>
                 el.child(
@@ -563,12 +569,15 @@ export default class SpacesAndAgents extends View {
                       div()
                         .flex_1()
                         .min_w(0)
-                        .when(Boolean(checkout), (el) => el.child(checkout)),
+                        // `when` runs this only for a space with a checkout line.
+                        .when(Boolean(checkout), (el) => el.child(checkout!)),
                     )
-                    .when(Boolean(badge), (el) => el.child(badge)),
+                    // `when` runs this only for a space with a badge.
+                    .when(Boolean(badge), (el) => el.child(badge!)),
                 ),
               )
-              .when(Boolean(tail), (el) => el.child(tail)),
+              // `when` runs this only for a space with a repo status.
+              .when(Boolean(tail), (el) => el.child(tail!)),
           ),
       );
   }
@@ -623,6 +632,7 @@ export default class SpacesAndAgents extends View {
     if (!crew.length) return null;
     const keep = (_e: MouseButtonEvent, cx: Context) => cx.stop_propagation();
     const open = !(w.id in this.foldedSpaces);
+    // A null `top` (no status ranks) indexes `t` as "null": no color, so dim.
     const top = this.spaceStatus(w);
     return h_flex()
       .id(`space-fold-${w.id}`)
@@ -633,7 +643,7 @@ export default class SpacesAndAgents extends View {
       .items_center()
       .rounded(4)
       .text_size(11)
-      .text_color(open ? t.dim : (t[top] ?? t.dim))
+      .text_color(open ? t.dim : (t[top as AgentStatus] ?? t.dim))
       .cursor_pointer()
       .hover((s) => s.bg(t.hover).text_color(t.foreground))
       .on_mouse_down("left", keep)

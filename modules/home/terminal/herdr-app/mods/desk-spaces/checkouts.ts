@@ -54,8 +54,9 @@ export type Checkout = GitCheckout | JjCheckout;
 // key (JSON) for `Checkouts`' maps.
 export const where = (s: SpaceInfo, ps: PaneInfo[]): string =>
   JSON.stringify([s.machine ?? null, place(s, ps)]);
+// `split` always returns at least one element, so `pop` finds one.
 export const base = (path: string): string =>
-  path.replace(/\/+$/, "").split("/").pop();
+  path.replace(/\/+$/, "").split("/").pop()!;
 // `path` made absolute against `from`, without "." or ".." segments.
 const resolve = (from: string, path: string): string => {
   const out: string[] = [];
@@ -126,10 +127,11 @@ export class Checkouts {
     this.busy = busy;
     for (const m of machines()) {
       const ready = m.layout === "ready";
-      if (ready && this.ready[m.name] === false)
+      // This computer (null) keys as "null", a name no other machine has.
+      if (ready && this.ready[m.name as string] === false)
         for (const k of keys)
           if ((JSON.parse(k) as MachinePath)[0] === m.name) due.add(k);
-      this.ready[m.name] = ready;
+      this.ready[m.name as string] = ready;
     }
     if (window().active) {
       for (const k of keys) {
@@ -168,8 +170,11 @@ export class Checkouts {
         for (const key of keys) await this.check(key, cx);
       }
       const used = new Set(
-        Object.values(this.git)
-          .filter(Boolean)
+        (
+          Object.values(this.git)
+            // `filter(Boolean)` dropped the places that are not repos.
+            .filter(Boolean) as Checkout[]
+        )
           .map((g) => JSON.parse(g.repo) as MachinePath)
           .filter(([on]) => !on)
           .map(([, repo]) => repo),
