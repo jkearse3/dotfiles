@@ -16,6 +16,7 @@ vim.lsp.enable({
 	"nixd",
 	"rust_analyzer",
 	"ts_ls",
+	"tsgo",
 	"yamlls",
 })
 

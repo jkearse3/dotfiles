@@ -6,6 +6,7 @@
       pkgs.eslint
       pkgs.nodejs
       pkgs.prettier
+      pkgs.typescript
       pkgs.typescript-language-server
     ];
     sessionPath = [

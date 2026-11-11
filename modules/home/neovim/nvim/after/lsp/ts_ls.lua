@@ -7,7 +7,8 @@ return {
 		"typescript",
 		"typescriptreact",
 	},
-	root_markers = { "tsconfig.json", "jsconfig.json", "package.json", ".git" },
+	-- Only projects on TypeScript < 7; `tsgo` serves the rest.
+	root_dir = require("lib.typescript_server").root_dir("ts_ls"),
 	init_options = {
 		hostInfo = "neovim",
 	},
