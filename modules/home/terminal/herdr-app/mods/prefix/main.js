@@ -133,7 +133,8 @@ function labelFor(action, hints) {
 function joinKeys(keys) {
   const isPunctuation = (key) => /^[^a-z0-9]$/i.test(key);
   const sorted = [...keys].sort(
-    (a, b) => isPunctuation(a) - isPunctuation(b) || a.localeCompare(b),
+    (a, b) =>
+      Number(isPunctuation(a)) - Number(isPunctuation(b)) || a.localeCompare(b),
   );
 
   if (sorted.length >= 3 && sorted.every((key) => /^[0-9]$/.test(key))) {
