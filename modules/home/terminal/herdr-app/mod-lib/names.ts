@@ -33,8 +33,12 @@ interface TerminalEntry {
 }
 
 // One agent's rule for what it says about itself, given its `agents()` entry
-// and its `terminals()` entry (may be undefined): the text, or null.
-type AgentRule = (a: AgentInfo, k: TerminalEntry | undefined) => string | null;
+// and its `terminals()` entry (may be undefined): the text, or null or
+// undefined when it says nothing.
+type AgentRule = (
+  a: AgentInfo,
+  k: TerminalEntry | undefined,
+) => string | null | undefined;
 
 // Leading decoration (Claude Code's "✳ ", spinners) and surrounding spaces.
 const clean = (s: string | null | undefined): string =>
@@ -47,8 +51,9 @@ function useful(text: string | null | undefined, a: AgentInfo): string | null {
   const s = clean(text);
   if (!s) return null;
   const program = [a.program?.name, a.program?.key, a.app, "π"]
+    // `filter(Boolean)` dropped the missing names.
     .filter(Boolean)
-    .map((p) => p.toLowerCase());
+    .map((p) => p!.toLowerCase());
   const lower = s.toLowerCase();
   const head = lower.match(/^(\S+) [-–—|] \S+$/)?.[1];
   const quiet =
@@ -72,7 +77,10 @@ const TOPICS: Record<string, AgentRule> = {
   // pi reports its session name (set with /name) while working or done.
   pi: (_a, k) => {
     const r = reportOf(k);
-    return r && ["working", "done"].includes(r.state) ? r.msg : null;
+    return r &&
+      (["working", "done"] as (string | undefined)[]).includes(r.state)
+      ? r.msg
+      : null;
   },
 };
 
@@ -84,7 +92,8 @@ const TOPICS: Record<string, AgentRule> = {
 export function agentName(a: AgentInfo, k: TerminalEntry | undefined): string {
   return (
     clean(k?.name) ||
-    useful(TOPICS[a.app]?.(a, k), a) ||
+    // An agent that reports no app (null) indexes as "null": no rule.
+    useful(TOPICS[a.app as string]?.(a, k), a) ||
     useful(a.title, a) ||
     a.program?.name ||
     a.address
@@ -108,5 +117,6 @@ export function agentActivity(
   a: AgentInfo,
   k: TerminalEntry | undefined,
 ): string | null {
-  return clean(ACTIVITIES[a.app]?.(a, k)) || null;
+  // An agent that reports no app (null) indexes as "null": no rule.
+  return clean(ACTIVITIES[a.app as string]?.(a, k)) || null;
 }
