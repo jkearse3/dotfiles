@@ -36,6 +36,8 @@
 // prefix mode works without an indicator.
 
 import { View, div } from "gpui-kit";
+import type { AsyncContext, Context, FocusHandle, KeyEvent } from "gpui-kit";
+import type { Props } from "gpui-shell";
 import {
   appHome,
   closeOverlay,
@@ -60,17 +62,35 @@ const CTRL_B_COMMAND = "ctrl-b";
 // The status bar mod that shows the PREFIX pill and hints.
 const STATUS_MOD = "prefix-status";
 
+// What `bindings.json` holds: the `prefix` attribute of `keys.nix`, which
+// the Home Manager module validates before writing it.
+interface PrefixBindingsFile {
+  // Keystroke -> keys.json action.
+  bindings: Record<string, string>;
+  hints: PrefixHint[];
+}
+
+// One status bar hint: the LABEL shown after the keys of every binding whose
+// action is ACTION, or whose command name (the part before `:`) is ACTION.
+interface PrefixHint {
+  action: string;
+  label: string;
+}
+
+// The parts of a keystroke that select a binding.
+type PrefixKey = Pick<KeyEvent, "keystroke" | "key_char">;
+
 // Runs the status bar's COMMAND (`on` or `off`) when the shown layout has
 // the bar, and does nothing otherwise.
-function runStatusCommand(command) {
+function runStatusCommand(command: "on" | "off"): void {
   if (namesMod(layout(), STATUS_MOD)) run(`${STATUS_MOD}.${command}`);
 }
 
 // Whether NODE, a layout document or part of one, names mod NAME as a `mod`
 // value at any depth, the rule the build's layout check also uses.
-function namesMod(node, name) {
+function namesMod(node: unknown, name: string): boolean {
   if (node === null || typeof node !== "object") return false;
-  if (node.mod === name) return true;
+  if ((node as { mod?: unknown }).mod === name) return true;
   return Object.values(node).some((child) => namesMod(child, name));
 }
 
@@ -78,12 +98,15 @@ function namesMod(node, name) {
 // action, and the `{action, label}` hints. Throws when the file is missing,
 // or is not a JSON object whose `bindings` is an object and `hints` an
 // array, which a Home Manager switch fixes.
-async function loadBindings() {
+async function loadBindings(): Promise<{
+  bindings: Map<string, string>;
+  hints: PrefixHint[];
+}> {
   const path = `${appHome()}/mods/prefix/bindings.json`;
   const text = await readTextFile(path);
-  let parsed = null;
+  let parsed: PrefixBindingsFile | null = null;
   try {
-    parsed = text === null ? null : JSON.parse(text);
+    parsed = text === null ? null : (JSON.parse(text) as PrefixBindingsFile);
   } catch {
     // Reported below with the other unusable contents.
   }
@@ -104,14 +127,19 @@ async function loadBindings() {
 
 // The status bar's `[keys, label]` hints for BINDINGS, in HINTS order,
 // skipping labels no keystroke is bound to, and ending with Esc.
-function hintsFor(bindings, hints) {
-  const keysByLabel = new Map(hints.map(({ label }) => [label, []]));
+function hintsFor(
+  bindings: Map<string, string>,
+  hints: PrefixHint[],
+): [string, string][] {
+  const keysByLabel = new Map(
+    hints.map(({ label }): [string, string[]] => [label, []]),
+  );
   for (const [key, action] of bindings) {
     const label = labelFor(action, hints);
-    if (label) keysByLabel.get(label).push(key);
+    if (label) keysByLabel.get(label)!.push(key);
   }
 
-  const shown = [];
+  const shown: [string, string][] = [];
   for (const [label, keys] of keysByLabel) {
     if (keys.length > 0) shown.push([joinKeys(keys), label]);
   }
@@ -121,7 +149,7 @@ function hintsFor(bindings, hints) {
 
 // The label of the HINTS entry matching ACTION, exactly or else by its
 // command name (the part before `:`), or undefined when none matches.
-function labelFor(action, hints) {
+function labelFor(action: string, hints: PrefixHint[]): string | undefined {
   const command = action.split(":")[0];
   const exact = hints.find((hint) => hint.action === action);
   return (exact ?? hints.find((hint) => hint.action === command))?.label;
@@ -130,8 +158,8 @@ function labelFor(action, hints) {
 // Spells the keystrokes `keys` as one hint: `1–9` for three or more
 // consecutive digits, `hjkl` for three or more single letters, otherwise
 // `v / -`, with letters and digits before punctuation.
-function joinKeys(keys) {
-  const isPunctuation = (key) => /^[^a-z0-9]$/i.test(key);
+function joinKeys(keys: string[]): string {
+  const isPunctuation = (key: string) => /^[^a-z0-9]$/i.test(key);
   const sorted = [...keys].sort(
     (a, b) =>
       Number(isPunctuation(a)) - Number(isPunctuation(b)) || a.localeCompare(b),
@@ -150,7 +178,7 @@ function joinKeys(keys) {
 }
 
 // Tells the person a `send:` keystroke did not reach the terminal.
-function reportSendFailure(body) {
+function reportSendFailure(body: string): void {
   notify({
     title: TITLE,
     body,
@@ -159,7 +187,12 @@ function reportSendFailure(body) {
 }
 
 export default class Prefix extends View {
-  init(_props, cx) {
+  declare handle: FocusHandle;
+  declare target: ReturnType<typeof focused>;
+  declare bindings: Map<string, string> | undefined;
+  declare pendingKey: PrefixKey | undefined;
+
+  init(_props: Props | undefined, cx: AsyncContext): void {
     this.handle = cx.focus_handle();
     // `herdr-app check` renders the mod with no props, outside an overlay.
     // Start nothing then.
@@ -182,7 +215,9 @@ export default class Prefix extends View {
         closeOverlay(overlay);
         notify({
           title: TITLE,
-          body: String(error?.message ?? error),
+          body: String(
+            (error as { message?: unknown } | null)?.message ?? error,
+          ),
           level: "error",
         });
         return;
@@ -208,11 +243,11 @@ export default class Prefix extends View {
 
   // Runs however the popup goes: a key, Esc, a click outside, or quit. Turns
   // the status bar's PREFIX pill off when the shown layout has the bar.
-  async close(_cx) {
+  async close(_cx: AsyncContext): Promise<void> {
     runStatusCommand("off");
   }
 
-  onKey(e, cx) {
+  onKey(e: KeyEvent, cx: Context): void {
     cx.stop_propagation();
     this.receiveKey({
       keystroke: e.keystroke,
@@ -222,7 +257,7 @@ export default class Prefix extends View {
 
   // Handles KEY now, or keeps it as `pendingKey` until the bindings load
   // (only the first key pressed before then is kept).
-  receiveKey(key) {
+  receiveKey(key: PrefixKey): void {
     if (this.bindings) this.handleKey(key);
     else if (!this.pendingKey) this.pendingKey = key;
   }
@@ -230,16 +265,17 @@ export default class Prefix extends View {
   // Leaves prefix mode, running the action bound to KEY, if any. `?` is
   // bound by the character it types, so the keystroke is tried first, then
   // the character.
-  handleKey({ keystroke, key_char }) {
+  handleKey({ keystroke, key_char }: PrefixKey): void {
     if (keystroke === "escape") return this.dismiss();
     const action =
-      this.bindings.get(keystroke) ??
-      (key_char ? this.bindings.get(key_char) : undefined);
+      this.bindings!.get(keystroke) ??
+      (key_char ? this.bindings!.get(key_char) : undefined);
     this.dismiss(action && (() => this.perform(action)));
   }
 
-  // Ends prefix mode, closes the popup, then runs THEN (if any).
-  dismiss(then) {
+  // Ends prefix mode, closes the popup, then runs THEN (if any; `handleKey`
+  // passes the empty string when the bound action is empty).
+  dismiss(then?: (() => void) | ""): void {
     runStatusCommand("off");
     closeOverlay(props().overlay);
     if (then) then();
@@ -249,7 +285,7 @@ export default class Prefix extends View {
   // action carries exactly one control character (U+0001-U+001A), typed as
   // its ctrl- key into the captured terminal; with no terminal captured it
   // does nothing, and a failed `hc keys` shows an error notification.
-  perform(action) {
+  perform(action: string) {
     if (!action.startsWith("send:")) return run(action);
 
     const terminal = this.target?.terminal;
@@ -267,7 +303,7 @@ export default class Prefix extends View {
   }
 
   // An invisible key catcher: the status bar draws the indicator.
-  render(_cx) {
+  render(_cx: Context) {
     return div()
       .id("prefix")
       .track_focus(this.handle)
