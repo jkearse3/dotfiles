@@ -1,7 +1,6 @@
 {
   dotfilesPackages,
   lib,
-  mkSource,
   pkgs,
   ...
 }:
@@ -26,7 +25,6 @@ in
 {
   imports = [
     ../../agents/skills.nix
-    ../../lib/source.nix
   ];
 
   home = {
@@ -36,7 +34,7 @@ in
       dotfilesPackages.herdr-jj-workspaces.cli
       completions
     ];
-    file.".config/herdr/config.toml".source = mkSource ./config.toml;
+    file.".config/herdr/config.toml".source = ./config.toml;
 
     activation.herdrPlugins =
       lib.hm.dag.entryAfter [ "writeBoundary" ] # bash

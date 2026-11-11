@@ -92,7 +92,7 @@ in
       # Tokyo Night as the Herdr TUI 0.9.5 draws it (`Palette::tokyo_night`
       # in its `src/app/state.rs`), in the app's theme format; the app
       # derives its panel colors from these.
-      ".config/herdr-app/themes/tokyo-night.json".source = mkSource ./themes/tokyo-night.json;
+      ".config/herdr-app/themes/tokyo-night.json".source = ./themes/tokyo-night.json;
       ".config/herdr-app/dotfiles-paths.json".source = dotfilesPaths;
     };
 
