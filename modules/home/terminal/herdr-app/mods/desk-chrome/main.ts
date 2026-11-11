@@ -4,6 +4,7 @@
 // mod instead of the built-in picker.
 
 import { View, div, image, svg } from "gpui-kit";
+import type { ClickEvent, Color, Context, Element } from "gpui-kit";
 import { h_flex, v_flex } from "gpui-base";
 import {
   theme,
@@ -16,7 +17,22 @@ import {
   layout,
 } from "herdr";
 
-function find(node, id) {
+// The theme's colors by name. The app's typings type `theme()` as
+// `Record<string, string>`, though every value is a color.
+type ThemeColors = Record<string, Color>;
+
+// The fields of a `layout()` block this mod reads. The app's typings type
+// `layout()` as `unknown`.
+interface LayoutNode {
+  id?: string;
+  size?: { px?: number };
+  children?: LayoutNode[];
+}
+
+function find(
+  node: LayoutNode | null | undefined,
+  id: string,
+): LayoutNode | null {
   if (node?.id === id) return node;
   for (const child of node?.children ?? []) {
     const found = find(child, id);
@@ -26,11 +42,12 @@ function find(node, id) {
 }
 
 // The sidebar's rail goes by its width, not a flag: dragging its edge narrows it too.
-const narrow = () => (find(layout(), "sidebar")?.size?.px ?? Infinity) < 160;
+const narrow = () =>
+  (find(layout() as LayoutNode, "sidebar")?.size?.px ?? Infinity) < 160;
 
 // To the rail (on macOS wide enough for the traffic lights), or back to the width it had.
 function toggleSidebar() {
-  const width = find(layout(), "sidebar")?.size?.px;
+  const width = find(layout() as LayoutNode, "sidebar")?.size?.px;
   if (!narrow()) setShared("sidebar.width", width);
   // Mods edited before the rail went by width still read the flag.
   setShared("sidebar.collapsed", !narrow());
@@ -45,8 +62,12 @@ function toggleSidebar() {
 }
 
 export default class WorkspaceChrome extends View {
-  button(id, label, action) {
-    const t = theme();
+  button(
+    id: string,
+    label: Element,
+    action: (event: ClickEvent, cx: Context) => void,
+  ): Element {
+    const t = theme() as ThemeColors;
     return div()
       .id(id)
       .size(26)
@@ -62,10 +83,16 @@ export default class WorkspaceChrome extends View {
       .child(label);
   }
   render() {
-    const t = theme();
+    const t = theme() as ThemeColors;
     const collapsed = narrow();
     if (props()?.footer) {
-      const row = (id, icon, label, dim, action) =>
+      const row = (
+        id: string,
+        icon: string,
+        label: string,
+        dim: boolean,
+        action: () => void,
+      ) =>
         h_flex()
           .id(id)
           .h(28)
