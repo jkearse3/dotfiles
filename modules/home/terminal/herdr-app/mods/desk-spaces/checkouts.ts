@@ -16,8 +16,8 @@ type MachinePath = [machine: string | null, path: string];
 // is ahead of and behind its upstream, its repo (`MachinePath` JSON of the
 // repo's git folder), and whether it is a linked worktree.
 export interface GitCheckout {
-  // Never set: only a jj checkout has `jj`. Without strict null checks a
-  // falsy `jj` does not narrow `Checkout` to this type, so callers assert it.
+  // Never set: only a jj checkout has `jj`, so a falsy `jj` narrows
+  // `Checkout` to this type.
   jj?: false;
   name: string;
   top: string;

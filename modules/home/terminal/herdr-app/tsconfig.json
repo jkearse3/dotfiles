@@ -11,7 +11,12 @@
     "erasableSyntaxOnly": true,
     // An import used only for types must say `import type`, so stripping
     // removes it instead of leaving a runtime import of a type.
-    "verbatimModuleSyntax": true
+    "verbatimModuleSyntax": true,
+    // The app's config turns this off because a view assigns its state in
+    // `init`, after construction. These mods declare that state with
+    // `declare` fields, which TypeScript treats as assigned, so the check
+    // costs nothing there and catches values that can be null or undefined.
+    "strictNullChecks": true
   },
   // The declarations are listed rather than included because they live
   // outside the source globs, and every mod imports their modules.

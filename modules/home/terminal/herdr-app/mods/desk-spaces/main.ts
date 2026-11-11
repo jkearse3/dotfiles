@@ -58,7 +58,6 @@ import {
 } from "herdr";
 import type { SpaceInfo, Status } from "herdr";
 import { Checkouts, where } from "./checkouts.js";
-import type { GitCheckout } from "./checkouts.js";
 import {
   AgentHistory,
   RANK,
@@ -463,7 +462,7 @@ export default class SpacesAndAgents extends View {
     const tail = g
       ? g.jj
         ? jjTail(g, quietRepo, w.name, t)
-        : gitTail(g as GitCheckout, quietRepo, w.name, t)
+        : gitTail(g, quietRepo, w.name, t)
       : null;
     const foldToggle = this.foldToggle(w, t);
     // The row is as tall as its lines of text (the name, then the checkout

@@ -208,7 +208,7 @@ export function checkoutBadge(
   const unshipped = g.jj
     ? // The jj distance counts @ itself, whose content `modified` covers.
       g.modified || (g.direction === "↑" && g.distance > 1)
-    : (g as GitCheckout).ahead > 0;
+    : g.ahead > 0;
   if (!conflict && !unshipped) return null;
   const color = conflict ? t.ansi1 : t.accent;
   return div()
