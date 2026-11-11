@@ -383,8 +383,9 @@ export default class Palette extends View {
     if (!q) {
       const recent = this.recent
         .map((id) => all.find((e) => e.id === id))
+        // `filter(Boolean)` dropped the ids no entry has any more.
         .filter(Boolean)
-        .slice(0, 5);
+        .slice(0, 5) as PaletteEntry[];
       const rest = GROUPS.slice(1).flatMap((g) =>
         all.filter((e) => e.group === g && !recent.includes(e)),
       );
@@ -397,19 +398,23 @@ export default class Palette extends View {
       ];
     }
     const rank = (e: PaletteEntry) => this.recent.indexOf(e.id);
-    return all
-      .map((e) => {
-        const title = fuzzy(q, e.title);
-        const more = fuzzy(q, `${e.group} ${e.title} ${e.name} ${e.words}`);
-        const best = title ?? (more && { score: more.score - 4, hits: [] });
-        return best && { e, score: best.score, hits: best.hits };
-      })
-      .filter(Boolean)
-      .sort(
+    return (
+      (
+        all
+          .map((e) => {
+            const title = fuzzy(q, e.title);
+            const more = fuzzy(q, `${e.group} ${e.title} ${e.name} ${e.words}`);
+            const best = title ?? (more && { score: more.score - 4, hits: [] });
+            return best && { e, score: best.score, hits: best.hits };
+          })
+          // `filter(Boolean)` dropped the entries that did not match.
+          .filter(Boolean) as (PaletteRow & FuzzyMatch)[]
+      ).sort(
         (a, b) =>
           b.score - a.score ||
           (rank(a.e) < 0 ? 99 : rank(a.e)) - (rank(b.e) < 0 ? 99 : rank(b.e)),
-      );
+      )
+    );
   }
 
   title(
@@ -514,7 +519,9 @@ export default class Palette extends View {
             .text_size(11)
             .font_semibold()
             .text_color(t.dim)
-            .child(r.head),
+            // Rows open groups only while the query is empty, and every
+            // row `rows()` groups then carries its `head`.
+            .child(r.head!),
         );
       if (!visible(row, row + ROW_H)) return;
       const on = i === this.at;
@@ -541,7 +548,8 @@ export default class Palette extends View {
           .when(Boolean(this.query), (el) =>
             el.child(div().text_size(11.5).text_color(t.dim).child(r.e.group)),
           )
-          .when(Boolean(k), (el) => el.child(key(k))),
+          // `when` runs this only for an entry with a key binding.
+          .when(Boolean(k), (el) => el.child(key(k!))),
       );
     });
     return v_flex()

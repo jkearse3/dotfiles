@@ -125,11 +125,12 @@ export default class Picker extends View {
       this.at = 0;
       cx.notify();
     });
+    // The input submits only once shown, and the first render places `at`.
     this.input.on("submit", () =>
       this.go(
         this.rows().filter(
           (r) => r.kind === "ctx" || r.kind === "new" || r.kind === "space",
-        )[this.at],
+        )[this.at!],
       ),
     );
     this.input.focus();
@@ -420,8 +421,9 @@ export default class Picker extends View {
         if (k === "escape") return this.close();
         if (isDown || isUp) {
           // Wraps at the ends; an empty list has nothing to move to.
+          // This render placed `at`, and nothing sets it back to null.
           const n = pickable.length;
-          if (n > 0) this.at = (this.at + (isDown ? 1 : n - 1)) % n;
+          if (n > 0) this.at = (this.at! + (isDown ? 1 : n - 1)) % n;
         } else if (k === "d" && e.modifiers.control) {
           if (sel?.kind === "ctx") {
             this.close();
@@ -483,25 +485,27 @@ export default class Picker extends View {
                 Math.min(this.scroll - e.delta.y, maxScroll),
               );
               // The selection follows the wheel, so the next frame doesn't scroll back to it.
+              // This render placed `at`, and nothing sets it back to null.
               while (
-                this.at < pickable.length - 1 &&
-                tops[rows.indexOf(pickable[this.at])] < this.scroll
+                this.at! < pickable.length - 1 &&
+                tops[rows.indexOf(pickable[this.at!])] < this.scroll
               )
-                this.at++;
+                this.at!++;
               while (
-                this.at > 0 &&
-                tops[rows.indexOf(pickable[this.at])] +
-                  (H[pickable[this.at].kind] ?? 32) >
+                this.at! > 0 &&
+                tops[rows.indexOf(pickable[this.at!])] +
+                  (H[pickable[this.at!].kind] ?? 32) >
                   this.scroll + height
               )
-                this.at--;
+                this.at!--;
               cx.notify();
             }),
           )
           .children(
             rows
               .map((r, i) => (visible(i) ? place(row(r), i) : null))
-              .filter(Boolean),
+              // `filter(Boolean)` dropped the rows out of view.
+              .filter(Boolean) as Element[],
           ),
       );
   }
