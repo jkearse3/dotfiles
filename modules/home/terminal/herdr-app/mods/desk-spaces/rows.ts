@@ -1,18 +1,41 @@
 // What the desk-spaces sidebar draws in its rows: the space colors, a space's
 // rail entry and checkout lines, agent and sub-agent rows with their status
-// marks, and the "Needs you" tray. Plain functions; the view (`main.js`)
+// marks, and the "Needs you" tray. Plain functions; the view (`main.ts`)
 // passes in what each needs from its state.
 
 import { div, image, svg } from "gpui-kit";
+import type { Color, Element } from "gpui-kit";
 import { v_flex, h_flex } from "gpui-base";
 import { run, shared, setShared, home } from "herdr";
+import type { AgentInfo, Program, SpaceInfo, Status } from "herdr";
 import { place } from "./paths.js";
 import { base } from "./checkouts.js";
+import type { Checkout, GitCheckout, JjCheckout } from "./checkouts.js";
 import { kidStatus } from "./agents.js";
+import type { AgentSpot, AgentStatus, CrewMember, SubAgent } from "./agents.js";
+
+// The theme's colors by name. The app's typings type `theme()` as
+// `Record<string, string>`, though every value is a color.
+export type ThemeColors = Record<string, Color>;
+
+// One space in the sidebar's list, in the order `ordered` gives: the space,
+// its index in `spaces()`, its checkout (null when not a repo or not known
+// yet), and, for a worktree listed under its repo's main checkout, its branch
+// mark ("├─", "└─" for the last), else null.
+export interface SpaceRow {
+  w: SpaceInfo;
+  i: number;
+  g: Checkout | null;
+  tree: "├─" | "└─" | null;
+}
+
+// Space colors by space id, as shared "space.colors" keeps them: a theme
+// color name ("ansi6") or a picked hex color.
+type SpaceColorChoices = Record<string, string>;
 
 // What a stored color name looks like on an avatar (the same in every mod
 // that draws space avatars): one strong color per hue, light and dark alike.
-const MARK = {
+const MARK: Record<string, Color> = {
   ansi6: "#22a99a",
   ansi3: "#e3814f",
   ansi4: "#5b8def",
@@ -25,18 +48,21 @@ const MARK = {
 // color fewest spaces use (none for the home space "~", which avatarFill draws
 // teal), and drops entries of spaces that are gone. Writes `space.colors` only
 // when that changes it.
-export function assignSpaceColors(sp) {
+export function assignSpaceColors(sp: SpaceInfo[]): void {
   const palette = ["ansi6", "ansi3", "ansi4", "ansi5", "ansi2", "ansi1"];
   const ids = new Set(sp.map((p) => p.id));
   const kept = Object.fromEntries(
-    Object.entries(shared("space.colors") ?? {}).filter(([id]) => ids.has(id)),
+    Object.entries((shared("space.colors") as SpaceColorChoices) ?? {}).filter(
+      ([id]) => ids.has(id),
+    ),
   );
   let changed =
     Object.keys(kept).length !==
-    Object.keys(shared("space.colors") ?? {}).length;
+    Object.keys((shared("space.colors") as SpaceColorChoices) ?? {}).length;
   for (const p of sp) {
     if (kept[p.id] || p.name === "~") continue;
-    const uses = (c) => Object.values(kept).filter((v) => v === c).length;
+    const uses = (c: string) =>
+      Object.values(kept).filter((v) => v === c).length;
     kept[p.id] = palette.reduce((best, c) => (uses(c) < uses(best) ? c : best));
     changed = true;
   }
@@ -44,9 +70,10 @@ export function assignSpaceColors(sp) {
 }
 
 // A space's avatar color: its stored `space.colors` name or hex, else teal.
-export const avatarFill = (spaceId, t) => {
-  const color = (shared("space.colors") ?? {})[spaceId] ?? "ansi6";
-  return color.startsWith("#") ? color : (MARK[color] ?? t[color]);
+export const avatarFill = (spaceId: string, t: ThemeColors): Color => {
+  const color =
+    ((shared("space.colors") as SpaceColorChoices) ?? {})[spaceId] ?? "ansi6";
+  return color.startsWith("#") ? (color as Color) : (MARK[color] ?? t[color]);
 };
 
 // Where a space's color tick sits, from the left of its group: the column the
@@ -66,7 +93,7 @@ export const ROW_GAP = 5;
 const TRAY_H = 3 * 44 + 2 * ROW_GAP;
 
 // A hex color "#rgb", "#rrggbb" or "#rrggbbaa" as [r, g, b, a], or null.
-function channels(hex) {
+function channels(hex: string | undefined): number[] | null {
   const m = /^#([0-9a-f]{3}|[0-9a-f]{6}|[0-9a-f]{8})$/i.exec(hex ?? "");
   if (!m) return null;
   const h = m[1].length === 3 ? [...m[1]].map((c) => c + c).join("") : m[1];
@@ -78,7 +105,7 @@ function channels(hex) {
 // A hovered row's fill: halfway from the sidebar's own color to the focused
 // row's `t.hover`, so a hovered row next to the focused one reads as a lighter
 // touch, not a second selection. `t.hover` itself when either color isn't hex.
-export function hoverFill(t) {
+export function hoverFill(t: ThemeColors): Color {
   const a = channels(t.chrome);
   const b = channels(t.hover);
   if (!a || !b) return t.hover;
@@ -88,7 +115,7 @@ export function hoverFill(t) {
 
 // The mark of the one row holding focus: a short rounded accent bar at
 // `BAR_X`. Its row must be `relative()` and begin at `ROW_X`.
-export const focusBar = (t) =>
+export const focusBar = (t: ThemeColors): Element =>
   div()
     .absolute()
     .left(BAR_X - ROW_X)
@@ -100,7 +127,11 @@ export const focusBar = (t) =>
 
 // On the rail a space speaks up with its agents' most urgent status
 // (`status`, null without agents).
-export function compact({ w, i }, t, status) {
+export function compact(
+  { w, i }: SpaceRow,
+  t: ThemeColors,
+  status: AgentStatus | null,
+): Element {
   return h_flex()
     .id(`space-${w.id}`)
     .h(26)
@@ -122,11 +153,11 @@ export function compact({ w, i }, t, status) {
 // status as one text character (`glyph`) in a status color (`tone`); agent
 // rows draw theirs with `statusMark`: a spinner, a "!" badge, a ring or a dot.
 // They stay separate because one mark for both would change what either shows.
-function glyph(status) {
+function glyph(status: AgentStatus | null): string {
   return status === "blocked" || status === "done" ? "●" : "·";
 }
 
-function tone(t, status) {
+function tone(t: ThemeColors, status: AgentStatus | null): Color {
   return t[status] ?? t.unknown;
 }
 
@@ -136,10 +167,14 @@ function tone(t, status) {
 // repo ("dotfiles / ws3", just "dotfiles" when they match). Null only when
 // there is no folder to name. The `space-rename-all` mod's rows say the
 // same (its `checkoutLabel` and `checkout`); change them together.
-export function checkoutLine(w, g, t) {
+export function checkoutLine(
+  w: SpaceInfo,
+  g: Checkout | null,
+  t: ThemeColors,
+): Element | null {
   const path = g ? g.top : place(w);
   const folder = !w.machine && path === home() ? "~" : base(path ?? "");
-  const same = (a, b) => a.toLowerCase() === b.toLowerCase();
+  const same = (a: string, b: string) => a.toLowerCase() === b.toLowerCase();
   if (!folder) return null;
   const text = !g
     ? folder
@@ -159,7 +194,11 @@ export function checkoutLine(w, g, t) {
 // checkout has one, else "review" when it has unshipped work (jj: edits in @
 // or revisions after the nearest bookmark; git: commits ahead of upstream).
 // Null otherwise.
-export function checkoutBadge(crew, g, t) {
+export function checkoutBadge(
+  crew: CrewMember[],
+  g: Checkout | null,
+  t: ThemeColors,
+): Element | null {
   const quiet =
     crew.length > 0 &&
     !crew.some((m) => m.status === "working" || m.status === "blocked");
@@ -168,7 +207,7 @@ export function checkoutBadge(crew, g, t) {
   const unshipped = g.jj
     ? // The jj distance counts @ itself, whose content `modified` covers.
       g.modified || (g.direction === "↑" && g.distance > 1)
-    : g.ahead > 0;
+    : (g as GitCheckout).ahead > 0;
   if (!conflict && !unshipped) return null;
   const color = conflict ? t.ansi1 : t.accent;
   return div()
@@ -178,7 +217,7 @@ export function checkoutBadge(crew, g, t) {
     .flex()
     .items_center()
     .rounded(4)
-    .bg(color + "26")
+    .bg((color + "26") as Color)
     .text_size(10.5)
     .font_semibold()
     .text_color(color)
@@ -193,9 +232,14 @@ export function checkoutBadge(crew, g, t) {
 // worktree is named after its branch), and master/main go: nearly every
 // space is on one. Null when nothing is left to show, which keeps the row
 // shorter.
-export function gitTail(g, quietRepo, name, t) {
+export function gitTail(
+  g: GitCheckout,
+  quietRepo: boolean,
+  name: string,
+  t: ThemeColors,
+): Element | null {
   const raw = g.branch ?? "detached";
-  const same = (a) => a.toLowerCase() === name.toLowerCase();
+  const same = (a: string) => a.toLowerCase() === name.toLowerCase();
   const branch = same(raw) || raw === "master" || raw === "main" ? "" : raw;
   const repo = quietRepo || same(g.name) ? "" : g.name;
   const where = [repo, branch].filter(Boolean).join(" \u00b7 ");
@@ -225,8 +269,13 @@ export function gitTail(g, quietRepo, name, t) {
 // before it), a conflict (red \u26a0) and edits in @ (yellow \u25cf). The
 // change ID shows only without a bookmark, where nothing else says where @
 // is. The repo shows as for git.
-export function jjTail(g, quietRepo, name, t) {
-  const same = (a) => a.toLowerCase() === name.toLowerCase();
+export function jjTail(
+  g: JjCheckout,
+  quietRepo: boolean,
+  name: string,
+  t: ThemeColors,
+): Element {
+  const same = (a: string) => a.toLowerCase() === name.toLowerCase();
   const repo = quietRepo || same(g.name) ? "" : g.name;
   return h_flex()
     .min_w(0)
@@ -275,12 +324,12 @@ export function jjTail(g, quietRepo, name, t) {
 //   screen.
 // `since` is when its status last changed (ms, `AgentHistory.since`).
 export function agentRow(
-  { a, label, spot, activity, turn },
-  indent,
-  t,
-  now,
-  since,
-) {
+  { a, label, spot, activity, turn }: CrewMember,
+  indent: number,
+  t: ThemeColors,
+  now: number,
+  since: number,
+): Element {
   const pic = icon(a.program, 14, t.foreground);
   const when = a.status === "working" ? 0 : since;
   const idle = a.status === "idle" && !a.focused;
@@ -368,13 +417,19 @@ export function agentRow(
 }
 
 // An agent's tab as the tab bar names it: "tab 1", or a name someone gave it.
-function tabText(spot) {
+function tabText(spot: AgentSpot): string {
   return spot.named ? spot.tab : `tab ${spot.tab}`;
 }
 
 // A sub-agent's row: `s` a `tree` entry, `shown` the focused agent's
 // address, `listed` the agent statuses `gatherAgents` returns.
-export function subRow(t, s, shown, indent, listed) {
+export function subRow(
+  t: ThemeColors,
+  s: SubAgent,
+  shown: string | null,
+  indent: number,
+  listed: Map<string, Status>,
+): Element {
   const k = s.t;
   const st = kidStatus(k, listed);
   const pic = icon(k.program, 14, t.foreground);
@@ -420,7 +475,7 @@ export function subRow(t, s, shown, indent, listed) {
 // An agent status as the shipped agents list draws it in priority view: a
 // spinner for working, a "!" for blocked, a dot for done, a ring for idle.
 // The rail's one-character `glyph` and `tone` stay separate from this.
-function statusMark(t, status) {
+function statusMark(t: ThemeColors, status: AgentStatus | null): Element {
   if (status === "working")
     return svg("mods/workspace-chrome/spinner.svg")
       .size(12)
@@ -436,7 +491,7 @@ function statusMark(t, status) {
       .items_center()
       .justify_center()
       .rounded(4)
-      .bg(t.blocked + "26")
+      .bg((t.blocked + "26") as Color)
       .text_size(10.5)
       .font_bold()
       .text_color(t.blocked)
@@ -454,12 +509,12 @@ function statusMark(t, status) {
     .mx(3)
     .flex_none()
     .rounded(4)
-    .bg(status === "done" ? (t.done ?? t.dim) : t.dim + "00");
+    .bg(status === "done" ? (t.done ?? t.dim) : ((t.dim + "00") as Color));
 }
 
 // `duration` and `icon` are copied from the shipped `agents` mod.
 
-function duration(ms) {
+function duration(ms: number): string {
   const m = Math.floor(ms / 60000);
   if (m < 1) return "<1m";
   if (m < 60) return `${m}m`;
@@ -469,7 +524,11 @@ function duration(ms) {
 
 // The agent's icon from the app's program table: a one-color glyph or a
 // picture.
-function icon(p, size, color) {
+function icon(
+  p: Program | undefined,
+  size: number,
+  color: Color,
+): Element | null {
   if (!p?.icon) return null;
   return p.tint
     ? svg(p.icon).size(size).flex_none().text_color(color)
@@ -480,13 +539,19 @@ function icon(p, size, color) {
 // done ones, newest first; `since` gives when an agent's status last changed.
 // With none, the heading shows "0", all dim, over a dim "Nothing waiting";
 // the label turns amber when one does.
-export function needsYouRows(needsYou, byAddress, t, now, since) {
+export function needsYouRows(
+  needsYou: AgentInfo[],
+  byAddress: Map<string, CrewMember>,
+  t: ThemeColors,
+  now: number,
+  since: (a: AgentInfo) => number,
+): Element[] {
   // Each row as the tree draws an agent, two lines: what the agent is, then
   // the space it is in, beside that space's color in a thin bar. A blocked
   // agent says "needs you" in its status color, a done one has a dot, and
   // both say how long ago. The tree above fills the focused row; here focus
   // only brightens the text.
-  const row = (a) => {
+  const row = (a: AgentInfo) => {
     const pic = icon(a.program, 14, t.foreground);
     const when = since(a);
     return h_flex()

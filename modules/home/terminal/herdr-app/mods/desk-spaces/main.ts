@@ -23,15 +23,22 @@
 // Started as a copy of the app's shipped `spaces` mod plus the agent rows of
 // its shipped `agents` mod (herdr-app 0.1.11).
 //
-// This file holds the view and its state; `checkouts.js` looks up each
-// space's Git or jj checkout, `agents.js` gathers agents and tracks their
-// status changes, and `rows.js` draws the rows.
+// This file holds the view and its state; `checkouts.ts` looks up each
+// space's Git or jj checkout, `agents.ts` gathers agents and tracks their
+// status changes, and `rows.ts` draws the rows.
 //
-// `paths.ts` (imported by `checkouts.js` and `rows.js`) and `names.ts`
-// (imported by `agents.js`) beside these files are links to the shared copies
+// `paths.ts` (imported by `checkouts.ts` and `rows.ts`) and `names.ts`
+// (imported by `agents.ts`) beside these files are links to the shared copies
 // in `mod-lib/`.
 
 import { View, div, svg } from "gpui-kit";
+import type {
+  AsyncContext,
+  Context,
+  Element,
+  MouseButtonEvent,
+} from "gpui-kit";
+import type { Props } from "gpui-shell";
 import { v_flex, h_flex } from "gpui-base";
 import {
   agents,
@@ -49,7 +56,9 @@ import {
   window,
   layout,
 } from "herdr";
+import type { SpaceInfo, Status } from "herdr";
 import { Checkouts, where } from "./checkouts.js";
+import type { GitCheckout } from "./checkouts.js";
 import {
   AgentHistory,
   RANK,
@@ -57,6 +66,7 @@ import {
   needsYou,
   topStatus,
 } from "./agents.js";
+import type { AgentStatus, CrewMember } from "./agents.js";
 import {
   ROW_GAP,
   ROW_X,
@@ -75,8 +85,29 @@ import {
   needsYouRows,
   subRow,
 } from "./rows.js";
+import type { SpaceRow, ThemeColors } from "./rows.js";
 
-function find(node, id) {
+// The fields of a `layout()` block this mod reads. The app's typings type
+// `layout()` as `unknown`.
+interface LayoutNode {
+  id?: string;
+  size?: { px?: number };
+  children?: LayoutNode[];
+}
+
+// A machine as `hc machine ls --json` lists it, the fields this mod reads.
+interface MachineEntry {
+  name: string;
+  state: string;
+  temporary?: boolean;
+}
+
+// The fields of `hc machine ls --json` this mod reads.
+interface MachineList {
+  machines?: MachineEntry[];
+}
+
+function find(node: LayoutNode | null, id: string): LayoutNode | null {
   if (node?.id === id) return node;
   for (const child of node?.children ?? []) {
     const found = find(child, id);
@@ -87,12 +118,13 @@ function find(node, id) {
 
 // The sidebar's rail goes by its width, not a flag: dragging its edge narrows
 // it too.
-const narrow = () => (find(layout(), "sidebar")?.size?.px ?? Infinity) < 160;
+const narrow = () =>
+  (find(layout() as LayoutNode, "sidebar")?.size?.px ?? Infinity) < 160;
 
 // Makes a space on `machine`, or on this computer when it is null. Here the
 // folder picker (`space-new`) asks for its folder first; it lists only this
 // computer's folders, so a space on another machine is made without one.
-const newSpace = (machine) =>
+const newSpace = (machine: string | null) =>
   machine
     ? run("space.new", { machine })
     : run("mod.open", { name: "space-new" });
@@ -102,7 +134,7 @@ const newSpace = (machine) =>
 // To the rail (on macOS wide enough for the traffic lights), or back to the
 // width it had.
 function toggleSidebar() {
-  const width = find(layout(), "sidebar")?.size?.px;
+  const width = find(layout() as LayoutNode, "sidebar")?.size?.px;
   if (!narrow()) setShared("sidebar.width", width);
   // Mods edited before the rail went by width still read the flag.
   setShared("sidebar.collapsed", !narrow());
@@ -117,10 +149,28 @@ function toggleSidebar() {
 }
 
 export default class SpacesAndAgents extends View {
-  init(_props, cx) {
+  declare folded: Set<string | null>;
+  declare checkouts: Checkouts;
+  declare shown: Set<string>;
+  // Space id -> when the space was first seen while this runs (ms).
+  declare born: Record<string, number>;
+  // The index in `spaces()` of the space row a drag started on, and of the
+  // row it is over (null: no drag, or over a row it can't drop on).
+  declare pressed: number | null;
+  declare over: number | null;
+  declare machines: MachineEntry[];
+  declare foldedSpaces: Record<string, string | null>;
+  declare history: AgentHistory;
+  declare crews: Map<string, CrewMember[]>;
+  declare listed: Map<string, Status>;
+
+  init(_props: Props | undefined, cx: AsyncContext): void {
     // Machines whose spaces are folded away under their header.
     this.folded = new Set(
-      JSON.parse(localStorage.getItem("machines.folded") ?? "[]"),
+      JSON.parse(localStorage.getItem("machines.folded") ?? "[]") as (
+        | string
+        | null
+      )[],
     );
     // Each space's checkout, looked up while this runs (see `Checkouts`).
     this.checkouts = new Checkouts(this.folded);
@@ -135,7 +185,7 @@ export default class SpacesAndAgents extends View {
     // rows are folded away.
     this.foldedSpaces = JSON.parse(
       localStorage.getItem("spaces.folded") ?? "{}",
-    );
+    ) as Record<string, string | null>;
     // Each agent's last status change (kept across restarts) and the focused
     // agent's held next/previous rank.
     this.history = new AgentHistory();
@@ -151,7 +201,7 @@ export default class SpacesAndAgents extends View {
     cx.timer.every(250, (cx) => this.checkNew(cx));
   }
 
-  checkNew(cx) {
+  checkNew(cx: AsyncContext): void {
     const now = Date.now();
     const sp = spaces();
     for (const s of sp) if (!this.shown.has(s.id)) this.born[s.id] ??= now;
@@ -160,20 +210,20 @@ export default class SpacesAndAgents extends View {
     if (sp.some((s) => !this.shown.has(s.id))) cx.notify();
   }
 
-  refreshMachines(cx) {
+  refreshMachines(cx: AsyncContext): void {
     cx.spawn(async (cx) => {
       try {
         const r = await hc(["machine", "ls", "--json"]);
         if (r.code === 0)
-          this.machines = (JSON.parse(r.stdout).machines ?? []).filter(
-            (m) => !m.temporary,
-          );
+          this.machines = (
+            (JSON.parse(r.stdout) as MachineList).machines ?? []
+          ).filter((m) => !m.temporary);
       } catch {}
       cx.notify();
     });
   }
 
-  menu(w) {
+  menu(w: SpaceInfo): void {
     // A popup is as tall as its items; height is only the most.
     openOverlay({
       mod: "menu",
@@ -185,10 +235,10 @@ export default class SpacesAndAgents extends View {
   }
 
   // Spaces in order, each worktree space moved under its main checkout's.
-  ordered() {
+  ordered(): SpaceRow[] {
     const sp = spaces(),
       ps = panes();
-    const ready = (w) =>
+    const ready = (w: SpaceInfo) =>
       this.shown.has(w.id) ||
       where(w, ps) in this.checkouts.git ||
       Date.now() - (this.born[w.id] ??= Date.now()) > 1500;
@@ -200,8 +250,9 @@ export default class SpacesAndAgents extends View {
     const mains = new Set(
       list.filter((r) => r.g && !r.g.linked).map((r) => r.g.repo),
     );
-    const nested = (r) => r.g?.linked && mains.has(r.g.repo);
-    const out = [];
+    const nested = (r: Omit<SpaceRow, "tree">) =>
+      r.g?.linked && mains.has(r.g.repo);
+    const out: SpaceRow[] = [];
     const placed = new Set(); // repos whose worktrees are listed (under the first of its spaces)
     for (const r of list) {
       if (nested(r)) continue;
@@ -218,14 +269,19 @@ export default class SpacesAndAgents extends View {
 
   // The rows, under a header per machine once one isn't this computer.
   // Each space row comes with its agent rows (none on the rail).
-  grouped(t, collapsed, rows, now) {
+  grouped(
+    t: ThemeColors,
+    collapsed: boolean,
+    rows: SpaceRow[],
+    now: number,
+  ): Element[] {
     // Each space with its agent rows is one group. A hairline above each
     // space that isn't a worktree sets it apart from the one before; a
     // worktree stays under its repo's. Every group keeps 4px below its last
     // row, so a focused row's fill clears the next hairline. The active
     // space's color tick grows into a rail down its whole group: the space
     // you are in, apart from the accent bar on the one row holding focus.
-    const draw = (r) => {
+    const draw = (r: SpaceRow) => {
       if (collapsed) return [compact(r, t, this.spaceStatus(r.w))];
       const rows = [this.row(r, t), ...this.agentRows(r, t, now)];
       // A space's color in the gutter left of its rows: a tick beside its
@@ -253,7 +309,7 @@ export default class SpacesAndAgents extends View {
       ];
     };
     const groups = this.machineGroups(rows);
-    const loading = (m) => {
+    const loading = (m: string | null) => {
       const layout = machines().find((k) => k.name === m)?.layout;
       return (
         layout === "loading" ||
@@ -262,7 +318,7 @@ export default class SpacesAndAgents extends View {
         spaces().some((s) => (s.machine ?? null) === m && !this.shown.has(s.id))
       );
     };
-    const loadingRow = (m) =>
+    const loadingRow = (m: string | null) =>
       div()
         .id(`machine-loading-${m ?? "local"}`)
         .h(28)
@@ -378,7 +434,7 @@ export default class SpacesAndAgents extends View {
   // one with spaces in `rows` or listed by `hc machine ls` (`this.machines`),
   // so a pair's rows may be empty. Without other machines, the one pair holds
   // every row. Each machine's rows keep their order in `rows`.
-  machineGroups(rows) {
+  machineGroups(rows: SpaceRow[]): [string | null, SpaceRow[]][] {
     const remote = [
       ...new Set([
         ...rows.map((r) => r.w.machine).filter(Boolean),
@@ -392,7 +448,7 @@ export default class SpacesAndAgents extends View {
     ]);
   }
 
-  row({ w, i, g, tree }, t) {
+  row({ w, i, g, tree }: SpaceRow, t: ThemeColors): Element {
     // The active space says so by its name, bold and bright, and by its rail
     // (`grouped`). Its row holds the focus mark when no agent row of it does:
     // a shell has focus, or its agent rows are folded away.
@@ -404,7 +460,7 @@ export default class SpacesAndAgents extends View {
     const tail = g
       ? g.jj
         ? jjTail(g, quietRepo, w.name, t)
-        : gitTail(g, quietRepo, w.name, t)
+        : gitTail(g as GitCheckout, quietRepo, w.name, t)
       : null;
     const foldToggle = this.foldToggle(w, t);
     // The row is as tall as its lines of text (the name, then the checkout
@@ -517,18 +573,18 @@ export default class SpacesAndAgents extends View {
       );
   }
 
-  crew(w) {
+  crew(w: SpaceInfo): CrewMember[] {
     return this.crews.get(w.id) ?? [];
   }
 
   // The most urgent status among a space's agents, null without agents.
-  spaceStatus(w) {
+  spaceStatus(w: SpaceInfo): AgentStatus | null {
     return topStatus(this.crew(w).map((m) => m.status));
   }
 
   // Whether focus sits on one of the space's agent rows (an agent, or a
   // sub-agent shown in its place): never when its agent rows are folded away.
-  agentRowFocused(w) {
+  agentRowFocused(w: SpaceInfo): boolean {
     if (w.id in this.foldedSpaces) return false;
     const shown = focused()?.agent;
     return this.crew(w).some(
@@ -536,7 +592,7 @@ export default class SpacesAndAgents extends View {
     );
   }
 
-  setSpaceFolded(w, folded) {
+  setSpaceFolded(w: SpaceInfo, folded: boolean): void {
     if (folded) this.foldedSpaces[w.id] = w.machine ?? null;
     else delete this.foldedSpaces[w.id];
     localStorage.setItem("spaces.folded", JSON.stringify(this.foldedSpaces));
@@ -544,7 +600,7 @@ export default class SpacesAndAgents extends View {
 
   // Forgets folds of spaces that are gone. Only on machines whose layout is
   // read: while one loads, its spaces aren't listed yet.
-  pruneFoldedSpaces(sp) {
+  pruneFoldedSpaces(sp: SpaceInfo[]): void {
     const ids = new Set(sp.map((s) => s.id));
     const ready = new Set(
       machines()
@@ -562,10 +618,10 @@ export default class SpacesAndAgents extends View {
   // The end of the name line of a space with agents: a chevron that folds
   // their rows and, folded, adds how many agents in the most urgent one's
   // color. Pressing it neither selects nor drags the space.
-  foldToggle(w, t) {
+  foldToggle(w: SpaceInfo, t: ThemeColors): Element | null {
     const crew = this.crew(w);
     if (!crew.length) return null;
-    const keep = (_e, cx) => cx.stop_propagation();
+    const keep = (_e: MouseButtonEvent, cx: Context) => cx.stop_propagation();
     const open = !(w.id in this.foldedSpaces);
     const top = this.spaceStatus(w);
     return h_flex()
@@ -596,7 +652,7 @@ export default class SpacesAndAgents extends View {
 
   // The agent rows under an unfolded space, their icons under the start of
   // its name (past its color tick, or a worktree's branch mark).
-  agentRows({ w, tree }, t, now) {
+  agentRows({ w, tree }: SpaceRow, t: ThemeColors, now: number): Element[] {
     if (w.id in this.foldedSpaces) return [];
     const indent = tree ? 52 : TEXT_X;
     const shown = focused()?.agent;
@@ -606,8 +662,8 @@ export default class SpacesAndAgents extends View {
     ]);
   }
 
-  render() {
-    const t = theme();
+  render(): Element {
+    const t = theme() as ThemeColors;
     const collapsed = narrow();
     const sp = spaces();
     assignSpaceColors(sp);

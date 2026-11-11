@@ -4,22 +4,53 @@
 // (`AgentHistory`).
 
 import { panes, terminals } from "herdr";
+import type { AgentInfo, Program, SpaceInfo, Status } from "herdr";
 import { agentActivity, agentName } from "./names.js";
 
+// The fields of a `terminals()` entry (a core terminal, agent or not) this
+// mod reads. The app's typings type `terminals()` entries as `any`.
+export interface TerminalRecord {
+  address: string;
+  // Its status as a plain word: an agent's `Status`, or another word such as
+  // "error".
+  status: string;
+  // The agent terminal that started it, for a sub-agent.
+  parent?: string;
+  state?: string;
+  name?: string;
+  template?: string;
+  program?: Program;
+  // Its turn count from the core.
+  turn?: number;
+}
+
+// An agent status as the sidebar ranks it: an agent's `Status`, or a
+// sub-agent's raw word (`kidStatus`), which ranks below every status.
+export type AgentStatus = Status | string;
+
 // `RANK` and `kidStatus` are copied from the shipped `agents` mod.
-export const RANK = { blocked: 4, done: 3, working: 2, idle: 1 };
+// Statuses without an entry rank 0.
+export const RANK: Record<AgentStatus, number> = {
+  blocked: 4,
+  done: 3,
+  working: 2,
+  idle: 1,
+};
 // A sub-agent without a pane isn't in agents(): its raw word, error counting as
 // blocked. It's never done: it reports to its parent, and the parent's done is
 // the news.
-export const kidStatus = (k, listed) => {
+export const kidStatus = (
+  k: TerminalRecord,
+  listed: Map<string, Status>,
+): AgentStatus => {
   const s = listed.get(k.address) ?? k.status;
   return s === "error" ? "blocked" : s === "done" ? "idle" : s;
 };
 
 // The most urgent of `statuses` (blocked > done > working > idle), or null
 // when none ranks.
-export const topStatus = (statuses) =>
-  statuses.reduce(
+export const topStatus = (statuses: AgentStatus[]): AgentStatus | null =>
+  statuses.reduce<AgentStatus | null>(
     (top, s) => ((RANK[s] ?? 0) > (RANK[top] ?? 0) ? s : top),
     null,
   );
@@ -28,7 +59,10 @@ export const topStatus = (statuses) =>
 // (an agent -> its `RANK` value), most urgent first, newest first within a
 // rank (higher `seq`), otherwise in `list` order. "Needs you" draws them by
 // status; the next/previous order ranks by `orderRank`.
-export const needsYou = (list, rank) =>
+export const needsYou = (
+  list: AgentInfo[],
+  rank: (a: AgentInfo) => number,
+): AgentInfo[] =>
   list
     .filter((a) => rank(a) >= RANK.done)
     .sort((x, y) => rank(y) - rank(x) || y.seq - x.seq);
@@ -44,16 +78,16 @@ export const needsYou = (list, rank) =>
 // pane order only when the tab holds more than one agent, else null),
 // `activity` what it is doing now (`agentActivity`, or null), `turn` its turn
 // count from the core (or null).
-export function gatherAgents(list, sp) {
+export function gatherAgents(list: AgentInfo[], sp: SpaceInfo[]): Crews {
   const listed = new Map(list.map((a) => [a.address, a.status]));
-  const all = terminals();
+  const all: TerminalRecord[] = terminals();
   const byTerminal = new Map(all.map((k) => [k.address, k]));
-  const agentsPerTab = {};
+  const agentsPerTab: Record<string, number> = {};
   for (const a of list) agentsPerTab[a.tab] = (agentsPerTab[a.tab] ?? 0) + 1;
   const ps = panes();
   const tabs = new Map(sp.flatMap((s) => s.tabs ?? []).map((b) => [b.id, b]));
-  const byAddress = new Map();
-  const crews = new Map();
+  const byAddress = new Map<string, CrewMember>();
+  const crews = new Map<string, CrewMember[]>();
   for (const a of list) {
     const subs = tree(all, a.address);
     const status = topStatus([
@@ -64,12 +98,12 @@ export function gatherAgents(list, sp) {
     const term = byTerminal.get(a.address);
     const tabPanes = ps.filter((p) => p.tab === a.tab);
     const pane = tabPanes.findIndex((p) => p.pane === a.pane) + 1;
-    const spot = {
+    const spot: AgentSpot = {
       tab: tab?.name ?? a.tab_name ?? "",
       named: tab?.named ?? false,
       pane: agentsPerTab[a.tab] > 1 && pane > 0 ? pane : null,
     };
-    const member = {
+    const member: CrewMember = {
       a,
       subs,
       status,
@@ -85,9 +119,45 @@ export function gatherAgents(list, sp) {
   return { byAddress, crews, listed };
 }
 
+// What `gatherAgents` returns; it describes the fields.
+export interface Crews {
+  byAddress: Map<string, CrewMember>;
+  crews: Map<string, CrewMember[]>;
+  listed: Map<string, Status>;
+}
+
+// One agent with its sub-agents, as `gatherAgents` describes it.
+export interface CrewMember {
+  a: AgentInfo;
+  subs: SubAgent[];
+  status: AgentStatus | null;
+  label: string;
+  spot: AgentSpot;
+  activity: string | null;
+  turn: number | null;
+}
+
+// Where a crew member is, as `gatherAgents` describes it.
+export interface AgentSpot {
+  tab: string;
+  named: boolean;
+  pane: number | null;
+}
+
+// A live sub-agent (`t`) with the tree lines in front of it, from its parent's
+// level down: "└" or "├" at its own level, "│" or "" above it.
+export interface SubAgent {
+  t: TerminalRecord;
+  lines: string[];
+}
+
 // Live sub-agents of `addr`, depth first, each with the tree lines in front
 // of it.
-function tree(all, addr, lead = []) {
+function tree(
+  all: TerminalRecord[],
+  addr: string,
+  lead: string[] = [],
+): SubAgent[] {
   const kids = all.filter((k) => k.parent === addr && k.state === "live");
   return kids.flatMap((k, i) => {
     const last = i === kids.length - 1;
@@ -102,9 +172,14 @@ function tree(all, addr, lead = []) {
 // row shows, and the focused agent's held rank (`hold`, `orderRank`), for the
 // next/previous order.
 export class AgentHistory {
+  declare changed: Record<string, StatusChange>;
+  declare held: HeldRank | null;
+
   constructor() {
     // Each agent's last state and when it changed (ms), kept across restarts.
-    this.changed = JSON.parse(localStorage.getItem("changed") ?? "{}");
+    this.changed = JSON.parse(
+      localStorage.getItem("changed") ?? "{}",
+    ) as Record<string, StatusChange>;
     // The focused agent and its rank when it got focus (see `hold`), or null.
     this.held = null;
   }
@@ -112,7 +187,7 @@ export class AgentHistory {
   // Stamps agents whose state changed. Done and idle count as one: looking at a
   // finished agent turns done into idle, and looking isn't the agent doing
   // anything.
-  track(list, now) {
+  track(list: AgentInfo[], now: number): void {
     let dirty = false;
     for (const a of list) {
       const s = a.status === "done" ? "idle" : a.status;
@@ -129,14 +204,14 @@ export class AgentHistory {
   }
 
   // When `a`'s status last changed (ms), 0 when never seen.
-  since(a) {
+  since(a: AgentInfo): number {
     return this.changed[a.address]?.at ?? 0;
   }
 
   // Remembers the focused agent's rank on arrival. Looking at a done agent
   // turns it idle; the remembered rank keeps it in its next/previous slot
   // until you leave it. Any other change takes the new rank at once.
-  hold(list) {
+  hold(list: AgentInfo[]): void {
     const cur = list.find((a) => a.focused);
     const same = cur && cur.address === this.held?.address;
     if (!same || cur.status !== "idle")
@@ -150,11 +225,23 @@ export class AgentHistory {
 
   // The rank an agent keeps in the next/previous order: a held agent that went
   // done to idle still ranks as done.
-  orderRank(a) {
+  orderRank(a: AgentInfo): number {
     const sawDone =
       a.address === this.held?.address &&
       this.held.rank === RANK.done &&
       a.status === "idle";
     return sawDone ? RANK.done : (RANK[a.status] ?? 0);
   }
+}
+
+// An agent's last state (done counted as idle) and when it changed (ms).
+interface StatusChange {
+  s: Status;
+  at: number;
+}
+
+// The focused agent's address and its `RANK` value when it got focus.
+interface HeldRank {
+  address: string;
+  rank: number;
 }

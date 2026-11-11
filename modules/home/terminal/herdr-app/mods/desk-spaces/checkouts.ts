@@ -2,17 +2,63 @@
 // checkout its first terminal is in, with branch or bookmark, ahead/behind and
 // its repo, looked up again only when the answer could have changed.
 
+import type { AsyncContext } from "gpui-kit";
 import { exec, machines, watchFolder, window } from "herdr";
+import type { ExecResult, PaneInfo, SpaceInfo } from "herdr";
 import { cliPath, place } from "./paths.js";
+
+// A space's or repo's location: its machine (null for this computer) and a
+// folder there. `where()` keys and checkouts' `repo` are these as JSON.
+type MachinePath = [machine: string | null, path: string];
+
+// A Git checkout as `Checkouts.check` reads it: the repo's name, the
+// checkout's root folder (`top`), its branch (null when detached), how far it
+// is ahead of and behind its upstream, its repo (`MachinePath` JSON of the
+// repo's git folder), and whether it is a linked worktree.
+export interface GitCheckout {
+  // Never set: only a jj checkout has `jj`. Without strict null checks a
+  // falsy `jj` does not narrow `Checkout` to this type, so callers assert it.
+  jj?: false;
+  name: string;
+  top: string;
+  branch: string | null;
+  ahead: number;
+  behind: number;
+  repo: string;
+  linked: boolean;
+}
+
+// A jj checkout as the terminal prompt shows it (`checkJj`): the repo's name,
+// the workspace root (`top`), the nearest bookmark ("(+1b)" when more share
+// it, null without one), which way and how far @ is from it, @'s change ID,
+// whether @ has a conflict or edits, its repo (`MachinePath` JSON of the
+// shared repo folder), and whether it is a secondary workspace.
+export interface JjCheckout {
+  jj: true;
+  name: string;
+  top: string;
+  bookmark: string | null;
+  direction: "↓" | "↑";
+  distance: number;
+  change: string;
+  conflict: boolean;
+  modified: boolean;
+  repo: string;
+  linked: boolean;
+}
+
+// A place's checkout, Git or jj (`jj` tells them apart).
+export type Checkout = GitCheckout | JjCheckout;
 
 // A space's place: its machine and its first terminal's folder, as one string
 // key (JSON) for `Checkouts`' maps.
-export const where = (s, ps) =>
+export const where = (s: SpaceInfo, ps: PaneInfo[]): string =>
   JSON.stringify([s.machine ?? null, place(s, ps)]);
-export const base = (path) => path.replace(/\/+$/, "").split("/").pop();
+export const base = (path: string): string =>
+  path.replace(/\/+$/, "").split("/").pop();
 // `path` made absolute against `from`, without "." or ".." segments.
-const resolve = (from, path) => {
-  const out = [];
+const resolve = (from: string, path: string): string => {
+  const out: string[] = [];
   for (const part of (path.startsWith("/") ? path : `${from}/${path}`).split(
     "/",
   )) {
@@ -29,7 +75,18 @@ const FALLBACK = 60000;
 // current. `folded` is the view's set of folded machines (shared, never
 // replaced): a folded machine's repos skip the fallback look.
 export class Checkouts {
-  constructor(folded) {
+  declare git: Record<string, Checkout | null>;
+  declare checked: Record<string, number>;
+  declare unsure: Set<string>;
+  declare pending: Set<string>;
+  declare busy: Record<string, boolean>;
+  declare ready: Record<string, boolean>;
+  declare at: Record<string, string>;
+  declare watching: Set<string>;
+  declare refreshing: boolean;
+  declare folded: Set<string | null>;
+
+  constructor(folded: Set<string | null>) {
     this.git = {}; // where() -> { name, top, branch, ahead, behind, repo, linked }, null: not a repo
     this.checked = {}; // where() -> when it was last looked at
     this.unsure = new Set(); // where()s git couldn't answer for (a machine away)
@@ -45,18 +102,20 @@ export class Checkouts {
   // Places whose git could have changed: new ones (a new space, a cd), where a
   // command or an agent's turn just ended (a checkout, a commit, edits), those
   // on a machine that is back, and repos in view whose fallback is due.
-  due(now, sp, ps) {
+  due(now: number, sp: SpaceInfo[], ps: PaneInfo[]): Set<string> {
     // Moved there: what it knew of that place may be old.
-    const at = {};
+    const at: Record<string, string> = {};
     for (const s of sp) at[s.id] = where(s, ps);
-    const keys = new Set(Object.values(at).filter((k) => JSON.parse(k)[1]));
+    const keys = new Set(
+      Object.values(at).filter((k) => (JSON.parse(k) as MachinePath)[1]),
+    );
     const due = new Set([...keys].filter((k) => !(k in this.git)));
     for (const [id, k] of Object.entries(at))
       if (this.at[id] && this.at[id] !== k && keys.has(k)) due.add(k);
     this.at = at;
-    const spaceOf = {};
+    const spaceOf: Record<string, SpaceInfo> = {};
     for (const s of sp) for (const t of s.tabs ?? []) spaceOf[t.id] = s;
-    const busy = {};
+    const busy: Record<string, boolean> = {};
     for (const p of ps) {
       if (!p.terminal || !spaceOf[p.tab]) continue;
       busy[p.pane] =
@@ -68,7 +127,8 @@ export class Checkouts {
     for (const m of machines()) {
       const ready = m.layout === "ready";
       if (ready && this.ready[m.name] === false)
-        for (const k of keys) if (JSON.parse(k)[0] === m.name) due.add(k);
+        for (const k of keys)
+          if ((JSON.parse(k) as MachinePath)[0] === m.name) due.add(k);
       this.ready[m.name] = ready;
     }
     if (window().active) {
@@ -76,7 +136,7 @@ export class Checkouts {
         const asks = this.git[k] || this.unsure.has(k);
         if (
           asks &&
-          !this.folded.has(JSON.parse(k)[0]) &&
+          !this.folded.has((JSON.parse(k) as MachinePath)[0]) &&
           now - (this.checked[k] ?? 0) > FALLBACK
         )
           due.add(k);
@@ -87,7 +147,7 @@ export class Checkouts {
 
   // `key` and the other places in its repo (a commit there moves their
   // ahead/behind).
-  sameRepo(key, keys) {
+  sameRepo(key: string, keys: Set<string>): string[] {
     const repo = this.git[key]?.repo;
     return [
       key,
@@ -97,7 +157,7 @@ export class Checkouts {
 
   // One look at a time, each place once however often it was asked for
   // meanwhile.
-  refreshGit(keys, cx) {
+  refreshGit(keys: Iterable<string>, cx: AsyncContext): void {
     for (const k of keys) this.pending.add(k);
     if (this.refreshing) return;
     this.refreshing = true;
@@ -110,7 +170,7 @@ export class Checkouts {
       const used = new Set(
         Object.values(this.git)
           .filter(Boolean)
-          .map((g) => JSON.parse(g.repo))
+          .map((g) => JSON.parse(g.repo) as MachinePath)
           .filter(([on]) => !on)
           .map(([, repo]) => repo),
       );
@@ -122,8 +182,8 @@ export class Checkouts {
   }
 
   // One place's git: branch, ahead/behind, its repo.
-  async check(key, cx) {
-    const [on, cwd] = JSON.parse(key);
+  async check(key: string, cx: AsyncContext): Promise<void> {
+    const [on, cwd] = JSON.parse(key) as MachinePath;
     this.checked[key] = Date.now();
     this.unsure.delete(key);
     try {
@@ -171,7 +231,7 @@ export class Checkouts {
       const name = repo.endsWith("/.git")
         ? base(repo.slice(0, -5))
         : base(repo).replace(/\.git$/, "");
-      const info = {
+      const info: GitCheckout = {
         name,
         top: checkoutTop,
         branch: null,
@@ -200,7 +260,7 @@ export class Checkouts {
 
   // `dir` is what changes when the repo does: the git folder, or a jj repo's
   // op_heads.
-  watch(repo, cx, dir = repo) {
+  watch(repo: string, cx: AsyncContext, dir: string = repo): void {
     if (this.watching.has(repo)) return;
     this.watching.add(repo);
     cx.spawn(async (cx) => {
@@ -228,18 +288,21 @@ export class Checkouts {
 // Every jj call passes --ignore-working-copy: a snapshot would write an
 // operation on each look, which the op_heads watch would answer with another
 // look.
-async function checkJj(cwd, on) {
+async function checkJj(
+  cwd: string,
+  on: string | null,
+): Promise<{ info: JjCheckout; repo: string } | null> {
   // On this machine, the user's jj by its store path, since the app's PATH
   // depends on how the app was started; another machine resolves its own
   // `jj`. A dotfiles-paths.json without the entry leaves the bare name.
   const program = on ? "jj" : await cliPath("jj").catch(() => "jj");
-  const jj = (args) =>
+  const jj = (args: string[]): Promise<ExecResult> =>
     exec(
       program,
       ["--ignore-working-copy", "--no-pager", "--color=never", ...args],
       { cwd, on },
     );
-  let root;
+  let root: ExecResult;
   try {
     root = await jj(["root"]);
   } catch {
@@ -255,7 +318,7 @@ async function checkJj(cwd, on) {
       : `${top}/.jj/repo`;
   // The bookmark names on the revisions `revset` selects (jjx bookmark
   // nearest).
-  const names = async (revset) => {
+  const names = async (revset: string): Promise<string[]> => {
     const r = await jj([
       "log",
       "--no-graph",
@@ -268,9 +331,9 @@ async function checkJj(cwd, on) {
     return r.stdout
       .split("\n")
       .filter(Boolean)
-      .map((line) => JSON.parse(line));
+      .map((line) => JSON.parse(line) as string);
   };
-  const count = async (revset) => {
+  const count = async (revset: string): Promise<number> => {
     const r = await jj(["log", "--no-graph", "-r", revset, "-T", '"x"']);
     if (r.code !== 0) throw new Error(r.stderr);
     return r.stdout.length;
@@ -282,7 +345,7 @@ async function checkJj(cwd, on) {
     const after = "roots(@:: & bookmarks())";
     const before = "heads(::@ & bookmarks())";
     let marks = await names(after);
-    let direction = "↓";
+    let direction: JjCheckout["direction"] = "↓";
     let distance = marks.length ? await count(`@..${after}`) : 0;
     if (!marks.length) {
       marks = await names(before);
@@ -299,7 +362,7 @@ async function checkJj(cwd, on) {
     ]);
     if (at.code !== 0) return null;
     const [change, conflict, empty] = at.stdout.trim().split(" ");
-    const info = {
+    const info: JjCheckout = {
       jj: true,
       name: base(repo.replace(/\/\.jj\/repo$/, "")),
       top,
