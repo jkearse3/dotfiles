@@ -29,6 +29,8 @@
 // copies in `mod-lib/`.
 
 import { View, div } from "gpui-kit";
+import type { AsyncContext, Context } from "gpui-kit";
+import type { Props } from "gpui-shell";
 import { focused, hc, home, spaces, terminals } from "herdr";
 import { fail, launcherOverlay, refuse, showPopup } from "./launcher.js";
 import { cliPath } from "./paths.js";
@@ -37,20 +39,32 @@ const TITLE = "Find";
 // The core terminal name of the one long-lived app picker.
 const PICKER_NAME = "herdr-find";
 
+// The fields of an `hc ls`/`hc get` terminal record, or a `terminals()` entry,
+// the launcher reads. The app's typings type `terminals()` entries as `any`.
+interface TerminalRecord {
+  name?: string;
+  state?: string;
+  argv?: string[];
+  address?: string;
+}
+
 // Whether RECORD (an `hc ls`/`hc get` terminal record) is a live picker
 // terminal running the `herdr-find` at FIND_PATH.
-function runsCurrentPicker(record, findPath) {
+function runsCurrentPicker(
+  record: TerminalRecord | undefined,
+  findPath: string,
+): boolean {
   return record?.state === "live" && record.argv?.[0] === findPath;
 }
 
 // Returns the address of the live `herdr-find` terminal running FIND_PATH,
 // as `hc get` reports it, or undefined.
-async function getCurrentPicker(findPath) {
+async function getCurrentPicker(findPath: string): Promise<string | undefined> {
   const r = await hc(["get", PICKER_NAME, "--json"]);
   if (r.code !== 0) return undefined;
-  let record;
+  let record: TerminalRecord;
   try {
-    record = JSON.parse(r.stdout);
+    record = JSON.parse(r.stdout) as TerminalRecord;
   } catch {
     return undefined;
   }
@@ -61,7 +75,7 @@ async function getCurrentPicker(findPath) {
 // address. No herdr labels, so it never becomes a pane; no parent, so it
 // never types notes into the terminal that happened to be focused; `--rm`,
 // so a picker that exits leaves no finished record holding the name.
-async function startPicker(findPath) {
+async function startPicker(findPath: string): Promise<string> {
   const r = await hc([
     "run",
     "--bg",
@@ -84,7 +98,7 @@ async function startPicker(findPath) {
     if (running) return running;
     throw new Error(r.stderr.trim() || `hc run exited with ${r.code}`);
   }
-  const address = JSON.parse(r.stdout).address;
+  const address = (JSON.parse(r.stdout) as TerminalRecord).address;
   if (!address) throw new Error("hc run printed no terminal address.");
   return address;
 }
@@ -92,7 +106,13 @@ async function startPicker(findPath) {
 // Closes LAUNCHER and opens the popup showing the picker TERMINAL, which
 // loads rows for the caller (SPACE_ID, CALLER) when it opens and is reset
 // when it closes. Synchronous, so the reuse path awaits nothing in between.
-function showPicker(launcher, terminal, findPath, spaceId, caller) {
+function showPicker(
+  launcher: string,
+  terminal: string,
+  findPath: string,
+  spaceId: string,
+  caller: string | null | undefined,
+): void {
   const show = [
     "show",
     "--overlay",
@@ -119,7 +139,7 @@ function showPicker(launcher, terminal, findPath, spaceId, caller) {
 }
 
 export default class Find extends View {
-  init(_props, cx) {
+  init(_props: Props | undefined, cx: AsyncContext): void {
     const overlay = launcherOverlay();
     if (!overlay) return;
 
@@ -133,8 +153,8 @@ export default class Find extends View {
     cx.spawn(async (_cx) => {
       try {
         const findPath = await cliPath("herdr-find");
-        const live = terminals().find(
-          (t) => t.name === PICKER_NAME && t.state === "live",
+        const live: TerminalRecord | undefined = terminals().find(
+          (t: TerminalRecord) => t.name === PICKER_NAME && t.state === "live",
         );
         if (runsCurrentPicker(live, findPath)) {
           showPicker(overlay, live.address, findPath, space.id, caller);
@@ -152,7 +172,7 @@ export default class Find extends View {
     });
   }
 
-  render(_cx) {
+  render(_cx: Context) {
     return div();
   }
 }
