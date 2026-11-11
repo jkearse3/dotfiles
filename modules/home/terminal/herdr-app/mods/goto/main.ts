@@ -11,6 +11,8 @@
 // the original.
 
 import { View, div, svg } from "gpui-kit";
+import type { AsyncContext, Color, Element, FocusHandle } from "gpui-kit";
+import type { Props } from "gpui-shell";
 import { v_flex, h_flex, InputState, Input } from "gpui-base";
 import {
   agents,
@@ -26,8 +28,38 @@ import {
   shared,
   setShared,
 } from "herdr";
+import type { AgentInfo, SpaceInfo, Status, TabInfo } from "herdr";
 
-const MARK = {
+// The theme's colors by name. The app's typings type `theme()` as
+// `Record<string, string>`, though every value is a color.
+type ThemeColors = Record<string, Color>;
+
+// One row of the list, by what it shows: a space's title over its tabs
+// (`head`), a tab (`ctx`), the fold of quiet spaces (`earlier`), or new work
+// (`new` for a tab here, `space` for a space on MACHINE, null for this
+// computer).
+type PickerRow =
+  | { kind: "head"; w: SpaceInfo }
+  | ({ kind: "ctx" } & TabEntry)
+  | { kind: "earlier"; count: number }
+  | { kind: "new" }
+  | { kind: "space"; machine: string | null };
+
+// A tab that matches the filter: its space, the agents in it, and how many
+// live terminals those agents started.
+interface TabEntry {
+  w: SpaceInfo;
+  ctx: TabInfo;
+  mine: AgentInfo[];
+  team: number;
+}
+
+// The fields of `hc machine ls --json` this mod reads.
+interface MachineList {
+  machines?: { name: string; state: string; temporary?: boolean }[];
+}
+
+const MARK: Record<string, Color> = {
   ansi6: "#22a99a",
   ansi3: "#e3814f",
   ansi4: "#5b8def",
@@ -40,18 +72,22 @@ const MARK = {
 // color name ("ansi6") or a picked #rrggbb. A space seen without one gets
 // the theme color fewest spaces use, once; every mod does the same in the
 // same order, so they agree, and adding or renaming spaces moves nothing.
+type SpaceColorChoices = Record<string, string>;
 const PROJECT_COLORS = ["ansi6", "ansi3", "ansi4", "ansi5", "ansi2", "ansi1"];
-function spaceColors() {
+function spaceColors(): SpaceColorChoices {
   const ids = new Set(spaces().map((p) => p.id));
   const kept = Object.fromEntries(
-    Object.entries(shared("space.colors") ?? {}).filter(([id]) => ids.has(id)),
+    Object.entries((shared("space.colors") as SpaceColorChoices) ?? {}).filter(
+      ([id]) => ids.has(id),
+    ),
   );
   let changed =
     Object.keys(kept).length !==
-    Object.keys(shared("space.colors") ?? {}).length;
+    Object.keys((shared("space.colors") as SpaceColorChoices) ?? {}).length;
   for (const p of spaces()) {
     if (kept[p.id] || p.name === "~") continue;
-    const uses = (c) => Object.values(kept).filter((v) => v === c).length;
+    const uses = (c: string) =>
+      Object.values(kept).filter((v) => v === c).length;
     kept[p.id] = PROJECT_COLORS.reduce((best, c) =>
       uses(c) < uses(best) ? c : best,
     );
@@ -60,14 +96,26 @@ function spaceColors() {
   if (changed) setShared("space.colors", kept);
   return kept;
 }
-function spaceColor(t, p) {
+function spaceColor(t: ThemeColors, p: SpaceInfo): Color {
   if (p.name === "~") return t.dim;
   const c = spaceColors()[p.id] ?? PROJECT_COLORS[0];
-  return c.startsWith("#") ? c : (MARK[c] ?? t[c]);
+  return c.startsWith("#") ? (c as Color) : (MARK[c] ?? t[c]);
 }
 
 export default class Picker extends View {
-  init(_props, cx) {
+  declare filter: string;
+  declare input: InputState;
+  // The selected row's index among the pickable rows; null until the first
+  // render places it on the current tab.
+  declare at: number | null;
+  declare scroll: number;
+  declare showEarlier: boolean;
+  declare machines: string[];
+  declare handle: FocusHandle;
+  // The list's height in logical px, once it has been laid out.
+  declare listHeight: number | undefined;
+
+  init(_props: Props | undefined, cx: AsyncContext): void {
     this.filter = "";
     this.input = InputState.new({
       placeholder: "Go to a tab, space or agent…",
@@ -95,7 +143,7 @@ export default class Picker extends View {
       try {
         const r = await hc(["machine", "ls", "--json"]);
         if (r.code === 0)
-          this.machines = (JSON.parse(r.stdout).machines ?? [])
+          this.machines = ((JSON.parse(r.stdout) as MachineList).machines ?? [])
             .filter((m) => m.state === "connected" && !m.temporary)
             .map((m) => m.name);
       } catch {}
@@ -107,13 +155,13 @@ export default class Picker extends View {
     closeOverlay(props().overlay);
   }
 
-  rows() {
+  rows(): PickerRow[] {
     const f = this.filter.toLowerCase();
     const all = agents();
     const live = terminals().filter((x) => x.state === "live");
-    const teamOf = (addrs) => {
+    const teamOf = (addrs: string[]) => {
       let n = 0;
-      const walk = (a) =>
+      const walk = (a: string): void =>
         live
           .filter((x) => x.parent === a)
           .forEach((k) => (n++, walk(k.address)));
@@ -142,8 +190,8 @@ export default class Picker extends View {
       (a, b) =>
         Number(b.w.status === "blocked") - Number(a.w.status === "blocked"),
     );
-    const out = [];
-    const add = (p) => {
+    const out: PickerRow[] = [];
+    const add = (p: { w: SpaceInfo; ctxs: TabEntry[] }) => {
       out.push({ kind: "head", w: p.w });
       for (const c of p.ctxs) out.push({ kind: "ctx", ...c });
     };
@@ -158,7 +206,7 @@ export default class Picker extends View {
     return out;
   }
 
-  go(r) {
+  go(r: PickerRow | undefined): void {
     if (!r) return;
     this.close();
     if (r.kind === "ctx") run("tab.select", { id: r.ctx.id });
@@ -170,22 +218,25 @@ export default class Picker extends View {
     else if (r.kind === "space") run("mod.open", { name: "space-new" });
   }
 
-  glyph(t, st) {
+  glyph(t: ThemeColors, st: Status | null): Element {
     if (st === "working")
       return svg("mods/workspace-chrome/spinner.svg")
         .size(12)
         .flex_none()
         .text_color(t.working)
         .spin(900);
-    return div()
-      .w(12)
-      .flex_none()
-      .text_color(t[st] ?? t.dim)
-      .child(st === "idle" ? "○" : st ? "●" : "·");
+    return (
+      div()
+        .w(12)
+        .flex_none()
+        // A null status reads no theme color, so it falls back to dim.
+        .text_color(t[st as Status] ?? t.dim)
+        .child(st === "idle" ? "○" : st ? "●" : "·")
+    );
   }
 
   render() {
-    const t = theme();
+    const t = theme() as ThemeColors;
     const rows = this.rows();
     const pickable = rows.filter(
       (r) => r.kind === "ctx" || r.kind === "new" || r.kind === "space",
@@ -203,8 +254,14 @@ export default class Picker extends View {
     // One continuous strip: each row (and the group title before it) at a fixed
     // y. Scrolling moves the strip only as far as it takes to keep the selected
     // row in view, so the arrows can't run the selection off the list.
-    const H = { head: 29, earlier: 35, new: 36, ctx: 32, space: 32 };
-    const tops = [];
+    const H: Record<PickerRow["kind"], number> = {
+      head: 29,
+      earlier: 35,
+      new: 36,
+      ctx: 32,
+      space: 32,
+    };
+    const tops: number[] = [];
     let y = 0;
     rows.forEach((r) => {
       tops.push(y);
@@ -221,7 +278,7 @@ export default class Picker extends View {
       if (tops[si] + (H[sel.kind] ?? 32) > this.scroll + height)
         this.scroll = tops[si] + (H[sel.kind] ?? 32) - height;
     }
-    const place = (el, i) =>
+    const place = (el: Element, i: number) =>
       fixed
         ? el
             .absolute()
@@ -230,12 +287,12 @@ export default class Picker extends View {
             .top(tops[i] - this.scroll)
             .bottom(height - (tops[i] + (H[rows[i].kind] ?? 32) - this.scroll))
         : el;
-    const visible = (i) =>
+    const visible = (i: number) =>
       !fixed ||
       (tops[i] + (H[rows[i].kind] ?? 32) > this.scroll &&
         tops[i] < this.scroll + height);
 
-    const row = (r) => {
+    const row = (r: PickerRow) => {
       if (r.kind === "head") {
         return h_flex()
           .px(10)
@@ -413,7 +470,7 @@ export default class Picker extends View {
         v_flex()
           .id("pk-list")
           .on_size_change((size, cx) => {
-            this.listHeight = size.height / settings().zoom;
+            this.listHeight = size.height / (settings().zoom as number);
             cx.notify();
           })
           .h(Math.min(320, total))
