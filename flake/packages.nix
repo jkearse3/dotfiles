@@ -83,11 +83,8 @@
         pi-extensions-checked = pkgs.callPackage ../packages/pi-extensions-checked/package.nix {
           inherit (inputs.llm-agents.packages.${system}) herdr pi;
           inherit pi-extension-deps pi-extension-types;
-          inherit (unstablePkgs) nodejs;
+          inherit (unstablePkgs) nodejs typescript;
           extensions = piExtensions;
-          # The 5.x compiler the extensions are written against; the unstable
-          # default is the TypeScript 7 native preview.
-          typescript = unstablePkgs.typescript_5;
         };
         pi-extensions-locked = pkgs.callPackage ../packages/pi-extensions-locked/package.nix {
           inherit pi-extension-deps pi-extensions-checked;
