@@ -45,7 +45,8 @@ interface TerminalRecord {
   name?: string;
   state?: string;
   argv?: string[];
-  address?: string;
+  // Every terminal record has one: it is how `hc` names the terminal.
+  address: string;
 }
 
 // Whether RECORD (an `hc ls`/`hc get` terminal record) is a live picker
@@ -156,8 +157,9 @@ export default class Find extends View {
         const live: TerminalRecord | undefined = terminals().find(
           (t: TerminalRecord) => t.name === PICKER_NAME && t.state === "live",
         );
+        // `runsCurrentPicker` is false for a missing record.
         if (runsCurrentPicker(live, findPath)) {
-          showPicker(overlay, live.address, findPath, space.id, caller);
+          showPicker(overlay, live!.address, findPath, space.id, caller);
           return;
         }
         // Whatever `hc kill` returns, start: the old picker may have ended

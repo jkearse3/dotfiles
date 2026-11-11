@@ -136,8 +136,10 @@ export default class Popup extends View {
   async close(_cx: AsyncContext): Promise<void> {
     const { overlay, terminal, keepTerminal, closeCommand }: PopupProps =
       props() ?? {};
+    // `close` runs only when an overlay goes, and the host fills in
+    // `overlay` for every overlay it opens.
     const closing = closeCommand
-      ? execCommand(closeCommand, overlay).catch(() => {})
+      ? execCommand(closeCommand, overlay!).catch(() => {})
       : undefined;
     if (
       terminal &&

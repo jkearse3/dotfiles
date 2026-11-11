@@ -131,7 +131,8 @@ export default class WorkspaceStatus extends View {
         ),
       )
       .when(Boolean(space?.branch), (el) =>
-        el.child(label("branch", space.branch)),
+        // `when` runs this only while the shown space has a branch.
+        el.child(label("branch", space!.branch!)),
       )
       .child(
         h_flex()

@@ -266,8 +266,9 @@ export default class SpaceRenameAll extends View {
         .hover((s) => s.opacity(0.88))
         .on_click(action)
         .child(text);
+    // Called only on `shown`, the rows whose space `spaces()` still lists.
     const row = (r: RenameRow) => {
-      const space = byId.get(r.id);
+      const space = byId.get(r.id)!;
       const color = colors[r.id] ?? "ansi6";
       const fill = color.startsWith("#")
         ? (color as Color)
@@ -331,7 +332,8 @@ export default class SpaceRenameAll extends View {
                   .items_center()
                   .text_size(12.8)
                   .text_color(t.dim)
-                  .child(div().min_w(0).truncate().child(r.automatic)),
+                  // The `when` above shows this only while `automatic` is set.
+                  .child(div().min_w(0).truncate().child(r.automatic!)),
               ),
             ),
         );
@@ -522,8 +524,9 @@ const MARK: Record<string, Color> = {
   ansi1: "#d9649a",
 };
 
+// `split` always returns at least one element, so `pop` finds one.
 const base = (path: string): string =>
-  path.replace(/\/+$/, "").split("/").pop();
+  path.replace(/\/+$/, "").split("/").pop()!;
 
 // `path` made absolute against `from`, without "." or ".." segments.
 const resolve = (from: string, path: string): string => {
