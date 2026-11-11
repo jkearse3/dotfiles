@@ -133,7 +133,7 @@ in
           source = config.agents.skillsDir;
           recursive = true;
         };
-        ".pi/agent/themes/tokyonight.json".source = mkSource ./themes/tokyonight.json;
+        ".pi/agent/themes/tokyonight.json".source = ./themes/tokyonight.json;
       };
     };
   };
