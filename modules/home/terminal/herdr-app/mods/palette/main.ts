@@ -12,6 +12,8 @@
 // open this copy; `app.palette` and the app menu still show the original.
 
 import { View, div, svg } from "gpui-kit";
+import type { AsyncContext, Color, Element, FocusHandle } from "gpui-kit";
+import type { Props } from "gpui-shell";
 import { v_flex, h_flex, InputState, Input } from "gpui-base";
 import {
   commands,
@@ -25,6 +27,61 @@ import {
   shared,
   window as win,
 } from "herdr";
+
+// The theme's colors by name. The app's typings type `theme()` as
+// `Record<string, string>`, though every value is a color.
+type ThemeColors = Record<string, Color>;
+
+// The arguments an entry runs its command with; `{}` for none.
+type CommandArgs = Record<string, string>;
+
+// One thing the palette can run: the command NAME with ARGS, shown as TITLE
+// under GROUP, and found by the extra search WORDS too.
+interface PaletteEntry {
+  name: string;
+  args: CommandArgs;
+  group: string;
+  title: string;
+  words: string;
+  // The entry's identity in the recent list: its name and arguments.
+  id: string;
+}
+
+// A command the palette names itself: [command, args, group, title, keywords].
+type NamedCommand = [
+  name: string,
+  args: CommandArgs,
+  group: string,
+  title: string,
+  words: string,
+];
+
+// One shown row: an entry under its group's title (HEAD) while the query is
+// empty, or a match ranked by SCORE, with its title's matched positions
+// (HITS), while typing.
+interface PaletteRow {
+  e: PaletteEntry;
+  head?: string;
+  score?: number;
+  hits?: number[];
+}
+
+// A fuzzy match: how well it matched, and the matched positions.
+interface FuzzyMatch {
+  score: number;
+  hits: number[];
+}
+
+// Where a row sits in the list strip, in px from its top: its group title's
+// top (TITLE) when it opens a group (HEAD), and its own top (ROW).
+interface RowPlacement {
+  head: boolean;
+  title: number;
+  row: number;
+}
+
+// One key binding, as `keys()` lists it.
+type KeyBindingInfo = ReturnType<typeof keys>[number];
 
 // The list keeps one height while you move: rows and group titles have fixed
 // heights, and the window shows as many as fit in LIST_H.
@@ -47,7 +104,7 @@ const GROUPS = [
 ];
 
 // The palette's names for commands: [command, args, group, title, keywords].
-const NAMED = [
+const NAMED: NamedCommand[] = [
   ["tab.new", {}, "Tab", "New tab", "tab agent new task"],
   [
     "mod.open",
@@ -64,20 +121,24 @@ const NAMED = [
   ["pane.split", { direction: "down" }, "Pane", "Split down", "horizontal"],
   ["pane.close", {}, "Pane", "Close pane", "kill"],
   ["pane.zoom", {}, "Pane", "Zoom pane", "maximize fullscreen"],
-  ...["left", "right", "up", "down"].map((d) => [
-    "pane.go",
-    { direction: d },
-    "Pane",
-    `Focus pane ${d}`,
-    "move go",
-  ]),
-  ...["left", "right", "up", "down"].map((d) => [
-    "pane.swap",
-    { direction: d },
-    "Pane",
-    `Swap pane ${d}`,
-    "move",
-  ]),
+  ...["left", "right", "up", "down"].map(
+    (d): NamedCommand => [
+      "pane.go",
+      { direction: d },
+      "Pane",
+      `Focus pane ${d}`,
+      "move go",
+    ],
+  ),
+  ...["left", "right", "up", "down"].map(
+    (d): NamedCommand => [
+      "pane.swap",
+      { direction: d },
+      "Pane",
+      `Swap pane ${d}`,
+      "move",
+    ],
+  ),
   ["mod.open", { name: "space-new" }, "Space", "New space", "workspace folder"],
   ["space.rename", {}, "Space", "Rename space", "workspace"],
   [
@@ -129,13 +190,15 @@ const NAMED = [
   ["app.zoom_out", {}, "App", "Zoom out", "smaller font size"],
   ["app.zoom_reset", {}, "App", "Reset zoom", "font size"],
   ["app.quit", {}, "App", "Quit Herdr", "exit"],
-  ...["graphite", "ink", "moss", "atom-one-dark"].map((n) => [
-    "app.theme",
-    { name: n },
-    "App",
-    `Theme: ${n.replace(/-/g, " ")}`,
-    "colors look",
-  ]),
+  ...["graphite", "ink", "moss", "atom-one-dark"].map(
+    (n): NamedCommand => [
+      "app.theme",
+      { name: n },
+      "App",
+      `Theme: ${n.replace(/-/g, " ")}`,
+      "colors look",
+    ],
+  ),
 ];
 
 // Commands that act on something you point at (ids, terminals): not for a list.
@@ -170,7 +233,7 @@ const HIDDEN = new Set([
   "app.settings",
 ]);
 
-function titleOf(name) {
+function titleOf(name: string): { group: string; title: string } {
   const [noun, verb] = name.split(".");
   return {
     group: noun.charAt(0).toUpperCase() + noun.slice(1),
@@ -181,10 +244,10 @@ function titleOf(name) {
 }
 
 // Every entry for the state we're in now.
-function entries() {
+function entries(): PaletteEntry[] {
   const known = new Set(commands().map((c) => c.name));
   const mac = win()?.platform === "macos";
-  const list = NAMED.filter(([n]) => known.has(n))
+  const list: Omit<PaletteEntry, "id">[] = NAMED.filter(([n]) => known.has(n))
     .filter(([n]) => !(mac && n.startsWith("window.")))
     .map(([name, args, group, title, words]) => ({
       name,
@@ -220,7 +283,7 @@ function entries() {
 }
 
 // The key bound to an entry: `name` or `name:value` in keys.json.
-function keyOf(e, bound) {
+function keyOf(e: PaletteEntry, bound: KeyBindingInfo[]): string | null {
   const v = Object.values(e.args)[0];
   const want = v === undefined ? e.name : `${e.name}:${v}`;
   const k = bound.find((b) => b.section === "global" && b.action === want);
@@ -228,17 +291,17 @@ function keyOf(e, bound) {
 }
 
 // "ctrl-shift-p" -> ["ctrl", "shift", "p"]; "ctrl--" -> ["ctrl", "-"].
-function keyParts(k) {
+function keyParts(k: string): string[] {
   return k.endsWith("--") ? [...k.slice(0, -2).split("-"), "-"] : k.split("-");
 }
 
 // Fuzzy score of `q` in `text`, with the matched positions; null: no match.
-function fuzzy(q, text) {
+function fuzzy(q: string, text: string): FuzzyMatch | null {
   const t = text.toLowerCase();
   let score = 0;
   let at = 0;
   let run = 0;
-  const hits = [];
+  const hits: number[] = [];
   for (const ch of q) {
     const i = t.indexOf(ch, at);
     if (i < 0) return null;
@@ -252,7 +315,18 @@ function fuzzy(q, text) {
 }
 
 export default class Palette extends View {
-  init(_props, cx) {
+  declare query: string;
+  declare input: InputState;
+  // The selected row's index.
+  declare at: number;
+  declare scroll: number;
+  // How far the list can scroll, px.
+  declare maxScroll: number;
+  // The ids of the entries run lately, most recent first.
+  declare recent: string[];
+  declare handle: FocusHandle;
+
+  init(_props: Props | undefined, cx: AsyncContext): void {
     this.query = "";
     this.input = InputState.new({ placeholder: "Type a command…" });
     this.input.on("change", (_e, cx) => {
@@ -266,7 +340,9 @@ export default class Palette extends View {
     this.at = 0;
     // How far the list is scrolled, px.
     this.scroll = 0;
-    this.recent = JSON.parse(localStorage.getItem("recent") ?? "[]");
+    this.recent = JSON.parse(
+      localStorage.getItem("recent") ?? "[]",
+    ) as string[];
     this.handle = cx.focus_handle();
   }
 
@@ -274,7 +350,7 @@ export default class Palette extends View {
     closeOverlay(props().overlay);
   }
 
-  go(e) {
+  go(e: PaletteEntry | undefined): void {
     if (!e) return;
     this.recent = [e.id, ...this.recent.filter((r) => r !== e.id)].slice(0, 20);
     localStorage.setItem("recent", JSON.stringify(this.recent));
@@ -301,7 +377,7 @@ export default class Palette extends View {
   }
 
   // The rows to show: grouped when empty, ranked while typing.
-  rows() {
+  rows(): PaletteRow[] {
     const all = entries();
     const q = this.query.trim().toLowerCase().replace(/\s+/g, "");
     if (!q) {
@@ -320,7 +396,7 @@ export default class Palette extends View {
         ...[...rest, ...others].map((e) => ({ e, head: e.group })),
       ];
     }
-    const rank = (e) => this.recent.indexOf(e.id);
+    const rank = (e: PaletteEntry) => this.recent.indexOf(e.id);
     return all
       .map((e) => {
         const title = fuzzy(q, e.title);
@@ -336,12 +412,17 @@ export default class Palette extends View {
       );
   }
 
-  title(t, text, hits, on) {
+  title(
+    t: ThemeColors,
+    text: string,
+    hits: number[] | undefined,
+    on: boolean,
+  ): Element {
     if (!hits?.length)
       return div()
         .text_color(on ? t.foreground : t.muted)
         .child(text);
-    const parts = [];
+    const parts: [text: string, isHit: boolean][] = [];
     let cur = "";
     let lit = false;
     [...text].forEach((ch, i) => {
@@ -365,14 +446,14 @@ export default class Palette extends View {
   }
 
   render() {
-    const t = theme();
+    const t = theme() as ThemeColors;
     const rows = this.rows();
     const bound = keys();
     this.at = Math.min(this.at, Math.max(0, rows.length - 1));
     // One continuous strip: each row (and the group title before it) at a
     // fixed y. Scrolling moves the strip in pixels, only as far as it takes to
     // keep the selected row (and its group's title, if it opens one) in view.
-    const tops = [];
+    const tops: RowPlacement[] = [];
     let y = 0;
     rows.forEach((r, i) => {
       const head = !this.query && (i === 0 || r.head !== rows[i - 1].head);
@@ -390,7 +471,7 @@ export default class Palette extends View {
         this.scroll = sel.row + ROW_H - LIST_H;
     }
     this.scroll = Math.max(0, Math.min(this.scroll, this.maxScroll));
-    const key = (k) =>
+    const key = (k: string) =>
       h_flex()
         .gap(3)
         .children(
@@ -410,7 +491,7 @@ export default class Palette extends View {
     // above, not stacked: GPUI rounds every height to whole pixels, and a
     // stack of rounded heights drifts away from the model (19 px at zoom 1.3
     // by row 40, cutting the selection off). Edges from the model can't add up.
-    const place = (el, start, end) =>
+    const place = (el: Element, start: number, end: number) =>
       fixed
         ? el
             .absolute()
@@ -419,9 +500,9 @@ export default class Palette extends View {
             .top(start - this.scroll)
             .bottom(LIST_H - (end - this.scroll))
         : el.flex_none().h(end - start);
-    const visible = (start, end) =>
+    const visible = (start: number, end: number) =>
       !fixed || (end > this.scroll && start < this.scroll + LIST_H);
-    const list = [];
+    const list: Element[] = [];
     rows.forEach((r, i) => {
       const { head, title, row } = tops[i];
       if (head && visible(title, row))
