@@ -7,7 +7,6 @@
   lib,
   mkNonoWrapper,
   mkSecretEnvironmentWrapper,
-  mkSource,
   ...
 }:
 let
@@ -69,7 +68,6 @@ let
 in
 {
   imports = [
-    ../../lib/source.nix
     ../../nono
     ../../secrets
     ../skills.nix
@@ -83,8 +81,8 @@ in
       opencodeLaunchers.nonoLauncher
     ];
     home.file = {
-      ".config/opencode/opencode.jsonc".source = mkSource ./opencode.jsonc;
-      ".config/opencode/tui.json".source = mkSource ./tui.json;
+      ".config/opencode/opencode.jsonc".source = ./opencode.jsonc;
+      ".config/opencode/tui.json".source = ./tui.json;
       ".config/opencode/skills" = {
         source = config.agents.skillsDir;
         recursive = true;
