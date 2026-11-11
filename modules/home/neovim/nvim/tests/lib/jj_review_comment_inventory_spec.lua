@@ -4,7 +4,11 @@ local review_comments = require("lib.jj_review_comments")
 describe("JJ review comment inventory", function()
 	local directory, repo, config, original_store, original_confirm, original_notify
 	local landed, open, gone
-	local unreadable = string.rep("y", 32)
+	-- Vanished changes sort by change ID, and the assertions expect this store
+	-- after the abandoned change, whose ID is random over the letters k-z. So
+	-- this ID sorts after any random ID short of 31 leading z's, without being
+	-- all z's, which is the root commit's change ID and so would not vanish.
+	local unreadable = string.rep("z", 31) .. "y"
 	local function command(args)
 		local result = vim.system(args, { cwd = repo, text = true }):wait()
 		assert.are.equal(0, result.code, result.stderr)
