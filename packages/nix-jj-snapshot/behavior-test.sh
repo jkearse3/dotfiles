@@ -3,7 +3,8 @@
 # Tests when the nix-jj-snapshot wrapper snapshots the jj working copy and how
 # it runs the real Nix. Usage: behavior-test.sh <wrapper whose real Nix is a
 # stub>. The stub real Nix appends
-# `nix [arg]...` to $NIX_JJ_SNAPSHOT_TEST_LOG and prints `real nix output`; the
+# `nix [arg]...` to $NIX_JJ_SNAPSHOT_TEST_LOG, writes its HOME, or `<unset>`, to
+# $NIX_JJ_SNAPSHOT_TEST_LOG.home, and prints `real nix output`; the
 # stub `jj` this test writes appends `jj <args>` to the same log, so the log
 # records which commands ran, in order.
 
@@ -138,6 +139,25 @@ expect_run "NIX_SKIP_JJ_SNAPSHOT other than 1 still snapshots" \
 NIX_GET_COMPLETIONS=2 run_wrapper "$wrapper" "$path_with_jj" build .#
 expect_run "a shell completion request runs Nix without a snapshot" \
 	0 "real nix output" "nix [build] [.#]"
+
+cd "$outside_repository" || exit 1
+HOME="" run_wrapper "$wrapper" "$path_with_jj" flake check
+home="$(<"$NIX_JJ_SNAPSHOT_TEST_LOG.home")"
+if [[ $home == "<unset>" ]]; then
+	echo "ok - an empty HOME, as nh sets through sudo on macOS, reaches Nix unset"
+else
+	echo "not ok - an empty HOME reaches Nix as '$home'" >&2
+	failures=$((failures + 1))
+fi
+
+HOME="$work/home" run_wrapper "$wrapper" "$path_with_jj" flake check
+home="$(<"$NIX_JJ_SNAPSHOT_TEST_LOG.home")"
+if [[ $home == "$work/home" ]]; then
+	echo "ok - a non-empty HOME reaches Nix unchanged"
+else
+	echo "not ok - HOME $work/home reaches Nix as '$home'" >&2
+	failures=$((failures + 1))
+fi
 
 # A test cannot create a directory owned by another user without root, so the
 # foreign repository's `.jj` is a symlink to `/`, which root owns; the wrapper's

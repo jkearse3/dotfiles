@@ -1,5 +1,5 @@
 # Runs `behavior-test.sh` against a wrapper whose real Nix is a stub that logs
-# its arguments, so the test never runs Nix or jj.
+# its arguments and its HOME, so the test never runs Nix or jj.
 {
   lib,
   pkgs,
@@ -13,6 +13,7 @@ let
       printf ' [%s]' "$@"
       printf '\n'
     } >>"$NIX_JJ_SNAPSHOT_TEST_LOG"
+    printf '%s\n' "''${HOME-<unset>}" >"$NIX_JJ_SNAPSHOT_TEST_LOG.home"
     echo "real nix output"
   '';
   wrapper = pkgs.callPackage ./package.nix { realNix = "${realNixStub}"; };

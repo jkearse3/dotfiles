@@ -55,4 +55,14 @@ if [[ ${NIX_SKIP_JJ_SNAPSHOT-} != 1 && -z ${NIX_GET_COMPLETIONS-} ]] &&
 	fi
 fi
 
+# On macOS, nh runs Nix through sudo with HOME set but empty. Nix uses an empty
+# HOME literally, as the current directory, so root's caches and crash reports
+# land in a root-owned `.cache` there. During `switch-system` that directory is
+# this repository, where the `.cache` breaks every `jj util snapshot`. With
+# HOME unset, Nix takes the home from the account database instead: under sudo,
+# root's `/var/root`.
+if [[ -n ${HOME+set} && -z $HOME ]]; then
+	unset HOME
+fi
+
 exec "$REAL_NIX" "$@"
