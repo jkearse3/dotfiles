@@ -13,14 +13,15 @@
 }:
 let
   # Personal layouts and mods are copied into `~/.config/herdr-app` on each
-  # switch rather than linked with `mkSource` like other editable config:
+  # switch rather than linked from the store or from this working tree:
   # - The app writes its typings (`gpui-kit.d.ts`, `jsconfig.json`) into
-  #   every mod folder it loads, which would land in this working tree.
+  #   every mod folder it loads, which the read-only store refuses and which
+  #   would land in this working tree.
   # - The app reloads a mod or layout when a file's mtime changes, and store
   #   files all share mtime 1, so a store link would never reload.
-  # - A live link put each edit in front of the running window mid-edit, and
-  #   a layout could go live before the mods it names were linked, which
-  #   replaced the window's layout with `main`.
+  # - A link into this working tree puts each edit in front of the running
+  #   window mid-edit, and a layout could go live before the mods it names
+  #   were linked, which replaced the window's layout with `main`.
   # A copy changes only at a switch, after the build has checked the layouts
   # against the mods. Home Manager refuses to link over these copies, so
   # activating an older generation that linked them fails with "Existing

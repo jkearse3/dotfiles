@@ -131,11 +131,9 @@ so the fix lands in the same change.
 ## Module Interfaces
 
 Reusable Home modules receive `dotfilesPackages`, which combines repository
-packages with selected external packages, and `dotfilesSource`, which describes
-the repository source and editable-delivery mode. `modules/home/lib/source.nix`
-turns the latter into the shared `mkSource` helper. `dotfilesNixConfig` is the
-`nixConfig` that `flake.nix` declares, which the Nix module copies into the
-user's Nix configuration.
+packages with selected external packages. `dotfilesNixConfig` is the `nixConfig`
+that `flake.nix` declares, which the Nix module copies into the user's Nix
+configuration.
 
 Modules that contribute agent skills import `modules/home/agents/skills.nix`
 explicitly. Agent frontends import the modules providing the factories they use:

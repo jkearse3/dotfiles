@@ -315,8 +315,3 @@ instead.
 Move the unmanaged file to a clearly named backup, rerun the Home Manager
 switch, compare the managed result with the backup, and retain the backup until
 verification succeeds.
-
-### Editable configuration links are broken
-
-Restore the repository at `~/dotfiles` and rerun `nix run .#switch-home`. The
-normal configuration intentionally links managed source files to this checkout.

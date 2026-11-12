@@ -27,8 +27,6 @@ let
           pi = child "pi";
           opencode = child "opencode";
         };
-        dotfilesSource.editable = true;
-        mkSource = path: path;
         agentInteractivePolicy.shellExports = "export TEST_INTERACTIVE_POLICY=applied";
         agentLauncher = { commandLine }: ''
           printf '%s\n' launcher >> "$CONSUMER_TRACE"

@@ -5,7 +5,6 @@
 blueprint:
 let
   home-manager = inputs.home-manager-unstable;
-  useEditableHomeSources = builtins.getEnv "DOTFILES_HOME_LOCKED" == "";
   homeManagerBaselineModule = {
     home = {
       username = blueprint.user.name;
@@ -40,11 +39,6 @@ withSystem blueprint.system (
           opencode
           pi
           ;
-      };
-      dotfilesSource = {
-        root = inputs.self;
-        repositoryDirectory = "dotfiles";
-        editable = useEditableHomeSources;
       };
       dotfilesUser = blueprint.user;
       # The binary cache settings that `flake.nix` declares, so the home
