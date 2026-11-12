@@ -27,8 +27,8 @@ creates `dotfiles/blueprint-id` under the XDG config root (normally
 
 Run these from the repository root:
 
-- `nix run .#<build|switch>-home -- [--blueprint <blueprint-id>] [--locked]` -
-  Home Manager: build or switch; `--locked` uses store-backed sources
+- `nix run .#<build|switch>-home -- [--blueprint <blueprint-id>]` - Home
+  Manager: build or switch
 - `nix run .#<build|switch>-system -- [--blueprint <blueprint-id>]` - system:
   build or switch
 - `nix build --no-link .#eval-blueprints` - evaluate every blueprint without

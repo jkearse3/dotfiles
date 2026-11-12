@@ -12,7 +12,6 @@
       "Bash(nix flake check)",
       "Bash(nix eval .#blueprints --apply builtins.attrNames)",
       "Bash(nix run .#build-home)",
-      "Bash(nix run .#build-home -- --locked)",
       "Bash(nix run .#build-system)"
     ]
   }

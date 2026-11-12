@@ -117,8 +117,7 @@ The `build-home`, `switch-home`, `build-system`, and `switch-system` flake apps
 for example `nix run .#build-home -- --blueprint <blueprint-id>`. They run the
 `dotfiles-apps` script (`packages/dotfiles-apps`), which carries the inventory
 from build time, selects the blueprint from `--blueprint` or the marker, and
-adds the `DOTFILES_PRIVATE_LOCAL` override to its nh calls; `--locked` builds
-store-backed home sources.
+adds the `DOTFILES_PRIVATE_LOCAL` override to its nh calls.
 
 The same script backs the `package-update` and `flake-update` apps.
 `package-update` runs every `packages/*/update.sh --latest` updater (`--dry-run`

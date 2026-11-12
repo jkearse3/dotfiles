@@ -41,11 +41,6 @@ git clone https://github.com/jkearse3/dotfiles.git "$HOME/dotfiles"
 cd "$HOME/dotfiles"
 ```
 
-Normal Home Manager activation creates editable links into `~/dotfiles`. Do not
-move or delete this checkout after activation. Pass `--locked` to the Home
-Manager switch only when store-backed, non-editable sources are specifically
-needed.
-
 ## Provision GitHub SSH Access
 
 The flake includes `dotfiles-private` as an SSH input. Provision access before

@@ -65,8 +65,8 @@ expect "--help prints usage and exits 0" 0 "usage: nix run .#build-home"
 run_app "$repo" build-home --bogus
 expect "an unknown option exits 2" 2 "build-home does not accept '--bogus'"
 
-run_app "$repo" build-system --locked
-expect "--locked is rejected for system apps" 2 "build-system does not accept '--locked'"
+run_app "$repo" build-system --dry-run
+expect "--dry-run is rejected for system apps" 2 "build-system does not accept '--dry-run'"
 
 run_app "$repo" build-home --blueprint
 expect "--blueprint without an ID exits 2" 2 "--blueprint requires a blueprint ID"
@@ -90,10 +90,8 @@ DOTFILES_PRIVATE_LOCAL="$work/missing" run_app "$repo" build-home --blueprint "$
 expect "an invalid DOTFILES_PRIVATE_LOCAL fails" 1 "DOTFILES_PRIVATE_LOCAL does not identify a flake checkout"
 
 # Nix is not on PATH here, so nh fails right after selection.
-run_app "$repo" build-home --locked --blueprint "$blueprint_id"
-expect_output "options after --locked select the blueprint" "Selected blueprint '$blueprint_id' from --blueprint"
-run_app "$repo" build-home --blueprint "$blueprint_id" --locked
-expect_output "options before --locked select the blueprint" "Selected blueprint '$blueprint_id' from --blueprint"
+run_app "$repo" build-home --blueprint "$blueprint_id"
+expect_output "--blueprint selects the blueprint" "Selected blueprint '$blueprint_id' from --blueprint"
 
 printf '%s\n' "$blueprint_id" >"$XDG_CONFIG_HOME/dotfiles/blueprint-id"
 run_app "$repo" build-system
@@ -105,8 +103,8 @@ expect "--dry-run is rejected for flake-update" 2 "flake-update does not accept 
 run_app "$repo" flake-update --help
 expect "flake-update --help exits 0" 0 "usage: nix run .#flake-update"
 
-run_app "$repo" package-update --locked
-expect "--locked is rejected for package-update" 2 "package-update does not accept '--locked'"
+run_app "$repo" package-update --blueprint x
+expect "--blueprint is rejected for package-update" 2 "package-update does not accept '--blueprint'"
 
 run_app "$repo" package-update --dry-run
 expect "package-update without updaters succeeds" 0 "No package updaters found"

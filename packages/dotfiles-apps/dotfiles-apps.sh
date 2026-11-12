@@ -15,11 +15,10 @@ usage() {
 	case $command in
 	build-home | switch-home)
 		cat <<EOF
-usage: nix run .#$command -- [--blueprint <blueprint-id>] [--locked]
+usage: nix run .#$command -- [--blueprint <blueprint-id>]
 
   --blueprint <blueprint-id>  select a blueprint instead of reading the
                               dotfiles/blueprint-id marker
-  --locked                    use store-backed home sources instead of editable ones
   --help                      print this usage
 EOF
 		;;
@@ -70,7 +69,7 @@ fail_usage() {
 # Succeeds when `command` accepts `option`.
 accepts_option() {
 	case $1:$2 in
-	*:--help | *-home:--blueprint | *-home:--locked | *-system:--blueprint | package-update:--dry-run) ;;
+	*:--help | *-home:--blueprint | *-system:--blueprint | package-update:--dry-run) ;;
 	*) return 1 ;;
 	esac
 }
@@ -141,25 +140,15 @@ nh_diff_mode() {
 
 # Runs `nh home <build|switch>` on a Home Manager configuration. nh keeps its
 # result link in a temporary directory and, for switch, activates without
-# elevation. Locked mode selects store-backed home sources through
-# DOTFILES_HOME_LOCKED, which evaluation reads only with `--impure`.
+# elevation.
 nh_home() {
 	local action=$1
 	local home_configuration_name=$2
-	local is_locked=$3
-
-	local locked_args=()
-	if [[ -n $is_locked ]]; then
-		export DOTFILES_HOME_LOCKED=1
-		locked_args=(--impure)
-	else
-		unset DOTFILES_HOME_LOCKED
-	fi
 
 	local diff_mode
 	diff_mode="$(nh_diff_mode "$HOME/.local/state/nix/profiles/home-manager")"
 
-	nh home "$action" . -c "$home_configuration_name" --diff "$diff_mode" --show-trace --accept-flake-config "${private_override[@]}" "${locked_args[@]}"
+	nh home "$action" . -c "$home_configuration_name" --diff "$diff_mode" --show-trace --accept-flake-config "${private_override[@]}"
 }
 
 # Runs `nh darwin <build|switch>` on a nix-darwin configuration. The app itself
@@ -264,7 +253,7 @@ main() {
 	*) fail_usage "$command" "unknown command '$command'" ;;
 	esac
 
-	local blueprint_id="" is_locked="" is_dry_run=""
+	local blueprint_id="" is_dry_run=""
 	while [[ $# -gt 0 ]]; do
 		accepts_option "$command" "$1" || fail_usage "$command" "$command does not accept '$1'"
 		case $1 in
@@ -277,7 +266,6 @@ main() {
 			blueprint_id=$2
 			shift
 			;;
-		--locked) is_locked=1 ;;
 		--dry-run) is_dry_run=1 ;;
 		esac
 		shift
@@ -308,7 +296,7 @@ main() {
 	select_blueprint "${command#*-}" "$blueprint_id"
 
 	case $command in
-	*-home) nh_home "${command%-home}" "$output_name" "$is_locked" ;;
+	*-home) nh_home "${command%-home}" "$output_name" ;;
 	*-system) nh_darwin "${command%-system}" "$output_name" ;;
 	esac
 }
