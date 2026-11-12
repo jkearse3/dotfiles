@@ -15,12 +15,20 @@
 # This file is a module function over the top-level flake-parts arguments, so
 # a check can also read top-level flake outputs such as the home
 # configurations.
-{ lib, ... }:
+{ config, lib, ... }:
+let
+  # The blueprint whose Home Manager configuration the `neovim-startup` check
+  # starts Neovim from. It does not read the private flake input.
+  neovimStartupBlueprint = config.flake.blueprints.laptop-dev-default;
+  neovimStartupHomeConfig =
+    config.flake.homeConfigurations.${neovimStartupBlueprint.homeConfigurationName}.config;
+in
 {
   perSystem =
     {
       config,
       pkgs,
+      system,
       unstablePkgs,
       ...
     }:
@@ -244,6 +252,15 @@
             ];
             # The test skips its jj cases when jj or jjx is missing from PATH.
             requiredOutputLines = [ "ok - non-Git jj workspace resolves its default workspace" ];
+          };
+        }
+        # Starts Neovim as Home Manager installs it for the blueprint, so the
+        # check exists only on that blueprint's system.
+        // lib.optionalAttrs (system == neovimStartupBlueprint.system) {
+          neovim-startup = unstablePkgs.callPackage ../modules/home/neovim/startup-check.nix {
+            neovim = neovimStartupHomeConfig.programs.neovim.finalPackage;
+            neovimConfig = neovimStartupHomeConfig.home.file.".config/nvim".source;
+            neovimPack = neovimStartupHomeConfig.xdg.dataFile."nvim/site/pack/hm".source;
           };
         };
     };
