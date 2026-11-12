@@ -90,22 +90,22 @@ for all of them; only the scope, its secrets, and their handling differ.
 ### OpenCode and Pi (`EXA_API_KEY`)
 
 OpenCode and Pi resolve their respective `opencode` and `pi` scopes, whose only
-secret is the optional `EXA_API_KEY` — an [Exa](https://exa.ai) search key.
-Store, inspect, rotate, or remove it:
+secret is the optional `EXA_API_KEY` — an [Exa](https://exa.ai) search key. Run
+these from the repository root to store, inspect, rotate, or remove it:
 
 ```sh
 # Store or replace (hidden prompt; never on the command line).
-secretspec set --file ~/dotfiles/secretspec.toml \
+secretspec set --file secretspec.toml \
   --provider dotfiles --profile default EXA_API_KEY
 
 # Check resolution without printing any value.
-secretspec check --file ~/dotfiles/secretspec.toml \
+secretspec check --file secretspec.toml \
   --provider dotfiles --profile default --scope opencode --explain
-secretspec check --file ~/dotfiles/secretspec.toml \
+secretspec check --file secretspec.toml \
   --provider dotfiles --profile default --scope pi --explain
 
 # Remove it (free tier resumes).
-secretspec delete --file ~/dotfiles/secretspec.toml \
+secretspec delete --file secretspec.toml \
   --provider dotfiles --profile default EXA_API_KEY
 ```
 

@@ -34,7 +34,8 @@ Open a new terminal and verify both tools:
 nix --version
 ```
 
-Clone the public repository into the required location:
+Clone the public repository. The commands in this guide use `~/dotfiles`, but
+any location works:
 
 ```sh
 git clone https://github.com/jkearse3/dotfiles.git "$HOME/dotfiles"
