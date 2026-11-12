@@ -75,7 +75,7 @@ pkgs.writeShellApplication {
                 echo "  secretspec config global provider add dotfiles <provider>   # e.g. keyring://, pass://, gopass://"
                 echo "  secretspec config global provider list"
                 echo
-                echo "See ~/dotfiles/docs/secrets.md for provider choices and setup."
+                echo "See docs/secrets.md in the dotfiles repository for provider choices and setup."
               } >&2
               exit 1
             ''
