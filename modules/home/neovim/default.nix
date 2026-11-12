@@ -2,7 +2,6 @@
   config,
   dotfilesPackages,
   lib,
-  mkSource,
   pkgs,
   ...
 }:
@@ -21,8 +20,6 @@ let
   ];
 in
 {
-  imports = [ ../lib/source.nix ];
-
   programs.neovim = {
     enable = true;
     extraWrapperArgs = darwinRuntimeDirectoryWrapperArgs;
@@ -44,7 +41,16 @@ in
     sessionVariables = {
       EDITOR = "nvim";
     };
-    file.".config/nvim".source = mkSource ./nvim;
+    # A read-only store copy, so a generation never follows a checkout. Tests,
+    # the README, and stylua.toml stay out.
+    file.".config/nvim".source = lib.fileset.toSource {
+      root = ./nvim;
+      fileset = lib.fileset.unions [
+        ./nvim/init.lua
+        ./nvim/lua
+        ./nvim/after
+      ];
+    };
 
     # Earlier setups installed plugins with vim.pack into site/pack/core and
     # compiled tree-sitter parsers and queries into site/parser, parser-info,
