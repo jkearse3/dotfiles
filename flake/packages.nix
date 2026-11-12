@@ -71,9 +71,6 @@
         };
         nix-cleanup = pkgs.callPackage ../packages/nix-cleanup/package.nix { };
         nix-jj-snapshot = pkgs.callPackage ../packages/nix-jj-snapshot/package.nix { };
-        nvim-pack = pkgs.callPackage ../packages/nvim-pack/package.nix {
-          inherit (unstablePkgs) neovim;
-        };
         pi-extension-deps = pkgs.callPackage ../packages/pi-extension-deps/package.nix {
           inherit (unstablePkgs) nodejs;
           extensions = piExtensions;

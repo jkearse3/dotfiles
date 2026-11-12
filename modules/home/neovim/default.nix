@@ -1,6 +1,5 @@
 {
   config,
-  dotfilesPackages,
   lib,
   pkgs,
   ...
@@ -37,7 +36,6 @@ in
   };
 
   home = {
-    packages = [ dotfilesPackages.nvim-pack ];
     sessionVariables = {
       EDITOR = "nvim";
     };

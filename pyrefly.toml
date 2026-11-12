@@ -7,7 +7,6 @@ project-includes = [
   "packages/herdr-find",
   "packages/herdr-jj-workspaces",
   "packages/nix-cleanup",
-  "packages/nvim-pack",
   "packages/scratch-sweep",
   "packages/jjx",
   "packages/token-count",
@@ -19,6 +18,5 @@ search-path = [
   "packages/herdr-jj-workspaces/src",
   "packages/jjx/src",
   "packages/nix-cleanup",
-  "packages/nvim-pack",
   "packages/scratch-sweep",
 ]
