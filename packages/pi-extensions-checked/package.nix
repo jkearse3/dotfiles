@@ -7,10 +7,9 @@
 # load: the modules pi provides, mapped by `pi-extension-types`, and the npm
 # packages built from the extensions' lockfile.
 #
-# Pi reads extensions through a symlink into the checkout, so no other
-# derivation looks at their contents. Home Manager links this one into each
-# generation, which makes a failing check fail the switch. Building the package
-# on its own runs the same check against the current tree.
+# The extension tree Home Manager installs depends on this package, so a
+# failing check fails the home build and the switch. Building the package on its
+# own runs the same check against the current tree.
 {
   extensions,
   herdr,
@@ -23,8 +22,8 @@
 }:
 let
   # Herdr ships the authoritative Pi lifecycle and session integration beside
-  # its binary. Editable delivery reaches it through the stable user-profile
-  # link tracked in `extensions/herdr-agent-state.ts`; locked delivery replaces
+  # its binary. The checkout reaches it through the stable user-profile link
+  # tracked in `extensions/herdr-agent-state.ts`; the installed tree replaces
   # that relative link with this exact package artifact.
   herdrPiIntegration = "${herdr}/share/herdr/integrations/pi/herdr-agent-state.ts";
 in

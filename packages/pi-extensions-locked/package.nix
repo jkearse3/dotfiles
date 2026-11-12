@@ -1,9 +1,8 @@
-# Immutable pi extension tree for locked Home Manager delivery.
+# Immutable pi extension tree that Home Manager installs at
+# `~/.pi/agent/extensions`.
 #
-# Locked mode cannot use the editable checkout's gitignored `node_modules`, so
-# this builds a complete extension root from the same lockfile used by editable
-# npm installs. In editable mode the pi module's mkSource points Pi directly at
-# the checkout instead, where npm owns runtime dependencies.
+# A checkout's gitignored `node_modules` is never release input, so this builds
+# a complete extension root from the same lockfile that local npm installs use.
 {
   extensions,
   pi-extension-deps,

@@ -6,9 +6,24 @@ This directory is the source for Pi's standard global extension path:
 ~/.pi/agent/extensions
 ```
 
-In editable Home Manager mode that path is a symlink into this checkout. Pi
-auto-discovers `*/index.ts`, and `/reload` applies source changes without a Home
-Manager rebuild.
+Home Manager installs this directory there as a read-only store tree, the
+`pi-extensions-locked` package, built only after the extensions type-check. Pi
+auto-discovers `*/index.ts`, so a source change reaches Pi at the next switch.
+
+## Testing changes
+
+Switch from the checkout that holds the change, then start Pi or run `/reload`
+in an open session:
+
+```bash
+nix run .#switch-home
+```
+
+The switch is global, so every new or reloaded Pi session uses that checkout's
+extensions until a switch from another checkout. To try a brand-new extension
+without a switch, load it beside the installed ones with
+`pi -e <checkout>/modules/home/agents/pi/extensions/<name>/index.ts`; a changed
+copy of an installed extension can clash with the installed one.
 
 ## Subagents
 
@@ -151,8 +166,7 @@ definitely gone. A malformed or spawn-unconfirmed crash lock remains fail-closed
 rather than risking concurrent writers and may retain storage beyond normal
 expiry; source changes are never rolled back.
 
-In editable mode, `/reload` discovers this extension without a rebuild. The
-updated delegation instructions require Home Manager activation to reach the
+The updated delegation instructions require Home Manager activation to reach the
 generated global `AGENTS.md`. The legacy `pi-shepherd` package, skill, launch
 configuration, and sandbox grants have been removed from managed configuration.
 Existing legacy runtime databases and unrelated live teammates are not migrated
@@ -179,8 +193,7 @@ spinner: `Working… (0.0s)`, updating every tenth of a second (for example,
 stamps retain local wall-clock observations. Settlement restores the default
 working label, and each new busy period starts at zero. The timer is visible
 whenever Pi shows the working spinner. Session navigation, reload, and shutdown
-dispose it. Non-TUI sessions start no timer. In editable mode, `/reload` applies
-changes without a Home Manager rebuild.
+dispose it. Non-TUI sessions start no timer.
 
 Assistant turn timing sidecars remain persisted but hidden by default, including
 in older sessions. `/timings` toggles their original transcript rows on or off
@@ -254,8 +267,8 @@ integration in the active Nix profile. This gives Herdr its canonical installed
 filename, so `herdr integration status` verifies the same artifact shipped by
 the installed Herdr package instead of a copied extension.
 
-Editable delivery preserves that profile-relative link. Locked delivery, the
-`pi-extensions-locked` package, replaces it with a direct link to the selected
+The installed tree, the `pi-extensions-locked` package, replaces that
+profile-relative link with a direct link to the selected
 `dotfilesPackages.herdr` artifact. The `pi-extensions-checked` package
 (`nix build --no-link .#pi-extensions-checked`) checks the integration identity,
 version marker, and source link target, and the Home Manager build fails through
@@ -289,26 +302,26 @@ declarations into its own copy of the sources.
 
 ## Add a runtime dependency
 
-All global extensions share this directory's npm dependency set. From any
-working directory, install through Pi's canonical path:
+All global extensions share this directory's npm dependency set. From the
+repository root, install into this directory:
 
 ```bash
-npm install --prefix ~/.pi/agent/extensions <package>
+npm install --prefix modules/home/agents/pi/extensions <package>
 ```
 
 npm saves an exact version, updates `package-lock.json`, and writes the
 Git-ignored `node_modules`. Install scripts are disabled by `.npmrc`; review a
 package before making any exception for generated or native artifacts.
 
-After switching revisions or on a fresh editable checkout, restore exactly the
-locked dependency tree:
+After switching revisions or in a fresh checkout, restore exactly the locked
+dependency tree for editors:
 
 ```bash
-npm ci --prefix ~/.pi/agent/extensions
+npm ci --prefix modules/home/agents/pi/extensions
 ```
 
 Import only packages listed in `dependencies`. Nix rebuilds the same lockfile
-independently for the typecheck and for locked Home Manager delivery, so local
+independently for the typecheck and for the installed tree, so local
 `node_modules` is never trusted as release input, and an import that typechecks
 is one the delivered tree can load. The typecheck does not stop an import of a
 package that is installed only because another dependency pulls it in.

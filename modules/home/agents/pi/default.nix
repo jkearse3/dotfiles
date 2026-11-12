@@ -3,12 +3,10 @@
   agentLauncher,
   config,
   dotfilesPackages,
-  dotfilesSource,
   pkgs,
   lib,
   mkNonoWrapper,
   mkSecretEnvironmentWrapper,
-  mkSource,
   ...
 }:
 let
@@ -28,9 +26,6 @@ let
       ;
   };
 
-  piExtensionsSource =
-    if dotfilesSource.editable then mkSource ./extensions else dotfilesPackages.pi-extensions-locked;
-
   # The `pi` secret environment supplies EXA_API_KEY. It is optional: when
   # absent, the interpolated header is empty and Exa continues on its anonymous
   # free tier.
@@ -42,7 +37,6 @@ let
 in
 {
   imports = [
-    ../../lib/source.nix
     ../../secrets
     ../rules.nix
     ../skills.nix
@@ -79,14 +73,6 @@ in
         piLaunchers.launcher
         piLaunchers.nonoLauncher
       ];
-
-      extraBuilderCommands = ''
-        # The extensions themselves are delivered by symlink, so the generation
-        # has no other reference to them and the check, which also gates the
-        # Herdr integration they link to, would never be built.
-        mkdir -p $out/state
-        ln -s ${dotfilesPackages.pi-extensions-checked} $out/state/pi-extensions-checked
-      '';
 
       # Pi's `/mcp` command rewrites `enabled` and `exposure` values, so the
       # file must stay writable rather than a read-only Home Manager symlink.
@@ -125,10 +111,11 @@ in
         };
 
         # Pi auto-discovers `<dir>/index.ts` under its standard global directory,
-        # so a new extension needs no registration or Home Manager activation.
-        # Editable mode points into the checkout; locked mode supplies an
-        # immutable tree with the same lockfile-derived runtime dependencies.
-        ".pi/agent/extensions".source = piExtensionsSource;
+        # so a new extension needs no registration. The directory is an
+        # immutable store tree with lockfile-derived runtime dependencies,
+        # built only after the extensions type-check, so extension changes
+        # reach Pi at the next switch.
+        ".pi/agent/extensions".source = dotfilesPackages.pi-extensions-locked;
         ".pi/agent/skills" = {
           source = config.agents.skillsDir;
           recursive = true;

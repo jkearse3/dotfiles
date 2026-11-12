@@ -2,7 +2,7 @@
 #
 # importNpmLock fetches from the integrity hashes already recorded in
 # package-lock.json, so dependency updates need no second Nix hash. Install
-# scripts stay disabled in both editable npm installs and this Nix build.
+# scripts stay disabled in both local npm installs and this Nix build.
 {
   extensions,
   nodejs,
