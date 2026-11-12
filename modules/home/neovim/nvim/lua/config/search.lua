@@ -131,7 +131,7 @@ local function set_fzf_keymaps(fzf)
 end
 
 require("lib.config").run({
-	plugins = { "https://github.com/ibhagwan/fzf-lua" },
+	plugins = { "fzf-lua" },
 	setup = function()
 		---@type fzf-lua
 		local fzf = require("fzf-lua")

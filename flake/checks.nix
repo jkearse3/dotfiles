@@ -206,12 +206,18 @@
             unstablePkgs.callPackage ../modules/home/vcs/jj/migrate-jj-sign-on-push/package.nix
               { };
 
+          # The home build runs this Neovim site migration's fixture test, but
+          # `nix flake check` does not build a home configuration.
+          migrate-neovim-site =
+            unstablePkgs.callPackage ../modules/home/neovim/migrate-neovim-site/package.nix
+              { };
+
           # The deploy tree copies `mod-lib/names.ts` into mods, and the home
           # build runs no test of it.
           herdr-app-names = unstablePkgs.callPackage ../modules/home/terminal/herdr-app/names-check.nix { };
 
-          # Runs the Neovim configuration's plenary specs on the lockfile-pinned
-          # plugins.
+          # Runs the Neovim configuration's plenary specs on the plugin
+          # derivations Home Manager installs (`modules/home/neovim/plugins.nix`).
           neovim = unstablePkgs.callPackage ../modules/home/neovim/nvim/tests/check.nix {
             inherit (config.packages) jjx;
           };

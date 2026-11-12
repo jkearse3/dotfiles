@@ -1,15 +1,17 @@
 require("lib.config").run({
-	plugins = { "https://github.com/mfussenegger/nvim-lint" },
+	plugins = { "nvim-lint" },
 	setup = function()
 		local lint = require("lint")
 
 		-- golangci-lint: Pass directory instead of file as the lint target.
 		-- Linting a single file fails when it references symbols from other
-		-- files in the same Go package.
+		-- files in the same Go package. nvim-lint builds these args by running
+		-- golangci-lint, so they are nil where it is not installed.
 		local golangcilint_args = lint.linters.golangcilint.args
-		local golangcilint_args_len = #golangcilint_args
-		golangcilint_args[golangcilint_args_len] = function()
-			return vim.fn.fnamemodify(vim.api.nvim_buf_get_name(0), ":h")
+		if golangcilint_args then
+			golangcilint_args[#golangcilint_args] = function()
+				return vim.fn.fnamemodify(vim.api.nvim_buf_get_name(0), ":h")
+			end
 		end
 
 		lint.linters_by_ft = {

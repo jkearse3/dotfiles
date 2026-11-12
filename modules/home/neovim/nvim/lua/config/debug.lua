@@ -1,8 +1,5 @@
 require("lib.config").run({
-	plugins = {
-		"https://github.com/mfussenegger/nvim-dap",
-		"https://github.com/leoluz/nvim-dap-go",
-	},
+	plugins = { "nvim-dap", "nvim-dap-go" },
 	setup = function()
 		require("dap-go").setup()
 

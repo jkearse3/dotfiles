@@ -171,6 +171,6 @@ local function setup_test()
 end
 
 require("lib.config").run({
-	plugins = { "https://github.com/vim-test/vim-test" },
+	plugins = { "vim-test" },
 	setup = setup_test,
 })

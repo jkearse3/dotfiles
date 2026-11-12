@@ -91,12 +91,7 @@ local blink_options = {
 }
 
 require("lib.config").run({
-	plugins = {
-		{
-			src = "https://github.com/saghen/blink.cmp",
-			version = vim.version.range("1.*"),
-		},
-	},
+	plugins = { "blink.cmp" },
 	setup = function()
 		---@type blink.cmp.API
 		local blink = require("blink.cmp")

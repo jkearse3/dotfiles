@@ -59,6 +59,6 @@ local function setup_oil()
 end
 
 require("lib.config").run({
-	plugins = { "https://github.com/stevearc/oil.nvim" },
+	plugins = { "oil.nvim" },
 	setup = setup_oil,
 })

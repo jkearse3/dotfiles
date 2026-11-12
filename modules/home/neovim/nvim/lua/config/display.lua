@@ -13,7 +13,7 @@ vim.opt.listchars = {
 
 -- Tokyonight colorscheme.
 require("lib.config").run({
-	plugins = { "https://github.com/folke/tokyonight.nvim" },
+	plugins = { "tokyonight.nvim" },
 	setup = function()
 		vim.cmd("colorscheme tokyonight-night")
 	end,

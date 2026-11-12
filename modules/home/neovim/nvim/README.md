@@ -1,5 +1,27 @@
 # Neovim VCS inspection
 
+## Installation and plugins
+
+Home Manager installs every plugin and all tree-sitter grammars from
+nixpkgs-unstable; `modules/home/neovim/plugins.nix` lists them. They update with
+the flake inputs through `nix run .#flake-update`, and Neovim never downloads
+plugins or compiles parsers at runtime.
+
+To add a plugin, add its `vimPlugins` attribute to `plugins.nix` under its
+plugin name and add that name to the `plugins` list of the Lua spec that loads
+it.
+
+To roll back a plugin update, restore the earlier `flake.lock` or `plugins.nix`
+with jj and switch again. Do not activate an older Home Manager generation
+instead: a generation from before this setup has no plugins in `site/pack/hm`,
+but its `~/.config/nvim` still links to the checkout, so Neovim would run the
+current Lua without its plugins.
+
+The first switch to this setup deletes the plugins vim.pack cloned into
+`~/.local/share/nvim/site/pack/core` and the parsers and queries nvim-treesitter
+compiled into `site/parser`, `site/parser-info`, and `site/queries`. Restart
+open Neovim instances afterwards.
+
 ## History and blame
 
 - `<leader>glh`: repository history for the current file's repository (editor

@@ -73,10 +73,10 @@ describe("read-only Git history", function()
 	end)
 
 	it("installs the same allowlists through the actual search configuration", function()
-		local add = vim.pack.add
-		vim.pack.add = function() end
+		local packadd = vim.cmd.packadd
+		vim.cmd.packadd = function() end
 		local ok, err = pcall(dofile, "lua/config/search.lua")
-		vim.pack.add = add
+		vim.cmd.packadd = packadd
 		assert(ok, err)
 		local opts = config.normalize_opts({}, "git.commits")
 		assert.are.same({ "ctrl-y", "enter", "esc" }, vim.fn.sort(vim.tbl_keys(opts.actions)))

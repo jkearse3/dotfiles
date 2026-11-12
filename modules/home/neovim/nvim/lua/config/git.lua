@@ -1,6 +1,6 @@
 -- Gitsigns
 require("lib.config").run({
-	plugins = { "https://github.com/lewis6991/gitsigns.nvim" },
+	plugins = { "gitsigns.nvim" },
 	setup = function()
 		local gitsigns = require("gitsigns")
 
@@ -164,7 +164,7 @@ end, { desc = "Git: Yank selected remote permalink" })
 
 -- Plenary remains available for the headless regression suite.
 require("lib.config").run({
-	plugins = { "https://github.com/nvim-lua/plenary.nvim" },
+	plugins = { "plenary.nvim" },
 })
 
 -- Native terminal integration; the LazyGit application remains installed by Nix.

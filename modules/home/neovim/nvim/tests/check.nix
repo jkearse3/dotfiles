@@ -1,7 +1,8 @@
-# Runs the Neovim configuration's plenary specs against the lockfile-pinned
-# plugins that `tests/minimal_init.lua` loads. The plugins sit under the default
-# `site` packpath because plenary's child Neovim processes reject an extended
-# packpath.
+# Runs the Neovim configuration's plenary specs against the plenary.nvim and
+# fzf-lua derivations from `modules/home/neovim/plugins.nix`, the same ones Home
+# Manager installs, which `tests/minimal_init.lua` loads. The plugins sit under
+# the default `site` packpath because plenary's child Neovim processes reject an
+# extended packpath.
 #
 # `flake/checks.nix` registers this as the `neovim` check with `callPackage`.
 {
@@ -13,27 +14,10 @@
   lib,
   neovim-unwrapped,
   runCommand,
+  vimPlugins,
 }:
 let
-  neovimPluginLock = lib.importJSON ../nvim-pack-lock.json;
-
-  # Fetches a plugin at the revision `nvim-pack-lock.json` pins, so the
-  # tests exercise the plugins the Neovim configuration deploys.
-  fetchLockedNeovimPlugin =
-    pluginName:
-    let
-      lockedPlugin = neovimPluginLock.plugins.${pluginName};
-      githubRepository = builtins.match "https://github.com/([^/]+)/([^/]+)" lockedPlugin.src;
-    in
-    assert lib.assertMsg (
-      githubRepository != null
-    ) "nvim-pack-lock.json: ${pluginName} source is not a GitHub repository: ${lockedPlugin.src}";
-    builtins.fetchTree {
-      type = "github";
-      owner = builtins.elemAt githubRepository 0;
-      repo = builtins.elemAt githubRepository 1;
-      inherit (lockedPlugin) rev;
-    };
+  neovimPlugins = import ../../plugins.nix vimPlugins;
 
   # Excludes this runner, so editing it does not change the tested source.
   neovimTestSource = lib.fileset.toSource {
@@ -63,10 +47,10 @@ runCommand "neovim"
     export XDG_CACHE_HOME="$TMPDIR/xdg/cache"
     mkdir -p "$HOME" "$XDG_CONFIG_HOME" "$XDG_DATA_HOME" "$XDG_STATE_HOME" "$XDG_CACHE_HOME"
 
-    plugin_dir="$XDG_DATA_HOME/nvim/site/pack/locked/opt"
+    plugin_dir="$XDG_DATA_HOME/nvim/site/pack/test/opt"
     mkdir -p "$plugin_dir"
-    ln -s ${fetchLockedNeovimPlugin "plenary.nvim"} "$plugin_dir/plenary.nvim"
-    ln -s ${fetchLockedNeovimPlugin "fzf-lua"} "$plugin_dir/fzf-lua"
+    ln -s ${neovimPlugins."plenary.nvim"} "$plugin_dir/plenary.nvim"
+    ln -s ${neovimPlugins."fzf-lua"} "$plugin_dir/fzf-lua"
 
     cp -R ${neovimTestSource} "$TMPDIR/nvim"
     chmod -R u+w "$TMPDIR/nvim"

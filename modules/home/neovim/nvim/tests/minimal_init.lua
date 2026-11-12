@@ -1,4 +1,4 @@
--- Load only installed test dependencies, never the personal init or vim.pack.add.
+-- Load only installed test dependencies, never the personal init or its plugin blocks.
 vim.opt.shadafile = "NONE"
 vim.opt.runtimepath:prepend(vim.fn.getcwd())
 vim.cmd.packadd("plenary.nvim")

@@ -92,6 +92,6 @@ local function setup_conform()
 end
 
 require("lib.config").run({
-	plugins = { "https://github.com/stevearc/conform.nvim" },
+	plugins = { "conform.nvim" },
 	setup = setup_conform,
 })

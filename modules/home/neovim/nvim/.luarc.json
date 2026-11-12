@@ -6,7 +6,7 @@
   "workspace.library": [
     "$VIMRUNTIME/lua",
     "${3rd}/luv/library",
-    "$XDG_DATA_HOME/nvim/site/pack/core/opt"
+    "$XDG_DATA_HOME/nvim/site/pack/hm/opt"
   ],
   "hint.enable": true,
   "hint.setType": true,
