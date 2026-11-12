@@ -11,7 +11,6 @@
   lib,
   mkNonoWrapper,
   mkSecretEnvironmentWrapper,
-  mkSource,
   ...
 }:
 let
@@ -189,9 +188,11 @@ let
 
   # Mods are Claude Code plugins built from function hooks. Each child folder of
   # `./mods` holding `.claude-plugin/plugin.json` loads at launch as a
-  # `--plugin-dir` would, and in editable mode the folder is a symlink into the
-  # working tree, so an interactive session hot-reloads a mod as it is saved. A
-  # new mod needs only a relaunch, not a Home Manager switch.
+  # `--plugin-dir` would. The installed folder is a read-only store copy, so a
+  # mod edit reaches it only at the next switch. Setting CLAUDE_MODS_DIR to a
+  # checkout's `mods` folder loads that folder's mods instead, so a session
+  # hot-reloads a mod as it is saved and Claude Code can write its
+  # `.claude-plugin/types/` declarations there.
   modsPath = "${config.home.homeDirectory}/.claude/mods";
 
   settingsOverlay = pkgs.writeShellApplication {
@@ -283,9 +284,31 @@ let
         ${lib.escapeShellArg machineSettingsPath} \
         ${lib.escapeShellArgs machineOverridablePaths}) || settings=${pinnedSettingsPath}
 
+      # CLAUDE_MODS_DIR replaces the installed mods rather than adding to
+      # them, so a checkout's copy of a mod never loads beside the installed
+      # copy of the same plugin.
+      mods_dir=${lib.escapeShellArg modsPath}
+      if [ -n "''${CLAUDE_MODS_DIR-}" ]; then
+        if [ ! -d "$CLAUDE_MODS_DIR" ]; then
+          echo "claude: CLAUDE_MODS_DIR is not a directory: $CLAUDE_MODS_DIR" >&2
+          exit 1
+        fi
+        mods_dir=$CLAUDE_MODS_DIR
+      fi
+
       # Appended to rather than replaced, so a caller's own folders still load.
-      plugin_dirs=''${CLAUDE_CODE_PLUGIN_DIRS-}
-      for manifest in ${lib.escapeShellArg modsPath}/*/.claude-plugin/plugin.json; do
+      # The installed mods are dropped from the inherited list: this launcher
+      # exports it, so a claude started inside a session would otherwise load
+      # them twice, or beside the CLAUDE_MODS_DIR copies they stand in for.
+      plugin_dirs=
+      IFS=: read -r -a inherited_plugin_dirs <<<"''${CLAUDE_CODE_PLUGIN_DIRS-}"
+      for dir in "''${inherited_plugin_dirs[@]}"; do
+        case $dir in
+          ${lib.escapeShellArg modsPath}/*) ;;
+          *) plugin_dirs=''${plugin_dirs:+$plugin_dirs:}$dir ;;
+        esac
+      done
+      for manifest in "$mods_dir"/*/.claude-plugin/plugin.json; do
         [ -f "$manifest" ] || continue
         plugin_dirs=''${plugin_dirs:+$plugin_dirs:}''${manifest%/.claude-plugin/plugin.json}
       done
@@ -331,7 +354,7 @@ in
       source = config.agents.skillsDir;
       recursive = true;
     };
-    ".claude/mods".source = mkSource ./mods;
+    ".claude/mods".source = ./mods;
     ".claude/CLAUDE.md".text = renderAgentsMarkdown {
       title = "Claude Code Instructions";
       registries = [
