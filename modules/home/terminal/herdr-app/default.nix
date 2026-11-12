@@ -2,7 +2,6 @@
   config,
   dotfilesPackages,
   lib,
-  mkSource,
   pkgs,
   ...
 }:
@@ -67,7 +66,6 @@ in
 {
   imports = [
     ../../agents/skills.nix
-    ../../lib/source.nix
   ];
 
   home = {
@@ -82,13 +80,6 @@ in
     ];
     file = {
       ".config/herdr-core/config.toml".source = coreConfig;
-      # Editable, because the app writes settings.json itself (zoom, fonts,
-      # sounds, core), following the link (herdr-app `src/persist.rs`), so
-      # those writes show up as working-tree diffs here. Theme picks are not
-      # among them: they go to the unmanaged `layouts/.state/`. Edits made
-      # here reach a running app on its poll, about 10 s, because its file
-      # watcher sees `~/.config/herdr-app`, not the link targets.
-      ".config/herdr-app/settings.json".source = mkSource ./settings.json;
       # Tokyo Night as the Herdr TUI 0.9.5 draws it (`Palette::tokyo_night`
       # in its `src/app/state.rs`), in the app's theme format; the app
       # derives its panel colors from these.
@@ -114,6 +105,26 @@ in
         run ${pkgs.coreutils}/bin/rm -f ${lib.escapeShellArg "${config.home.homeDirectory}/.config/herdr-app/keys.json"}
         run ${pkgs.coreutils}/bin/install -m0644 ${keysJson} ${lib.escapeShellArg "${config.home.homeDirectory}/.config/herdr-app/keys.json"}
       '';
+
+      # The app writes settings.json itself (zoom, fonts, sounds, core;
+      # herdr-app `src/persist.rs`), so it is an ordinary writable file rather
+      # than a link. Each switch sets the keys in `./settings.json` and keeps
+      # every other key the app saved; an in-app change to a declared key,
+      # such as zooming `font_size`, lasts until the next switch. Theme picks
+      # are not among the app's writes: they go to the unmanaged
+      # `layouts/.state/`. After `linkGeneration`, which removes the link
+      # older generations made at this path, so the merge never writes
+      # through it into a checkout. A failure fails the switch.
+      herdrAppSettings = lib.hm.dag.entryAfter [ "linkGeneration" ] (
+        lib.hm.generators.mkImpureConfigMerger {
+          inherit pkgs;
+          format = "json";
+          empty = "{}";
+          path = "${config.home.homeDirectory}/.config/herdr-app/settings.json";
+          staticSettings = ./settings.json;
+          jqOperation = "$dynamic * $static";
+        }
+      );
 
       # After `linkGeneration`, which removes the links older generations
       # made at these paths. A failure fails the switch.
