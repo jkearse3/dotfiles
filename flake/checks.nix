@@ -11,11 +11,15 @@
 # check that needs more lives in its own `check.nix` next to its tests and is
 # registered here with `callPackage`, as `flake/packages.nix` registers
 # `packages/*/package.nix`.
+#
+# This file is a module function over the top-level flake-parts arguments, so
+# a check can also read top-level flake outputs such as the home
+# configurations.
+{ lib, ... }:
 {
   perSystem =
     {
       config,
-      lib,
       pkgs,
       unstablePkgs,
       ...
