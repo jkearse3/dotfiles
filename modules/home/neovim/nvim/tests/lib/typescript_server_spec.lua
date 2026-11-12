@@ -59,6 +59,16 @@ describe("typescript server selection", function()
 		}, typescript_server.select(project))
 	end)
 
+	it("runs the project's tsc when @typescript/native is TypeScript 7", function()
+		install_package(project, "typescript", "6.0.2")
+		install_package(project, "@typescript/native", "7.0.2")
+
+		assert.are.same({
+			server = "tsgo",
+			cmd = { vim.fs.joinpath(project, "node_modules", ".bin", "tsc"), "--lsp", "--stdio" },
+		}, typescript_server.select(project))
+	end)
+
 	it("resolves TypeScript hoisted into a parent node_modules", function()
 		local package_root = vim.fs.joinpath(project, "packages", "app")
 		vim.fn.mkdir(vim.fs.joinpath(package_root, "node_modules"), "p")

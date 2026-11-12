@@ -21,13 +21,14 @@ local function directories_upward(root)
 	end
 end
 
---- Reads the major version of `<node_modules>/typescript`.
+--- Reads the major version of `<node_modules>/<package_name>`.
 --- Returns nil when its `package.json` is missing or not valid JSON, and 0 when
 --- the JSON has no readable `version`, which callers treat as below 7.
 ---@param node_modules string
+---@param package_name string
 ---@return integer?
-local function read_typescript_major(node_modules)
-	local package_json = vim.fs.joinpath(node_modules, "typescript", "package.json")
+local function read_package_major(node_modules, package_name)
+	local package_json = vim.fs.joinpath(node_modules, package_name, "package.json")
 
 	local read_ok, lines = pcall(vim.fn.readfile, package_json)
 	if not read_ok or vim.tbl_isempty(lines) then
@@ -62,10 +63,13 @@ end
 --- Returns the server for a project root.
 ---
 --- The project's TypeScript is the nearest `node_modules` holding
---- `@typescript/native-preview` or `typescript`, searching from `root` upward
---- as Node resolves packages:
---- - `@typescript/native-preview`, or `typescript` at major version 7 or later:
----   `tsgo` running that `node_modules/.bin` binary.
+--- `@typescript/native-preview`, `@typescript/native`, or `typescript`,
+--- searching from `root` upward as Node resolves packages:
+--- - `@typescript/native-preview`, or `@typescript/native` or `typescript` at
+---   major version 7 or later: `tsgo` running that `node_modules/.bin` binary.
+---   A project can install TypeScript 7 as `@typescript/native` while aliasing
+---   `typescript` to the TypeScript 6 API package, which has no `tsserver` for
+---   `ts_ls` to load, so `@typescript/native` takes precedence.
 --- - `typescript` below 7, or with an unreadable `version`: `ts_ls`.
 --- - No TypeScript (including a `node_modules` not installed yet): `tsgo`
 ---   running the global `tsc` on PATH, which must be TypeScript 7.
@@ -87,13 +91,20 @@ function M.select(root)
 			}
 		end
 
-		local typescript_major = read_typescript_major(node_modules)
+		local tsc_selection = {
+			server = "tsgo",
+			cmd = { vim.fs.joinpath(node_modules, ".bin", "tsc"), "--lsp", "--stdio" },
+		}
+
+		local native_major = read_package_major(node_modules, "@typescript/native")
+		if native_major ~= nil and native_major >= 7 then
+			return tsc_selection
+		end
+
+		local typescript_major = read_package_major(node_modules, "typescript")
 		if typescript_major ~= nil then
 			if typescript_major >= 7 then
-				return {
-					server = "tsgo",
-					cmd = { vim.fs.joinpath(node_modules, ".bin", "tsc"), "--lsp", "--stdio" },
-				}
+				return tsc_selection
 			end
 			return { server = "ts_ls" }
 		end
