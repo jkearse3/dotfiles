@@ -9,9 +9,9 @@
   pi-extensions-checked,
   pkgs,
 }:
-pkgs.runCommandLocal "pi-extensions-locked" { } ''
+pkgs.runCommandLocal "pi-extension-root" { } ''
   # Depending on the check keeps a failing extension or Herdr integration
-  # from producing a locked tree.
+  # from producing an extension root.
   test -e ${pi-extensions-checked}
 
   mkdir -p $out

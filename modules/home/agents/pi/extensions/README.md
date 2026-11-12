@@ -7,7 +7,7 @@ This directory is the source for Pi's standard global extension path:
 ```
 
 Home Manager installs this directory there as a read-only store tree, the
-`pi-extensions-locked` package, built only after the extensions type-check. Pi
+`pi-extension-root` package, built only after the extensions type-check. Pi
 auto-discovers `*/index.ts`, so a source change reaches Pi at the next switch.
 
 ## Testing changes
@@ -267,7 +267,7 @@ integration in the active Nix profile. This gives Herdr its canonical installed
 filename, so `herdr integration status` verifies the same artifact shipped by
 the installed Herdr package instead of a copied extension.
 
-The installed tree, the `pi-extensions-locked` package, replaces that
+The installed tree, the `pi-extension-root` package, replaces that
 profile-relative link with a direct link to the selected
 `dotfilesPackages.herdr` artifact. The `pi-extensions-checked` package
 (`nix build --no-link .#pi-extensions-checked`) checks the integration identity,

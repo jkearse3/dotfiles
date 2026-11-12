@@ -13,8 +13,8 @@
       ...
     }:
     let
-      # The pi module delivers this directory to pi; the packages below build
-      # its npm dependencies, check its sources, and assemble its locked tree.
+      # The pi module delivers this directory to pi; the packages below build its
+      # npm dependencies, check its sources, and assemble its extension root.
       piExtensions = ../modules/home/agents/pi/extensions;
 
       # The personal herdr-app mods, the shared code they link to, and the
@@ -87,7 +87,7 @@
           inherit (unstablePkgs) nodejs typescript;
           extensions = piExtensions;
         };
-        pi-extensions-locked = pkgs.callPackage ../packages/pi-extensions-locked/package.nix {
+        pi-extension-root = pkgs.callPackage ../packages/pi-extension-root/package.nix {
           inherit pi-extension-deps pi-extensions-checked;
           extensions = piExtensions;
         };

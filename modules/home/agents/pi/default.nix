@@ -115,7 +115,7 @@ in
         # immutable store tree with lockfile-derived runtime dependencies,
         # built only after the extensions type-check, so extension changes
         # reach Pi at the next switch.
-        ".pi/agent/extensions".source = dotfilesPackages.pi-extensions-locked;
+        ".pi/agent/extensions".source = dotfilesPackages.pi-extension-root;
         ".pi/agent/skills" = {
           source = config.agents.skillsDir;
           recursive = true;
