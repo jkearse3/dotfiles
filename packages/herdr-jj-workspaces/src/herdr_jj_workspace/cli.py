@@ -1,8 +1,9 @@
 """Create and remove jj workspaces as Herdr worktree workspaces.
 
 Herdr's own worktree commands manage only Git worktrees. ``add`` creates a jj
-workspace with ``jjx workspace add`` in Herdr's worktree directory and opens it
-in Herdr, grouped under the repository's primary checkout even when started
+workspace with ``jjx workspace add`` in Herdr's worktree directory, starting
+from ``trunk()`` unless ``--revision`` names another revision, and opens it in
+Herdr, grouped under the repository's primary checkout even when started
 from another of its workspaces; ``remove`` removes one with
 ``jjx workspace remove`` and closes its Herdr workspace. Both target
 the calling pane's Herdr workspace unless ``--workspace`` names another, and
@@ -39,6 +40,11 @@ from typing import Literal, cast
 WORKTREES_DIRECTORY = Path.home() / ".herdr" / "worktrees"
 
 PROGRAM = "herdr-jj-workspace"
+
+# The revision a new workspace starts from unless the caller names another.
+# trunk() rather than the primary checkout's @, so a new workspace never builds
+# on another workspace's unfinished work.
+DEFAULT_REVISION = "trunk()"
 
 
 class WorkspaceError(Exception):
@@ -117,13 +123,14 @@ def validate_name(name: str) -> None:
         raise WorkspaceError("the name must be one path component that does not start with -")
 
 
-def create(source: Source, name: str, *, focus: bool) -> dict[str, str]:
-    """Create jj workspace NAME from SOURCE and open it in Herdr.
+def create(source: Source, name: str, *, revision: str, focus: bool) -> dict[str, str]:
+    """Create jj workspace NAME of SOURCE's repository on REVISION and open it in Herdr.
 
-    Returns the new checkout's path and the Herdr workspace and root pane that
+    REVISION is a jj revset naming the commit the workspace's @ starts on top
+    of. Returns the new checkout's path and the Herdr workspace and root pane that
     show it.
     """
-    root = _add_jj_workspace(source.repo_root, source.repo_name, name)
+    root = _add_jj_workspace(source.repo_root, source.repo_name, name, revision)
 
     # Opening from the parent workspace groups the new one under it, as Herdr's
     # own new_worktree does; Herdr refuses to open from a linked worktree.
@@ -147,12 +154,13 @@ def create(source: Source, name: str, *, focus: bool) -> dict[str, str]:
     }
 
 
-def _add_jj_workspace(repo_root: Path, repo_name: str, name: str) -> str:
-    """Create jj workspace NAME of the repository at REPO_ROOT; return its root.
+def _add_jj_workspace(repo_root: Path, repo_name: str, name: str, revision: str) -> str:
+    """Create jj workspace NAME of the repository at REPO_ROOT on REVISION; return its root.
 
-    The checkout goes to Herdr's worktree directory under REPO_NAME. Raises
-    WorkspaceError for an invalid name, an existing destination, or a jjx
-    failure, whose output is left on stderr.
+    The checkout goes to Herdr's worktree directory under REPO_NAME, and its @
+    is a new commit on top of the revset REVISION. Raises WorkspaceError for an
+    invalid name, an existing destination, or a jjx failure, such as a REVISION
+    that does not resolve to one commit, whose output is left on stderr.
     """
     validate_name(name)
     destination = WORKTREES_DIRECTORY / repo_name / name
@@ -160,10 +168,9 @@ def _add_jj_workspace(repo_root: Path, repo_name: str, name: str) -> str:
         raise WorkspaceError(f"{destination} already exists")
     destination.parent.mkdir(parents=True, exist_ok=True)
 
-    # Start from trunk rather than the primary checkout's @, so a new workspace
-    # never builds on another workspace's unfinished work. jjx reports progress
-    # on stderr and prints only the new root on stdout.
-    command = ["jjx", "workspace", "add", "--name", name, "--revision", "trunk()", "--", str(destination)]
+    # The = form keeps a REVISION that starts with - from parsing as an option.
+    # jjx reports progress on stderr and prints only the new root on stdout.
+    command = ["jjx", "workspace", "add", "--name", name, f"--revision={revision}", "--", str(destination)]
     result = _run(command, cwd=repo_root, stderr=None)
     if result.returncode != 0:
         raise WorkspaceError("jjx workspace add failed; see its output above")
@@ -423,10 +430,11 @@ def _fzf() -> str:
     return fzf if fzf != "" else "fzf"
 
 
-def app_create(source: JjCheckout, name: str, *, focus: bool) -> dict[str, str]:
-    """Create jj workspace NAME of SOURCE's repository and open it as a new app space.
+def app_create(source: JjCheckout, name: str, *, revision: str, focus: bool) -> dict[str, str]:
+    """Create jj workspace NAME of SOURCE's repository on REVISION and open it as a new app space.
 
-    Returns the new checkout's path, the space showing it as ``workspace_id``
+    REVISION is a jj revset naming the commit the workspace's @ starts on top
+    of. Returns the new checkout's path, the space showing it as ``workspace_id``
     and its first terminal's address as ``pane_id``. Without FOCUS the space
     shown before is shown again. Raises WorkspaceError, before creating
     anything, when no app window is open.
@@ -434,7 +442,7 @@ def app_create(source: JjCheckout, name: str, *, focus: bool) -> dict[str, str]:
     # The window is asked first, so a missing window fails before jjx runs.
     shown_space_id = next((space.space_id for space in _app_spaces() if space.is_shown), "")
     primary_root = source.primary_root
-    root = _add_jj_workspace(primary_root, primary_root.name, name)
+    root = _add_jj_workspace(primary_root, primary_root.name, name, revision)
 
     # An unnamed space is named after its folder, and the app nests it under
     # its repository's space by the checkout's Git common directory.
@@ -665,14 +673,15 @@ def _command_add(arguments: argparse.Namespace) -> int:
     name = cast(str, arguments.name)
     validate_name(name)
     workspace_id = cast(str | None, arguments.workspace)
+    revision = cast(str, arguments.revision)
     focus = cast(bool, arguments.focus)
     if _host(arguments) == "app":
         folder = app_space_folder(workspace_id) if workspace_id is not None else Path.cwd()
-        print(json.dumps(app_create(resolve_app_source(folder), name, focus=focus)))
+        print(json.dumps(app_create(resolve_app_source(folder), name, revision=revision, focus=focus)))
         return 0
 
     source = resolve_source(_caller_workspace(workspace_id))
-    print(json.dumps(create(source, name, focus=focus)))
+    print(json.dumps(create(source, name, revision=revision, focus=focus)))
     return 0
 
 
@@ -706,7 +715,7 @@ def _command_prompt_add(arguments: argparse.Namespace) -> int:
             return 0
         print(f"New jj workspace for {app_source.primary_root.name}\n")
         name = input("Name: ")
-        _ = app_create(app_source, name, focus=True)
+        _ = app_create(app_source, name, revision=DEFAULT_REVISION, focus=True)
         return 0
 
     if pick:
@@ -714,7 +723,7 @@ def _command_prompt_add(arguments: argparse.Namespace) -> int:
     source = resolve_source(_plugin_workspace())
     print(f"New jj workspace for {source.repo_name}\n")
     name = input("Name: ")
-    _ = create(source, name, focus=True)
+    _ = create(source, name, revision=DEFAULT_REVISION, focus=True)
     return 0
 
 
@@ -768,9 +777,10 @@ def _parser() -> argparse.ArgumentParser:
 
     add = commands.add_parser(
         "add",
-        help="create a jj workspace from trunk and open it in Herdr",
+        help="create a jj workspace from trunk or another revision and open it in Herdr",
         description=(
-            "Create jj workspace NAME from trunk() in ~/.herdr/worktrees/REPO/NAME "
+            "Create jj workspace NAME from --revision REV, trunk() by default, in "
+            "~/.herdr/worktrees/REPO/NAME "
             "for the repository of a Herdr workspace, which may show any of its "
             "checkouts, and open it in Herdr grouped under the primary checkout's "
             "workspace. In the app, the repository is the working directory's "
@@ -781,6 +791,12 @@ def _parser() -> argparse.ArgumentParser:
         ),
     )
     _ = add.add_argument("name", metavar="NAME", help="workspace and directory name")
+    _ = add.add_argument(
+        "--revision",
+        metavar="REV",
+        default=DEFAULT_REVISION,
+        help=f"jj revision the workspace starts on top of, such as a bookmark (default: {DEFAULT_REVISION})",
+    )
     _add_workspace_option(
         add,
         "workspace whose repository to use",

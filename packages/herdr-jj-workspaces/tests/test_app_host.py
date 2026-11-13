@@ -265,6 +265,15 @@ class AppHostTests(unittest.TestCase):
             ],
         )
 
+    def test_add_with_revision_starts_on_that_revision(self) -> None:
+        # trunk() is root() here, so a workspace on trunk() would not start on base.
+        _ = self.jj("bookmark", "create", "base", "-r", "@-")
+
+        result = self.run_cli("add", "feature", "--host", "app", "--revision", "base")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(self.commit("feature@-"), self.commit("base"))
+        self.assertNotEqual(self.commit("feature@-"), self.commit("trunk()"))
+
     def test_add_with_focus_shows_the_new_space(self) -> None:
         result = self.run_cli("add", "feature", "--host", "app", "--focus")
         self.assertEqual(result.returncode, 0, result.stderr)

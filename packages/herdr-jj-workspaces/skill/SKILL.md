@@ -37,7 +37,9 @@ herdr-jj-workspace add NAME
   be the primary checkout or any of its jj workspaces. Pass `--workspace ID` to
   use another workspace's or space's repository. The new workspace is grouped
   under the primary checkout's.
-- The workspace starts from `trunk()` in `~/.herdr/worktrees/REPO/NAME`.
+- The workspace starts from `trunk()` in `~/.herdr/worktrees/REPO/NAME`. Pass
+  `--revision REV` to start it on top of another revision instead, such as a
+  bookmark the user wants to stack work on.
 - Progress goes to stderr. Stdout is one JSON object:
   `{"path": ..., "workspace_id": ..., "pane_id": ...}`. In the app,
   `workspace_id` is the new space's ID and `pane_id` its terminal's address.

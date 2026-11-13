@@ -140,6 +140,15 @@ class HerdrJjWorkspaceTests(unittest.TestCase):
         self.assertEqual(self.commit("feature@-"), self.commit("trunk()"))
         self.assertNotEqual(self.commit("feature@-"), self.commit("default@-"))
 
+    def test_add_with_revision_starts_on_that_revision(self) -> None:
+        # trunk() is root() here, so a workspace on trunk() would not start on base.
+        _ = self.jj("bookmark", "create", "base", "-r", "@-")
+
+        result = self.run_cli("add", "feature", "--revision", "base")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(self.commit("feature@-"), self.commit("base"))
+        self.assertNotEqual(self.commit("feature@-"), self.commit("trunk()"))
+
     def test_add_uses_named_workspace_and_focus(self) -> None:
         result = self.run_cli("add", "feature", "--workspace", "w7", "--focus", HERDR_WORKSPACE_ID="")
         self.assertEqual(result.returncode, 0, result.stderr)
