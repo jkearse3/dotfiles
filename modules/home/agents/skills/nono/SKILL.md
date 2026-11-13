@@ -14,6 +14,10 @@ Rules for `nono` sandbox detection and repo-local profile overlays.
 - Treat `NONO_CAP_FILE` as the signal that the current process is running inside
   `nono`.
 - If `NONO_CAP_FILE` is absent, do not assume `nono` is active.
+- The wrapper grants only the launch directory, plus, in a linked Git worktree
+  or secondary jj workspace, its shared Git common dir and jj repo dir. Launch
+  at the workspace root, because a subdirectory launch cannot write the
+  workspace's own `.jj`/`.git`.
 
 ## Profiles
 
