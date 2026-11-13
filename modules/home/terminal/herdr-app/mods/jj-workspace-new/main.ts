@@ -1,12 +1,14 @@
 // Opens `herdr-jj-workspace prompt-add --host app` in a popup terminal, so a
 // key binding (`ctrl-b ctrl-g`) can create a jj workspace from the focused
 // terminal's repository: `mod.open` takes only a mod name. The prompt asks for
-// a name, runs `jjx workspace add` from `trunk()`, and opens and focuses the
-// new space. It takes the repository from its working directory, so the
-// launcher starts it in the focused terminal's live folder, else where the
-// space is now (its first terminal's live folder), else the folder the space
-// was made in. `jj-workspace-pick` (`ctrl-b shift-g`) picks the repository
-// with fzf instead.
+// a name, then in fzf for the base revision (Enter keeps `trunk()`, or pick
+// one of the repository's local bookmarks to stack on it; Esc cancels), runs
+// `jjx workspace add` on it, and opens and focuses the new space. It takes
+// the repository from its working directory, so the launcher starts it in the
+// focused terminal's live folder, else where the space is now (its first
+// terminal's live folder), else the folder the space was made in.
+// `jj-workspace-pick` (`ctrl-b shift-g`) picks the repository with fzf
+// instead.
 //
 // `launcher.ts` and `paths.ts` beside this file are links to the shared
 // copies in `mod-lib/`.

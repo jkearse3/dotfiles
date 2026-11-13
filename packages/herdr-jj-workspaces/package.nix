@@ -29,7 +29,12 @@ let
     postFixup = ''
       wrapProgram "$out/bin/herdr-jj-workspace" \
         --set-default HERDR_JJ_WORKSPACE_FZF_PATH "${pkgs.lib.getExe fzf}" \
-        --prefix PATH : "${pkgs.lib.makeBinPath [ jjx ]}" \
+        --prefix PATH : "${
+          pkgs.lib.makeBinPath [
+            jjx
+            jujutsu
+          ]
+        }" \
         --suffix PATH : "${
           pkgs.lib.makeBinPath [
             herdr-app

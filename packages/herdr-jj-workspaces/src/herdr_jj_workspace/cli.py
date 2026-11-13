@@ -10,7 +10,9 @@ the calling pane's Herdr workspace unless ``--workspace`` names another, and
 neither moves the user's focus unless ``--focus`` is given.
 
 The ``prompt-add`` and ``prompt-remove`` commands are the dotfiles.jj-workspaces
-plugin's popups, and ``open-popup`` is its action command.
+plugin's popups, and ``open-popup`` is its action command. ``prompt-add`` asks
+for the name, then in fzf for the base revision: ``trunk()`` or one of the
+repository's local bookmarks, for stacking on unfinished work.
 
 ``--host`` names which Herdr ``add``, ``remove``, ``prompt-add`` and
 ``prompt-remove`` drive: ``tui``, the Herdr terminal UI through its ``herdr``
@@ -416,6 +418,83 @@ def pick_app_source(first: Path | None = None) -> JjCheckout | None:
     return chosen
 
 
+def pick_base(repo_root: Path) -> str | None:
+    """Ask in fzf which revision a new jj workspace of the repository at REPO_ROOT starts on top of.
+
+    fzf lists ``trunk()`` first, so Enter with an empty query keeps the
+    default, then the repository's local bookmarks, most recently committed
+    first, each with its change ID and first description line; deleted and
+    conflicted bookmarks are left out. Returns the chosen revset, or None when
+    the user closes fzf without choosing. Without eligible bookmarks there is
+    nothing to choose, so it returns ``trunk()`` without running fzf. Raises
+    WorkspaceError when jj or fzf fails.
+    """
+    bases = {DEFAULT_REVISION: DEFAULT_REVISION, **_bookmark_bases(repo_root)}
+    if len(bases) == 1:
+        return DEFAULT_REVISION
+
+    command = [_fzf(), "--prompt=Base revision> "]
+    result = _run(command, stdin_text="".join(f"{line}\n" for line in bases), stderr=None)
+    if result.returncode in (FZF_NO_MATCH, FZF_INTERRUPTED):
+        return None
+    if result.returncode != 0:
+        raise WorkspaceError(f"fzf exited with status {result.returncode}")
+
+    chosen = bases.get(result.stdout.removesuffix("\n"))
+    if chosen is None:
+        raise WorkspaceError(f"fzf printed {result.stdout!r}, which is not a listed base revision")
+    return chosen
+
+
+# One line per present, unconflicted local bookmark: its name as a JSON string,
+# its target's change ID and the first line of its description, tab-separated.
+_BOOKMARK_BASE_TEMPLATE = (
+    'if(!remote && present && !conflict, json(name) ++ "\\t" ++ normal_target.change_id().shortest(8)'
+    ' ++ "\\t" ++ normal_target.description().first_line() ++ "\\n")'
+)
+
+
+def _bookmark_bases(repo_root: Path) -> dict[str, str]:
+    """Return fzf lines for the local bookmarks of the repository at REPO_ROOT, each mapped to its revset.
+
+    Lines align the bookmark names and keep jj's most recently committed first
+    order; each revset names its bookmark exactly. Raises WorkspaceError when
+    jj fails or prints a name that is not a JSON string.
+    """
+    command = [
+        "jj",
+        "bookmark",
+        "list",
+        "--ignore-working-copy",
+        "--sort",
+        "committer-date-",
+        "--color=never",
+        "-T",
+        _BOOKMARK_BASE_TEMPLATE,
+    ]
+    result = _run(command, cwd=repo_root)
+    if result.returncode != 0:
+        detail = result.stderr.strip()
+        raise WorkspaceError("jj bookmark list failed" + (f": {detail}" if detail != "" else ""))
+
+    bookmarks: list[tuple[str, str, str, str]] = []
+    for row in result.stdout.splitlines():
+        encoded_name, change_id, description = row.split("\t", 2)
+        try:
+            name = cast(object, json.loads(encoded_name))
+        except json.JSONDecodeError as error:
+            raise WorkspaceError(f"jj bookmark list printed malformed name {encoded_name!r}") from error
+        if not isinstance(name, str):
+            raise WorkspaceError(f"jj bookmark list printed malformed name {encoded_name!r}")
+        bookmarks.append((name, encoded_name, change_id, description))
+
+    name_width = max((len(name) for name, _, _, _ in bookmarks), default=0)
+    return {
+        f"{name:<{name_width}}  {change_id}  {description}".rstrip(): f"bookmarks(exact:{encoded_name})"
+        for name, encoded_name, change_id, description in bookmarks
+    }
+
+
 def _home_relative(path: Path) -> str:
     """Return PATH with the home directory written as ``~``."""
     try:
@@ -715,7 +794,11 @@ def _command_prompt_add(arguments: argparse.Namespace) -> int:
             return 0
         print(f"New jj workspace for {app_source.primary_root.name}\n")
         name = input("Name: ")
-        _ = app_create(app_source, name, revision=DEFAULT_REVISION, focus=True)
+        validate_name(name)
+        revision = pick_base(app_source.primary_root)
+        if revision is None:
+            return 0
+        _ = app_create(app_source, name, revision=revision, focus=True)
         return 0
 
     if pick:
@@ -723,7 +806,11 @@ def _command_prompt_add(arguments: argparse.Namespace) -> int:
     source = resolve_source(_plugin_workspace())
     print(f"New jj workspace for {source.repo_name}\n")
     name = input("Name: ")
-    _ = create(source, name, revision=DEFAULT_REVISION, focus=True)
+    validate_name(name)
+    revision = pick_base(source.repo_root)
+    if revision is None:
+        return 0
+    _ = create(source, name, revision=revision, focus=True)
     return 0
 
 
@@ -825,7 +912,15 @@ def _parser() -> argparse.ArgumentParser:
     )
     remove_parser.set_defaults(handler=_command_remove)
 
-    prompt_add = commands.add_parser("prompt-add", help="popup for add, from the working directory in the app")
+    prompt_add = commands.add_parser(
+        "prompt-add",
+        help="popup for add that asks for the base revision, from the working directory in the app",
+        description=(
+            "Ask for the new jj workspace's name, then in fzf for its base: "
+            "trunk(), listed first so Enter keeps it, or a local bookmark. "
+            "Closing fzf creates nothing."
+        ),
+    )
     _add_host_option(prompt_add)
     _ = prompt_add.add_argument(
         "--pick",

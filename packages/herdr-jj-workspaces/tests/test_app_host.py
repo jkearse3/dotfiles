@@ -67,11 +67,22 @@ printf 'herdr %s\\n' "$*" >> "$STUB_LOG"
 exit 1
 """
 
-# fzf, named by $HERDR_JJ_WORKSPACE_FZF_PATH: records its input lines in
-# $FAKE_FZF_INPUT, then prints input line $FAKE_FZF_CHOICE and exits 0, or, with
-# no choice, exits 130 as fzf does on Esc; $FAKE_FZF_STATUS overrides the status.
+# fzf, named by $HERDR_JJ_WORKSPACE_FZF_PATH. Picking the repository, it
+# records its input lines in $FAKE_FZF_INPUT, then prints input line
+# $FAKE_FZF_CHOICE and exits 0, or, with no choice, exits 130 as fzf does on
+# Esc; $FAKE_FZF_STATUS overrides the status. Picking the base revision, it
+# records its input lines in $FAKE_FZF_BASE_INPUT, then prints input line
+# ${FAKE_FZF_BASE_CHOICE:-1}, as Enter with an empty query does, and exits with
+# ${FAKE_FZF_BASE_STATUS:-0}.
 FAKE_FZF = """\
 #!/bin/sh
+for argument; do
+  if [ "$argument" = "--prompt=Base revision> " ]; then
+    cat > "$FAKE_FZF_BASE_INPUT"
+    sed -n "${FAKE_FZF_BASE_CHOICE:-1}p" "$FAKE_FZF_BASE_INPUT"
+    exit "${FAKE_FZF_BASE_STATUS:-0}"
+  fi
+done
 cat > "$FAKE_FZF_INPUT"
 if [ -n "${FAKE_FZF_CHOICE:-}" ]; then
   sed -n "${FAKE_FZF_CHOICE}p" "$FAKE_FZF_INPUT"
@@ -143,6 +154,7 @@ class AppHostTests(unittest.TestCase):
         self.records = self.root / "records"
         self.records.mkdir()
         self.fzf_input = self.root / "fzf.input"
+        self.fzf_base_input = self.root / "fzf-base.input"
         self.repo = self.root / "repo"
         self.workspace = home / ".herdr" / "worktrees" / "repo" / "feature"
         gitconfig = self.root / "gitconfig"
@@ -168,6 +180,7 @@ class AppHostTests(unittest.TestCase):
             "HC_TERMINAL_ID": "t1",
             "HERDR_JJ_WORKSPACE_FZF_PATH": str(stubs / "fzf"),
             "FAKE_FZF_INPUT": str(self.fzf_input),
+            "FAKE_FZF_BASE_INPUT": str(self.fzf_base_input),
         }
         _ = subprocess.run(
             ["git", "init", "--initial-branch=main", str(self.repo)], env=self.env, check=True, capture_output=True
@@ -222,6 +235,20 @@ class AppHostTests(unittest.TestCase):
 
     def commit(self, revision: str) -> str:
         return self.jj("log", "--no-graph", "-r", revision, "-T", "commit_id")
+
+    def change_id(self, revision: str) -> str:
+        return self.jj("log", "--no-graph", "-r", revision, "-T", "change_id.shortest(8)")
+
+    def create_bookmarks_to_stack_on(self) -> None:
+        """Bookmark base on the initial commit and newer on a later sibling, so neither is trunk()."""
+        _ = self.jj("bookmark", "create", "base", "-r", "@-")
+        _ = subprocess.run(
+            ["jj", "-R", str(self.repo), "new", "--no-edit", "@-", "-m", "later"],
+            env={**self.env, "JJ_TIMESTAMP": "2100-01-01T00:00:00Z"},
+            check=True,
+            capture_output=True,
+        )
+        _ = self.jj("bookmark", "create", "newer", "-r", 'description(substring:"later")')
 
     def add_feature(self) -> None:
         result = self.run_cli("add", "feature", "--host", "app", "--focus")
@@ -471,12 +498,90 @@ class AppHostTests(unittest.TestCase):
         self.assertEqual(
             self.calls(), ["herdr-app ls", f'herdr-app do space.new {{"folder": "{self.workspace}"}}']
         )
+        # Without bookmarks there is no base to choose, so fzf never runs.
+        self.assertFalse(self.fzf_base_input.exists())
+        self.assertEqual(self.commit("feature@-"), self.commit("trunk()"))
 
     def test_prompt_add_error_waits_for_enter(self) -> None:
+        self.create_bookmarks_to_stack_on()
         result = self.run_cli("prompt-add", "--host", "app", stdin="../escape\n\n")
         self.assertEqual(result.returncode, 1)
+        self.assertIn("one path component", result.stderr)
         self.assertIn("Press enter to close.", result.stderr)
         self.assertEqual(self.workspace_names(), ["default"])
+        self.assertFalse(self.fzf_base_input.exists())
+
+    def test_prompt_add_base_enter_keeps_trunk(self) -> None:
+        self.create_bookmarks_to_stack_on()
+        result = self.run_cli("prompt-add", "--host", "app", stdin="feature\n")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(
+            self.fzf_base_input.read_text().splitlines(),
+            [
+                "trunk()",
+                f"newer  {self.change_id('newer')}  later",
+                f"base   {self.change_id('base')}  initial",
+            ],
+        )
+        self.assertEqual(self.commit("feature@-"), self.commit("trunk()"))
+
+    def test_prompt_add_base_bookmark_starts_on_it(self) -> None:
+        self.create_bookmarks_to_stack_on()
+        result = self.run_cli("prompt-add", "--host", "app", stdin="feature\n", FAKE_FZF_BASE_CHOICE="3")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(self.commit("feature@-"), self.commit("base"))
+        self.assertEqual(self.calls()[-1], f'herdr-app do space.new {{"folder": "{self.workspace}"}}')
+
+    def test_prompt_add_base_closed_without_choosing_creates_nothing(self) -> None:
+        self.create_bookmarks_to_stack_on()
+        for status in ("1", "130"):
+            with self.subTest(status=status):
+                result = self.run_cli(
+                    "prompt-add", "--host", "app", stdin="feature\n", FAKE_FZF_BASE_STATUS=status
+                )
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertEqual(self.workspace_names(), ["default"])
+                self.assertFalse(self.workspace.exists())
+                self.assertEqual(self.calls(), [])
+
+    def test_prompt_add_base_fzf_failure_waits_for_enter(self) -> None:
+        self.create_bookmarks_to_stack_on()
+        result = self.run_cli("prompt-add", "--host", "app", stdin="feature\n\n", FAKE_FZF_BASE_STATUS="2")
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("fzf exited with status 2", result.stderr)
+        self.assertIn("Press enter to close.", result.stderr)
+        self.assertEqual(self.workspace_names(), ["default"])
+
+    def test_prompt_add_base_leaves_out_deleted_bookmarks(self) -> None:
+        # A bookmark deleted locally but still on a tracked remote stays listed by jj as deleted.
+        remote = self.root / "remote.git"
+        _ = subprocess.run(["git", "init", "--bare", str(remote)], env=self.env, check=True, capture_output=True)
+        _ = self.jj("git", "remote", "add", "origin", str(remote))
+        _ = self.jj("bookmark", "create", "gone", "kept", "-r", "@-")
+        _ = self.jj("git", "push", "--bookmark", "gone")
+        _ = self.jj("bookmark", "delete", "gone")
+
+        result = self.run_cli("prompt-add", "--host", "app", stdin="feature\n")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(
+            self.fzf_base_input.read_text().splitlines(),
+            ["trunk()", f"kept  {self.change_id('kept')}  initial"],
+        )
+
+    def test_prompt_add_pick_then_base_starts_on_bookmark(self) -> None:
+        self.create_bookmarks_to_stack_on()
+        result = self.run_cli(
+            "prompt-add",
+            "--host",
+            "app",
+            "--pick",
+            stdin="feature\n",
+            FAKE_FZF_CHOICE="1",
+            FAKE_FZF_BASE_CHOICE="2",
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(self.fzf_input.read_text().splitlines(), [str(self.repo)])
+        self.assertEqual(self.commit("feature@-"), self.commit("newer"))
 
     def test_prompt_add_pick_lists_each_local_jj_repository_once(self) -> None:
         self.add_feature()

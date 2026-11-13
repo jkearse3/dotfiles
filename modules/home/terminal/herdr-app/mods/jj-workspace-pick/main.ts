@@ -4,8 +4,10 @@
 // lists the focused terminal's jj repository first, so Enter with an empty
 // query picks it, then the jj repositories of the spaces open on this
 // machine, one line per repository however many of its workspaces are open.
-// Enter asks for a name, runs `jjx workspace add` from `trunk()`, and opens
-// and focuses the new space; Esc closes the popup without creating anything.
+// Enter asks for a name, then in fzf for the base revision (Enter keeps
+// `trunk()`, or pick one of the repository's local bookmarks to stack on it),
+// runs `jjx workspace add` on it, and opens and focuses the new space; Esc in
+// either picker closes the popup without creating anything.
 // `jj-workspace-new` (`ctrl-b ctrl-g`) skips the picker and uses the focused
 // terminal's repository.
 //
