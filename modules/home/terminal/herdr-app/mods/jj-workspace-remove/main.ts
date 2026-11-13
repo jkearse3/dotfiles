@@ -1,5 +1,5 @@
 // Opens `herdr-jj-workspace prompt-remove --host app` in a popup terminal, so
-// a key binding (`ctrl-b ctrl-q`) can remove the jj workspace the shown space
+// a key binding (`ctrl-b shift-q`) can remove the jj workspace the shown space
 // holds: `mod.open` takes only a mod name. The prompt shows `jjx`'s dry-run
 // report, and on confirmation removes the workspace and closes the space; it
 // refuses primary checkouts and plain Git worktrees. The popup terminal has

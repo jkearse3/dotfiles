@@ -69,7 +69,6 @@
       "shift-g" = "mod.open:jj-workspace-pick";
       "ctrl-g" = "mod.open:jj-workspace-new";
       "shift-q" = "mod.open:jj-workspace-remove";
-      "ctrl-q" = "mod.open:jj-workspace-remove";
       # The TUI's workspace picker and go-to both open `goto`, the personal
       # clone of the app's picker with ctrl-j/ctrl-k.
       "w" = "mod.open:goto";
