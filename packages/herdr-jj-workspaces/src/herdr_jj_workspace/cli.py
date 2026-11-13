@@ -12,7 +12,8 @@ neither moves the user's focus unless ``--focus`` is given.
 The ``prompt-add`` and ``prompt-remove`` commands are the dotfiles.jj-workspaces
 plugin's popups, and ``open-popup`` is its action command. ``prompt-add`` asks
 in fzf for the base revision first: ``trunk()`` or one of the repository's
-local bookmarks, for stacking on unfinished work. It then asks for the name,
+local bookmarks not already contained in trunk, for stacking on unfinished
+work; ``trunk()`` covers the bookmarks it contains. It then asks for the name,
 showing the repository and base chosen.
 
 ``--host`` names which Herdr ``add``, ``remove``, ``prompt-add`` and
@@ -440,10 +441,11 @@ def pick_base(repo_root: Path) -> Base | None:
     fzf lists ``trunk()`` first, so Enter with an empty query keeps the
     default, then the repository's local bookmarks, most recently committed
     first, each with its change ID and first description line; deleted and
-    conflicted bookmarks are left out. Returns the chosen base, or None when
-    the user closes fzf without choosing. Without eligible bookmarks there is
-    nothing to choose, so it returns TRUNK_BASE without running fzf. Raises
-    WorkspaceError when jj or fzf fails.
+    conflicted bookmarks are left out, and so are bookmarks already contained
+    in trunk, such as trunk's own, since ``trunk()`` covers them. Returns the
+    chosen base, or None when the user closes fzf without choosing. Without
+    eligible bookmarks there is nothing to choose, so it returns TRUNK_BASE
+    without running fzf. Raises WorkspaceError when jj or fzf fails.
     """
     bases = {DEFAULT_REVISION: TRUNK_BASE, **_bookmark_bases(repo_root)}
     if len(bases) == 1:
@@ -471,8 +473,9 @@ _BOOKMARK_BASE_TEMPLATE = (
 
 
 def _bookmark_bases(repo_root: Path) -> dict[str, Base]:
-    """Return fzf lines for the local bookmarks of the repository at REPO_ROOT, each mapped to its base.
+    """Return fzf lines for the bookmarks REPO_ROOT's base picker lists, each mapped to its base.
 
+    The listed bookmarks are the local ones not already contained in trunk.
     Lines align the bookmark names and keep jj's most recently committed first
     order; each base's revset names its bookmark exactly, and its label is the
     line without the alignment padding. Raises WorkspaceError when jj fails or
@@ -483,6 +486,8 @@ def _bookmark_bases(repo_root: Path) -> dict[str, Base]:
         "bookmark",
         "list",
         "--ignore-working-copy",
+        "-r",
+        "~::trunk()",
         "--sort",
         "committer-date-",
         "--color=never",
@@ -944,7 +949,8 @@ def _parser() -> argparse.ArgumentParser:
         help="popup for add that asks for the base revision, from the working directory in the app",
         description=(
             "Ask in fzf for the new jj workspace's base: trunk(), listed first "
-            "so Enter keeps it, or a local bookmark; closing fzf creates nothing. "
+            "so Enter keeps it, or a local bookmark not already contained in "
+            "trunk, which trunk() covers; closing fzf creates nothing. "
             "Then ask for its name, showing the repository and base chosen."
         ),
     )

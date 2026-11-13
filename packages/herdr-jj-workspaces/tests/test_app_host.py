@@ -250,6 +250,14 @@ class AppHostTests(unittest.TestCase):
         )
         _ = self.jj("bookmark", "create", "newer", "-r", 'description(substring:"later")')
 
+    def push_main_as_trunk(self) -> None:
+        """Bookmark main on the initial commit and push it to origin, so trunk() resolves to main@origin."""
+        remote = self.root / "remote.git"
+        _ = subprocess.run(["git", "init", "--bare", str(remote)], env=self.env, check=True, capture_output=True)
+        _ = self.jj("git", "remote", "add", "origin", str(remote))
+        _ = self.jj("bookmark", "create", "main", "-r", "@-")
+        _ = self.jj("git", "push", "--bookmark", "main")
+
     def add_feature(self) -> None:
         result = self.run_cli("add", "feature", "--host", "app", "--focus")
         self.assertEqual(result.returncode, 0, result.stderr)
@@ -570,6 +578,28 @@ class AppHostTests(unittest.TestCase):
             self.fzf_base_input.read_text().splitlines(),
             ["trunk()", f"kept  {self.change_id('kept')}  initial"],
         )
+
+    def test_prompt_add_base_leaves_out_bookmarks_in_trunk(self) -> None:
+        self.push_main_as_trunk()
+        self.create_bookmarks_to_stack_on()
+
+        result = self.run_cli("prompt-add", "--host", "app", stdin="feature\n")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        # trunk() covers main and base, which share its commit, so only newer is listed after it.
+        self.assertEqual(
+            self.fzf_base_input.read_text().splitlines(),
+            ["trunk()", f"newer  {self.change_id('newer')}  later"],
+        )
+
+    def test_prompt_add_base_with_every_bookmark_in_trunk_starts_on_trunk(self) -> None:
+        self.push_main_as_trunk()
+        _ = self.jj("bookmark", "create", "old", "-r", "@-")
+
+        result = self.run_cli("prompt-add", "--host", "app", stdin="feature\n")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("Base: trunk()", result.stdout)
+        self.assertFalse(self.fzf_base_input.exists())
+        self.assertEqual(self.commit("feature@-"), self.commit("main"))
 
     def test_prompt_add_pick_then_base_starts_on_bookmark(self) -> None:
         self.create_bookmarks_to_stack_on()
