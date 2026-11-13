@@ -3,9 +3,9 @@
 # nix-darwin configurations through nh, and updates the flake inputs and package
 # pins. `blueprints` is the flake's `blueprints` inventory, compiled into the
 # script's `blueprint_output` function at build time so blueprint selection
-# needs no Nix evaluation. `nix` and `jj` come from the user's PATH: the system
-# `nix` talks to its own daemon, and `flake-update` must commit with the jj
-# version that manages the repository.
+# needs no Nix evaluation. `git` is pinned here, while `nix` and `jj` come from
+# the user's PATH: the system `nix` talks to its own daemon, and `flake-update`
+# must commit with the jj version that manages the repository.
 {
   pkgs,
   nh,
@@ -45,6 +45,9 @@ pkgs.writeShellApplication {
     # configurations, and shows build progress through nix-output-monitor.
     nh
     nix-output-monitor
+    # The switch apps ask git whether `.` is a linked worktree. jj's colocated
+    # workspaces set extensions.relativeWorktrees, which needs git 2.48 or later.
+    pkgs.git
   ];
   text = ''
     # Prints the flake output that a blueprint's `home` or `system` apps build:

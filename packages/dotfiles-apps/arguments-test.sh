@@ -1,11 +1,13 @@
 #!/usr/bin/env bash
 
 # Tests how dotfiles-apps validates its arguments and selects a blueprint, up
-# to the point where it would start nh, which arguments package-update passes
-# to the package updaters, and which checks flake-update runs before it
-# commits, with stub `nix` and `jj` commands that log their arguments. Usage:
-# arguments-test.sh <dotfiles-apps executable> <blueprint ID from the flake's
-# inventory>. Runs with HOME and XDG_CONFIG_HOME in a temporary directory.
+# to the point where it would start nh, how the switch apps refuse a linked Git
+# worktree, which arguments package-update passes to the package updaters, and
+# which checks flake-update runs before it commits, with stub `nix` and `jj`
+# commands that log their arguments and real Git repositories made with `git`
+# from PATH. Usage: arguments-test.sh <dotfiles-apps executable> <blueprint ID
+# from the flake's inventory>. Runs with HOME and XDG_CONFIG_HOME in a temporary
+# directory, and keeps git from finding repositories above it.
 
 set -uo pipefail
 
@@ -19,6 +21,7 @@ mkdir -p "$repo/flake/blueprints" "$work/home" "$work/config"
 touch "$repo/flake.nix" "$repo/flake/blueprints/default.nix"
 export HOME="$work/home"
 export XDG_CONFIG_HOME="$work/config"
+export GIT_CEILING_DIRECTORIES="$work"
 unset DOTFILES_PRIVATE_LOCAL
 
 # Runs the app from `directory` with the remaining arguments and records its
@@ -88,6 +91,51 @@ expect "an unknown blueprint fails" 1 "unknown blueprint 'nonexistent'"
 
 DOTFILES_PRIVATE_LOCAL="$work/missing" run_app "$repo" build-home --blueprint "$blueprint_id"
 expect "an invalid DOTFILES_PRIVATE_LOCAL fails" 1 "DOTFILES_PRIVATE_LOCAL does not identify a flake checkout"
+
+run_app "$repo" build-home --allow-worktree
+expect "--allow-worktree is rejected for build apps" 2 "build-home does not accept '--allow-worktree'"
+
+run_app "$repo" switch-home --help
+expect "switch-home --help lists --allow-worktree" 0 "--allow-worktree"
+
+run_app "$repo" switch-system --help
+expect "switch-system --help lists --allow-worktree" 0 "--allow-worktree"
+
+run_app "$work" switch-home
+expect "the repository-root check comes before the worktree guard" 1 "must run from the dotfiles repository root"
+
+# The switch cases select a nonexistent blueprint, so a run that passes the
+# worktree guard stops at blueprint selection before nh.
+run_app "$repo" switch-home --blueprint nonexistent
+expect "switching outside a Git repository fails closed" 1 "pass --allow-worktree"
+
+run_app "$repo" switch-home --allow-worktree --blueprint nonexistent
+expect "--allow-worktree skips the guard outside a Git repository" 1 "unknown blueprint 'nonexistent'"
+
+# A main checkout with one linked worktree.
+main="$work/main"
+mkdir -p "$main/flake/blueprints"
+touch "$main/flake.nix" "$main/flake/blueprints/default.nix"
+git -C "$main" init -q
+git -C "$main" add flake.nix flake/blueprints/default.nix
+git -C "$main" -c user.name=Test -c user.email=test@example.com commit -q -m initial
+git -C "$main" worktree add -q --relative-paths --detach "$work/linked"
+main_physical="$(cd "$main" && pwd -P)"
+
+run_app "$main" switch-system --blueprint nonexistent
+expect "switching from the main checkout passes the guard" 1 "unknown blueprint 'nonexistent'"
+
+run_app "$work/linked" switch-home --blueprint nonexistent
+expect "switch-home from a linked worktree names the main checkout" 1 "must run from the main checkout $main_physical,"
+
+run_app "$work/linked" switch-system --blueprint nonexistent
+expect "switch-system from a linked worktree names the main checkout" 1 "must run from the main checkout $main_physical,"
+
+run_app "$work/linked" switch-home --allow-worktree --blueprint nonexistent
+expect "--allow-worktree switches from a linked worktree" 1 "unknown blueprint 'nonexistent'"
+
+run_app "$work/linked" build-home --blueprint nonexistent
+expect "build apps run from a linked worktree" 1 "unknown blueprint 'nonexistent'"
 
 # Nix is not on PATH here, so nh fails right after selection.
 run_app "$repo" build-home --blueprint "$blueprint_id"

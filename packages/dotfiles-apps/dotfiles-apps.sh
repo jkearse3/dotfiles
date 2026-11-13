@@ -4,6 +4,8 @@
 # [options]` runs `dotfiles-apps <command> [options]` from the repository root.
 # build-home, switch-home, build-system, and switch-system build or activate the
 # selected blueprint; package-update and flake-update update dependencies.
+# switch-home and switch-system refuse to run from a linked Git worktree or
+# secondary jj workspace unless given `--allow-worktree`.
 # `package.nix` prepends `blueprint_output`, generated from the flake's
 # `blueprints` inventory at build time, so blueprint selection needs no Nix
 # evaluation.
@@ -13,7 +15,7 @@ usage() {
 	local command=$1
 
 	case $command in
-	build-home | switch-home)
+	build-home | build-system)
 		cat <<EOF
 usage: nix run .#$command -- [--blueprint <blueprint-id>]
 
@@ -22,12 +24,14 @@ usage: nix run .#$command -- [--blueprint <blueprint-id>]
   --help                      print this usage
 EOF
 		;;
-	build-system | switch-system)
+	switch-home | switch-system)
 		cat <<EOF
-usage: nix run .#$command -- [--blueprint <blueprint-id>]
+usage: nix run .#$command -- [--blueprint <blueprint-id>] [--allow-worktree]
 
   --blueprint <blueprint-id>  select a blueprint instead of reading the
                               dotfiles/blueprint-id marker
+  --allow-worktree            switch from a linked Git worktree or secondary
+                              jj workspace instead of the main checkout
   --help                      print this usage
 EOF
 		;;
@@ -70,6 +74,7 @@ fail_usage() {
 accepts_option() {
 	case $1:$2 in
 	*:--help | *-home:--blueprint | *-system:--blueprint | package-update:--dry-run) ;;
+	switch-home:--allow-worktree | switch-system:--allow-worktree) ;;
 	*) return 1 ;;
 	esac
 }
@@ -239,12 +244,48 @@ flake_update() {
 	jj commit -m "build(nix): update dependencies"
 }
 
+# Returns when `.` is the main checkout of its Git repository, where git-dir
+# and the common Git directory coincide. From a linked Git worktree or a
+# secondary colocated jj workspace, whose files activation would install for
+# every session, prints an error naming the main checkout and exits 1 on behalf
+# of `command`. Also exits 1 when git cannot find the Git directory or list the
+# worktrees, so an unknown checkout never switches.
+require_main_checkout() {
+	local command=$1
+
+	local git_dirs="" git_dir="" common_dir=""
+	if git_dirs="$(git rev-parse --path-format=absolute --git-dir --git-common-dir)"; then
+		{
+			read -r git_dir
+			read -r common_dir
+		} <<<"$git_dirs" || true
+	fi
+	if [[ -z $git_dir || -z $common_dir ]]; then
+		echo "error: $command cannot tell whether $PWD is the main checkout because git could not find its Git directory; run it from the main checkout, or pass --allow-worktree to switch from here anyway" >&2
+		exit 1
+	fi
+	[[ $git_dir == "$common_dir" ]] && return 0
+
+	# The first entry of the porcelain worktree list is the main checkout.
+	local worktree_list="" main_checkout=""
+	if worktree_list="$(git worktree list --porcelain)"; then
+		main_checkout=${worktree_list%%$'\n'*}
+	fi
+	if [[ $main_checkout != "worktree "?* ]]; then
+		echo "error: $command cannot tell whether $PWD is the main checkout because git could not list its worktrees; run it from the main checkout, or pass --allow-worktree to switch from here anyway" >&2
+		exit 1
+	fi
+	echo "error: $command must run from the main checkout ${main_checkout#worktree }, not from a linked Git worktree or secondary jj workspace; run it there, or pass --allow-worktree to switch from this checkout" >&2
+	exit 1
+}
+
 # Runs `command`: build-home, switch-home, build-system, or switch-system on the
 # blueprint selected by `--blueprint` or the marker, or package-update or
 # flake-update, which builds the home configuration of the blueprint the marker
 # selects. Argument errors exit 2 before anything else; the working-directory
-# guard, DOTFILES_PRIVATE_LOCAL, and blueprint selection exit 1 before any Nix,
-# nh, or jj call.
+# guards (the repository root, and for switch apps the main checkout unless
+# `--allow-worktree` is given), DOTFILES_PRIVATE_LOCAL, and blueprint selection
+# exit 1 before any Nix, nh, or jj call.
 main() {
 	local command=${1-}
 	shift || true
@@ -253,7 +294,7 @@ main() {
 	*) fail_usage "$command" "unknown command '$command'" ;;
 	esac
 
-	local blueprint_id="" is_dry_run=""
+	local blueprint_id="" is_dry_run="" allows_worktree=""
 	while [[ $# -gt 0 ]]; do
 		accepts_option "$command" "$1" || fail_usage "$command" "$command does not accept '$1'"
 		case $1 in
@@ -267,6 +308,7 @@ main() {
 			shift
 			;;
 		--dry-run) is_dry_run=1 ;;
+		--allow-worktree) allows_worktree=1 ;;
 		esac
 		shift
 	done
@@ -276,6 +318,9 @@ main() {
 	if [[ ! -f flake.nix || ! -f flake/blueprints/default.nix ]]; then
 		echo "error: $command must run from the dotfiles repository root" >&2
 		exit 1
+	fi
+	if [[ $command == switch-* && -z $allows_worktree ]]; then
+		require_main_checkout "$command"
 	fi
 
 	if [[ $command == package-update ]]; then

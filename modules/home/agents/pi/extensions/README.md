@@ -19,6 +19,9 @@ in an open session:
 nix run .#switch-home
 ```
 
+From a secondary jj workspace or linked Git worktree, the switch refuses unless
+you pass `--allow-worktree`: `nix run .#switch-home -- --allow-worktree`.
+
 The switch is global, so every new or reloaded Pi session uses that checkout's
 extensions until a switch from another checkout. To try a brand-new extension
 without a switch, load it beside the installed ones with

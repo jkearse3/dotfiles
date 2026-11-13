@@ -13,8 +13,9 @@ it.
 
 Home Manager installs `~/.config/nvim` as a read-only copy of `init.lua`,
 `lua/`, and `after/`, so edits in a checkout reach Neovim only when you switch
-from that checkout with `nix run .#switch-home`. Switching is also how to test a
-change.
+from that checkout with `nix run .#switch-home`. From a secondary jj workspace
+or linked Git worktree, the switch refuses unless you pass `--allow-worktree`.
+Switching is also how to test a change.
 
 To roll back a plugin update, restore the earlier `flake.lock` or `plugins.nix`
 with jj and switch again. Do not activate an older Home Manager generation

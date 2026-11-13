@@ -9,7 +9,9 @@ Run every command from the repository root.
   `~/.config`; do not pass `--blueprint` when that marker exists.
 - Evaluate all blueprints: `nix build --no-link .#eval-blueprints`
 - Build: `nix run .#build-home` (`nix run .#build-system` for nix-darwin)
-- Activate: `nix run .#switch-home`
+- Activate: `nix run .#switch-home` (only from the main checkout; in a linked
+  worktree or secondary jj workspace it refuses, and `--allow-worktree`
+  overrides this only when the user asks to activate that checkout)
 - Format: `nix fmt` (all file types via treefmt)
 - Check (standalone tests, formatting, and lint): `nix flake check`
 - Lint: `nix build --no-link .#lint` (builds only the lint flake checks and pi

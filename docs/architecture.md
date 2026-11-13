@@ -117,7 +117,10 @@ The `build-home`, `switch-home`, `build-system`, and `switch-system` flake apps
 for example `nix run .#build-home -- --blueprint <blueprint-id>`. They run the
 `dotfiles-apps` script (`packages/dotfiles-apps`), which carries the inventory
 from build time, selects the blueprint from `--blueprint` or the marker, and
-adds the `DOTFILES_PRIVATE_LOCAL` override to its nh calls.
+adds the `DOTFILES_PRIVATE_LOCAL` override to its nh calls. `switch-home` and
+`switch-system` also refuse to run from a linked Git worktree or secondary jj
+workspace, naming the main checkout, because activation installs that checkout's
+files for every session; `--allow-worktree` overrides this.
 
 The same script backs the `package-update` and `flake-update` apps.
 `package-update` runs every `packages/*/update.sh --latest` updater (`--dry-run`

@@ -3,9 +3,10 @@
 # Each app runs the `dotfiles-apps` script (`packages/dotfiles-apps`) with its
 # own name as the command. The script is a flake check rather than a package,
 # so `nix flake check` runs its shellcheck, and `dotfiles-apps-arguments` tests
-# its argument and blueprint-selection errors, the arguments package-update
-# passes to the package updaters, and which checks flake-update runs before it
-# commits, using stub `nix` and `jj` commands.
+# its argument and blueprint-selection errors, the switch apps' refusal to run
+# from a linked Git worktree, the arguments package-update passes to the package
+# updaters, and which checks flake-update runs before it commits, using stub
+# `nix` and `jj` commands and real Git repositories.
 {
   config,
   lib,
@@ -46,10 +47,12 @@ in
 
       checks = {
         dotfiles-apps = dotfilesApps;
-        dotfiles-apps-arguments = pkgs.runCommand "dotfiles-apps-arguments" { } ''
-          bash ${../packages/dotfiles-apps/arguments-test.sh} ${lib.getExe dotfilesApps} ${lib.escapeShellArg (builtins.head blueprintIds)}
-          touch "$out"
-        '';
+        dotfiles-apps-arguments =
+          pkgs.runCommand "dotfiles-apps-arguments" { nativeBuildInputs = [ pkgs.git ]; }
+            ''
+              bash ${../packages/dotfiles-apps/arguments-test.sh} ${lib.getExe dotfilesApps} ${lib.escapeShellArg (builtins.head blueprintIds)}
+              touch "$out"
+            '';
       };
     };
 }
