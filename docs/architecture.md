@@ -124,14 +124,36 @@ files for every session; `--allow-worktree` overrides this.
 
 The same script backs the `package-update` and `flake-update` apps.
 `package-update` runs every `packages/*/update.sh --latest` updater (`--dry-run`
-prints the new pins without editing files). `flake-update` updates `flake.lock`
-and runs the updaters in a jj change of its own. When anything changed, it
-builds `eval-blueprints`, runs `nix flake check`, and builds the Home Manager
-configuration of the blueprint the marker selects, then commits the change with
-jj. If any of these fails, it exits 1 and leaves the update uncommitted in `@`,
-so the fix lands in the same change. `nix flake update` runs without the
-`DOTFILES_PRIVATE_LOCAL` override, which it would otherwise write into
-`flake.lock`; only the checks build against the local checkout.
+prints the new pins without editing files). `flake-update`
+(`packages/dotfiles-apps/flake-update.sh`) updates `flake.lock` and runs the
+updaters in a jj change of its own, described `build(nix): update dependencies`.
+When anything changed, it builds `eval-blueprints`, runs `nix flake check`, and
+builds the Home Manager and nix-darwin configurations of the blueprint the
+marker selects, then commits the change with jj.
+
+The commit description lists the flake inputs whose revisions moved, the package
+pins whose versions changed, and the package versions that differ from the
+configurations built from the parent revision, across the whole closures of what
+the blueprint installs, so packages behind unversioned wrappers count too. Each
+line names only the versions a package lost and gained, packages that moved
+together share a line, and the heading names the blueprint's Nix system in place
+of the target-triple suffix some toolchain components carry. `flake-update`
+formats and validates it with `commit-message`. Each phase of a run starts with
+a `==>` line, and a successful run ends with
+`==> Committed the dependency update as <change-id>`.
+
+When a check fails, `flake-update` exits 1 and leaves the update uncommitted in
+`@`. Fix the failure there and run it again: seeing a non-empty `@` with the
+update's subject, it reruns the checks without updating again and commits the
+fix in the same change. An explanation of the fix written into the description
+of `@` with `jj describe` stays above the generated lists. `jj abandon @`
+discards the update instead. It also refuses to commit when `@` changed while
+the checks ran. When `nix flake update` or an updater fails, it restores `@` to
+its parent instead, so no partial update remains.
+
+`nix flake update` runs without the `DOTFILES_PRIVATE_LOCAL` override, which it
+would otherwise write into `flake.lock`; only the checks build against the local
+checkout.
 
 ## Module Interfaces
 

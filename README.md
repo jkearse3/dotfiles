@@ -43,8 +43,9 @@ Run these from the repository root:
 - `nix run .#package-update -- [--dry-run]` - update the pins of packaged tools
 - `nix run .#flake-update` - update `flake.lock` and the package pins, then
   evaluate every blueprint, run `nix flake check`, and build the marker-selected
-  blueprint's Home Manager configuration, committing the result with jj only
-  when all three pass
+  blueprint's Home Manager and nix-darwin configurations, committing the result
+  with jj only when every check passes; after a failure, fix it in `@` and run
+  it again to resume
 
 Build and switch apps use an explicit `--blueprint` first, then the Home
 Manager-managed blueprint marker. They run nh, which shows a package diff

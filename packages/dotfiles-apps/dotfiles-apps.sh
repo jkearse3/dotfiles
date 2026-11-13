@@ -3,7 +3,8 @@
 # The commands behind this repository's flake apps: `nix run .#<command> --
 # [options]` runs `dotfiles-apps <command> [options]` from the repository root.
 # build-home, switch-home, build-system, and switch-system build or activate the
-# selected blueprint; package-update and flake-update update dependencies.
+# selected blueprint; package-update and flake-update, whose implementation
+# `flake-update.sh` holds, update dependencies.
 # switch-home and switch-system refuse to run from a linked Git worktree or
 # secondary jj workspace unless given `--allow-worktree`.
 # `package.nix` prepends `blueprint_output`, generated from the flake's
@@ -47,9 +48,12 @@ EOF
 		cat <<EOF
 usage: nix run .#flake-update
 
-Reads the dotfiles/blueprint-id marker and, after evaluating every blueprint
-and running \`nix flake check\`, builds that blueprint's home configuration
-before committing the update.
+Updates flake.lock and the package pins in a jj change of their own. Once
+every blueprint evaluates, \`nix flake check\` passes, and the home and system
+configurations of the blueprint in the dotfiles/blueprint-id marker build, it
+commits the change with a description listing the inputs, pins, and package
+versions that changed. When a check fails, the update stays in @; rerunning
+resumes it, rerunning the checks without updating again.
 
   --help                      print this usage
 EOF
@@ -101,7 +105,7 @@ set_private_override() {
 }
 
 # Sets `output_name` to the home or system configuration name of the selected
-# blueprint: `blueprint_id` when given, as from `--blueprint`, otherwise the ID
+# blueprint and `selected_blueprint_id` to its ID: `blueprint_id` when given, as from `--blueprint`, otherwise the ID
 # in the `dotfiles/blueprint-id` marker under XDG_CONFIG_HOME (default
 # `$HOME/.config`). `kind` is `home` or `system`. Prints the selected ID and its
 # source, and exits 1 when no ID is given and the marker is missing, or when the
@@ -125,6 +129,7 @@ select_blueprint() {
 		echo "error: unknown blueprint '$blueprint_id' from $blueprint_source; run 'nix eval .#blueprints --apply builtins.attrNames' to list canonical IDs" >&2
 		exit 1
 	fi
+	selected_blueprint_id=$blueprint_id
 	echo "Selected blueprint '$blueprint_id' from $blueprint_source"
 }
 
@@ -191,60 +196,8 @@ package_update() {
 	local updater
 	for updater in "${updaters[@]}"; do
 		echo "Updating $updater..."
-		"$updater" "${updater_args[@]}"
+		"$updater" "${updater_args[@]}" || return
 	done
-}
-
-# Runs `nix` with the remaining arguments as one check of an uncommitted
-# dependency update. When it fails, reports which check failed and that the
-# update stays in `@` for the fix, and exits 1.
-check_dependency_update() {
-	local check_name=$1
-	shift
-
-	if ! nix "$@"; then
-		echo "error: $check_name failed; the dependency update stays uncommitted in @ so the fix can land in the same change" >&2
-		exit 1
-	fi
-}
-
-# Updates the flake inputs and every package pin in a jj change of their own,
-# then commits it as "build(nix): update dependencies" once every blueprint
-# still evaluates, `nix flake check` passes, and the Home Manager configuration
-# `home_configuration_name` builds. Starts a new change first when the working
-# copy is not empty, and commits nothing when no dependency changed. When a
-# check fails, exits 1 and leaves the update uncommitted in `@`. `jj` comes from
-# the user's PATH. The inputs update without DOTFILES_PRIVATE_LOCAL's override,
-# because `nix flake update` writes an overridden input into flake.lock: the
-# lock keeps recording dotfiles-private's remote revision, and only the checks
-# build against the local checkout.
-flake_update() {
-	local home_configuration_name=$1
-
-	local is_working_copy_empty
-	is_working_copy_empty="$(jj log -r @ --no-graph -T empty)"
-	if [[ $is_working_copy_empty != true ]]; then
-		jj new
-	fi
-
-	nix flake update --accept-flake-config
-	package_update ""
-
-	local changed_files
-	changed_files="$(jj diff -r @ --name-only)"
-	if [[ -z $changed_files ]]; then
-		echo "dependencies unchanged, skipping evaluation"
-		return
-	fi
-
-	check_dependency_update "nix build .#eval-blueprints" \
-		build --no-link --accept-flake-config "${private_override[@]}" .#eval-blueprints
-	check_dependency_update "nix flake check" \
-		flake check --accept-flake-config "${private_override[@]}"
-	check_dependency_update "building home configuration '$home_configuration_name'" \
-		build --no-link --accept-flake-config "${private_override[@]}" ".#homeConfigurations.\"$home_configuration_name\".activationPackage"
-
-	jj commit -m "build(nix): update dependencies"
 }
 
 # Returns when `.` is the main checkout of its Git repository, where git-dir
@@ -284,11 +237,11 @@ require_main_checkout() {
 
 # Runs `command`: build-home, switch-home, build-system, or switch-system on the
 # blueprint selected by `--blueprint` or the marker, or package-update or
-# flake-update, which builds the home configuration of the blueprint the marker
-# selects. Argument errors exit 2 before anything else; the working-directory
-# guards (the repository root, and for switch apps the main checkout unless
-# `--allow-worktree` is given), DOTFILES_PRIVATE_LOCAL, and blueprint selection
-# exit 1 before any Nix, nh, or jj call.
+# flake-update, which builds the home and system configurations of the
+# blueprint the marker selects. Argument errors exit 2 before anything else; the
+# working-directory guards (the repository root, and for switch apps the main
+# checkout unless `--allow-worktree` is given), DOTFILES_PRIVATE_LOCAL, and
+# blueprint selection exit 1 before any Nix, nh, or jj call.
 main() {
 	local command=${1-}
 	shift || true
@@ -334,10 +287,10 @@ main() {
 	local private_override
 	set_private_override
 
-	local output_name
+	local output_name selected_blueprint_id
 	if [[ $command == flake-update ]]; then
 		select_blueprint home ""
-		flake_update "$output_name"
+		flake_update "$selected_blueprint_id" "$output_name" "$(blueprint_output system "$selected_blueprint_id")"
 		return
 	fi
 
