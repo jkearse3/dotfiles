@@ -2,11 +2,15 @@
 
 from __future__ import annotations
 
+import errno
 import json
 import os
+import re
 import shutil
 import subprocess
 import tempfile
+import threading
+import time
 import unittest
 from pathlib import Path
 from typing import cast, final, override
@@ -67,16 +71,22 @@ printf 'herdr %s\\n' "$*" >> "$STUB_LOG"
 exit 1
 """
 
-# fzf, named by $HERDR_JJ_WORKSPACE_FZF_PATH. Picking the repository, it
-# records its input lines in $FAKE_FZF_INPUT, then prints input line
-# $FAKE_FZF_CHOICE and exits 0, or, with no choice, exits 130 as fzf does on
-# Esc; $FAKE_FZF_STATUS overrides the status. Picking the base revision, it
-# records its arguments, one per line, in $FAKE_FZF_BASE_ARGUMENTS and its
-# input lines in $FAKE_FZF_BASE_INPUT, then prints input line
-# ${FAKE_FZF_BASE_CHOICE:-1}, as Enter with an empty query does, and exits with
-# ${FAKE_FZF_BASE_STATUS:-0}.
+# fzf, named by $HERDR_JJ_WORKSPACE_FZF_PATH. Picking the repository and base
+# together, it records its arguments, one per line, in $FAKE_FZF_ARGUMENTS and
+# its input lines in $FAKE_FZF_INPUT, then prints input line $FAKE_FZF_CHOICE
+# and exits 0, or, with no choice, exits 130 as fzf does on Esc;
+# $FAKE_FZF_STATUS overrides the status. With $FAKE_FZF_EARLY_EXIT set, it
+# instead reads only the first input line, prints it and exits 0 at once, as
+# Enter does before the list is complete. Picking the base revision alone, it
+# records its arguments in $FAKE_FZF_BASE_ARGUMENTS and its input lines in
+# $FAKE_FZF_BASE_INPUT, then prints input line ${FAKE_FZF_BASE_CHOICE:-1}, as
+# Enter with an empty query does, and exits with ${FAKE_FZF_BASE_STATUS:-0}.
+# With $EVENT_LOG set, it first appends "fzf started" to that file.
 FAKE_FZF = """\
 #!/bin/sh
+if [ -n "${EVENT_LOG:-}" ]; then
+  echo "fzf started" >> "$EVENT_LOG"
+fi
 for argument; do
   if [ "$argument" = "--prompt=Base revision> " ]; then
     printf '%s\\n' "$@" > "$FAKE_FZF_BASE_ARGUMENTS"
@@ -85,6 +95,12 @@ for argument; do
     exit "${FAKE_FZF_BASE_STATUS:-0}"
   fi
 done
+printf '%s\\n' "$@" > "$FAKE_FZF_ARGUMENTS"
+if [ -n "${FAKE_FZF_EARLY_EXIT:-}" ]; then
+  IFS= read -r line
+  printf '%s\\n' "$line"
+  exit 0
+fi
 cat > "$FAKE_FZF_INPUT"
 if [ -n "${FAKE_FZF_CHOICE:-}" ]; then
   sed -n "${FAKE_FZF_CHOICE}p" "$FAKE_FZF_INPUT"
@@ -156,6 +172,7 @@ class AppHostTests(unittest.TestCase):
         self.records = self.root / "records"
         self.records.mkdir()
         self.fzf_input = self.root / "fzf.input"
+        self.fzf_arguments = self.root / "fzf.arguments"
         self.fzf_base_input = self.root / "fzf-base.input"
         self.fzf_base_arguments = self.root / "fzf-base.arguments"
         self.repo = self.root / "repo"
@@ -183,6 +200,7 @@ class AppHostTests(unittest.TestCase):
             "HC_TERMINAL_ID": "t1",
             "HERDR_JJ_WORKSPACE_FZF_PATH": str(stubs / "fzf"),
             "FAKE_FZF_INPUT": str(self.fzf_input),
+            "FAKE_FZF_ARGUMENTS": str(self.fzf_arguments),
             "FAKE_FZF_BASE_INPUT": str(self.fzf_base_input),
             "FAKE_FZF_BASE_ARGUMENTS": str(self.fzf_base_arguments),
         }
@@ -221,6 +239,8 @@ class AppHostTests(unittest.TestCase):
             text=True,
             capture_output=True,
             check=False,
+            # A picker that never finishes would otherwise hang the suite.
+            timeout=120,
         )
 
     def output(self, result: subprocess.CompletedProcess[str]) -> dict[str, str]:
@@ -253,6 +273,11 @@ class AppHostTests(unittest.TestCase):
             capture_output=True,
         )
         _ = self.jj("bookmark", "create", "newer", "-r", 'description(substring:"later")')
+
+    def create_bookmark_described(self, name: str, description: str) -> None:
+        """Bookmark NAME on a new child of the initial commit whose description is DESCRIPTION."""
+        _ = self.jj("new", "--no-edit", "@-", "-m", description)
+        _ = self.jj("bookmark", "create", name, "-r", "latest(@-+ ~ @)")
 
     def push_main_as_trunk(self) -> None:
         """Bookmark main on the initial commit and push it to origin, so trunk() resolves to main@origin."""
@@ -601,6 +626,27 @@ class AppHostTests(unittest.TestCase):
             ["trunk()", f"newer \t{self.change_id('newer')} \tlater"],
         )
 
+    def test_prompt_add_base_lists_description_holding_line_separator(self) -> None:
+        self.create_bookmark_described("odd", "fix\u2028thing")
+        result = self.run_cli("prompt-add", "--host", "app", stdin="feature\n", FAKE_FZF_BASE_CHOICE="2")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(self.base_rows(), ["trunk()", f"odd \t{self.change_id('odd')} \tfix\u2028thing"])
+        self.assertIn(f"Base: odd  {self.change_id('odd')}  fix\u2028thing\n", result.stdout)
+        self.assertEqual(self.commit("feature@-"), self.commit("odd"))
+
+    def test_prompt_add_base_malformed_bookmark_row_fails_without_fzf(self) -> None:
+        # jj keeps the lone carriage return in the first line, and Python's
+        # text decoding turns it into a newline that splits the bookmark's row,
+        # leaving "thing" a row of its own.
+        self.create_bookmark_described("odd", "fix\rthing")
+        result = self.run_cli("prompt-add", "--host", "app", stdin="\n")
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("jj bookmark list printed malformed row 'thing'", result.stderr)
+        self.assertNotIn("Traceback", result.stderr)
+        self.assertIn("Press enter to close.", result.stderr)
+        self.assertFalse(self.fzf_base_input.exists())
+        self.assertEqual(self.workspace_names(), ["default"])
+
     def test_prompt_add_base_with_every_bookmark_in_trunk_starts_on_trunk(self) -> None:
         self.push_main_as_trunk()
         _ = self.jj("bookmark", "create", "old", "-r", "@-")
@@ -611,32 +657,88 @@ class AppHostTests(unittest.TestCase):
         self.assertFalse(self.fzf_base_input.exists())
         self.assertEqual(self.commit("feature@-"), self.commit("main"))
 
-    def test_prompt_add_pick_then_base_starts_on_bookmark(self) -> None:
-        self.create_bookmarks_to_stack_on()
-        result = self.run_cli(
-            "prompt-add",
-            "--host",
-            "app",
-            "--pick",
-            stdin="feature\n",
-            FAKE_FZF_CHOICE="1",
-            FAKE_FZF_BASE_CHOICE="2",
+    def base_rows(self) -> list[str]:
+        # Split on newlines alone, as fzf does, so a row holding U+2028 stays whole.
+        return self.fzf_base_input.read_text().split("\n")[:-1]
+
+    def picked_rows(self) -> list[str]:
+        # Split on newlines alone, as fzf does, so a row holding U+2028 stays whole.
+        return self.fzf_input.read_text().split("\n")[:-1]
+
+    def add_listed_repository(self, name: str) -> Path:
+        """Make ~/NAME, a jj repository with bookmark elsewhere on a commit described "other work"."""
+        repository = self.root / "home" / name
+        _ = subprocess.run(["jj", "git", "init", str(repository)], env=self.env, check=True, capture_output=True)
+        _ = subprocess.run(
+            ["jj", "-R", str(repository), "commit", "-m", "other work"], env=self.env, check=True, capture_output=True
         )
+        _ = subprocess.run(
+            ["jj", "-R", str(repository), "bookmark", "create", "elsewhere", "-r", "@-"],
+            env=self.env,
+            check=True,
+            capture_output=True,
+        )
+        return repository
+
+    def add_failing_repository(self, name: str) -> Path:
+        """Make ~/NAME, whose bare .jj directory counts as a primary checkout but makes jj fail."""
+        repository = self.root / "home" / name
+        (repository / ".jj").mkdir(parents=True)
+        return repository
+
+    def assert_unlisted_row(self, row: str, label: str) -> None:
+        """Assert ROW is LABEL's only row: trunk() with why its bookmarks are not listed."""
+        self.assertRegex(row, rf"^{label} *\ttrunk\(\) \t\(bookmarks not listed: ")
+
+    def test_prompt_add_pick_enter_picks_first_repository_on_trunk(self) -> None:
+        self.create_bookmarks_to_stack_on()
+        result = self.run_cli("prompt-add", "--host", "app", "--pick", stdin="feature\n", FAKE_FZF_CHOICE="1")
         self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertEqual(self.fzf_input.read_text().splitlines(), [str(self.repo)])
+        self.assertEqual(
+            self.picked_rows(),
+            [
+                f"{self.repo} \ttrunk()",
+                f"{self.repo} \tnewer \t{self.change_id('newer')} \tlater",
+                f"{self.repo} \tbase  \t{self.change_id('base')} \tinitial",
+            ],
+        )
+        # Only the repository and bookmark name, the first two tab-separated
+        # fields, are searched, and the listed order breaks ties.
+        self.assertEqual(
+            self.fzf_arguments.read_text().splitlines(),
+            ["--prompt=New jj workspace> ", "--delimiter=\t", "--nth=1,2", "--tiebreak=index", "--tabstop=1"],
+        )
+        self.assertIn("New jj workspace for repo", result.stdout)
+        self.assertLess(result.stdout.index("Base: trunk()\n"), result.stdout.index("Name: "))
+        self.assertEqual(self.commit("feature@-"), self.commit("trunk()"))
+
+    def test_prompt_add_pick_bookmark_starts_on_it_without_a_base_picker(self) -> None:
+        self.create_bookmarks_to_stack_on()
+        result = self.run_cli("prompt-add", "--host", "app", "--pick", stdin="feature\n", FAKE_FZF_CHOICE="2")
+        self.assertEqual(result.returncode, 0, result.stderr)
         self.assertIn("New jj workspace for repo", result.stdout)
         self.assertIn(f"Base: newer  {self.change_id('newer')}  later\n", result.stdout)
+        self.assertFalse(self.fzf_base_input.exists())
         self.assertEqual(self.commit("feature@-"), self.commit("newer"))
+        self.assertEqual(self.calls()[-1], f'herdr-app do space.new {{"folder": "{self.workspace}"}}')
+
+    def test_prompt_add_pick_leaves_out_bookmarks_in_trunk(self) -> None:
+        self.push_main_as_trunk()
+        self.create_bookmarks_to_stack_on()
+        result = self.run_cli("prompt-add", "--host", "app", "--pick")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        # trunk() covers main and base, which share its commit.
+        self.assertEqual(
+            self.picked_rows(),
+            [f"{self.repo} \ttrunk()", f"{self.repo} \tnewer \t{self.change_id('newer')} \tlater"],
+        )
 
     def test_prompt_add_pick_lists_each_local_jj_repository_once(self) -> None:
         self.add_feature()
         plain = self.root / "plain"
         plain.mkdir()
-        # find_jj_checkout needs only a .jj directory to count a folder as a primary checkout.
-        other = self.root / "home" / "other"
-        remote = self.root / "home" / "remote"
-        for repository in (other, remote):
-            (repository / ".jj").mkdir(parents=True)
+        other = self.add_failing_repository("other")
+        remote = self.add_failing_repository("remote")
         unplaced = app_space("sp6", plain, "t6")
         unplaced["folder"] = ""
         unplaced["tabs"] = list[object]()
@@ -655,7 +757,10 @@ class AppHostTests(unittest.TestCase):
 
         result = self.run_cli("prompt-add", "--host", "app", "--pick", stdin="second\n", FAKE_FZF_CHOICE="1")
         self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertEqual(self.fzf_input.read_text().splitlines(), [str(self.repo), "~/other"])
+        rows = self.picked_rows()
+        self.assertEqual(len(rows), 2)
+        self.assertEqual(rows[0], f"{self.repo} \ttrunk()")
+        self.assert_unlisted_row(rows[1], "~/other")
         self.assertIn("New jj workspace for repo", result.stdout)
         second = self.workspace.parent / "second"
         self.assertEqual(self.workspace_names(), ["default", "feature", "second"])
@@ -675,8 +780,7 @@ class AppHostTests(unittest.TestCase):
     def test_prompt_add_pick_lists_repositories_spaces_are_now_in(self) -> None:
         plain = self.root / "plain"
         plain.mkdir()
-        other = self.root / "home" / "other"
-        (other / ".jj").mkdir(parents=True)
+        other = self.add_failing_repository("other")
         # sp3 was made outside any repository and has since moved into other;
         # sp1 was made in the primary checkout and has since left it.
         self.set_world(
@@ -688,16 +792,206 @@ class AppHostTests(unittest.TestCase):
 
         result = self.run_cli("prompt-add", "--host", "app", "--pick")
         self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertEqual(self.fzf_input.read_text().splitlines(), ["~/other"])
+        rows = self.picked_rows()
+        self.assertEqual(len(rows), 1)
+        self.assert_unlisted_row(rows[0], "~/other")
+
+    def test_prompt_add_pick_repository_whose_bookmarks_fail_can_be_picked_on_trunk(self) -> None:
+        other = self.add_failing_repository("other")
+        self.set_world(app_space("sp4", other, "t4", shown=True))
+        self.set_record(terminal_record("t4", other, other, "sp4"))
+
+        result = self.run_cli("prompt-add", "--host", "app", "--pick", stdin="second\n\n", FAKE_FZF_CHOICE="1")
+        # The stand-in repository has no store, so creating the workspace fails
+        # after the pick, which the name prompt shows went through.
+        self.assertIn("New jj workspace for other\nBase: trunk()\n", result.stdout)
+        self.assertEqual(self.workspace_names(), ["default"])
+
+    def test_prompt_add_pick_lists_description_holding_line_separator(self) -> None:
+        self.create_bookmark_described("odd", "fix\u2028thing\n\nbody")
+        second = self.add_listed_repository("second")
+        self.set_world(
+            app_space("sp1", self.repo, "t1", shown=True),
+            app_space("sp4", second, "t4"),
+        )
+        self.set_record(terminal_record("t4", second, second, "sp4"))
+
+        result = self.run_cli("prompt-add", "--host", "app", "--pick", stdin="feature\n", FAKE_FZF_CHOICE="2")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        second_label = f"{'~/second':<{len(str(self.repo))}}"
+        elsewhere = subprocess.run(
+            ["jj", "-R", str(second), "log", "--no-graph", "-r", "elsewhere", "-T", "change_id.shortest(8)"],
+            env=self.env,
+            check=True,
+            capture_output=True,
+            text=True,
+        ).stdout
+        self.assertEqual(
+            self.picked_rows(),
+            [
+                f"{self.repo} \ttrunk()",
+                f"{self.repo} \todd \t{self.change_id('odd')} \tfix\u2028thing",
+                f"{second_label} \ttrunk()",
+                f"{second_label} \telsewhere \t{elsewhere} \tother work",
+            ],
+        )
+        self.assertIn(f"Base: odd  {self.change_id('odd')}  fix\u2028thing\n", result.stdout)
+        self.assertEqual(self.commit("feature@-"), self.commit("odd"))
+
+    def test_prompt_add_pick_malformed_bookmark_row_keeps_later_repositories(self) -> None:
+        # jj keeps the lone carriage return in the first line, and Python's
+        # text decoding turns it into a newline that splits the bookmark's row,
+        # leaving "thing" a row of its own.
+        self.create_bookmark_described("odd", "fix\rthing")
+        second = self.add_listed_repository("second")
+        self.set_world(
+            app_space("sp1", self.repo, "t1", shown=True),
+            app_space("sp4", second, "t4"),
+        )
+        self.set_record(terminal_record("t4", second, second, "sp4"))
+
+        result = self.run_cli("prompt-add", "--host", "app", "--pick")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        rows = self.picked_rows()
+        self.assertEqual(len(rows), 3)
+        self.assert_unlisted_row(rows[0], re.escape(str(self.repo)))
+        self.assertIn("jj bookmark list printed malformed row 'thing'", rows[0])
+        second_label = f"{'~/second':<{len(str(self.repo))}}"
+        self.assertEqual(rows[1], f"{second_label} \ttrunk()")
+        self.assertRegex(rows[2], rf"^{re.escape(second_label)} \telsewhere \t\w+ \tother work$")
 
     def test_prompt_add_pick_closed_without_choosing_creates_nothing(self) -> None:
         for status in ("1", "130"):
             with self.subTest(status=status):
                 result = self.run_cli("prompt-add", "--host", "app", "--pick", FAKE_FZF_STATUS=status)
                 self.assertEqual(result.returncode, 0, result.stderr)
-                self.assertEqual(self.fzf_input.read_text().splitlines(), [str(self.repo)])
+                self.assertEqual(self.picked_rows(), [f"{self.repo} \ttrunk()"])
+                self.assertNotIn("Name: ", result.stdout)
                 self.assertEqual(self.workspace_names(), ["default"])
                 self.assertEqual(self.calls(), ["herdr-app ls", "hc get t1 --json", "hc get t2 --json"])
+
+    def test_prompt_add_pick_choice_before_every_repository_is_listed_creates_it(self) -> None:
+        self.create_bookmarks_to_stack_on()
+        other = self.add_failing_repository("other")
+        third = self.add_failing_repository("third")
+        self.set_world(
+            app_space("sp1", self.repo, "t1", shown=True),
+            app_space("sp4", other, "t4"),
+            app_space("sp5", third, "t5"),
+        )
+        self.set_record(terminal_record("t4", other, other, "sp4"))
+        self.set_record(terminal_record("t5", third, third, "sp5"))
+
+        result = self.run_cli("prompt-add", "--host", "app", "--pick", stdin="feature\n", FAKE_FZF_EARLY_EXIT="1")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("New jj workspace for repo\nBase: trunk()\n", result.stdout)
+        self.assertEqual(self.commit("feature@-"), self.commit("trunk()"))
+
+    def test_prompt_add_pick_opens_fzf_once_the_first_repository_is_listed(self) -> None:
+        # fzf takes Enter on an empty list as no match, so the first
+        # repository's rows must already be ready when fzf opens.
+        self.create_bookmarks_to_stack_on()
+        other = self.add_failing_repository("other")
+        self.set_world(app_space("sp1", self.repo, "t1", shown=True), app_space("sp4", other, "t4"))
+        self.set_record(terminal_record("t4", other, other, "sp4"))
+        events = self.root / "events.log"
+        self.hold_back_jj(self.repo, events)
+
+        result = self.run_cli(
+            "prompt-add", "--host", "app", "--pick", stdin="feature\n", FAKE_FZF_EARLY_EXIT="1", EVENT_LOG=str(events)
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(events.read_text().splitlines(), ["jj listing", "jj released", "fzf started"])
+        self.assertIn("New jj workspace for repo\nBase: trunk()\n", result.stdout)
+
+    def test_prompt_add_pick_opens_fzf_while_later_repositories_are_listed(self) -> None:
+        # One slow repository must not hold the picker back for the others:
+        # second's listing starts before fzf opens and finishes only after.
+        self.create_bookmarks_to_stack_on()
+        second = self.add_listed_repository("second")
+        self.set_world(app_space("sp1", self.repo, "t1", shown=True), app_space("sp4", second, "t4"))
+        self.set_record(terminal_record("t4", second, second, "sp4"))
+        events = self.root / "events.log"
+        self.hold_back_jj(second, events, label="second jj", release_after="fzf started")
+        self.hold_back_jj(self.repo, events, release_after="second jj listing")
+
+        result = self.run_cli(
+            "prompt-add", "--host", "app", "--pick", stdin="feature\n", FAKE_FZF_EARLY_EXIT="1", EVENT_LOG=str(events)
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+        # Both listings start at once, so either may log "listing" first, and
+        # second is released only after fzf started, when the CLI may be done.
+        events_until_fzf = events.read_text().split("fzf started\n")[0].splitlines()
+        self.assertEqual(
+            [event for event in events_until_fzf if event != "jj listing"], ["second jj listing", "jj released"]
+        )
+        self.assertIn("New jj workspace for repo\nBase: trunk()\n", result.stdout)
+        self.assertEqual(self.commit("feature@-"), self.commit("trunk()"))
+
+    def hold_back_jj(
+        self, repository: Path, events: Path, *, label: str = "jj", release_after: str | None = None
+    ) -> None:
+        """Make the next jj command in REPOSITORY wait until it is released, logging its progress to EVENTS.
+
+        "LABEL listing" is appended once jj waits, and "LABEL released" just
+        before it is released: once RELEASE_AFTER is a line of EVENTS or, with
+        none, a second after it began waiting. Each wait gives up after ten
+        seconds, so a test whose expected event never comes fails on the event
+        order instead of hanging.
+
+        jj reads the repository's store type when it loads the repository, so
+        that file becomes a FIFO, which jj cannot open until it is opened for
+        writing. Once jj has it open, the regular file is put back for later
+        jj commands, and jj reads the type through the FIFO.
+        """
+        store_type = repository / ".jj" / "repo" / "store" / "type"
+        content = store_type.read_text()
+        held_type = self.root / f"held-store-type-{repository.name}"
+        _ = held_type.write_text(content)
+        store_type.unlink()
+        os.mkfifo(store_type)
+
+        def log(event: str) -> None:
+            with events.open("a") as event_log:
+                _ = event_log.write(f"{event}\n")
+
+        def logged(event: str) -> bool:
+            try:
+                return event in events.read_text().splitlines()
+            except FileNotFoundError:
+                return False
+
+        def release() -> None:
+            # Opening the FIFO without blocking fails with ENXIO until jj has it open for reading.
+            deadline = time.monotonic() + 10
+            while True:
+                try:
+                    fifo = os.open(store_type, os.O_WRONLY | os.O_NONBLOCK)
+                    break
+                except OSError as error:
+                    if error.errno != errno.ENXIO or time.monotonic() > deadline:
+                        return
+                    time.sleep(0.01)
+            _ = held_type.replace(store_type)
+            log(f"{label} listing")
+
+            if release_after is None:
+                time.sleep(1)
+            else:
+                deadline = time.monotonic() + 10
+                while not logged(release_after) and time.monotonic() < deadline:
+                    time.sleep(0.01)
+            log(f"{label} released")
+
+            # jj may already be killed, once fzf has exited.
+            try:
+                _ = os.write(fifo, content.encode())
+            except OSError:
+                pass
+            finally:
+                os.close(fifo)
+
+        threading.Thread(target=release, daemon=True).start()
 
     def test_prompt_add_pick_fzf_failure_waits_for_enter(self) -> None:
         result = self.run_cli("prompt-add", "--host", "app", "--pick", stdin="\n", FAKE_FZF_STATUS="2")
@@ -715,7 +1009,7 @@ class AppHostTests(unittest.TestCase):
         self.assertEqual(result.returncode, 1)
         self.assertIn("no space on this machine is in a jj repository; run jjx ensure", result.stderr)
         self.assertIn("Press enter to close.", result.stderr)
-        self.assertFalse(self.fzf_input.exists())
+        self.assertFalse(self.fzf_arguments.exists())
 
     def test_prompt_add_pick_needs_app_host(self) -> None:
         result = self.run_cli(
@@ -724,13 +1018,12 @@ class AppHostTests(unittest.TestCase):
         self.assertEqual(result.returncode, 1)
         self.assertIn("--pick needs the app host", result.stderr)
         self.assertEqual(self.calls(), [])
-        self.assertFalse(self.fzf_input.exists())
+        self.assertFalse(self.fzf_arguments.exists())
 
     def test_prompt_add_pick_lists_first_folders_repository_first(self) -> None:
-        other = self.root / "home" / "other"
-        third = self.root / "home" / "third"
-        for repository in (other, third):
-            (repository / ".jj").mkdir(parents=True)
+        self.create_bookmarks_to_stack_on()
+        other = self.add_failing_repository("other")
+        third = self.add_failing_repository("third")
         (third / "sub").mkdir()
         self.set_world(
             app_space("sp1", self.repo, "t1", shown=True),
@@ -743,13 +1036,24 @@ class AppHostTests(unittest.TestCase):
 
         result = self.run_cli("prompt-add", "--host", "app", "--pick", "--first", str(third / "sub"))
         self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertEqual(self.fzf_input.read_text().splitlines(), ["~/third", str(self.repo), "~/other"])
+        # Each repository's rows are contiguous: ~/third's, then the sidebar's in order.
+        rows = self.picked_rows()
+        self.assertEqual(len(rows), 5)
+        self.assert_unlisted_row(rows[0], "~/third")
+        self.assertEqual(
+            rows[1:4],
+            [
+                f"{self.repo} \ttrunk()",
+                f"{self.repo} \tnewer \t{self.change_id('newer')} \tlater",
+                f"{self.repo} \tbase  \t{self.change_id('base')} \tinitial",
+            ],
+        )
+        self.assert_unlisted_row(rows[4], "~/other")
         self.assertEqual(self.calls(), calls_without_first)
 
     def test_prompt_add_pick_first_enter_picks_its_repository_once(self) -> None:
         self.add_feature()
-        other = self.root / "home" / "other"
-        (other / ".jj").mkdir(parents=True)
+        other = self.add_failing_repository("other")
         self.set_world(
             app_space("sp4", other, "t4"),
             app_space("sp1", self.repo, "t1", shown=True),
@@ -768,7 +1072,10 @@ class AppHostTests(unittest.TestCase):
             FAKE_FZF_CHOICE="1",
         )
         self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertEqual(self.fzf_input.read_text().splitlines(), [str(self.repo), "~/other"])
+        rows = self.picked_rows()
+        self.assertEqual(len(rows), 2)
+        self.assertEqual(rows[0], f"{self.repo} \ttrunk()")
+        self.assert_unlisted_row(rows[1], "~/other")
         second = self.workspace.parent / "second"
         self.assertEqual(self.workspace_names(), ["default", "feature", "second"])
         self.assertEqual(self.calls()[-1], f'herdr-app do space.new {{"folder": "{second}"}}')
@@ -778,13 +1085,13 @@ class AppHostTests(unittest.TestCase):
         plain.mkdir()
         without_first = self.run_cli("prompt-add", "--host", "app", "--pick")
         self.assertEqual(without_first.returncode, 0, without_first.stderr)
-        listed_without_first = self.fzf_input.read_text().splitlines()
+        listed_without_first = self.picked_rows()
 
         for first in (plain, plain / "gone"):
             with self.subTest(first=first.name):
                 result = self.run_cli("prompt-add", "--host", "app", "--pick", "--first", str(first))
                 self.assertEqual(result.returncode, 0, result.stderr)
-                self.assertEqual(self.fzf_input.read_text().splitlines(), listed_without_first)
+                self.assertEqual(self.picked_rows(), listed_without_first)
 
     def test_prompt_add_pick_first_without_jj_spaces_still_lists_it(self) -> None:
         plain = self.root / "plain"
@@ -794,14 +1101,14 @@ class AppHostTests(unittest.TestCase):
 
         result = self.run_cli("prompt-add", "--host", "app", "--pick", "--first", str(self.repo / "src"))
         self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertEqual(self.fzf_input.read_text().splitlines(), [str(self.repo)])
+        self.assertEqual(self.picked_rows(), [f"{self.repo} \ttrunk()"])
 
     def test_prompt_add_first_needs_pick(self) -> None:
         result = self.run_cli("prompt-add", "--host", "app", "--first", str(self.repo), stdin="\n")
         self.assertEqual(result.returncode, 1)
         self.assertIn("--first needs --pick", result.stderr)
         self.assertEqual(self.calls(), [])
-        self.assertFalse(self.fzf_input.exists())
+        self.assertFalse(self.fzf_arguments.exists())
 
     def test_prompt_remove_declined_changes_nothing(self) -> None:
         self.add_feature()

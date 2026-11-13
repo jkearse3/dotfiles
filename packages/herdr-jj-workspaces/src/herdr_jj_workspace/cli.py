@@ -22,23 +22,26 @@ CLI, or ``app``, the Herdr desktop app through ``herdr-app`` and herdr-core's
 ``hc``. Under ``app``, a workspace is an app space and ``--workspace`` takes a
 space ID; a new jj workspace comes from the repository of the process's working
 directory unless ``--workspace`` names a space, and opens as a new space.
-``prompt-add --pick`` instead asks in fzf which repository of the app's spaces
-on this machine to use, listing first the repository of the folder ``--first``
-names.
+``prompt-add --pick`` instead asks in one fzf search for the repository and
+base together: each row pairs one of the jj repositories of the app's spaces on
+this machine with one of its bases, the rows of the repository of the folder
+``--first`` names first.
 """
 
 from __future__ import annotations
 
 import argparse
+import contextlib
 import json
 import os
 import shlex
 import subprocess
 import sys
+import threading
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Literal, cast
+from typing import IO, Literal, cast
 
 # Herdr's default worktree directory, which also holds its own worktrees.
 WORKTREES_DIRECTORY = Path.home() / ".herdr" / "worktrees"
@@ -377,18 +380,122 @@ FZF_NO_MATCH = 1
 FZF_INTERRUPTED = 130
 
 
-def pick_app_source(first: Path | None = None) -> JjCheckout | None:
-    """Ask in fzf which repository of the app's spaces on this machine a new jj workspace is made from.
+def pick_app_source_and_base(first: Path | None = None) -> tuple[JjCheckout, Base] | None:
+    """Ask in one fzf search which repository of the app's spaces, and which base in it, a new jj workspace starts from.
 
-    fzf lists the primary checkout of FIRST's jj repository first, so Enter
-    with an empty query picks it, even when no space is in that repository;
-    a FIRST in no jj repository, or None, adds nothing. Then it lists, in
-    sidebar order, the primary checkout of each jj repository a space is now
-    in (see ``_app_space_live_folder``). Each repository appears once, even
-    when several spaces show its checkouts. Returns the chosen primary
-    checkout, or None when the user closes fzf without choosing. Raises
-    WorkspaceError, before running fzf, when no window is open, hc fails, or
-    neither FIRST nor any space is in a jj repository, and when fzf fails.
+    Each fzf row pairs a repository with a base. The repositories come in
+    ``_app_jj_repositories`` order, FIRST's first, and each one's rows are
+    contiguous: ``trunk()``, then the bases ``pick_base`` would offer, most
+    recently committed first. So Enter with an empty query picks FIRST's
+    repository, or else the first space's, on ``trunk()``. The query matches
+    only the repository and the bookmark name: change IDs and descriptions are
+    shown but not searched, and among equally good matches the listed order
+    wins.
+
+    ``jj bookmark list`` runs in every repository at once, and fzf opens only
+    once FIRST's repository, or the first space's, is listed, and gets its rows
+    first, since fzf takes Enter on an empty list as no match. Each later
+    repository's rows are appended while the user types, once it and every
+    repository before it have been listed. Bookmark names are aligned within
+    each repository only, since aligning them across repositories would hold
+    every row back until the slowest repository is listed. A repository whose
+    bookmarks cannot be listed keeps its ``trunk()`` row, which shows why in
+    its unsearched last field.
+
+    Returns the chosen repository's primary checkout and base, or None when
+    the user closes fzf without choosing. Raises WorkspaceError, before running
+    fzf, when no window is open, hc fails, or neither FIRST nor any space is in
+    a jj repository, and when fzf fails.
+    """
+    repositories = _app_jj_repositories(first)
+    if len(repositories) == 0:
+        raise WorkspaceError("no space on this machine is in a jj repository; run jjx ensure in one first")
+    label_width = max(len(label) for label in repositories)
+
+    choices: dict[str, tuple[JjCheckout, Base]] = {}
+    _ = sys.stdout.flush()
+    with contextlib.ExitStack() as cleanup:
+        # Every listing starts before any is waited for, so the later ones run
+        # while the first is listed and then while the user types.
+        listings: list[_BookmarkListing] = []
+        for label, checkout in repositories.items():
+            process = _start_bookmark_list(checkout.primary_root)
+            if isinstance(process, subprocess.Popen):
+                _ = cleanup.enter_context(process)
+            listings.append(
+                _BookmarkListing(
+                    row_prefix=f"{label:<{label_width}} \t",
+                    checkout=checkout,
+                    process=process,
+                )
+            )
+        _ = cleanup.callback(_kill_bookmark_lists, listings)
+
+        # fzf takes Enter on an empty list as no match, so it opens only once
+        # the first repository's rows, which hold the default choice, are ready.
+        first_listing, *later_listings = listings
+        first_rows = _fused_rows(first_listing.row_prefix, first_listing.process)
+        for line, base in first_rows.items():
+            choices[line] = (first_listing.checkout, base)
+
+        # Rows are tab-separated fields whose first two are the repository and
+        # the bookmark name, or trunk(): --nth=1,2 searches those alone,
+        # --tiebreak=index keeps the listed order among equal matches, and
+        # --tabstop=1 renders each tab as one column so the fields stay aligned.
+        command = [_fzf(), "--prompt=New jj workspace> ", "--delimiter=\t", "--nth=1,2"]
+        command += ["--tiebreak=index", "--tabstop=1"]
+        try:
+            fzf = subprocess.Popen(command, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=None, text=True)
+        except OSError as error:
+            raise WorkspaceError(f"could not run {command[0]}: {error}") from error
+        _ = cleanup.enter_context(fzf)
+
+        # On every exit, the stop flag is set and unfinished listings are
+        # killed, so the writer returns; it is joined before fzf and the
+        # listings are reaped, and only then may CHOICES be read.
+        stopped = threading.Event()
+        writer = threading.Thread(
+            target=_write_fused_rows,
+            args=(cast(IO[str], fzf.stdin), list(first_rows), later_listings, choices, stopped),
+            daemon=True,
+        )
+        writer.start()
+        _ = cleanup.callback(writer.join)
+        _ = cleanup.callback(_kill_bookmark_lists, listings)
+        _ = cleanup.callback(stopped.set)
+
+        printed = cast(IO[str], fzf.stdout).read()
+        status = fzf.wait()
+
+    if status in (FZF_NO_MATCH, FZF_INTERRUPTED):
+        return None
+    if status != 0:
+        raise WorkspaceError(f"fzf exited with status {status}")
+    chosen = choices.get(printed.removesuffix("\n"))
+    if chosen is None:
+        raise WorkspaceError(f"fzf printed {printed!r}, which is not a listed repository and base")
+    return chosen
+
+
+@dataclass(frozen=True)
+class _BookmarkListing:
+    """A repository of the fused picker and its ``jj bookmark list`` run."""
+
+    row_prefix: str
+    """What each of the repository's fzf rows starts with: its padded label and a tab."""
+    checkout: JjCheckout
+    process: subprocess.Popen[str] | OSError
+    """The running jj, or why it could not start."""
+
+
+def _app_jj_repositories(first: Path | None) -> dict[str, JjCheckout]:
+    """Return the primary checkouts of the jj repositories a new app jj workspace can come from, by home-relative path.
+
+    FIRST's jj repository comes first, even when no space is in it; a FIRST in
+    no jj repository, or None, adds nothing. Then come, in sidebar order, the
+    repositories the app's spaces on this machine are now in (see
+    ``_app_space_live_folder``), each once however many spaces show its
+    checkouts. Raises WorkspaceError when no window is open or hc fails.
     """
     repositories: dict[str, JjCheckout] = {}
 
@@ -404,20 +511,93 @@ def pick_app_source(first: Path | None = None) -> JjCheckout | None:
     for space in _app_spaces():
         folder = _app_space_live_folder(space)
         add(find_jj_checkout(Path(folder)) if folder != "" else None)
-    if len(repositories) == 0:
-        raise WorkspaceError("no space on this machine is in a jj repository; run jjx ensure in one first")
+    return repositories
 
-    command = [_fzf(), "--scheme=path", "--prompt=New jj workspace> "]
-    result = _run(command, stdin_text="".join(f"{line}\n" for line in repositories), stderr=None)
-    if result.returncode in (FZF_NO_MATCH, FZF_INTERRUPTED):
-        return None
-    if result.returncode != 0:
-        raise WorkspaceError(f"fzf exited with status {result.returncode}")
 
-    chosen = repositories.get(result.stdout.removesuffix("\n"))
-    if chosen is None:
-        raise WorkspaceError(f"fzf printed {result.stdout!r}, which is not a listed repository")
-    return chosen
+def _start_bookmark_list(repo_root: Path) -> subprocess.Popen[str] | OSError:
+    """Start listing the bookmarks REPO_ROOT's base picker offers, or return why jj could not start."""
+    try:
+        return subprocess.Popen(
+            _BOOKMARK_LIST_COMMAND,
+            cwd=repo_root,
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+        )
+    except OSError as error:
+        return error
+
+
+def _kill_bookmark_lists(listings: Sequence[_BookmarkListing]) -> None:
+    """Kill each listing's jj that is still running, so nothing waits on output no one will show."""
+    for listing in listings:
+        if isinstance(listing.process, subprocess.Popen) and listing.process.poll() is None:
+            listing.process.kill()
+
+
+def _write_fused_rows(
+    fzf_input: IO[str],
+    recorded_rows: Sequence[str],
+    listings: Sequence[_BookmarkListing],
+    choices: dict[str, tuple[JjCheckout, Base]],
+    stopped: threading.Event,
+) -> None:
+    """Write RECORDED_ROWS, then each listing's fused fzf rows in order, to FZF_INPUT, recording in CHOICES what each listing's row picks.
+
+    CHOICES must already hold RECORDED_ROWS, and each listing's row is recorded
+    before fzf can print it. Stops once STOPPED is set or fzf no longer reads,
+    and closes FZF_INPUT in every case, so fzf knows the list is complete.
+    """
+    try:
+        _ = fzf_input.write("".join(f"{line}\n" for line in recorded_rows))
+        fzf_input.flush()
+        for listing in listings:
+            rows = _fused_rows(listing.row_prefix, listing.process)
+            if stopped.is_set():
+                return
+            for line, base in rows.items():
+                choices[line] = (listing.checkout, base)
+            _ = fzf_input.write("".join(f"{line}\n" for line in rows))
+            fzf_input.flush()
+    except OSError:
+        # fzf exited, so the rest of the list has no reader.
+        pass
+    finally:
+        try:
+            fzf_input.close()
+        except OSError:
+            pass
+
+
+def _fused_rows(prefix: str, process: subprocess.Popen[str] | OSError) -> dict[str, Base]:
+    """Return a repository's fused fzf rows, each mapped to its base, once its bookmark list PROCESS finishes.
+
+    Each row is PREFIX followed by a base picker line (see
+    ``_parse_bookmark_bases``), ``trunk()`` first. When the bookmarks cannot be
+    listed, the only row is ``trunk()`` with a last field saying why.
+    """
+    trunk_row = f"{prefix}{DEFAULT_REVISION}"
+    try:
+        bases = _finished_bookmark_bases(process)
+    except WorkspaceError as error:
+        return {f"{trunk_row} \t(bookmarks not listed: {error})": TRUNK_BASE}
+    return {trunk_row: TRUNK_BASE, **{f"{prefix}{line}": base for line, base in bases.items()}}
+
+
+def _finished_bookmark_bases(process: subprocess.Popen[str] | OSError) -> dict[str, Base]:
+    """Wait for the bookmark list PROCESS and return its base picker lines, each mapped to its base.
+
+    Raises WorkspaceError, with one line saying why, when jj could not start,
+    failed, or printed a malformed row or name.
+    """
+    if isinstance(process, OSError):
+        raise WorkspaceError(f"could not run jj: {process}")
+    stdout, stderr = process.communicate()
+    if process.returncode != 0:
+        detail = next(iter(stderr.strip().splitlines()), f"jj exited with status {process.returncode}")
+        raise WorkspaceError(detail)
+    return _parse_bookmark_bases(stdout)
 
 
 @dataclass(frozen=True)
@@ -478,45 +658,64 @@ _BOOKMARK_BASE_TEMPLATE = (
 )
 
 
+# Lists, in the repository it runs in, the local bookmarks a base picker offers:
+# those not already contained in trunk, most recently committed first.
+_BOOKMARK_LIST_COMMAND = (
+    "jj",
+    "bookmark",
+    "list",
+    "--ignore-working-copy",
+    "-r",
+    "~::trunk()",
+    "--sort",
+    "committer-date-",
+    "--color=never",
+    "-T",
+    _BOOKMARK_BASE_TEMPLATE,
+)
+
+
 def _bookmark_bases(repo_root: Path) -> dict[str, Base]:
     """Return fzf lines for the bookmarks REPO_ROOT's base picker lists, each mapped to its base.
 
-    The listed bookmarks are the local ones not already contained in trunk.
-    Lines keep jj's most recently committed first order, and each is three
-    tab-separated fields: the bookmark name, padded so the names align, then
-    its change ID and first description line, each field but the last ending
-    in a space before its tab. Each base's revset names its bookmark exactly,
-    and its label shows the same three fields unpadded, two spaces apart.
-    Raises WorkspaceError when jj fails or prints a name that is not a JSON
-    string.
+    See ``_parse_bookmark_bases`` for the lines. Raises WorkspaceError when jj
+    fails or prints a malformed row or a name that is not a JSON string.
     """
-    command = [
-        "jj",
-        "bookmark",
-        "list",
-        "--ignore-working-copy",
-        "-r",
-        "~::trunk()",
-        "--sort",
-        "committer-date-",
-        "--color=never",
-        "-T",
-        _BOOKMARK_BASE_TEMPLATE,
-    ]
-    result = _run(command, cwd=repo_root)
+    result = _run(_BOOKMARK_LIST_COMMAND, cwd=repo_root)
     if result.returncode != 0:
         detail = result.stderr.strip()
         raise WorkspaceError("jj bookmark list failed" + (f": {detail}" if detail != "" else ""))
+    return _parse_bookmark_bases(result.stdout)
 
+
+def _parse_bookmark_bases(listing: str) -> dict[str, Base]:
+    """Return fzf lines for the bookmarks in LISTING, ``_BOOKMARK_LIST_COMMAND``'s output, each mapped to its base.
+
+    Lines keep the listing's order, and each is three tab-separated fields: the
+    bookmark name, padded so the names align, then its change ID and first
+    description line, each field but the last ending in a space before its
+    tab. A name holding a tab or newline would split its line, so it is left
+    out. Each base's revset names its bookmark exactly, and its label shows the
+    same three fields unpadded, two spaces apart. Rows are split on newlines
+    alone, since the template ends each row with one and a description's first
+    line can hold other line separators, such as U+2028. Raises WorkspaceError
+    when a row lacks three tab-separated fields or a name is not a JSON string.
+    """
     bookmarks: list[tuple[str, str, str, str]] = []
-    for row in result.stdout.splitlines():
-        encoded_name, change_id, description = row.split("\t", 2)
+    rows = listing.removesuffix("\n").split("\n") if listing != "" else []
+    for row in rows:
+        fields = row.split("\t", 2)
+        if len(fields) != 3:
+            raise WorkspaceError(f"jj bookmark list printed malformed row {row!r}")
+        encoded_name, change_id, description = fields
         try:
             name = cast(object, json.loads(encoded_name))
         except json.JSONDecodeError as error:
             raise WorkspaceError(f"jj bookmark list printed malformed name {encoded_name!r}") from error
         if not isinstance(name, str):
             raise WorkspaceError(f"jj bookmark list printed malformed name {encoded_name!r}")
+        if "\t" in name or "\n" in name:
+            continue
         bookmarks.append((name, encoded_name, change_id, description))
 
     name_width = max((len(name) for name, _, _, _ in bookmarks), default=0)
@@ -823,12 +1022,16 @@ def _command_prompt_add(arguments: argparse.Namespace) -> int:
     if first is not None and not pick:
         raise WorkspaceError("--first needs --pick")
     if _host(arguments) == "app":
-        app_source = pick_app_source(first) if pick else resolve_app_source(Path.cwd())
-        if app_source is None:
-            return 0
-        base = pick_base(app_source.primary_root)
-        if base is None:
-            return 0
+        if pick:
+            picked = pick_app_source_and_base(first)
+            if picked is None:
+                return 0
+            app_source, base = picked
+        else:
+            app_source = resolve_app_source(Path.cwd())
+            base = pick_base(app_source.primary_root)
+            if base is None:
+                return 0
         name = _ask_name(app_source.primary_root.name, base)
         _ = app_create(app_source, name, revision=base.revset, focus=True)
         return 0
@@ -960,6 +1163,9 @@ def _parser() -> argparse.ArgumentParser:
             "Ask in fzf for the new jj workspace's base: trunk(), listed first "
             "so Enter keeps it, or a local bookmark not already contained in "
             "trunk, which trunk() covers; closing fzf creates nothing. "
+            "With --pick, the same search also chooses the repository: each row "
+            "pairs a repository with one of its bases, and only the repository "
+            "and bookmark name are searched. "
             "Then ask for its name, showing the repository and base chosen."
         ),
     )
@@ -968,15 +1174,16 @@ def _parser() -> argparse.ArgumentParser:
         "--pick",
         action="store_true",
         help=(
-            "in the app, choose the repository in fzf among those of the spaces "
-            "on this machine instead of using the working directory"
+            "in the app, choose the repository and base in one fzf search, among "
+            "the repositories of the spaces on this machine, instead of using the "
+            "working directory's repository"
         ),
     )
     _ = prompt_add.add_argument(
         "--first",
         metavar="FOLDER",
         type=Path,
-        help="with --pick, list FOLDER's repository first, so Enter with an empty query picks it",
+        help="with --pick, list FOLDER's repository first, so Enter with an empty query picks it on trunk()",
     )
     prompt_add.set_defaults(handler=_command_prompt_add, popup=True)
 

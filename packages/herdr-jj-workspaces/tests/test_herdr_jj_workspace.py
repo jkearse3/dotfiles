@@ -154,6 +154,15 @@ class HerdrJjWorkspaceTests(unittest.TestCase):
         )
         _ = self.jj("bookmark", "create", "newer", "-r", 'description(substring:"later")')
 
+    def create_bookmark_described(self, name: str, description: str) -> None:
+        """Bookmark NAME on a new child of the initial commit whose description is DESCRIPTION."""
+        _ = self.jj("new", "--no-edit", "@-", "-m", description)
+        _ = self.jj("bookmark", "create", name, "-r", "latest(@-+ ~ @)")
+
+    def base_rows(self) -> list[str]:
+        # Split on newlines alone, as fzf does, so a row holding U+2028 stays whole.
+        return self.fzf_base_input.read_text().split("\n")[:-1]
+
     def push_main_as_trunk(self) -> None:
         """Bookmark main on the initial commit and push it to origin, so trunk() resolves to main@origin."""
         remote = self.root / "remote.git"
@@ -378,6 +387,27 @@ class HerdrJjWorkspaceTests(unittest.TestCase):
             self.fzf_base_input.read_text().splitlines(),
             ["trunk()", f"newer \t{self.change_id('newer')} \tlater"],
         )
+
+    def test_prompt_add_base_lists_description_holding_line_separator(self) -> None:
+        self.create_bookmark_described("odd", "fix\u2028thing")
+        result = self.run_cli("prompt-add", stdin="feature\n", FAKE_FZF_BASE_CHOICE="2")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(self.base_rows(), ["trunk()", f"odd \t{self.change_id('odd')} \tfix\u2028thing"])
+        self.assertIn(f"Base: odd  {self.change_id('odd')}  fix\u2028thing\n", result.stdout)
+        self.assertEqual(self.commit("feature@-"), self.commit("odd"))
+
+    def test_prompt_add_base_malformed_bookmark_row_fails_without_fzf(self) -> None:
+        # jj keeps the lone carriage return in the first line, and Python's
+        # text decoding turns it into a newline that splits the bookmark's row,
+        # leaving "thing" a row of its own.
+        self.create_bookmark_described("odd", "fix\rthing")
+        result = self.run_cli("prompt-add", stdin="\n")
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("jj bookmark list printed malformed row 'thing'", result.stderr)
+        self.assertNotIn("Traceback", result.stderr)
+        self.assertIn("Press enter to close.", result.stderr)
+        self.assertFalse(self.fzf_base_input.exists())
+        self.assertEqual(self.workspace_names(), ["default"])
 
     def test_prompt_add_base_with_every_bookmark_in_trunk_starts_on_trunk(self) -> None:
         self.push_main_as_trunk()

@@ -1,17 +1,18 @@
 // Opens `herdr-jj-workspace prompt-add --host app --pick` in a popup
-// terminal, so a key binding (`ctrl-b shift-g`) can create a jj workspace in
-// a repository picked with fzf: `mod.open` takes only a mod name. The picker
-// lists the focused terminal's jj repository first, else, when no terminal of
-// this machine is focused (a mod pane such as `files` has focus, or the
-// space's terminals have exited), the shown space's repository when that
-// space is on this machine, so Enter with an empty query picks it. Then it
-// lists the jj repositories of the spaces open on this machine, one line per
-// repository however many of its workspaces are open.
-// Enter asks in fzf for the base revision (Enter keeps `trunk()`, or pick one
-// of the repository's local bookmarks to stack on it), then for a name,
-// showing the repository and base chosen, runs `jjx workspace add` on it, and
-// opens and focuses the new space; Esc in either picker closes the popup
-// without creating anything.
+// terminal, so a key binding (`ctrl-b shift-g`) can create a jj workspace
+// with its repository and base picked in one fzf search: `mod.open` takes
+// only a mod name. Each row pairs a repository with a base: `trunk()`, or one
+// of its local bookmarks not already in trunk, to stack on it. The query
+// matches the repository and bookmark name, such as `dot feat` for a `feat`
+// bookmark in `~/dotfiles`. The rows of the focused terminal's jj repository
+// come first, else, when no terminal of this machine is focused (a mod pane
+// such as `files` has focus, or the space's terminals have exited), the shown
+// space's repository when that space is on this machine, so Enter with an
+// empty query picks it on `trunk()`. Then come the jj repositories of the
+// spaces open on this machine, each once however many of its workspaces are
+// open. Enter asks for a name, showing the repository and base chosen, runs
+// `jjx workspace add` on it, and opens and focuses the new space; Esc closes
+// the popup without creating anything.
 //
 // `launcher.ts` and `paths.ts` beside this file are links to the shared
 // copies in `mod-lib/`.

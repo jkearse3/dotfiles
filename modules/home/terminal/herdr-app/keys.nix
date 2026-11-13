@@ -60,9 +60,10 @@
       # Renames every space at once in a dialog.
       "ctrl-w" = "mod.open:space-rename-all";
       "shift-d" = "space.close";
-      # New jj workspaces: `shift-g` picks with fzf among the focused
-      # terminal's repository and those of the spaces open on this machine,
-      # the focused one first, so Enter makes the workspace there. It takes
+      # New jj workspaces: `shift-g` picks the repository and base in one fzf
+      # search among the focused terminal's repository and those of the spaces
+      # open on this machine, the focused one first, so Enter makes the
+      # workspace there on trunk(). It takes
       # the jj path, never the app's own Git worktree commands, which would
       # bypass jj: every checkout here is a jj workspace. `shift-q` removes
       # one. The TUI binds the same keys to the jj workspace plugin actions.
