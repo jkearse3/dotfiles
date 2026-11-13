@@ -149,8 +149,6 @@ complete -c jjx -n '__jjx_using ensure; and __jjx_ensure_needs_path' -F
 complete -c jjx -n '__jjx_using workspace add' -l name -r -f -d 'Workspace name'
 complete -c jjx -n '__jjx_using workspace add' -s r -l revision -r -f -d 'Parent revision' -a '(__jjx_revisions)'
 complete -c jjx -n '__jjx_using workspace add' -s m -l message -r -f -d 'Change description'
-complete -c jjx -n '__jjx_using workspace add' -l colocate -d 'Create a Git worktree'
-complete -c jjx -n '__jjx_using workspace add' -l no-colocate -d 'Do not create a Git worktree'
 complete -c jjx -n '__jjx_using workspace add' -l sparse-patterns -r -f -a 'copy full empty' -d 'Sparse pattern handling'
 complete -c jjx -n '__jjx_using workspace add; and not string match -q -- "-*" (commandline -ct)' -a '(__fish_complete_directories)'
 

@@ -20,6 +20,10 @@ the single action execution would take without modifying anything.
 
 ## What it does
 
+A path inside a jj workspace that has no `.git` is rejected before any action is
+selected, because only colocated jj workspaces are supported (see
+[Safety properties](#safety-properties)).
+
 Each run selects exactly one action:
 
 - **Nothing** — the checkout already has a compatible jj workspace, including a
@@ -67,14 +71,16 @@ repository.
 
 ## Shared workspaces
 
-`jj workspace add` in a colocated repository creates a linked Git worktree whose
-jj workspace shares the original workspace's jj repository: one operation log,
-one set of bookmarks, one repository config. jj marks such a workspace by making
-`.jj/repo` a regular file that points at the shared repository instead of a
-directory. The repository keeps the Git backend of the workspace that owns it:
-the Git common directory when that is the primary checkout, or the owning linked
-worktree's private Git directory when `jj workspace add` ran in a linked
-workspace, rather than the new worktree's private one.
+Shared workspaces are always colocated: `jjx workspace add` passes `--colocate`,
+and `jjx ensure` rejects a workspace without `.git`. `jj workspace add` in a
+colocated repository creates a linked Git worktree whose jj workspace shares the
+original workspace's jj repository: one operation log, one set of bookmarks, one
+repository config. jj marks such a workspace by making `.jj/repo` a regular file
+that points at the shared repository instead of a directory. The repository
+keeps the Git backend of the workspace that owns it: the Git common directory
+when that is the primary checkout, or the owning linked worktree's private Git
+directory when `jj workspace add` ran in a linked workspace, rather than the new
+worktree's private one.
 
 Use one jj version for every command in a shared workspace. jj colocates
 workspaces besides the default one only since 0.46.0; an older jj does not treat
@@ -165,6 +171,15 @@ manually.
 
 ## Safety properties
 
+- Only colocated jj workspaces are supported. The jj workspace containing `PATH`
+  (its nearest ancestor with a `.jj` directory) must have a `.git` at its root,
+  unless `PATH` lies in a separate Git checkout nested below that workspace,
+  which is then ensured on its own. Otherwise the command fails instead of
+  resolving to an enclosing Git checkout, and `--dry-run` fails the same way.
+  The error suggests removing a shared workspace with
+  `jj workspace remove <name>` and recreating it with `jjx workspace add`, or
+  converting a workspace that owns its repository with
+  `jj git colocation enable`.
 - Checkouts configured for Git LFS (via any active `.gitattributes`,
   `info/attributes`, configured, XDG, or system attribute file) are rejected
   before anything is touched, because jj does not support LFS.

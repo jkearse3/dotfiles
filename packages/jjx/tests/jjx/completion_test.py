@@ -114,8 +114,7 @@ class CompletionTests(unittest.TestCase):
             },
             "ensure": {"--dry-run", "--help"},
             "workspace add": {
-                "--colocate", "--help", "--message", "--name", "--no-colocate",
-                "--revision", "--sparse-patterns",
+                "--help", "--message", "--name", "--revision", "--sparse-patterns",
             },
             "workspace remove": {"--dry-run", "--help"},
             "worktree add": {"--help"},
@@ -134,6 +133,8 @@ class CompletionTests(unittest.TestCase):
                     all(options.values()),
                     f"missing option description for jjx {leaf}",
                 )
+
+        self.assertNotIn("--no-colocate", fish_candidates("jjx workspace add --"))
 
         push_candidates = fish_candidates("jjx bookmark push --")
         selectors = {

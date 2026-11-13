@@ -50,8 +50,13 @@ It runs `worktree-include --prepare` to copy the local files the primary
 checkout's `.worktreeinclude` selects, then `direnv-worktree prepare` to
 authorize the workspace's `.envrc` when the repository has enabled it. It prints
 the workspace root on stdout. If a step fails, the workspace is kept and the
-error names the commands to rerun. A workspace created with `--no-colocate` has
-no Git worktree and is not prepared.
+error names the commands to rerun.
+
+`jjx workspace add` creates only colocated workspaces: it always passes
+`--colocate` to `jj workspace add` and rejects `--no-colocate`. If the new
+workspace still has no Git worktree of its own, it fails without preparing the
+workspace, keeps it, and names the `jj workspace remove <name>` command that
+removes it.
 
 `jjx workspace remove [PATH]` removes the workspace containing `PATH` with
 `jj workspace remove`, which snapshots its working copy into a commit and then

@@ -17,6 +17,14 @@ identity marker, because nothing about it can be repaired here, and no identity
 mirroring, because repository-local jj config is shared by every workspace of
 the repository and is mirrored in the workspace that owns it.
 
+Only colocated jj workspaces are supported. Before anything else, the jj
+workspace containing the path (its nearest ancestor with a ``.jj`` directory)
+must have a ``.git`` at its root, unless a separate Git checkout is nested
+below that workspace and contains the path. A non-colocated workspace is
+rejected with a hint to recreate it with ``jjx workspace add`` or to convert
+it with ``jj git colocation enable``, instead of silently resolving to an
+enclosing Git checkout.
+
 The normal path through :func:`ensure` preserves an existing compatible
 ``.jj`` and the working copy. A compatible legacy linked workspace may gain
 the identity marker described below, but its jj state is not reinitialized.
@@ -74,7 +82,7 @@ from enum import Enum
 from pathlib import Path
 from typing import cast
 
-from .process import checked_bytes
+from .process import capture_bytes, checked_bytes
 
 
 class EnsureError(Exception):
@@ -362,15 +370,15 @@ def _validate(checkout: GitCheckout) -> None:
     )
 
 
-def _is_shared_workspace(checkout: GitCheckout) -> bool:
-    """Return whether the checkout's jj workspace uses another workspace's repository.
+def _is_shared_workspace(root: Path) -> bool:
+    """Return whether the jj workspace at ROOT uses another workspace's repository.
 
     jj stores a workspace's repository as the ``.jj/repo`` directory in the
     workspace that created it, and as a regular file holding a path to that
     directory in every workspace ``jj workspace add`` creates.
     """
     try:
-        mode = (checkout.root / ".jj" / "repo").lstat().st_mode
+        mode = (root / ".jj" / "repo").lstat().st_mode
     except FileNotFoundError:
         return False
     except OSError as error:
@@ -930,8 +938,14 @@ def _track_default_bookmark(checkout: GitCheckout) -> None:
 
 
 def inspect(start: Path | None = None) -> Inspection:
-    """Classify the validated checkout state without modifying it."""
-    checkout = discover(Path(".") if start is None else start)
+    """Classify the validated checkout state without modifying it.
+
+    Raises EnsureError when the path lies in a jj workspace that is not
+    colocated, before Git discovery, so every caller rejects it the same way.
+    """
+    start = Path(".") if start is None else start
+    _require_colocated_workspace(start)
+    checkout = discover(start)
     _reject_git_lfs(checkout)
     jj_dir = checkout.root / ".jj"
     try:
@@ -946,7 +960,7 @@ def inspect(start: Path | None = None) -> Inspection:
 
     if not stat.S_ISDIR(mode) or stat.S_ISLNK(mode):
         raise EnsureError("pre-existing .jj is not a compatible directory")
-    if _is_shared_workspace(checkout):
+    if _is_shared_workspace(checkout.root):
         backend_git_dir = _validate_shared_workspace(checkout)
         return Inspection(
             checkout, Action.SHARED_WORKSPACE, backend_git_dir=backend_git_dir
@@ -960,6 +974,52 @@ def inspect(start: Path | None = None) -> Inspection:
     if not checkout.primary and not _has_identity(checkout):
         return Inspection(checkout, Action.ENROLL)
     return Inspection(checkout, Action.NONE)
+
+
+def _require_colocated_workspace(start: Path) -> None:
+    """Reject START when the jj workspace containing it has no ``.git``.
+
+    Only the nearest jj workspace is checked. It passes when it has a ``.git``
+    at its root, or when START lies in a separate Git checkout nested below the
+    workspace, which is then ensured on its own. Otherwise Git would resolve
+    START to an enclosing checkout, or fail, although jj uses the workspace.
+    """
+    workspace = _jj_workspace_root(start)
+    if workspace is None or os.path.lexists(workspace / ".git"):
+        return
+
+    result = capture_bytes(
+        ["git", "-C", os.fspath(start), "rev-parse", "--show-toplevel"],
+        error_type=EnsureError,
+    )
+    if result.returncode == 0:
+        git_root = Path(os.fsdecode(result.stdout.removesuffix(b"\n"))).resolve()
+        if workspace in git_root.parents:
+            return
+
+    if _is_shared_workspace(workspace):
+        hint = (
+            "remove it with 'jj workspace remove <name>' (see 'jj workspace list') "
+            "and recreate it with 'jjx workspace add'"
+        )
+    else:
+        hint = "convert it with 'jj git colocation enable'"
+    raise EnsureError(
+        f"jj workspace at {workspace} has no .git; "
+        f"jjx supports only colocated jj workspaces; {hint}"
+    )
+
+
+def _jj_workspace_root(start: Path) -> Path | None:
+    """Return the nearest canonical ancestor-or-self of START holding a ``.jj`` directory."""
+    try:
+        path = start.resolve(strict=True)
+    except OSError:
+        return None
+    for candidate in (path, *path.parents):
+        if (candidate / ".jj").is_dir():
+            return candidate
+    return None
 
 
 def plan(start: Path | None = None) -> Plan:
@@ -1000,6 +1060,8 @@ def ensure(start: Path | None = None) -> Path:
     the primary checkout and the private Git directory for a linked worktree.
     Initialization failures remove only the ``.jj`` state created by this
     invocation.
+    A path in a jj workspace without ``.git`` is rejected, because only
+    colocated workspaces are supported.
 
     Returns the canonical Git worktree root.
     """
@@ -1058,7 +1120,8 @@ def create_parser(prog: str = "jjx ensure") -> argparse.ArgumentParser:
             "mechanism. Retest jjx ensure after jj upgrades. After moving a primary repository, "
             "run 'git worktree repair' first; jjx ensure can then repair the linked workspace's "
             "stale jj target without replacing its operation history. Workspaces created by "
-            "'jj workspace add' share their repository and are accepted unchanged."
+            "'jj workspace add' share their repository and are accepted unchanged. jj workspaces "
+            "without .git are rejected; only colocated workspaces are supported."
         ),
     )
     _ = parser.add_argument("path", metavar="PATH", nargs="?", default=".")

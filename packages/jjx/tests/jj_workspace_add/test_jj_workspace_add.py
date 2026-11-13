@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import os
+import shlex
+import shutil
 import subprocess
 import sys
 import unittest
@@ -20,6 +22,15 @@ echo "stdout from $(basename "$0")"
 case " $FAILING_FOLLOW_UPS " in
   *" $(basename "$0") "*) echo "failure from $(basename "$0")" >&2; exit 3 ;;
 esac
+"""
+
+NON_COLOCATING_JJ_STUB = """#!/bin/sh
+# Stand in for a jj that ignores the --colocate jjx passes when adding a workspace.
+if [ "$1 $2 $3" = "workspace add --colocate" ]; then
+  shift 3
+  exec {jj} workspace add --no-colocate "$@"
+fi
+exec {jj} "$@"
 """
 
 
@@ -142,13 +153,35 @@ class WorkspaceAddTests(unittest.TestCase):
         self.assertNotIn(b"rerun: direnv-worktree", result.stderr)
         self.assertEqual(self.workspace_names(), ["default", "feature"])
 
-    def test_skips_preparation_without_git_worktree(self) -> None:
-        workspace = self.root / "plain"
-        result = self.workspace_add("--no-colocate", str(workspace))
+    def test_colocates_when_git_colocate_is_disabled(self) -> None:
+        jj_config = self.root / "home" / ".config" / "jj" / "config.toml"
+        jj_config.parent.mkdir(parents=True)
+        _ = jj_config.write_text("[git]\ncolocate = false\n")
+        workspace = self.root / "feature"
+        result = self.workspace_add(str(workspace))
         self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertEqual(result.stdout, os.fsencode(workspace) + b"\n")
-        self.assertIn(b"no Git worktree of its own; skipped preparation", result.stderr)
+        self.assertTrue((workspace / ".git").exists())
+        top_level = run("git", "-C", str(workspace), "rev-parse", "--show-toplevel", env=self.env)
+        self.assertEqual(top_level.stdout, os.fsencode(workspace) + b"\n")
+        self.assertEqual(len(self.follow_ups()), 2)
+
+    def test_fails_without_git_worktree_and_keeps_workspace(self) -> None:
+        real_jj = shutil.which("jj", path=self.env["PATH"])
+        assert real_jj is not None
+        stubs = self.root / "non-colocating-stubs"
+        stubs.mkdir()
+        stub = stubs / "jj"
+        _ = stub.write_text(NON_COLOCATING_JJ_STUB.format(jj=shlex.quote(real_jj)))
+        stub.chmod(0o755)
+        self.env["PATH"] = f"{stubs}{os.pathsep}{self.env['PATH']}"
+
+        result = self.workspace_add("--name", "feature", str(self.root / "feature"))
+        self.assertEqual(result.returncode, 1)
+        self.assertEqual(result.stdout, b"")
+        self.assertIn(b"has no Git worktree of its own", result.stderr)
+        self.assertIn(b"remove it with: jj workspace remove feature", result.stderr)
         self.assertEqual(self.follow_ups(), [])
+        self.assertEqual(self.workspace_names(), ["default", "feature"])
 
     def test_jj_failure_skips_preparation(self) -> None:
         existing = self.root / "occupied"
@@ -160,10 +193,12 @@ class WorkspaceAddTests(unittest.TestCase):
         self.assertEqual(self.follow_ups(), [])
         self.assertEqual(self.workspace_names(), ["default"])
 
-    def test_rejects_repository_option_and_prints_help_without_creating(self) -> None:
+    def test_rejects_unsupported_options_and_prints_help_without_creating(self) -> None:
         for arguments, stream, expected in (
             (("-R", str(self.primary), "x"), "stderr", b"-R/--repository is not supported"),
             ((f"--repository={self.primary}", "x"), "stderr", b"-R/--repository is not supported"),
+            (("--no-colocate", "x"), "stderr", b"--no-colocate is not supported"),
+            (("--name", "n", "--no-colocate", "x"), "stderr", b"--no-colocate is not supported"),
             (("x", "--help"), "stdout", b"usage: jjx workspace add"),
         ):
             with self.subTest(arguments=arguments):

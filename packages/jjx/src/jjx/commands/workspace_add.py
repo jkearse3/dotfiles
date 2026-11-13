@@ -3,7 +3,9 @@
 ``jj workspace add`` creates its Git worktree without running Git's
 ``post-checkout`` hook, so the per-worktree preparation that hook performs
 never happens. This command runs ``jj workspace add`` with the caller's
-arguments, then runs the same preparation steps in the new workspace.
+arguments plus ``--colocate``, then runs the same preparation steps in the new
+workspace. Only colocated workspaces are supported: ``--no-colocate`` is
+rejected, and a new workspace without its own Git worktree is an error.
 """
 
 from __future__ import annotations
@@ -26,11 +28,13 @@ FOLLOW_UPS: tuple[tuple[str, ...], ...] = (
 
 REPOSITORY_OPTIONS = ("-R", "--repository")
 
+NO_COLOCATE_OPTION = "--no-colocate"
+
 USAGE = """\
 usage: {prog} [jj workspace add arguments]
 
-Run 'jj workspace add' with the given arguments, then prepare the new workspace
-as Git's post-checkout hook prepares a new worktree:
+Run 'jj workspace add --colocate' with the given arguments, then prepare the
+new workspace as Git's post-checkout hook prepares a new worktree:
 
   1. worktree-include --prepare copies the local files the primary
      checkout's .worktreeinclude selects.
@@ -38,8 +42,11 @@ as Git's post-checkout hook prepares a new worktree:
      repository has enabled it.
 
 Each step runs even if an earlier one fails. On success the workspace root is
-printed on stdout and all other output goes to stderr. A workspace without its
-own Git worktree, such as one created with --no-colocate, is not prepared.
+printed on stdout and all other output goes to stderr.
+
+Only colocated workspaces are supported: --no-colocate is rejected, and if the
+new workspace has no Git worktree of its own, the command fails without
+preparing it and names the 'jj workspace remove' command that removes it.
 
 Run from inside the repository; -R/--repository is not supported. See
 'jj workspace add --help' for the accepted arguments.
@@ -51,26 +58,31 @@ class WorkspaceAddError(Exception):
 
 
 def add(arguments: Sequence[str]) -> Path:
-    """Create a workspace from ARGUMENTS and prepare it, returning its root.
+    """Create a colocated workspace from ARGUMENTS and prepare it, returning its root.
 
-    Raises WorkspaceAddError when the workspace cannot be created or
-    identified, or after running every preparation step when any of them
+    ``--colocate`` is always passed to ``jj workspace add``. Raises
+    WorkspaceAddError when ARGUMENTS contain ``--no-colocate`` or
+    -R/--repository, when the workspace cannot be created or identified, when
+    the created workspace has no Git worktree of its own (before any
+    preparation), or after running every preparation step when any of them
     failed. A created workspace is never removed.
     """
     _reject_repository_option(arguments)
+    _reject_no_colocate(arguments)
 
     existing = _workspace_names()
-    status = _run_to_stderr(["jj", "workspace", "add", *arguments])
+    status = _run_to_stderr(["jj", "workspace", "add", "--colocate", *arguments])
     if status != 0:
         raise WorkspaceAddError(f"jj workspace add failed with exit status {status}")
 
-    root = _workspace_root(_new_workspace_name(existing))
+    name = _new_workspace_name(existing)
+    root = _workspace_root(name)
     if not _is_git_worktree(root):
-        print(
-            f"warning: {root} has no Git worktree of its own; skipped preparation",
-            file=sys.stderr,
+        removal = shlex.join(["jj", "workspace", "remove", name])
+        raise WorkspaceAddError(
+            f"created workspace {name} at {root}, but it has no Git worktree of its own; "
+            f"jjx supports only colocated workspaces; remove it with: {removal}"
         )
-        return root
 
     failed = [
         command
@@ -90,6 +102,17 @@ def _reject_repository_option(arguments: Sequence[str]) -> None:
     if any(argument.startswith(REPOSITORY_OPTIONS) for argument in _options(arguments)):
         raise WorkspaceAddError(
             "-R/--repository is not supported; run from inside the repository"
+        )
+
+
+def _reject_no_colocate(arguments: Sequence[str]) -> None:
+    if any(
+        argument == NO_COLOCATE_OPTION or argument.startswith(f"{NO_COLOCATE_OPTION}=")
+        for argument in _options(arguments)
+    ):
+        raise WorkspaceAddError(
+            "--no-colocate is not supported; "
+            "jjx workspace add creates only colocated workspaces"
         )
 
 

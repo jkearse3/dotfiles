@@ -147,8 +147,6 @@ _jjx() {
         '--name[workspace name]:name:' \
         '*'{-r,--revision}'[parent revision]:revision:_jjx_revisions' \
         '(-m --message)'{-m,--message}'[change description]:message:' \
-        '(--no-colocate)--colocate[create a Git worktree]' \
-        '(--colocate)--no-colocate[do not create a Git worktree]' \
         '--sparse-patterns[sparse pattern handling]:mode:(copy full empty)' \
         '1:destination:_files -/'
       ;;

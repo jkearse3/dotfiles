@@ -196,6 +196,26 @@ class EnsureBehaviorTests(RepositoryFixture):
         _ = (nested / ".gitattributes").write_text("*.bin filter=lfs\n")
         self.assertEqual(cli.ensure(self.primary), self.primary)
 
+    def test_ensures_git_checkout_nested_in_non_colocated_workspace(self) -> None:
+        workspace = self.root / "native"
+        _ = run("jj", "git", "init", "--no-colocate", str(workspace))
+        inner = workspace / "inner"
+        _ = run("git", "init", str(inner))
+        _ = run(
+            "git",
+            "-C",
+            str(inner),
+            "-c",
+            "user.name=Test User",
+            "-c",
+            "user.email=test@example.com",
+            "commit",
+            "--allow-empty",
+            "-m",
+            "initial",
+        )
+        self.assertIn("would initialize colocated", self.dry_run(inner))
+
     def test_dry_run_reports_noop_and_enrollment_without_writing_marker(self) -> None:
         _ = cli.ensure(self.primary)
         self.assertIn("no changes: compatible", self.dry_run(self.primary))
@@ -573,6 +593,59 @@ class EnsureSafetyTests(RepositoryFixture):
         with self.assertRaises(cli.EnsureError):
             _ = cli.ensure(linked)
         self.assertEqual(marker.read_bytes(), b"safe")
+
+    def test_rejects_non_colocated_workspace_nested_in_checkout(self) -> None:
+        _ = cli.ensure(self.primary)
+        nested = self.primary / "nested"
+        _ = run(
+            "jj",
+            "-R",
+            str(self.primary),
+            "workspace",
+            "add",
+            "--no-colocate",
+            "--name",
+            "nested",
+            str(nested),
+        )
+        (nested / "sub").mkdir()
+        before = self.operation(self.primary)
+        with self.assertRaisesRegex(
+            cli.EnsureError,
+            "has no .git; jjx supports only colocated jj workspaces; "
+            "remove it with 'jj workspace remove",
+        ):
+            _ = cli.ensure(nested / "sub")
+        error = io.StringIO()
+        with patch("sys.stderr", error):
+            self.assertEqual(cli.main(["--dry-run", str(nested)]), 1)
+        self.assertIn(f"jj workspace at {nested} has no .git", error.getvalue())
+        self.assertEqual(self.operation(self.primary), before)
+
+    def test_rejects_non_colocated_workspace_outside_git(self) -> None:
+        _ = cli.ensure(self.primary)
+        outside = self.root / "outside"
+        _ = run(
+            "jj",
+            "-R",
+            str(self.primary),
+            "workspace",
+            "add",
+            "--no-colocate",
+            str(outside),
+        )
+        with self.assertRaisesRegex(
+            cli.EnsureError, f"jj workspace at {outside} has no .git"
+        ):
+            _ = cli.ensure(outside)
+
+    def test_rejects_non_colocated_repository_with_conversion_hint(self) -> None:
+        native = self.root / "native"
+        _ = run("jj", "git", "init", "--no-colocate", str(native))
+        with self.assertRaisesRegex(
+            cli.EnsureError, "has no .git; .*jj git colocation enable"
+        ):
+            _ = cli.ensure(native)
 
     def test_rejects_shared_workspace_backed_by_another_repository(self) -> None:
         workspace = self.workspace("workspace")
