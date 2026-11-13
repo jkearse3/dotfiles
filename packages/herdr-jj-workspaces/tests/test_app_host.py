@@ -71,13 +71,15 @@ exit 1
 # records its input lines in $FAKE_FZF_INPUT, then prints input line
 # $FAKE_FZF_CHOICE and exits 0, or, with no choice, exits 130 as fzf does on
 # Esc; $FAKE_FZF_STATUS overrides the status. Picking the base revision, it
-# records its input lines in $FAKE_FZF_BASE_INPUT, then prints input line
+# records its arguments, one per line, in $FAKE_FZF_BASE_ARGUMENTS and its
+# input lines in $FAKE_FZF_BASE_INPUT, then prints input line
 # ${FAKE_FZF_BASE_CHOICE:-1}, as Enter with an empty query does, and exits with
 # ${FAKE_FZF_BASE_STATUS:-0}.
 FAKE_FZF = """\
 #!/bin/sh
 for argument; do
   if [ "$argument" = "--prompt=Base revision> " ]; then
+    printf '%s\\n' "$@" > "$FAKE_FZF_BASE_ARGUMENTS"
     cat > "$FAKE_FZF_BASE_INPUT"
     sed -n "${FAKE_FZF_BASE_CHOICE:-1}p" "$FAKE_FZF_BASE_INPUT"
     exit "${FAKE_FZF_BASE_STATUS:-0}"
@@ -155,6 +157,7 @@ class AppHostTests(unittest.TestCase):
         self.records.mkdir()
         self.fzf_input = self.root / "fzf.input"
         self.fzf_base_input = self.root / "fzf-base.input"
+        self.fzf_base_arguments = self.root / "fzf-base.arguments"
         self.repo = self.root / "repo"
         self.workspace = home / ".herdr" / "worktrees" / "repo" / "feature"
         gitconfig = self.root / "gitconfig"
@@ -181,6 +184,7 @@ class AppHostTests(unittest.TestCase):
             "HERDR_JJ_WORKSPACE_FZF_PATH": str(stubs / "fzf"),
             "FAKE_FZF_INPUT": str(self.fzf_input),
             "FAKE_FZF_BASE_INPUT": str(self.fzf_base_input),
+            "FAKE_FZF_BASE_ARGUMENTS": str(self.fzf_base_arguments),
         }
         _ = subprocess.run(
             ["git", "init", "--initial-branch=main", str(self.repo)], env=self.env, check=True, capture_output=True
@@ -530,9 +534,15 @@ class AppHostTests(unittest.TestCase):
             self.fzf_base_input.read_text().splitlines(),
             [
                 "trunk()",
-                f"newer  {self.change_id('newer')}  later",
-                f"base   {self.change_id('base')}  initial",
+                f"newer \t{self.change_id('newer')} \tlater",
+                f"base  \t{self.change_id('base')} \tinitial",
             ],
+        )
+        # Only the bookmark name, the first tab-separated field, is searched,
+        # and the listed order breaks ties between equal matches.
+        self.assertEqual(
+            self.fzf_base_arguments.read_text().splitlines(),
+            ["--prompt=Base revision> ", "--delimiter=\t", "--nth=1", "--tiebreak=index", "--tabstop=1"],
         )
         self.assertEqual(self.commit("feature@-"), self.commit("trunk()"))
 
@@ -576,7 +586,7 @@ class AppHostTests(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(
             self.fzf_base_input.read_text().splitlines(),
-            ["trunk()", f"kept  {self.change_id('kept')}  initial"],
+            ["trunk()", f"kept \t{self.change_id('kept')} \tinitial"],
         )
 
     def test_prompt_add_base_leaves_out_bookmarks_in_trunk(self) -> None:
@@ -588,7 +598,7 @@ class AppHostTests(unittest.TestCase):
         # trunk() covers main and base, which share its commit, so only newer is listed after it.
         self.assertEqual(
             self.fzf_base_input.read_text().splitlines(),
-            ["trunk()", f"newer  {self.change_id('newer')}  later"],
+            ["trunk()", f"newer \t{self.change_id('newer')} \tlater"],
         )
 
     def test_prompt_add_base_with_every_bookmark_in_trunk_starts_on_trunk(self) -> None:

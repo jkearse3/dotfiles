@@ -33,11 +33,13 @@ esac
 """
 
 # fzf, named by $HERDR_JJ_WORKSPACE_FZF_PATH, as prompt-add runs it to pick the
-# base revision: records its input lines in $FAKE_FZF_BASE_INPUT, then prints
-# input line ${FAKE_FZF_BASE_CHOICE:-1}, as Enter with an empty query does, and
-# exits with ${FAKE_FZF_BASE_STATUS:-0}.
+# base revision: records its arguments, one per line, in
+# $FAKE_FZF_BASE_ARGUMENTS and its input lines in $FAKE_FZF_BASE_INPUT, then
+# prints input line ${FAKE_FZF_BASE_CHOICE:-1}, as Enter with an empty query
+# does, and exits with ${FAKE_FZF_BASE_STATUS:-0}.
 FAKE_FZF = """\
 #!/bin/sh
+printf '%s\\n' "$@" > "$FAKE_FZF_BASE_ARGUMENTS"
 cat > "$FAKE_FZF_BASE_INPUT"
 sed -n "${FAKE_FZF_BASE_CHOICE:-1}p" "$FAKE_FZF_BASE_INPUT"
 exit "${FAKE_FZF_BASE_STATUS:-0}"
@@ -59,6 +61,7 @@ class HerdrJjWorkspaceTests(unittest.TestCase):
         _ = fzf.write_text(FAKE_FZF)
         fzf.chmod(0o755)
         self.fzf_base_input = self.root / "fzf-base.input"
+        self.fzf_base_arguments = self.root / "fzf-base.arguments"
         self.log = self.root / "herdr.log"
         self.log.touch()
         self.repo = self.root / "repo"
@@ -77,6 +80,7 @@ class HerdrJjWorkspaceTests(unittest.TestCase):
             "HERDR_STUB_LOG": str(self.log),
             "HERDR_JJ_WORKSPACE_FZF_PATH": str(fzf),
             "FAKE_FZF_BASE_INPUT": str(self.fzf_base_input),
+            "FAKE_FZF_BASE_ARGUMENTS": str(self.fzf_base_arguments),
             "HERDR_STUB_SOURCE": json.dumps(
                 {"repo_root": str(self.repo), "repo_name": "repo", "source_workspace_id": "w1"}
             ),
@@ -316,9 +320,15 @@ class HerdrJjWorkspaceTests(unittest.TestCase):
             self.fzf_base_input.read_text().splitlines(),
             [
                 "trunk()",
-                f"newer  {self.change_id('newer')}  later",
-                f"base   {self.change_id('base')}  initial",
+                f"newer \t{self.change_id('newer')} \tlater",
+                f"base  \t{self.change_id('base')} \tinitial",
             ],
+        )
+        # Only the bookmark name, the first tab-separated field, is searched,
+        # and the listed order breaks ties between equal matches.
+        self.assertEqual(
+            self.fzf_base_arguments.read_text().splitlines(),
+            ["--prompt=Base revision> ", "--delimiter=\t", "--nth=1", "--tiebreak=index", "--tabstop=1"],
         )
         self.assertEqual(self.commit("feature@-"), self.commit("trunk()"))
 
@@ -354,7 +364,7 @@ class HerdrJjWorkspaceTests(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(
             self.fzf_base_input.read_text().splitlines(),
-            ["trunk()", f"kept  {self.change_id('kept')}  initial"],
+            ["trunk()", f"kept \t{self.change_id('kept')} \tinitial"],
         )
 
     def test_prompt_add_base_leaves_out_bookmarks_in_trunk(self) -> None:
@@ -366,7 +376,7 @@ class HerdrJjWorkspaceTests(unittest.TestCase):
         # trunk() covers main and base, which share its commit, so only newer is listed after it.
         self.assertEqual(
             self.fzf_base_input.read_text().splitlines(),
-            ["trunk()", f"newer  {self.change_id('newer')}  later"],
+            ["trunk()", f"newer \t{self.change_id('newer')} \tlater"],
         )
 
     def test_prompt_add_base_with_every_bookmark_in_trunk_starts_on_trunk(self) -> None:

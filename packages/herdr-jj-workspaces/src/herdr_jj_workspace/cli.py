@@ -442,7 +442,9 @@ def pick_base(repo_root: Path) -> Base | None:
     default, then the repository's local bookmarks, most recently committed
     first, each with its change ID and first description line; deleted and
     conflicted bookmarks are left out, and so are bookmarks already contained
-    in trunk, such as trunk's own, since ``trunk()`` covers them. Returns the
+    in trunk, such as trunk's own, since ``trunk()`` covers them. The query
+    matches only bookmark names: change IDs and descriptions are shown but not
+    searched, and among equally good matches the listed order wins. Returns the
     chosen base, or None when the user closes fzf without choosing. Without
     eligible bookmarks there is nothing to choose, so it returns TRUNK_BASE
     without running fzf. Raises WorkspaceError when jj or fzf fails.
@@ -451,7 +453,11 @@ def pick_base(repo_root: Path) -> Base | None:
     if len(bases) == 1:
         return TRUNK_BASE
 
-    command = [_fzf(), "--prompt=Base revision> "]
+    # Lines are tab-separated fields whose first is the bookmark name (see
+    # _bookmark_bases): --nth=1 searches that field alone, --tiebreak=index
+    # keeps the listed order among equal matches, and --tabstop=1 renders each
+    # tab as one column so the fields stay aligned.
+    command = [_fzf(), "--prompt=Base revision> ", "--delimiter=\t", "--nth=1", "--tiebreak=index", "--tabstop=1"]
     result = _run(command, stdin_text="".join(f"{line}\n" for line in bases), stderr=None)
     if result.returncode in (FZF_NO_MATCH, FZF_INTERRUPTED):
         return None
@@ -476,10 +482,13 @@ def _bookmark_bases(repo_root: Path) -> dict[str, Base]:
     """Return fzf lines for the bookmarks REPO_ROOT's base picker lists, each mapped to its base.
 
     The listed bookmarks are the local ones not already contained in trunk.
-    Lines align the bookmark names and keep jj's most recently committed first
-    order; each base's revset names its bookmark exactly, and its label is the
-    line without the alignment padding. Raises WorkspaceError when jj fails or
-    prints a name that is not a JSON string.
+    Lines keep jj's most recently committed first order, and each is three
+    tab-separated fields: the bookmark name, padded so the names align, then
+    its change ID and first description line, each field but the last ending
+    in a space before its tab. Each base's revset names its bookmark exactly,
+    and its label shows the same three fields unpadded, two spaces apart.
+    Raises WorkspaceError when jj fails or prints a name that is not a JSON
+    string.
     """
     command = [
         "jj",
@@ -512,7 +521,7 @@ def _bookmark_bases(repo_root: Path) -> dict[str, Base]:
 
     name_width = max((len(name) for name, _, _, _ in bookmarks), default=0)
     return {
-        f"{name:<{name_width}}  {change_id}  {description}".rstrip(): Base(
+        f"{name:<{name_width}} \t{change_id} \t{description}".rstrip(): Base(
             revset=f"bookmarks(exact:{encoded_name})",
             label=f"{name}  {change_id}  {description}".rstrip(),
         )
