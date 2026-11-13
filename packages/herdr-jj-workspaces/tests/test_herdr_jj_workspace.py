@@ -280,6 +280,7 @@ class HerdrJjWorkspaceTests(unittest.TestCase):
         result = self.run_cli("prompt-add", stdin="feature\n", HERDR_WORKSPACE_ID="")
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertIn("New jj workspace for repo", result.stdout)
+        self.assertLess(result.stdout.index("Base: trunk()"), result.stdout.index("Name: "))
         self.assertEqual(
             self.herdr_calls(),
             ["worktree list --workspace w1", f"worktree open --workspace w1 --path {self.workspace} --focus"],
@@ -288,19 +289,21 @@ class HerdrJjWorkspaceTests(unittest.TestCase):
         self.assertFalse(self.fzf_base_input.exists())
         self.assertEqual(self.commit("feature@-"), self.commit("trunk()"))
 
-    def test_prompt_add_error_waits_for_enter(self) -> None:
+    def test_prompt_add_invalid_name_after_base_creates_nothing(self) -> None:
         self.create_bookmarks_to_stack_on()
         result = self.run_cli("prompt-add", stdin="../escape\n\n")
         self.assertEqual(result.returncode, 1)
         self.assertIn("one path component", result.stderr)
         self.assertIn("Press enter to close.", result.stderr)
+        self.assertTrue(self.fzf_base_input.exists())
         self.assertEqual(self.workspace_names(), ["default"])
-        self.assertFalse(self.fzf_base_input.exists())
+        self.assertEqual(self.herdr_calls(), ["worktree list --workspace w1"])
 
     def test_prompt_add_base_enter_keeps_trunk(self) -> None:
         self.create_bookmarks_to_stack_on()
         result = self.run_cli("prompt-add", stdin="feature\n")
         self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertLess(result.stdout.index("Base: trunk()"), result.stdout.index("Name: "))
         self.assertEqual(
             self.fzf_base_input.read_text().splitlines(),
             [
@@ -315,6 +318,7 @@ class HerdrJjWorkspaceTests(unittest.TestCase):
         self.create_bookmarks_to_stack_on()
         result = self.run_cli("prompt-add", stdin="feature\n", FAKE_FZF_BASE_CHOICE="3")
         self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn(f"Base: base  {self.change_id('base')}  initial\n", result.stdout)
         self.assertEqual(self.commit("feature@-"), self.commit("base"))
         self.assertIn("feature", self.workspace_names())
 
@@ -322,8 +326,9 @@ class HerdrJjWorkspaceTests(unittest.TestCase):
         self.create_bookmarks_to_stack_on()
         for status in ("1", "130"):
             with self.subTest(status=status):
-                result = self.run_cli("prompt-add", stdin="feature\n", FAKE_FZF_BASE_STATUS=status)
+                result = self.run_cli("prompt-add", stdin="", FAKE_FZF_BASE_STATUS=status)
                 self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertNotIn("Name: ", result.stdout)
                 self.assertEqual(self.workspace_names(), ["default"])
                 self.assertFalse(self.workspace.exists())
                 self.assertEqual(self.herdr_calls(), ["worktree list --workspace w1"])

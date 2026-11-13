@@ -11,8 +11,9 @@ neither moves the user's focus unless ``--focus`` is given.
 
 The ``prompt-add`` and ``prompt-remove`` commands are the dotfiles.jj-workspaces
 plugin's popups, and ``open-popup`` is its action command. ``prompt-add`` asks
-for the name, then in fzf for the base revision: ``trunk()`` or one of the
-repository's local bookmarks, for stacking on unfinished work.
+in fzf for the base revision first: ``trunk()`` or one of the repository's
+local bookmarks, for stacking on unfinished work. It then asks for the name,
+showing the repository and base chosen.
 
 ``--host`` names which Herdr ``add``, ``remove``, ``prompt-add`` and
 ``prompt-remove`` drive: ``tui``, the Herdr terminal UI through its ``herdr``
@@ -418,20 +419,35 @@ def pick_app_source(first: Path | None = None) -> JjCheckout | None:
     return chosen
 
 
-def pick_base(repo_root: Path) -> str | None:
+@dataclass(frozen=True)
+class Base:
+    """A revision a new jj workspace can start on top of."""
+
+    revset: str
+    """jj revset naming the revision, passed as ``add --revision``."""
+    label: str
+    """How the user recognizes the base: ``trunk()``, or a bookmark's name,
+    change ID and first description line."""
+
+
+TRUNK_BASE = Base(revset=DEFAULT_REVISION, label=DEFAULT_REVISION)
+"""The default base, ``trunk()``, left for jj to resolve."""
+
+
+def pick_base(repo_root: Path) -> Base | None:
     """Ask in fzf which revision a new jj workspace of the repository at REPO_ROOT starts on top of.
 
     fzf lists ``trunk()`` first, so Enter with an empty query keeps the
     default, then the repository's local bookmarks, most recently committed
     first, each with its change ID and first description line; deleted and
-    conflicted bookmarks are left out. Returns the chosen revset, or None when
+    conflicted bookmarks are left out. Returns the chosen base, or None when
     the user closes fzf without choosing. Without eligible bookmarks there is
-    nothing to choose, so it returns ``trunk()`` without running fzf. Raises
+    nothing to choose, so it returns TRUNK_BASE without running fzf. Raises
     WorkspaceError when jj or fzf fails.
     """
-    bases = {DEFAULT_REVISION: DEFAULT_REVISION, **_bookmark_bases(repo_root)}
+    bases = {DEFAULT_REVISION: TRUNK_BASE, **_bookmark_bases(repo_root)}
     if len(bases) == 1:
-        return DEFAULT_REVISION
+        return TRUNK_BASE
 
     command = [_fzf(), "--prompt=Base revision> "]
     result = _run(command, stdin_text="".join(f"{line}\n" for line in bases), stderr=None)
@@ -454,12 +470,13 @@ _BOOKMARK_BASE_TEMPLATE = (
 )
 
 
-def _bookmark_bases(repo_root: Path) -> dict[str, str]:
-    """Return fzf lines for the local bookmarks of the repository at REPO_ROOT, each mapped to its revset.
+def _bookmark_bases(repo_root: Path) -> dict[str, Base]:
+    """Return fzf lines for the local bookmarks of the repository at REPO_ROOT, each mapped to its base.
 
     Lines align the bookmark names and keep jj's most recently committed first
-    order; each revset names its bookmark exactly. Raises WorkspaceError when
-    jj fails or prints a name that is not a JSON string.
+    order; each base's revset names its bookmark exactly, and its label is the
+    line without the alignment padding. Raises WorkspaceError when jj fails or
+    prints a name that is not a JSON string.
     """
     command = [
         "jj",
@@ -490,7 +507,10 @@ def _bookmark_bases(repo_root: Path) -> dict[str, str]:
 
     name_width = max((len(name) for name, _, _, _ in bookmarks), default=0)
     return {
-        f"{name:<{name_width}}  {change_id}  {description}".rstrip(): f"bookmarks(exact:{encoded_name})"
+        f"{name:<{name_width}}  {change_id}  {description}".rstrip(): Base(
+            revset=f"bookmarks(exact:{encoded_name})",
+            label=f"{name}  {change_id}  {description}".rstrip(),
+        )
         for name, encoded_name, change_id, description in bookmarks
     }
 
@@ -792,26 +812,33 @@ def _command_prompt_add(arguments: argparse.Namespace) -> int:
         app_source = pick_app_source(first) if pick else resolve_app_source(Path.cwd())
         if app_source is None:
             return 0
-        print(f"New jj workspace for {app_source.primary_root.name}\n")
-        name = input("Name: ")
-        validate_name(name)
-        revision = pick_base(app_source.primary_root)
-        if revision is None:
+        base = pick_base(app_source.primary_root)
+        if base is None:
             return 0
-        _ = app_create(app_source, name, revision=revision, focus=True)
+        name = _ask_name(app_source.primary_root.name, base)
+        _ = app_create(app_source, name, revision=base.revset, focus=True)
         return 0
 
     if pick:
         raise WorkspaceError("--pick needs the app host")
     source = resolve_source(_plugin_workspace())
-    print(f"New jj workspace for {source.repo_name}\n")
+    base = pick_base(source.repo_root)
+    if base is None:
+        return 0
+    name = _ask_name(source.repo_name, base)
+    _ = create(source, name, revision=base.revset, focus=True)
+    return 0
+
+
+def _ask_name(repo_name: str, base: Base) -> str:
+    """Ask for the new jj workspace's name, showing REPO_NAME and BASE so the name can reflect them.
+
+    Raises WorkspaceError when the name is not a valid workspace name.
+    """
+    print(f"New jj workspace for {repo_name}\nBase: {base.label}\n")
     name = input("Name: ")
     validate_name(name)
-    revision = pick_base(source.repo_root)
-    if revision is None:
-        return 0
-    _ = create(source, name, revision=revision, focus=True)
-    return 0
+    return name
 
 
 def _command_prompt_remove(arguments: argparse.Namespace) -> int:
@@ -916,9 +943,9 @@ def _parser() -> argparse.ArgumentParser:
         "prompt-add",
         help="popup for add that asks for the base revision, from the working directory in the app",
         description=(
-            "Ask for the new jj workspace's name, then in fzf for its base: "
-            "trunk(), listed first so Enter keeps it, or a local bookmark. "
-            "Closing fzf creates nothing."
+            "Ask in fzf for the new jj workspace's base: trunk(), listed first "
+            "so Enter keeps it, or a local bookmark; closing fzf creates nothing. "
+            "Then ask for its name, showing the repository and base chosen."
         ),
     )
     _add_host_option(prompt_add)

@@ -7,10 +7,11 @@
 // space is on this machine, so Enter with an empty query picks it. Then it
 // lists the jj repositories of the spaces open on this machine, one line per
 // repository however many of its workspaces are open.
-// Enter asks for a name, then in fzf for the base revision (Enter keeps
-// `trunk()`, or pick one of the repository's local bookmarks to stack on it),
-// runs `jjx workspace add` on it, and opens and focuses the new space; Esc in
-// either picker closes the popup without creating anything.
+// Enter asks in fzf for the base revision (Enter keeps `trunk()`, or pick one
+// of the repository's local bookmarks to stack on it), then for a name,
+// showing the repository and base chosen, runs `jjx workspace add` on it, and
+// opens and focuses the new space; Esc in either picker closes the popup
+// without creating anything.
 //
 // `launcher.ts` and `paths.ts` beside this file are links to the shared
 // copies in `mod-lib/`.

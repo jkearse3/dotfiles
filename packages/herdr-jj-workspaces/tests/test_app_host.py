@@ -494,6 +494,7 @@ class AppHostTests(unittest.TestCase):
         result = self.run_cli("prompt-add", "--host", "app", stdin="feature\n")
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertIn("New jj workspace for repo", result.stdout)
+        self.assertLess(result.stdout.index("Base: trunk()"), result.stdout.index("Name: "))
         self.assertEqual(self.workspace_names(), ["default", "feature"])
         self.assertEqual(
             self.calls(), ["herdr-app ls", f'herdr-app do space.new {{"folder": "{self.workspace}"}}']
@@ -502,19 +503,21 @@ class AppHostTests(unittest.TestCase):
         self.assertFalse(self.fzf_base_input.exists())
         self.assertEqual(self.commit("feature@-"), self.commit("trunk()"))
 
-    def test_prompt_add_error_waits_for_enter(self) -> None:
+    def test_prompt_add_invalid_name_after_base_creates_nothing(self) -> None:
         self.create_bookmarks_to_stack_on()
         result = self.run_cli("prompt-add", "--host", "app", stdin="../escape\n\n")
         self.assertEqual(result.returncode, 1)
         self.assertIn("one path component", result.stderr)
         self.assertIn("Press enter to close.", result.stderr)
+        self.assertTrue(self.fzf_base_input.exists())
         self.assertEqual(self.workspace_names(), ["default"])
-        self.assertFalse(self.fzf_base_input.exists())
+        self.assertEqual(self.calls(), [])
 
     def test_prompt_add_base_enter_keeps_trunk(self) -> None:
         self.create_bookmarks_to_stack_on()
         result = self.run_cli("prompt-add", "--host", "app", stdin="feature\n")
         self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertLess(result.stdout.index("Base: trunk()"), result.stdout.index("Name: "))
         self.assertEqual(
             self.fzf_base_input.read_text().splitlines(),
             [
@@ -529,6 +532,7 @@ class AppHostTests(unittest.TestCase):
         self.create_bookmarks_to_stack_on()
         result = self.run_cli("prompt-add", "--host", "app", stdin="feature\n", FAKE_FZF_BASE_CHOICE="3")
         self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn(f"Base: base  {self.change_id('base')}  initial\n", result.stdout)
         self.assertEqual(self.commit("feature@-"), self.commit("base"))
         self.assertEqual(self.calls()[-1], f'herdr-app do space.new {{"folder": "{self.workspace}"}}')
 
@@ -536,17 +540,16 @@ class AppHostTests(unittest.TestCase):
         self.create_bookmarks_to_stack_on()
         for status in ("1", "130"):
             with self.subTest(status=status):
-                result = self.run_cli(
-                    "prompt-add", "--host", "app", stdin="feature\n", FAKE_FZF_BASE_STATUS=status
-                )
+                result = self.run_cli("prompt-add", "--host", "app", stdin="", FAKE_FZF_BASE_STATUS=status)
                 self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertNotIn("Name: ", result.stdout)
                 self.assertEqual(self.workspace_names(), ["default"])
                 self.assertFalse(self.workspace.exists())
                 self.assertEqual(self.calls(), [])
 
     def test_prompt_add_base_fzf_failure_waits_for_enter(self) -> None:
         self.create_bookmarks_to_stack_on()
-        result = self.run_cli("prompt-add", "--host", "app", stdin="feature\n\n", FAKE_FZF_BASE_STATUS="2")
+        result = self.run_cli("prompt-add", "--host", "app", stdin="\n", FAKE_FZF_BASE_STATUS="2")
         self.assertEqual(result.returncode, 1)
         self.assertIn("fzf exited with status 2", result.stderr)
         self.assertIn("Press enter to close.", result.stderr)
@@ -581,6 +584,8 @@ class AppHostTests(unittest.TestCase):
         )
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(self.fzf_input.read_text().splitlines(), [str(self.repo)])
+        self.assertIn("New jj workspace for repo", result.stdout)
+        self.assertIn(f"Base: newer  {self.change_id('newer')}  later\n", result.stdout)
         self.assertEqual(self.commit("feature@-"), self.commit("newer"))
 
     def test_prompt_add_pick_lists_each_local_jj_repository_once(self) -> None:
