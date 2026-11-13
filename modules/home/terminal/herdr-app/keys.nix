@@ -65,8 +65,7 @@
       # the focused one first, so Enter makes the workspace there. It takes
       # the jj path, never the app's own Git worktree commands, which would
       # bypass jj: every checkout here is a jj workspace. `shift-q` removes
-      # one. In the TUI, `shift-g` stays Herdr's Git new-worktree key and the
-      # jj action is on `prefix+ctrl+g`.
+      # one. The TUI binds the same keys to the jj workspace plugin actions.
       "shift-g" = "mod.open:jj-workspace-pick";
       "shift-q" = "mod.open:jj-workspace-remove";
       # The TUI's workspace picker and go-to both open `goto`, the personal

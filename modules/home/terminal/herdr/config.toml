@@ -11,18 +11,22 @@ auto_switch = false
 navigate_workspace_up = ["up", "k"]
 navigate_workspace_down = ["down", "j"]
 open_worktree = "prefix+shift+o"
-remove_worktree = "prefix+shift+q"
+# Unbinds Herdr's Git new-worktree key so the jj workspace action below can
+# take prefix+shift+g: Git worktrees bypass jj, and every checkout here is a
+# jj workspace.
+new_worktree = ""
 
-# jj workspace counterparts of new_worktree and remove_worktree, from the
-# dotfiles.jj-workspaces plugin.
+# The jj workspace actions of the dotfiles.jj-workspaces plugin, in place of
+# Herdr's Git worktree keys. remove_worktree has no default key, so Git
+# worktrees are removed from Herdr's right-click menu.
 [[keys.command]]
-key = "prefix+ctrl+g"
+key = "prefix+shift+g"
 type = "plugin_action"
 command = "dotfiles.jj-workspaces.add"
 description = "new jj workspace"
 
 [[keys.command]]
-key = "prefix+ctrl+q"
+key = "prefix+shift+q"
 type = "plugin_action"
 command = "dotfiles.jj-workspaces.remove"
 description = "remove jj workspace"
