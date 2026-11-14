@@ -9,8 +9,9 @@
 # nix-darwin configurations build, then commits the change with a description
 # listing what moved. A failed check leaves the update in `@`, and the next run
 # resumes it: it reruns the checks without updating again, so a fix made in `@`
-# lands in the same change. `jj` and `commit-message` come from the user's PATH
-# and the script's runtime inputs respectively.
+# lands in the same change; a fix to files other than the dependency pins
+# needs an explanation in the description of `@`. `jj` and `commit-message`
+# come from the user's PATH and the script's runtime inputs respectively.
 
 # The subject of every dependency update. A non-empty `@` with this subject is
 # an update a previous run left for a fix, which the next run resumes.
@@ -20,7 +21,8 @@ dependency_update_subject="build(nix): update dependencies"
 # `blueprint_id`, whose Home Manager and nix-darwin configurations are
 # `home_configuration_name` and `darwin_configuration_name`. Commits nothing
 # when no dependency changed. Exits 1 when updating fails, restoring `@` to its
-# parent, and when a check fails, `@` changes while the checks run, or jj
+# parent; when `@` holds a fix whose description lacks an explanation; and when
+# a check fails, `@` changes while the checks run, or jj
 # cannot describe or commit the update, leaving the update in `@` with
 # instructions to resume or discard it.
 flake_update() {
@@ -41,6 +43,8 @@ flake_update() {
 			exit 1
 		fi
 	fi
+
+	require_fix_explanation
 
 	local checked_commit
 	checked_commit="$(jj log -r @ --no-graph -T commit_id)"
@@ -97,6 +101,43 @@ start_dependency_update() {
 		echo "error: updating dependencies failed; @ is restored to its parent, so rerun 'nix run .#flake-update' once the cause is fixed" >&2
 		exit 1
 	fi
+}
+
+# Returns when `@` changes only dependency files, or when its description
+# explains the other changes below the subject. Otherwise the update needed a
+# fix whose reason the generated lists cannot give, so it names the fix files
+# and how to add the explanation, and exits 1 before any check runs.
+require_fix_explanation() {
+	local fix_files
+	fix_files="$(list_fix_files)"
+	[[ -n $fix_files ]] || return 0
+
+	local explanation
+	explanation="$(jj log -r @ --no-graph -T description | strip_generated_description)"
+	[[ -z $explanation ]] || return 0
+
+	echo "error: the dependency update in @ also changes files beyond the dependency pins:" >&2
+	echo "  ${fix_files//$'\n'/$'\n'  }" >&2
+	cat >&2 <<EOF
+Its description needs an explanation of that fix, which the generated lists
+cannot give: why the update needed it and what it changes. Write it below the
+subject with 'jj describe', then run 'nix run .#flake-update' again.
+EOF
+	exit 1
+}
+
+# Prints the files `@` changes other than dependency files: flake.lock and the
+# files of each package that has a `packages/<name>/update.sh` updater.
+list_fix_files() {
+	local changed_file
+	while IFS= read -r changed_file; do
+		[[ $changed_file != flake.lock ]] || continue
+		if [[ $changed_file == packages/*/* ]]; then
+			local package_path=${changed_file#packages/}
+			[[ ! -x packages/${package_path%%/*}/update.sh ]] || continue
+		fi
+		echo "$changed_file"
+	done < <(jj diff -r @ --name-only)
 }
 
 # Runs `nix` with the remaining arguments as one check of the dependency update

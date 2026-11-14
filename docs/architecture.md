@@ -146,7 +146,9 @@ When a check fails, `flake-update` exits 1 and leaves the update uncommitted in
 `@`. Fix the failure there and run it again: seeing a non-empty `@` with the
 update's subject, it reruns the checks without updating again and commits the
 fix in the same change. An explanation of the fix written into the description
-of `@` with `jj describe` stays above the generated lists. `jj abandon @`
+of `@` with `jj describe` stays above the generated lists. When `@` changes
+files other than `flake.lock` and the files of packages with an updater, the run
+refuses to check or commit until that explanation exists. `jj abandon @`
 discards the update instead. It also refuses to commit when `@` changed while
 the checks ran. When `nix flake update` or an updater fails, it restores `@` to
 its parent instead, so no partial update remains.

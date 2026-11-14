@@ -256,6 +256,12 @@ expect "a failing flake check leaves the update in @" 1 "error: nix flake check 
 expect_equal "a failing flake check stops before the builds" "update eval-blueprints flake-check" "$(nix_steps)"
 expect_equal "a failing flake check leaves @ described as the update" "build(nix): update dependencies" "$(description_of @)"
 
+echo fixed >"$update_repo/fix.nix"
+run_flake_update
+expect "a fix without an explanation is refused" 1 "also changes files beyond the dependency pins:
+  fix.nix"
+expect_equal "a fix without an explanation runs no checks" "" "$(nix_steps)"
+
 update_jj describe --quiet -m "build(nix): update dependencies
 
 The fix explains itself here."
