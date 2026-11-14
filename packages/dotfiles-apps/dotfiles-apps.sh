@@ -214,7 +214,10 @@ check_dependency_update() {
 # `home_configuration_name` builds. Starts a new change first when the working
 # copy is not empty, and commits nothing when no dependency changed. When a
 # check fails, exits 1 and leaves the update uncommitted in `@`. `jj` comes from
-# the user's PATH.
+# the user's PATH. The inputs update without DOTFILES_PRIVATE_LOCAL's override,
+# because `nix flake update` writes an overridden input into flake.lock: the
+# lock keeps recording dotfiles-private's remote revision, and only the checks
+# build against the local checkout.
 flake_update() {
 	local home_configuration_name=$1
 
@@ -224,7 +227,7 @@ flake_update() {
 		jj new
 	fi
 
-	nix flake update --accept-flake-config "${private_override[@]}"
+	nix flake update --accept-flake-config
 	package_update ""
 
 	local changed_files

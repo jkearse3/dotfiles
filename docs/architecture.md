@@ -129,7 +129,9 @@ and runs the updaters in a jj change of its own. When anything changed, it
 builds `eval-blueprints`, runs `nix flake check`, and builds the Home Manager
 configuration of the blueprint the marker selects, then commits the change with
 jj. If any of these fails, it exits 1 and leaves the update uncommitted in `@`,
-so the fix lands in the same change.
+so the fix lands in the same change. `nix flake update` runs without the
+`DOTFILES_PRIVATE_LOCAL` override, which it would otherwise write into
+`flake.lock`; only the checks build against the local checkout.
 
 ## Module Interfaces
 

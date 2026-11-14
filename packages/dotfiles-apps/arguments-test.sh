@@ -256,6 +256,7 @@ expect_equal "flake-update commits the update last" "commit -m build(nix): updat
 mkdir -p "$work/private"
 touch "$work/private/flake.nix"
 DOTFILES_PRIVATE_LOCAL="$work/private" run_flake_update
+expect_equal "DOTFILES_PRIVATE_LOCAL stays out of flake.lock" "0" "$(grep -c '^flake update .*--override-input' "$nix_log")"
 expect_equal "DOTFILES_PRIVATE_LOCAL reaches the flake check" "1" \
 	"$(grep -c "^flake check .*--override-input dotfiles-private path:$work/private" "$nix_log")"
 
