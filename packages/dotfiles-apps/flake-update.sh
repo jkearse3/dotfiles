@@ -11,7 +11,9 @@
 # resumes it: it reruns the checks without updating again, so a fix made in `@`
 # lands in the same change; a fix to files other than the dependency pins
 # needs an explanation in the description of `@`. `jj` and `commit-message`
-# come from the user's PATH and the script's runtime inputs respectively.
+# come from the user's PATH and the script's runtime inputs respectively. The
+# flake-update skill in `skills/flake-update` tells agents how to drive it, and
+# `flake-update-test.sh` checks that the output lines it quotes still appear.
 
 # The subject of every dependency update. A non-empty `@` with this subject is
 # an update a previous run left for a fix, which the next run resumes.

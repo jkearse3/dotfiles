@@ -12,6 +12,9 @@ Run every command from the repository root.
 - Activate: `nix run .#switch-home` (only from the main checkout; in a linked
   worktree or secondary jj workspace it refuses, and `--allow-worktree`
   overrides this only when the user asks to activate that checkout)
+- Update dependencies: `nix run .#flake-update`, following the `flake-update`
+  skill (`packages/dotfiles-apps/skills/flake-update`), which covers fixing and
+  explaining what an update breaks
 - Format: `nix fmt` (all file types via treefmt)
 - Check (standalone tests, formatting, and lint): `nix flake check`
 - Lint: `nix build --no-link .#lint` (builds only the lint flake checks and pi

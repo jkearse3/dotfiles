@@ -7,7 +7,8 @@
 # a linked Git worktree, and the arguments package-update passes to the package
 # updaters, using real Git repositories. `dotfiles-apps-flake-update` tests how
 # flake-update checks, resumes, and describes an update, using stub `nix`
-# commands and a real jj repository.
+# commands and a real jj repository. It also checks that the output lines the
+# flake-update skill quotes still appear.
 {
   config,
   lib,
@@ -73,7 +74,7 @@ in
                   testedBlueprintSystem
                   (lib.systems.elaborate testedBlueprintSystem).rust.rustcTarget
                 ]
-              }
+              } ${../packages/dotfiles-apps/skills/flake-update/SKILL.md}
               touch "$out"
             '';
       };

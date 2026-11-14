@@ -3,10 +3,12 @@
 # Tests how flake-update checks, resumes, guards, and describes a dependency
 # update, running it in a real jj repository made with `jj` from PATH, with
 # stub `nix` and `nix-store` commands that log their arguments and serve fake
-# configurations. Usage: flake-update-test.sh <dotfiles-apps executable>
-# <blueprint ID from the flake's inventory> <its Nix system> <its Rust target
-# triple>. Runs with HOME, XDG_CONFIG_HOME, and the jj config in a temporary
-# directory.
+# configurations. It also checks that every line of output the flake-update
+# skill quotes appears in some run's output, so the skill cannot drift from the
+# command. Usage: flake-update-test.sh <dotfiles-apps executable> <blueprint ID
+# from the flake's inventory> <its Nix system> <its Rust target triple>
+# <flake-update SKILL.md>. Runs with HOME, XDG_CONFIG_HOME, and the jj config
+# in a temporary directory.
 
 set -uo pipefail
 
@@ -14,6 +16,7 @@ app=$1
 blueprint_id=$2
 blueprint_platform=$3
 blueprint_rust_target=$4
+flake_update_skill=$5
 
 failures=0
 work="$(mktemp -d)"
@@ -147,14 +150,17 @@ update_jj() {
 }
 
 # Runs flake-update in the update repository with the stubs first on PATH,
-# after emptying the nix log. Its arguments are environment assignments that
+# after emptying the nix log, and appends its output to
+# `flake_update_outputs`. Its arguments are environment assignments that
 # override the stub defaults: the new lock and pin version 1.1.
 run_flake_update() {
 	: >"$nix_log"
 	output="$(cd "$update_repo" &&
 		env STUB_NEW_LOCK="$work/new.lock" STUB_PIN_VERSION=1.1 PATH="$stub_path" "$@" "$app" flake-update 2>&1)"
 	status=$?
+	flake_update_outputs+=$output$'\n'
 }
+flake_update_outputs=""
 
 # Abandons everything above the initial revision and starts an empty change on
 # it.
@@ -303,6 +309,28 @@ run_flake_update DOTFILES_PRIVATE_LOCAL="$work/private"
 expect_equal "DOTFILES_PRIVATE_LOCAL stays out of flake.lock" "0" "$(grep -c '^flake update .*--override-input' "$nix_log")"
 expect_equal "DOTFILES_PRIVATE_LOCAL reaches the flake check" "1" \
 	"$(grep -c "^flake check .*--override-input dotfiles-private path:$work/private" "$nix_log")"
+
+# The skill's Run section quotes each line flake-update prints as the first code
+# span of a list item; `<...>` stands for a varying part, such as a check name.
+quoted_lines=()
+# shellcheck disable=SC2016 # The backticks are Markdown code spans.
+while IFS= read -r quoted_line; do
+	quoted_lines+=("$quoted_line")
+done < <(sed -n '/^## Run/,/^## /p' "$flake_update_skill" | sed -nE 's/^ *- `([^`]+)`.*/\1/p')
+if [[ ${#quoted_lines[@]} -lt 12 ]]; then
+	echo "not ok - the skill quotes the lines flake-update prints: found ${#quoted_lines[@]}" >&2
+	failures=$((failures + 1))
+fi
+for quoted_line in "${quoted_lines[@]}"; do
+	quoted_pattern=${quoted_line//<*>/*}
+	# shellcheck disable=SC2053 # The placeholders are meant to match as globs.
+	if [[ $flake_update_outputs == *$quoted_pattern* ]]; then
+		echo "ok - the skill's quoted line '$quoted_line' is printed by flake-update"
+	else
+		echo "not ok - the skill quotes '$quoted_line', which no flake-update run printed" >&2
+		failures=$((failures + 1))
+	fi
+done
 
 if [[ $failures -ne 0 ]]; then
 	echo "$failures case(s) failed" >&2
