@@ -262,9 +262,9 @@ export default class Prefix extends View {
     else if (!this.pendingKey) this.pendingKey = key;
   }
 
-  // Leaves prefix mode, running the action bound to KEY, if any. `?` is
-  // bound by the character it types, so the keystroke is tried first, then
-  // the character.
+  // Leaves prefix mode, running the action bound to KEY, if any. `?` and
+  // `:` are bound by the character they type, so the keystroke is tried
+  // first, then the character.
   handleKey({ keystroke, key_char }: PrefixKey): void {
     if (keystroke === "escape") return this.dismiss();
     const action =

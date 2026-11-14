@@ -51,6 +51,9 @@
   prefix = {
     bindings = {
       "?" = "app.help";
+      # Opens `palette`, the personal command palette, like `cmd-shift-p`.
+      # Like `?`, it is matched by the character it types.
+      ":" = "mod.open:palette";
       "s" = "app.settings";
 
       # The TUI's new-workspace key picks the folder with fzf (`space-new`),
@@ -151,6 +154,10 @@
       {
         action = "pane.close";
         label = "close";
+      }
+      {
+        action = "mod.open:palette";
+        label = "commands";
       }
       {
         action = "app.help";
