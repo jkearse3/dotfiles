@@ -289,21 +289,23 @@ export function jjTail(
 
 // The "Needs you" section: a heading with how many, then blocked agents and
 // done ones, newest first; `since` gives when an agent's status last changed.
-// `labelOf` gives what an agent is (`agentLabel`). With none, the heading
-// shows "0", all dim, over a dim "Nothing waiting"; the label turns amber
-// when one does.
+// `labelOf` gives what an agent is (`agentLabel`), and `waitsForOf` what a
+// blocked one waits for (`blockedKind`), null when it does not say. With
+// none, the heading shows "0", all dim, over a dim "Nothing waiting"; the
+// label turns amber when one does.
 export function needsYouRows(
   needsYou: AgentInfo[],
   labelOf: (a: AgentInfo) => string,
+  waitsForOf: (a: AgentInfo) => string | null,
   t: ThemeColors,
   now: number,
   since: (a: AgentInfo) => number,
 ): Element[] {
   // Each row as the tree draws an agent, two lines: what the agent is, then
   // the space it is in, beside that space's color in a thin bar. A blocked
-  // agent says "needs you" in its status color, a done one has a dot, and
-  // both say how long ago. The tree above fills the focused row; here focus
-  // only brightens the text.
+  // agent says what it waits for ("permission"), else "needs you", in its
+  // status color, a done one has a dot, and both say how long ago. The tree
+  // above fills the focused row; here focus only brightens the text.
   const row = (a: AgentInfo) => {
     const pic = programIcon(a.program, 14, t.foreground);
     const when = since(a);
@@ -365,7 +367,7 @@ export function needsYouRows(
                       .text_size(11)
                       .font_semibold()
                       .text_color(t.blocked)
-                      .child("needs you")
+                      .child(waitsForOf(a) ?? "needs you")
                   : div().flex_none().child(statusMark(t, a.status)),
               ),
           )

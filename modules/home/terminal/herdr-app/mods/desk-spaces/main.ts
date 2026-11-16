@@ -103,7 +103,7 @@ import { AgentHistory, needsYou } from "./agents.js";
 import { FinishedLoader } from "./finished-loader.js";
 import { finishedLabel } from "./finished.js";
 import type { FinishedTerminal } from "./finished.js";
-import { agentLabel, terminalRowModel } from "./labels.js";
+import { agentLabel, blockedKind, terminalRowModel } from "./labels.js";
 import { hoverFill } from "./row-colors.js";
 import { spaceOrder } from "./space-order.js";
 import { RANK, topStatus } from "./status.js";
@@ -996,6 +996,11 @@ export default class SpacesAndAgents extends View {
         info: a,
         pane: null,
       });
+    const waitsForOf = (a: AgentInfo) =>
+      blockedKind({
+        status: a.status,
+        reportKind: terminalByAddress.get(a.address)?.report?.kind || null,
+      });
 
     // Next/previous agent: "Needs you", then the tree in the machine order
     // `grouped` draws, folded machines and spaces included: the agents with a
@@ -1080,7 +1085,9 @@ export default class SpacesAndAgents extends View {
             .border_t(1)
             .border_color(t.border)
             .children(
-              needsYouRows(tray, labelOf, t, now, (a) => this.history.since(a)),
+              needsYouRows(tray, labelOf, waitsForOf, t, now, (a) =>
+                this.history.since(a),
+              ),
             ),
         ),
       )
