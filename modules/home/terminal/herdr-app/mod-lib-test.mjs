@@ -3,14 +3,15 @@
 // `tree.ts`, `agentDoing`, `folderOf` and `terminalRowModel` from `labels.ts`,
 // `machineOf` from `terminals.ts`, `spaceOrder` and `checkoutText` from
 // `space-order.ts`, the finished-terminal readers, outcome and label from
-// `finished.ts`, `runningCommand`, `shellCommandText`, `commandText` and
-// `CommandStarts` (over an in-memory `localStorage`) from `foreground.ts`,
-// and `hoverFill` and `stripeColor` from `row-colors.ts`, against the
+// `finished.ts`, `quietFor` from `quiet.ts`, `runningCommand`,
+// `shellCommandText`, `commandText` and `CommandStarts` from
+// `foreground.ts`, `hoverFill` and `stripeColor` from `row-colors.ts`, and
+// the desk-spaces sidebar's activity tracking (`AgentHistory` from its own
+// `agents.ts`), the trackers over an in-memory `localStorage`, against the
 // terminals(), agents(), panes() and spaces() entry shapes the Herdr app
-// hands mods. It imports the built,
-// type-stripped `desk-spaces/*.js` from the herdr-app-mods output named by
-// `HERDR_APP_MODS`, where the mod's links to `mod-lib` have been copied in.
-// Run with
+// hands mods. It imports the built, type-stripped `desk-spaces/*.js` from
+// the herdr-app-mods output named by `HERDR_APP_MODS`, where the mod's
+// links to `mod-lib` have been copied in. Run with
 // `HERDR_APP_MODS=$(nix build --no-link --print-out-paths .#herdr-app-mods) node --test`;
 // flake/checks.nix registers it as the `herdr-app-mod-lib` check through
 // mod-lib-check.nix, which sets it.
@@ -38,9 +39,11 @@ const {
   finishedOutcome,
   finishedTerminalOf,
 } = await import(`${mods}/desk-spaces/finished.js`);
+const { QUIET_MS, quietFor } = await import(`${mods}/desk-spaces/quiet.js`);
 const { hoverFill, stripeColor } = await import(
   `${mods}/desk-spaces/row-colors.js`
 );
+const { AgentHistory } = await import(`${mods}/desk-spaces/agents.js`);
 const {
   COMMAND_SETTLE_MS,
   CommandStarts,
@@ -1269,6 +1272,117 @@ function useStorage(items = {}) {
   return store;
 }
 
+const MIN = 60000;
+
+test("trackActivity stamps a new agent now and keeps the stamp while nothing changes", () => {
+  useStorage();
+  const h = new AgentHistory();
+  const k = terminal("t1", "working", {
+    turn: 3,
+    report: { msg: "Read a.ts" },
+  });
+  h.trackActivity([k], 1000);
+  assert.equal(h.activeAt("t1"), 1000);
+  h.trackActivity([{ ...k, report: { msg: "Read a.ts" } }], 5000);
+  assert.equal(h.activeAt("t1"), 1000);
+  assert.equal(h.activeAt("t2"), null);
+});
+
+test("trackActivity restamps on a new report message, turn or state", () => {
+  useStorage();
+  const h = new AgentHistory();
+  const k = terminal("t1", "working", {
+    turn: 3,
+    report: { msg: "Read a.ts" },
+  });
+  h.trackActivity([k], 1000);
+  h.trackActivity([{ ...k, report: { msg: "Edit a.ts" } }], 2000);
+  assert.equal(h.activeAt("t1"), 2000);
+  h.trackActivity([{ ...k, report: { msg: "Edit a.ts" }, turn: 4 }], 3000);
+  assert.equal(h.activeAt("t1"), 3000);
+  const same = { ...k, report: { msg: "Edit a.ts" }, turn: 4 };
+  h.trackActivity([{ ...same, status: "blocked" }], 4000);
+  h.trackActivity([same], 5000);
+  assert.equal(h.activeAt("t1"), 5000);
+});
+
+test("trackActivity restamps on a new core status time with the same state, message and turn", () => {
+  useStorage();
+  const h = new AgentHistory();
+  // A working -> blocked -> working round trip the sidebar never sampled
+  // leaves only a newer status_ms behind.
+  const k = terminal("t1", "working", {
+    status_ms: 500,
+    turn: 3,
+    report: { msg: "Read a.ts" },
+  });
+  h.trackActivity([k], 1000);
+  h.trackActivity([{ ...k }], 2000);
+  assert.equal(h.activeAt("t1"), 1000);
+  h.trackActivity([{ ...k, status_ms: 1500 }], 3000);
+  assert.equal(h.activeAt("t1"), 3000);
+});
+
+test("trackActivity restamps a stored record missing a field once", () => {
+  useStorage({
+    active: JSON.stringify({
+      t1: { s: "working", m: null, n: 2, at: 700 },
+    }),
+  });
+  const h = new AgentHistory();
+  const k = terminal("t1", "working", { turn: 2 });
+  h.trackActivity([k], 1000);
+  assert.equal(h.activeAt("t1"), 1000);
+  h.trackActivity([k], 2000);
+  assert.equal(h.activeAt("t1"), 1000);
+});
+
+test("trackActivity counts done and idle as one state and skips terminals without a status", () => {
+  useStorage();
+  const h = new AgentHistory();
+  h.trackActivity([terminal("t1", "done"), terminal("t2", null)], 1000);
+  h.trackActivity([terminal("t1", "idle"), terminal("t2", "")], 2000);
+  assert.equal(h.activeAt("t1"), 1000);
+  assert.equal(h.activeAt("t2"), null);
+});
+
+test("AgentHistory keeps activity across restarts and reads storage from before it tracked any", () => {
+  const store = useStorage({
+    changed: JSON.stringify({ t1: { s: "working", at: 700 } }),
+  });
+  const before = new AgentHistory();
+  assert.equal(before.since({ address: "t1" }), 700);
+  assert.equal(before.activeAt("t1"), null);
+  before.trackActivity([terminal("t1", "working", { turn: 2 })], 1000);
+  assert.ok(store.has("active"));
+
+  const after = new AgentHistory();
+  assert.equal(after.activeAt("t1"), 1000);
+  after.trackActivity([terminal("t1", "working", { turn: 2 })], 9000);
+  assert.equal(after.activeAt("t1"), 1000);
+});
+
+test("trackActivity drops agents gone for over 30 days and keeps recently gone ones", () => {
+  const day = 86400000;
+  useStorage();
+  const h = new AgentHistory();
+  h.trackActivity([terminal("old", "idle"), terminal("recent", "idle")], 0);
+  h.trackActivity([terminal("recent", "working")], 29 * day);
+  h.trackActivity([terminal("new", "working")], 31 * day);
+  assert.equal(h.activeAt("old"), null);
+  assert.equal(h.activeAt("recent"), 29 * day);
+  assert.equal(h.activeAt("new"), 31 * day);
+});
+
+test("quietFor: a working agent quiet for 10 minutes or more, else null", () => {
+  assert.equal(QUIET_MS, 10 * MIN);
+  assert.equal(quietFor("working", 0, 10 * MIN), 10 * MIN);
+  assert.equal(quietFor("working", 0, 10 * MIN - 1000), null);
+  assert.equal(quietFor("working", null, 60 * MIN), null);
+  for (const status of ["idle", "blocked", "done", null])
+    assert.equal(quietFor(status, 0, 60 * MIN), null, String(status));
+});
+
 // A plain terminals() entry at `address` whose root process is 100, running
 // `argv` in process `pid` that the app's program marks `shell` or not.
 function plainRunning(address, pid, argv, shell = false) {
@@ -1542,7 +1656,7 @@ test("stripeColor colors an agent row by its status", () => {
     agent("working", { kind: "activity", text: "Reading" }),
     "#000001",
   );
-  // A working agent that reports no activity is still working.
+  // A quiet working agent is still working.
   assert.equal(
     agent("working", { kind: "status", text: "working" }),
     "#000001",

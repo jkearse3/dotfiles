@@ -13,7 +13,7 @@
 // herdr-app-mods build copies the file in place of the link and strips its
 // types to `tree-rows.js`. The app refuses imports that leave a mod's own
 // folder; `./tree-rows.js` beside the importing file is allowed. The
-// `./agent-marks.js`, `./finished.js`, `./program-icon.js` and
+// `./agent-marks.js`, `./finished.js`, `./program-icon.js`, `./quiet.js` and
 // `./row-colors.js` this file imports must be linked beside it too, with what
 // they import (`labels.ts` and `tree.ts` give only types).
 
@@ -26,6 +26,7 @@ import { finishedLabel, finishedOutcome } from "./finished.js";
 import type { FinishedTerminal } from "./finished.js";
 import type { TerminalRowDetail, TerminalRowModel } from "./labels.js";
 import { programIcon } from "./program-icon.js";
+import { quietFor } from "./quiet.js";
 import { stripeColor } from "./row-colors.js";
 import type { TreeMachine } from "./tree.js";
 
@@ -126,8 +127,10 @@ export function tabDivider(
 //   from the left so the folder's last segments stay;
 // - for an agent, a third line with what it is doing (`detail`: what a
 //   blocked agent waits for in the blocked color, its activity muted, its
-//   status word dim), and at its end the time since `opts.since` (none
-//   while it works, its spinner says so, or without `since`);
+//   status word dim), and at its end "quiet 12m" in amber (the theme's
+//   `ansi3`) while it works but has shown no activity since `opts.activeAt`
+//   for a while (`quietFor`), else the time since `opts.since` (none while
+//   it works, its spinner says so, or without `since`);
 // - for a plain terminal running a command (a "command" `detail`), a third
 //   line with the command in cyan (the theme's `ansi6`) in
 //   `opts.commandFont`, at the size of an agent's third line so the row
@@ -226,14 +229,14 @@ export function terminalRow(
 }
 
 // A `terminalRow`'s third line, saying `detail` for the terminal `model`
-// describes, then at its end, for an agent, how long it has been in its
-// status; for a command, how long it has run.
+// describes, then at its end, for an agent, how long it has been quiet, else
+// how long it has been in its status; for a command, how long it has run.
 function detailLine(
   t: Record<string, Color>,
   detail: TerminalRowDetail,
   model: Pick<TerminalRowModel, "address" | "status">,
   now: number,
-  opts: Pick<TerminalRowOptions, "since" | "commandFont">,
+  opts: Pick<TerminalRowOptions, "since" | "activeAt" | "commandFont">,
 ): Element {
   const textColor =
     detail.kind === "command"
@@ -243,13 +246,22 @@ function detailLine(
         : detail.kind === "activity"
           ? t.muted
           : t.dim;
+  const quietMs =
+    detail.kind === "command"
+      ? null
+      : quietFor(model.status, opts.activeAt ?? null, now);
   const changedAt =
     detail.kind === "command"
       ? detail.since
       : model.status === "working"
         ? null
         : (opts.since ?? null);
-  const time = changedAt !== null ? duration(now - changedAt) : null;
+  const time =
+    quietMs !== null
+      ? `quiet ${duration(quietMs)}`
+      : changedAt !== null
+        ? duration(now - changedAt)
+        : null;
   const font = detail.kind === "command" ? opts.commandFont : undefined;
 
   return h_flex()
@@ -274,7 +286,7 @@ function detailLine(
         div()
           .flex_none()
           .text_size(11)
-          .text_color(t.dim)
+          .text_color(quietMs !== null ? t.ansi3 : t.dim)
           .child(time ?? ""),
       ),
     );
@@ -285,6 +297,10 @@ export interface TerminalRowOptions {
   // When its status last changed, in ms since the epoch; null or absent when
   // unknown.
   since?: number | null;
+  // When the agent last showed activity (a new report message, turn or
+  // state), in ms since the epoch; null or absent when unknown, which never
+  // reads as quiet.
+  activeAt?: number | null;
   // A dim word after the title saying how it is held ("no pane").
   note?: string;
   // Dim text after the title that places it, such as its space.

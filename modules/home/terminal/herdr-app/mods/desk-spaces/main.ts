@@ -22,13 +22,14 @@
 //   running a command, else grey), then its program and title, then on a
 //   dim second line the folder it is in now; an agent's adds a third line
 //   with why it is blocked, what it is doing now, or else its status word,
-//   and at its end how long it has been in its status. A plain terminal
-//   running a command other than its shell (`make dev`) adds a third line
-//   with that command in cyan, in the terminal's font, and how long it has
-//   run, once it has run 2 seconds (`CommandStarts`), so quick commands do
-//   not make rows jump. Clicking a row focuses its pane, or peeks at a
-//   terminal without one; the focused terminal's row is filled, and any
-//   other one under the mouse fainter.
+//   and at its end how long it has been in its status (while it works,
+//   "quiet 12m" in amber once it has shown no new report message, turn or
+//   state for 10 minutes). A plain terminal running a command other than
+//   its shell (`make dev`) adds a third line with that command in cyan, in
+//   the terminal's font, and how long it has run, once it has run 2 seconds
+//   (`CommandStarts`), so quick commands do not make rows jump. Clicking a
+//   row focuses its pane, or peeks at a terminal without one; the focused
+//   terminal's row is filled, and any other one under the mouse fainter.
 //   After a terminal's nested rows come the terminals it started that have
 //   finished, oldest first (`finishedRow`: no stripe, a ✓, or a ✗ when it
 //   failed, under the live rows' icons, its name, how it ended and when);
@@ -66,12 +67,12 @@
 // This file holds the view and its state; `checkouts.ts` looks up each
 // space's Git or jj checkout, `finished-loader.ts` reads the finished
 // terminals, `agents.ts` picks the agents that need you and tracks their
-// status changes, `rows.ts` draws the space rows and the tray,
+// status and activity changes, `rows.ts` draws the space rows and the tray,
 // and `tree-rows.ts` draws the machine headers, tab dividers and terminal
 // rows.
 //
 // `agent-marks.ts`, `finished.ts`, `foreground.ts`, `labels.ts`,
-// `names.ts`, `paths.ts`, `program-icon.ts`, `row-colors.ts`,
+// `names.ts`, `paths.ts`, `program-icon.ts`, `quiet.ts`, `row-colors.ts`,
 // `space-order.ts`, `status.ts`, `terminals.ts`, `tree-rows.ts` and
 // `tree.ts` beside these files are links to the shared copies in `mod-lib/`.
 
@@ -261,8 +262,8 @@ export default class SpacesAndAgents extends View {
     this.foldedSpaces = JSON.parse(
       localStorage.getItem("spaces.folded") ?? "{}",
     ) as Record<string, string | null>;
-    // Each agent's last status change (kept across restarts) and the focused
-    // agent's held next/previous rank.
+    // Each agent's last status change and last activity (both kept across
+    // restarts) and the focused agent's held next/previous rank.
     this.history = new AgentHistory();
     // Space id -> its tabs' and loose terminal rows this render (see
     // `spaceListing`).
@@ -883,6 +884,7 @@ export default class SpacesAndAgents extends View {
       .child(
         terminalRow(t, model, now, {
           since,
+          activeAt: this.history.activeAt(address),
           note: opts?.markPaneless && pane === null ? "no pane" : undefined,
           dimTitle: !isFocused && (status === null || status === "idle"),
           commandFont: typeof font === "string" ? font : undefined,
@@ -1004,10 +1006,11 @@ export default class SpacesAndAgents extends View {
 
     const now = Date.now();
     const list = agents();
+    const allTerminals = terminals() as TerminalEntry[];
     this.history.track(list, now);
+    this.history.trackActivity(allTerminals, now);
     this.history.hold(list);
     this.pruneFoldedSpaces(sp);
-    const allTerminals = terminals() as TerminalEntry[];
     const tree = buildTree({
       terminals: allTerminals,
       agents: list,
