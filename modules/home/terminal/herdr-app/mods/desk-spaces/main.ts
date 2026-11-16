@@ -1084,7 +1084,7 @@ export default class SpacesAndAgents extends View {
     const now = Date.now();
     const list = agents();
     const allTerminals = terminals() as TerminalEntry[];
-    this.history.track(list, now);
+    this.history.track(list, allTerminals, now);
     this.history.trackActivity(allTerminals, now);
     this.history.hold(list);
     this.pruneFoldedSpaces(sp);

@@ -43,15 +43,24 @@ export class AgentHistory {
     this.held = null;
   }
 
-  // Stamps agents whose state changed. Done and idle count as one: looking at a
-  // finished agent turns done into idle, and looking isn't the agent doing
-  // anything.
-  track(list: AgentInfo[], now: number): void {
+  // Stamps agents whose state changed with when the core says their status
+  // changed (the `status_ms` of their `entries` terminal, by address), or
+  // `now` when it reports none, so a change made while the app was closed
+  // keeps its real time. Done and idle count as one: looking at a finished
+  // agent turns done into idle and the core restamps its status time, and
+  // looking isn't the agent doing anything, so it keeps the time it finished.
+  track(list: AgentInfo[], entries: TerminalEntry[], now: number): void {
+    const statusMs = new Map(entries.map((k) => [k.address, k.status_ms]));
+
     let dirty = false;
     for (const a of list) {
       const s = a.status === "done" ? "idle" : a.status;
       if (this.changed[a.address]?.s === s) continue;
-      this.changed[a.address] = { s, at: now };
+      const sm = statusMs.get(a.address);
+      this.changed[a.address] = {
+        s,
+        at: typeof sm === "number" ? sm : now,
+      };
       dirty = true;
     }
     if (!dirty) return;
@@ -62,7 +71,7 @@ export class AgentHistory {
     localStorage.setItem("changed", JSON.stringify(this.changed));
   }
 
-  // When `a`'s status last changed (ms), 0 when never seen.
+  // When `a`'s status last changed (ms, see `track`), 0 when never seen.
   since(a: AgentInfo): number {
     return this.changed[a.address]?.at ?? 0;
   }
@@ -139,7 +148,8 @@ export class AgentHistory {
   }
 }
 
-// An agent's last state (done counted as idle) and when it changed (ms).
+// An agent's last state (done counted as idle) and when it changed (ms
+// since the epoch, from the core when it reported one).
 interface StatusChange {
   s: Status;
   at: number;

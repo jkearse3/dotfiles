@@ -6,13 +6,13 @@
 // outcome and label from `finished.ts`, `quietFor` from `quiet.ts`,
 // `runningCommand`, `shellCommandText`, `commandText` and `CommandStarts`
 // from `foreground.ts`, `hoverFill` and `stripeColor` from `row-colors.ts`,
-// and the desk-spaces sidebar's activity tracking (`AgentHistory` from its
-// own `agents.ts`), the trackers over an in-memory `localStorage`, against
-// the terminals(), agents(), panes() and spaces() entry shapes the Herdr app
-// hands mods. It
-// imports the built, type-stripped `desk-spaces/*.js` from the herdr-app-mods
-// output named by `HERDR_APP_MODS`, where the mod's links to `mod-lib` have
-// been copied in. Run with
+// and the desk-spaces sidebar's status and activity tracking (`AgentHistory`
+// from its own `agents.ts`), the trackers over an in-memory `localStorage`,
+// against the terminals(), agents(), panes() and spaces() entry shapes the
+// Herdr app hands mods. It imports the built, type-stripped
+// `desk-spaces/*.js` from the herdr-app-mods output named by
+// `HERDR_APP_MODS`, where the mod's links to `mod-lib` have been copied in.
+// Run with
 // `HERDR_APP_MODS=$(nix build --no-link --print-out-paths .#herdr-app-mods) node --test`;
 // flake/checks.nix registers it as the `herdr-app-mod-lib` check through
 // mod-lib-check.nix, which sets it.
@@ -1400,6 +1400,63 @@ test("trackActivity drops agents gone for over 30 days and keeps recently gone o
   assert.equal(h.activeAt("old"), null);
   assert.equal(h.activeAt("recent"), 29 * day);
   assert.equal(h.activeAt("new"), 31 * day);
+});
+
+test("track stamps a status change with the core's status time, not when the sidebar first sees it", () => {
+  useStorage();
+  const h = new AgentHistory();
+  // The agent went idle at 2:00 while the app was closed; it opens at 3:00.
+  h.track(
+    [agent("t1", "idle")],
+    [terminal("t1", "idle", { status_ms: 120 * MIN })],
+    180 * MIN,
+  );
+  assert.equal(h.since({ address: "t1" }), 120 * MIN);
+});
+
+test("track stamps a status change now when the core reports no status time", () => {
+  useStorage();
+  const h = new AgentHistory();
+  h.track([agent("t1", "working")], [terminal("t1", "working")], 1000);
+  h.track(
+    [agent("t2", "working")],
+    [terminal("t2", "working", { status_ms: null })],
+    2000,
+  );
+  assert.equal(h.since({ address: "t1" }), 1000);
+  assert.equal(h.since({ address: "t2" }), 2000);
+});
+
+test("track keeps a finished agent's stamp when looking at it turns done into idle", () => {
+  useStorage();
+  const h = new AgentHistory();
+  h.track(
+    [agent("t1", "done")],
+    [terminal("t1", "done", { status_ms: 500 })],
+    1000,
+  );
+  h.track(
+    [agent("t1", "idle")],
+    [terminal("t1", "idle", { status_ms: 4000 })],
+    5000,
+  );
+  assert.equal(h.since({ address: "t1" }), 500);
+});
+
+test("track restamps a real status change with the new core status time", () => {
+  useStorage();
+  const h = new AgentHistory();
+  h.track(
+    [agent("t1", "idle")],
+    [terminal("t1", "idle", { status_ms: 500 })],
+    1000,
+  );
+  h.track(
+    [agent("t1", "working")],
+    [terminal("t1", "working", { status_ms: 4000 })],
+    5000,
+  );
+  assert.equal(h.since({ address: "t1" }), 4000);
 });
 
 test("quietFor: a working agent quiet for 10 minutes or more, else null", () => {
