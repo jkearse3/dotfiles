@@ -19,9 +19,12 @@
 //   program and title, then on a dim second line the folder it is in now;
 //   an agent's adds a third line with why it is blocked, what it is doing
 //   now, or else its status word, and at its end how long it has been in
-//   its status. Clicking a row focuses its pane, or peeks at a terminal
-//   without one; the focused terminal's row is filled and holds the focus
-//   mark.
+//   its status. A plain terminal running a command other than its shell
+//   (`make dev`) adds a third line with that command in cyan, in the
+//   terminal's font, and how long it has run, once it has run 2 seconds
+//   (`CommandStarts`), so quick commands do not make rows jump. Clicking a
+//   row focuses its pane, or peeks at a terminal without one; the focused
+//   terminal's row is filled and holds the focus mark.
 //   After a terminal's nested rows come the terminals it started that have
 //   finished, oldest first (`finishedRow`: a ✓, or a ✗ when it failed, its
 //   name, how it ended and when); clicking one goes to the terminal that
@@ -63,10 +66,10 @@
 // and `tree-rows.ts` draws the machine headers, tab dividers and terminal
 // rows.
 //
-// `agent-marks.ts`, `finished.ts`, `labels.ts`, `names.ts`, `paths.ts`,
-// `program-icon.ts`, `row-colors.ts`, `space-order.ts`, `status.ts`,
-// `terminals.ts`, `tree-rows.ts` and `tree.ts` beside these files are links
-// to the shared copies in `mod-lib/`.
+// `agent-marks.ts`, `finished.ts`, `foreground.ts`, `labels.ts`,
+// `names.ts`, `paths.ts`, `program-icon.ts`, `row-colors.ts`,
+// `space-order.ts`, `status.ts`, `terminals.ts`, `tree-rows.ts` and
+// `tree.ts` beside these files are links to the shared copies in `mod-lib/`.
 
 import { View, div, svg } from "gpui-kit";
 import type {
@@ -91,6 +94,7 @@ import {
   hc,
   home,
   notify,
+  settings,
   theme,
   shared,
   setShared,
@@ -103,6 +107,7 @@ import { AgentHistory, needsYou } from "./agents.js";
 import { FinishedLoader } from "./finished-loader.js";
 import { finishedLabel } from "./finished.js";
 import type { FinishedTerminal } from "./finished.js";
+import { CommandStarts } from "./foreground.js";
 import { agentLabel, blockedKind, terminalRowModel } from "./labels.js";
 import { hoverFill } from "./row-colors.js";
 import { spaceOrder } from "./space-order.js";
@@ -222,6 +227,9 @@ export default class SpacesAndAgents extends View {
   // The address of the finished terminal whose row shows the "Remove" chip
   // (`finishedRowElement`); null when no row does.
   declare removeChipAddress: string | null;
+  // When each plain terminal's running command started, for its row's
+  // third line.
+  declare commands: CommandStarts;
 
   init(_props: Props | undefined, cx: AsyncContext): void {
     // Machines whose spaces are folded away under their header.
@@ -256,6 +264,8 @@ export default class SpacesAndAgents extends View {
     // machines tick, and after a removal.
     this.finished = new FinishedLoader();
     this.removeChipAddress = null;
+    // Kept across restarts; `checkNew` stamps new commands.
+    this.commands = new CommandStarts();
     // Agent durations count in minutes.
     cx.timer.every(30000, (cx) => cx.notify());
     this.refreshMachines(cx);
@@ -268,7 +278,8 @@ export default class SpacesAndAgents extends View {
   checkNew(cx: AsyncContext): void {
     const now = Date.now();
     const sp = spaces();
-    const liveAddresses = (terminals() as TerminalEntry[])
+    const entries = terminals() as TerminalEntry[];
+    const liveAddresses = entries
       .filter((k) => k.state === "live")
       .map((k) => k.address);
     this.finished.checkLive(liveAddresses, cx);
@@ -276,6 +287,9 @@ export default class SpacesAndAgents extends View {
     const due = this.checkouts.due(now, sp, panes());
     if (due.size) this.checkouts.refreshGit(due, cx);
     if (sp.some((s) => !this.shown.has(s.id))) cx.notify();
+    // A command's row line appears once it has run long enough, and goes
+    // when it ends.
+    if (this.commands.track(entries, now)) cx.notify();
   }
 
   // Reads the other machines (`hc machine ls`) and, until it has it, this
@@ -828,7 +842,9 @@ export default class SpacesAndAgents extends View {
         status,
       },
       home(),
+      this.commands.shown(node.terminal, now),
     );
+    const font = settings().font_family;
     const since = node.info
       ? this.history.since(node.info) || null
       : (node.terminal.status_ms ?? null);
@@ -853,6 +869,7 @@ export default class SpacesAndAgents extends View {
           since,
           note: opts?.markPaneless && pane === null ? "no pane" : undefined,
           dimTitle: !isFocused && (status === null || status === "idle"),
+          commandFont: typeof font === "string" ? font : undefined,
         }),
       );
   }

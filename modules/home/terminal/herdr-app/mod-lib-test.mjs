@@ -3,7 +3,9 @@
 // `tree.ts`, `agentDoing`, `folderOf` and `terminalRowModel` from `labels.ts`,
 // `machineOf` from `terminals.ts`, `spaceOrder` and `checkoutText` from
 // `space-order.ts`, the finished-terminal readers, outcome and label from
-// `finished.ts`, and `hoverFill` from
+// `finished.ts`, `runningCommand`, `shellCommandText`, `commandText` and
+// `CommandStarts` (over an in-memory `localStorage`) from `foreground.ts`,
+// and `hoverFill` from
 // `row-colors.ts`, against the terminals(), agents(), panes() and spaces()
 // entry shapes the Herdr app hands mods. It imports the built,
 // type-stripped `desk-spaces/*.js` from the herdr-app-mods output named by
@@ -37,6 +39,13 @@ const {
   finishedTerminalOf,
 } = await import(`${mods}/desk-spaces/finished.js`);
 const { hoverFill } = await import(`${mods}/desk-spaces/row-colors.js`);
+const {
+  COMMAND_SETTLE_MS,
+  CommandStarts,
+  commandText,
+  runningCommand,
+  shellCommandText,
+} = await import(`${mods}/desk-spaces/foreground.js`);
 
 // A terminals() entry: a live terminal at `address` reporting `status`, with
 // `fields` overriding the defaults.
@@ -194,8 +203,8 @@ test("agentDoing says a blocked agent's kind, else the activity, else the status
 });
 
 // The row model of the live terminal at `address` in `w`'s tree, with
-// /home/me as this computer's home.
-const rowModelOf = (w, address) => {
+// /home/me as this computer's home and `command` as the command it runs.
+const rowModelOf = (w, address, command) => {
   const tree = buildTree(w);
   const nodes = [
     ...tree.machines
@@ -206,6 +215,7 @@ const rowModelOf = (w, address) => {
   return terminalRowModel(
     nodes.find((n) => n.terminal.address === address),
     "/home/me",
+    command,
   );
 };
 
@@ -352,6 +362,45 @@ test("terminalRowModel: an agent's label, program name, title, status, folder an
   assert.equal(nameless.label, "nameless  ~/w");
   assert.equal(nameless.programName, null);
   assert.equal(nameless.title, "nameless");
+});
+
+test("terminalRowModel: a plain terminal's command is its detail; an agent ignores it", () => {
+  const w = treeInput({
+    terminals: [
+      fish("plain", "/home/me/x"),
+      terminal("agent", "working", { cwd: "/home/me/a" }),
+    ],
+    agents: [agent("agent", "working")],
+    panes: [pane("plain", "t1"), pane("agent", "t1")],
+    spaces: [space("s1", "dots", ["t1"])],
+  });
+  const command = {
+    text: "make dev",
+    since: 1000,
+  };
+
+  assert.deepEqual(rowModelOf(w, "plain", command).detail, {
+    kind: "command",
+    text: "make dev",
+    since: 1000,
+  });
+  assert.deepEqual(
+    rowModelOf(w, "plain", {
+      text: "make dev",
+      since: null,
+    }).detail,
+    {
+      kind: "command",
+      text: "make dev",
+      since: null,
+    },
+  );
+  assert.equal(rowModelOf(w, "plain", null).detail, null);
+  assert.equal(rowModelOf(w, "plain").detail, null);
+  assert.deepEqual(rowModelOf(w, "agent", command).detail, {
+    kind: "status",
+    text: "working",
+  });
 });
 
 test("folderOf: the foreground's folder, else the one it started in, ~ at home on this computer only", () => {
@@ -1201,6 +1250,262 @@ test("finishedTerminalOf reads a finished terminal from hc get --json", () => {
   );
   for (const junk of ["", "not json", "[]", "null"])
     assert.equal(finishedTerminalOf("t3a", junk), null, junk);
+});
+
+// Installs an in-memory `localStorage` holding `items` (key -> stored
+// string), as the app gives each mod, and returns the map it writes to.
+function useStorage(items = {}) {
+  const store = new Map(Object.entries(items));
+  Object.defineProperty(globalThis, "localStorage", {
+    value: {
+      getItem: (k) => store.get(k) ?? null,
+      setItem: (k, v) => store.set(k, String(v)),
+    },
+    configurable: true,
+    writable: true,
+  });
+  return store;
+}
+
+// A plain terminals() entry at `address` whose root process is 100, running
+// `argv` in process `pid` that the app's program marks `shell` or not.
+function plainRunning(address, pid, argv, shell = false) {
+  return terminal(address, null, {
+    pid: 100,
+    program: {
+      key: shell ? "shell" : "program",
+      name: argv[0] ?? "x",
+      icon: null,
+      tint: false,
+      tile: null,
+      color: null,
+      shell,
+      agent: false,
+    },
+    foreground: {
+      pid,
+      name: argv[0] ?? "x",
+      argv,
+      cwd: "/home/u/x",
+    },
+  });
+}
+
+test("runningCommand: null while the shell holds the foreground", () => {
+  assert.equal(runningCommand(plainRunning("t1", 100, ["fish"], true)), null);
+  // A shell started inside the shell counts as the shell.
+  assert.equal(runningCommand(plainRunning("t1", 200, ["bash"], true)), null);
+});
+
+test("runningCommand: a command other than the shell, by its file name", () => {
+  assert.deepEqual(runningCommand(plainRunning("t1", 200, ["make", "dev"])), {
+    pid: 200,
+    text: "make dev",
+  });
+  assert.deepEqual(
+    runningCommand(
+      plainRunning("t1", 200, [
+        "/nix/store/abc-nix/bin/nix",
+        "build",
+        "--no-link",
+        ".#lint",
+      ]),
+    ),
+    {
+      pid: 200,
+      text: "nix build --no-link .#lint",
+    },
+  );
+});
+
+test("runningCommand: a shell running a script or a -c command is a command", () => {
+  assert.deepEqual(
+    runningCommand(plainRunning("t1", 200, ["bash", "./deploy.sh"], true)),
+    {
+      pid: 200,
+      text: "deploy.sh",
+    },
+  );
+  // A `#!/usr/bin/env bash` script in the terminal's root process.
+  assert.deepEqual(
+    runningCommand(
+      plainRunning(
+        "t1",
+        100,
+        ["/nix/store/abc-bash/bin/bash", "/Users/x/.nix-profile/bin/claude"],
+        true,
+      ),
+    ),
+    {
+      pid: 100,
+      text: "claude",
+    },
+  );
+  assert.deepEqual(
+    runningCommand(plainRunning("t1", 200, ["bash", "-c", "make dev"], true)),
+    {
+      pid: 200,
+      text: "make dev",
+    },
+  );
+});
+
+test("runningCommand: an interactive shell with options is the shell", () => {
+  for (const argv of [
+    ["bash"],
+    ["bash", "--rcfile", "/tmp/x"],
+    ["bash", "-l"],
+    ["-zsh"],
+  ])
+    assert.equal(
+      runningCommand(plainRunning("t1", 200, argv, true)),
+      null,
+      argv.join(" "),
+    );
+});
+
+test("shellCommandText: a script after options and their values, or the -c command", () => {
+  assert.equal(
+    shellCommandText(["bash", "./deploy.sh", "prod"]),
+    "deploy.sh prod",
+  );
+  assert.equal(
+    shellCommandText(["bash", "-e", "-o", "pipefail", "x.sh"]),
+    "x.sh",
+  );
+  assert.equal(
+    shellCommandText(["bash", "--rcfile", "/tmp/rc", "x.sh"]),
+    "x.sh",
+  );
+  assert.equal(shellCommandText(["bash", "--", "-odd.sh"]), "-odd.sh");
+  assert.equal(
+    shellCommandText(["bash", "-lc", "make dev", "arg0"]),
+    "make dev",
+  );
+  assert.equal(shellCommandText(["fish", "--command=make dev"]), "make dev");
+  assert.equal(shellCommandText(["fish", "--command", "make dev"]), "make dev");
+  assert.equal(shellCommandText(["fish", "-C", "source x"]), null);
+  assert.equal(shellCommandText(["bash", "-c"]), null);
+  assert.equal(shellCommandText(["bash", "--"]), null);
+  assert.equal(shellCommandText([]), null);
+});
+
+test("runningCommand: null without a foreground or a numeric foreground pid", () => {
+  const t = plainRunning("t1", 200, ["make"]);
+  assert.equal(runningCommand({ ...t, foreground: undefined }), null);
+  assert.equal(runningCommand({ ...t, foreground: null }), null);
+  assert.equal(
+    runningCommand({ ...t, foreground: { ...t.foreground, pid: "200" } }),
+    null,
+  );
+});
+
+test("runningCommand: without a program, the root process is the shell", () => {
+  const t = plainRunning("t1", 100, ["fish"]);
+  assert.equal(runningCommand({ ...t, program: undefined }), null);
+  const make = plainRunning("t1", 200, ["make"]);
+  assert.deepEqual(runningCommand({ ...make, program: undefined }), {
+    pid: 200,
+    text: "make",
+  });
+});
+
+test("commandText: the process name when there are no arguments", () => {
+  assert.equal(
+    commandText({
+      pid: 1,
+      name: "htop",
+      argv: [],
+    }),
+    "htop",
+  );
+});
+
+test("CommandStarts shows a command once it has run COMMAND_SETTLE_MS, since it was first seen", () => {
+  useStorage();
+  const c = new CommandStarts();
+  const make = plainRunning("t1", 200, ["make", "dev"]);
+  assert.equal(COMMAND_SETTLE_MS, 2000);
+  c.track([make], 1000);
+  c.track([make], 2999);
+  assert.equal(c.shown(make, 2999), null);
+  c.track([make], 3000);
+  assert.deepEqual(c.shown(make, 3000), {
+    text: "make dev",
+    since: 1000,
+  });
+});
+
+test("CommandStarts keeps the stamp for the same process and restamps a new one", () => {
+  useStorage();
+  const c = new CommandStarts();
+  c.track([plainRunning("t1", 200, ["make"])], 1000);
+  c.track([plainRunning("t1", 200, ["make"])], 5000);
+  assert.equal(c.shown(plainRunning("t1", 200, ["make"]), 5000).since, 1000);
+  const next = plainRunning("t1", 300, ["make"]);
+  c.track([next], 6000);
+  assert.equal(c.shown(next, 7999), null);
+  assert.equal(c.shown(next, 8000).since, 6000);
+});
+
+test("CommandStarts drops a command back at the shell and reports the change", () => {
+  useStorage();
+  const c = new CommandStarts();
+  const make = plainRunning("t1", 200, ["make"]);
+  c.track([make], 0);
+  assert.equal(c.track([make], 3000), true);
+  assert.equal(c.track([plainRunning("t1", 100, ["fish"], true)], 4000), true);
+  // The same process again counts from when it is seen again.
+  c.track([make], 5000);
+  assert.equal(c.shown(make, 6000), null);
+});
+
+test("CommandStarts track reports crossing the settle time once and nothing on no change", () => {
+  useStorage();
+  const c = new CommandStarts();
+  const make = plainRunning("t1", 200, ["make"]);
+  assert.equal(c.track([], 0), false);
+  assert.equal(c.track([make], 0), true);
+  assert.equal(c.track([make], 1000), false);
+  assert.equal(c.track([make], 2000), true);
+  assert.equal(c.track([make], 2250), false);
+  assert.equal(c.track([make], 9000), false);
+});
+
+test("CommandStarts keeps stamps across restarts", () => {
+  const store = useStorage();
+  const make = plainRunning("t1", 200, ["make"]);
+  new CommandStarts().track([make], 1000);
+  assert.ok(store.has("commands"));
+
+  const after = new CommandStarts();
+  after.track([make], 9000);
+  assert.equal(after.shown(make, 9000).since, 1000);
+});
+
+test("CommandStarts drops terminals gone for over 30 days and keeps recently gone ones", () => {
+  const day = 86400000;
+  const store = useStorage();
+  const c = new CommandStarts();
+  c.track(
+    [plainRunning("old", 200, ["make"]), plainRunning("recent", 300, ["make"])],
+    0,
+  );
+  c.track([plainRunning("recent", 301, ["make"])], 29 * day);
+  assert.ok("old" in JSON.parse(store.get("commands")));
+  c.track([plainRunning("new", 400, ["make"])], 31 * day);
+  assert.deepEqual(Object.keys(JSON.parse(store.get("commands"))).sort(), [
+    "new",
+    "recent",
+  ]);
+});
+
+test("CommandStarts skips agents", () => {
+  useStorage();
+  const c = new CommandStarts();
+  const t = { ...plainRunning("t1", 200, ["claude"]), status: "working" };
+  assert.equal(c.track([t], 0), false);
+  assert.equal(c.shown(t, 5000), null);
 });
 
 test("hoverFill mixes the backdrop halfway toward the theme's hover color", () => {

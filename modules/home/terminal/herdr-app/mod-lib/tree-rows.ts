@@ -123,7 +123,12 @@ export function tabDivider(
 // - for an agent, a third line with what it is doing (`detail`: what a
 //   blocked agent waits for in the blocked color, its activity muted, its
 //   status word dim), and at its end the time since `opts.since` (none
-//   while it works, its spinner says so, or without `since`).
+//   while it works, its spinner says so, or without `since`);
+// - for a plain terminal running a command (a "command" `detail`), a third
+//   line with the command in cyan (the theme's `ansi6`) in
+//   `opts.commandFont`, at the size of an agent's third line so the row
+//   keeps its height, and at its end, dim, how long it has run (none
+//   without its `since`).
 // `opts.emphasized` makes the title semibold and `opts.dimTitle` mutes it.
 // `now` is the time in ms since the epoch. `t` is the theme's colors by
 // name (`theme()`). The content keeps 6px above and below.
@@ -207,23 +212,32 @@ export function terminalRow(
     );
 }
 
-// A `terminalRow`'s third line, saying `detail` for the agent `model`
-// describes, then at its end how long it has been in its status.
+// A `terminalRow`'s third line, saying `detail` for the terminal `model`
+// describes, then at its end, for an agent, how long it has been in its
+// status; for a command, how long it has run.
 function detailLine(
   t: Record<string, Color>,
   detail: TerminalRowDetail,
   model: Pick<TerminalRowModel, "address" | "status">,
   now: number,
-  opts: Pick<TerminalRowOptions, "since">,
+  opts: Pick<TerminalRowOptions, "since" | "commandFont">,
 ): Element {
   const textColor =
-    detail.kind === "blocked"
-      ? t.blocked
-      : detail.kind === "activity"
-        ? t.muted
-        : t.dim;
-  const changedAt = model.status === "working" ? null : (opts.since ?? null);
+    detail.kind === "command"
+      ? t.ansi6
+      : detail.kind === "blocked"
+        ? t.blocked
+        : detail.kind === "activity"
+          ? t.muted
+          : t.dim;
+  const changedAt =
+    detail.kind === "command"
+      ? detail.since
+      : model.status === "working"
+        ? null
+        : (opts.since ?? null);
   const time = changedAt !== null ? duration(now - changedAt) : null;
+  const font = detail.kind === "command" ? opts.commandFont : undefined;
 
   return h_flex()
     .min_w(0)
@@ -238,6 +252,7 @@ function detailLine(
         .text_size(11.5)
         .text_color(textColor)
         .when(detail.kind === "blocked", (d) => d.font_semibold())
+        .when(font !== undefined, (d) => d.font_family(font ?? ""))
         .tooltip(detail.text)
         .child(detail.text),
     )
@@ -267,6 +282,9 @@ export interface TerminalRowOptions {
   emphasized?: boolean;
   // Draws the title muted, for a row that asks for less attention.
   dimTitle?: boolean;
+  // The font family a plain terminal's command (its third line) is drawn
+  // in, such as the terminal's own font; absent, the row's font.
+  commandFont?: string;
 }
 
 // A finished terminal's row content, one line: a "✓" in the done color

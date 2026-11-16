@@ -2,7 +2,9 @@
 // (`terminalRowModel`), and the parts: the program it runs (`programOf`), an
 // agent's label (`agentLabel`), a plain terminal's label (`plainLabel`), the
 // folder a row shows for it (`folderOf`, `homeRelative`), and what an agent
-// row's third line says it is doing (`agentDoing`, `blockedKind`). A label
+// row's third line says it is doing (`agentDoing`, `blockedKind`). A plain
+// terminal's third line, when it has one, is the command it runs, which the
+// caller works out (`foreground.ts`) and passes in. A label
 // starts with the program's short name, as a process list would show it,
 // followed by the terminal's title, what names it beyond its program
 // ("claude  Fix the sidebar"), or by its folder when it has no name
@@ -27,11 +29,15 @@ import type { TreeTerminal } from "./tree.js";
 // What the row of tree terminal `node` shows (`TerminalRowModel`), with
 // this computer's `home` written as `~` in its folders. Every terminal
 // shows the folder it is in now. A terminal reporting a status is an agent:
-// its `agentLabel`, its status and what it is doing (`agentDoing`). Any
-// other terminal is plain: its `plainLabel`, with no detail.
+// its `agentLabel`, its status and what it is doing (`agentDoing`); it
+// ignores `command`. Any other terminal is plain: its `plainLabel`, with
+// `command` as its detail (a "command" `TerminalRowDetail`), the command
+// running in its foreground that its row shows; no detail when `command` is
+// null or absent.
 export function terminalRowModel(
   node: Pick<TreeTerminal, "terminal" | "info" | "pane" | "status">,
   home: string,
+  command?: Pick<CommandDetail, "text" | "since"> | null,
 ): TerminalRowModel {
   const t = node.terminal;
   const program = programOf(node);
@@ -45,7 +51,13 @@ export function terminalRowModel(
       title: plainTitle(node),
       status: null,
       folder: folderOf(t, home),
-      detail: null,
+      detail: command
+        ? {
+            kind: "command",
+            text: command.text,
+            since: command.since,
+          }
+        : null,
     };
   }
 
@@ -93,21 +105,37 @@ export interface TerminalRowModel {
   // The folder the terminal is in now, as `folderOf` writes it; null when
   // it reports no folder.
   folder: string | null;
-  // What an agent's third line says it is doing (`agentDoing`); null for a
-  // plain terminal, whose row has no third line.
+  // What the row's third line says: what an agent is doing (`agentDoing`),
+  // or the command a plain terminal runs; null for a plain terminal running
+  // none, whose row has no third line.
   detail: TerminalRowDetail | null;
 }
 
 // What a row's third line says, and which kind of thing that is, which sets
-// how the row draws it:
+// how the row draws it: for an agent, what it is doing (`AgentDetail`); for
+// a plain terminal, the command it runs (`CommandDetail`).
+export type TerminalRowDetail = AgentDetail | CommandDetail;
+
+// What an agent row's third line says (`agentDoing`), by kind:
 // - "blocked": what a blocked agent waits for (`blockedKind`), such as
 //   "permission";
 // - "activity": what the agent says it is doing now ("Reading the docs");
 // - "status": the agent's status word ("working", "idle", "done"), when it
 //   says neither.
-export interface TerminalRowDetail {
+export interface AgentDetail {
   kind: "blocked" | "activity" | "status";
   text: string;
+}
+
+// The command running in a plain terminal's foreground, as its row's third
+// line shows it.
+export interface CommandDetail {
+  kind: "command";
+  // The command line ("make dev").
+  text: string;
+  // When it started, in ms since the epoch; null when the view does not
+  // know, and the row then shows no run time.
+  since: number | null;
 }
 
 // The program `node` runs: its `terminals()` entry's, else its `agents()`
@@ -181,7 +209,7 @@ function plainTitle(
 // What an agent row's third line says the agent is doing: its
 // `blockedKind`, else its `activity`, else its status word, so an agent's
 // row always has one.
-export function agentDoing(agent: AgentDoingSource): TerminalRowDetail {
+export function agentDoing(agent: AgentDoingSource): AgentDetail {
   const waitsFor = blockedKind(agent);
   if (waitsFor !== null) {
     return {
