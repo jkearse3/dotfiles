@@ -8,6 +8,7 @@ import { exec, home, machines, watchFolder, window } from "herdr";
 import type { ExecResult, PaneInfo, SpaceInfo } from "herdr";
 import { cliPath } from "./paths.js";
 import { base } from "./space-order.js";
+import type { SpaceCheckout } from "./space-order.js";
 
 // A space's or repo's location: its machine (null for this computer) and a
 // folder there. `where()` keys and checkouts' `repo` are these as JSON.
@@ -148,6 +149,28 @@ export class Checkouts {
       }
     }
     return due;
+  }
+
+  // The checkout of each of `sp` by space id, with only
+  // `SpaceCheckout`'s fields: null for a space whose folder git said is in
+  // no repo. A space whose last look could not answer (its machine away)
+  // keeps the checkout an earlier look found, as the sidebar does; one not
+  // looked up yet, or never answered, is left out.
+  spaceCheckouts(sp: SpaceInfo[]): Record<string, SpaceCheckout | null> {
+    const out: Record<string, SpaceCheckout | null> = {};
+    for (const s of sp) {
+      const key = where(s);
+      const g = this.git[key];
+      if (g === undefined || (g === null && this.unsure.has(key))) continue;
+
+      out[s.id] = g && {
+        name: g.name,
+        top: g.top,
+        repo: g.repo,
+        linked: g.linked,
+      };
+    }
+    return out;
   }
 
   // `key` and the other places in its repo (a commit there moves their

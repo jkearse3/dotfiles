@@ -1,7 +1,10 @@
 // The order views list spaces in (`spaceOrder`): the app's order, with each
 // Git worktree's or jj workspace's space moved under the first space of its
 // repo's main checkout. Also the checkout line under a space's name
-// (`checkoutText`: "dotfiles / ws3").
+// (`checkoutText`: "dotfiles / ws3") and the shared `space.checkouts` value
+// (`SPACE_CHECKOUTS_KEY`, `readSpaceCheckouts`) through which the
+// desk-spaces sidebar hands the checkouts it looks up to views that run no
+// jj or git of their own.
 //
 // Each mod that uses this file links it into its own folder
 // (`mods/<mod>/space-order.ts` -> `../../mod-lib/space-order.ts`), and the
@@ -97,3 +100,37 @@ export function checkoutText(
 // finds one.)
 export const base = (path: string): string =>
   path.replace(/\/+$/, "").split("/").pop()!;
+
+// The `shared()` key of each space's checkout by space id, null for a space
+// whose folder is in no repo; a space whose checkout is not known yet is
+// left out. The desk-spaces sidebar writes it (`publishCheckouts` in its
+// `main.ts`) whenever a look finishes or a space goes; the value persists,
+// so while no sidebar runs it holds what the last one wrote.
+export const SPACE_CHECKOUTS_KEY = "space.checkouts";
+
+// `value`, as `shared(SPACE_CHECKOUTS_KEY)` returns it, as checkouts by space
+// id with only `SpaceCheckout`'s fields. Null when `value` is not an object
+// of space ids; an entry that is neither null nor a checkout is left out.
+export function readSpaceCheckouts(
+  value: unknown,
+): Record<string, SpaceCheckout | null> | null {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+
+  const out: Record<string, SpaceCheckout | null> = {};
+  for (const [id, c] of Object.entries(value)) {
+    if (c === null) out[id] = null;
+    else if (
+      typeof c?.name === "string" &&
+      typeof c.top === "string" &&
+      typeof c.repo === "string" &&
+      typeof c.linked === "boolean"
+    )
+      out[id] = {
+        name: c.name,
+        top: c.top,
+        repo: c.repo,
+        linked: c.linked,
+      };
+  }
+  return out;
+}

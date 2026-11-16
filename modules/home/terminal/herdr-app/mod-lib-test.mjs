@@ -1,17 +1,18 @@
 // Tests the mod-lib pure files the desk-spaces sidebar draws its tree with:
 // `buildTree`, `spaceTerminals`, `tabFolded`, `rowStatus` and `walkTree` from
 // `tree.ts`, `agentDoing`, `folderOf` and `terminalRowModel` from `labels.ts`,
-// `machineOf` from `terminals.ts`, `spaceOrder` and `checkoutText` from
-// `space-order.ts`, the finished-terminal readers, outcome and label from
-// `finished.ts`, `quietFor` from `quiet.ts`, `runningCommand`,
-// `shellCommandText`, `commandText` and `CommandStarts` from
-// `foreground.ts`, `hoverFill` and `stripeColor` from `row-colors.ts`, and
-// the desk-spaces sidebar's activity tracking (`AgentHistory` from its own
-// `agents.ts`), the trackers over an in-memory `localStorage`, against the
-// terminals(), agents(), panes() and spaces() entry shapes the Herdr app
-// hands mods. It imports the built, type-stripped `desk-spaces/*.js` from
-// the herdr-app-mods output named by `HERDR_APP_MODS`, where the mod's
-// links to `mod-lib` have been copied in. Run with
+// `machineOf` from `terminals.ts`, `spaceOrder`, `checkoutText` and
+// `readSpaceCheckouts` from `space-order.ts`, the finished-terminal readers,
+// outcome and label from `finished.ts`, `quietFor` from `quiet.ts`,
+// `runningCommand`, `shellCommandText`, `commandText` and `CommandStarts`
+// from `foreground.ts`, `hoverFill` and `stripeColor` from `row-colors.ts`,
+// and the desk-spaces sidebar's activity tracking (`AgentHistory` from its
+// own `agents.ts`), the trackers over an in-memory `localStorage`, against
+// the terminals(), agents(), panes() and spaces() entry shapes the Herdr app
+// hands mods. It
+// imports the built, type-stripped `desk-spaces/*.js` from the herdr-app-mods
+// output named by `HERDR_APP_MODS`, where the mod's links to `mod-lib` have
+// been copied in. Run with
 // `HERDR_APP_MODS=$(nix build --no-link --print-out-paths .#herdr-app-mods) node --test`;
 // flake/checks.nix registers it as the `herdr-app-mod-lib` check through
 // mod-lib-check.nix, which sets it.
@@ -28,7 +29,7 @@ const { agentDoing, folderOf, terminalRowModel } = await import(
   `${mods}/desk-spaces/labels.js`
 );
 const { machineOf } = await import(`${mods}/desk-spaces/terminals.js`);
-const { checkoutText, spaceOrder } = await import(
+const { checkoutText, readSpaceCheckouts, spaceOrder } = await import(
   `${mods}/desk-spaces/space-order.js`
 );
 const { buildTree, rowStatus, spaceTerminals, tabFolded, walkTree } =
@@ -38,6 +39,7 @@ const {
   finishedLabel,
   finishedOutcome,
   finishedTerminalOf,
+  readFinishedTerminals,
 } = await import(`${mods}/desk-spaces/finished.js`);
 const { QUIET_MS, quietFor } = await import(`${mods}/desk-spaces/quiet.js`);
 const { hoverFill, stripeColor } = await import(
@@ -980,6 +982,22 @@ test("checkoutText: repo / checkout folder, the repo alone when they match, ~ at
   assert.equal(checkoutText({ folder: "/", machine: null }, null, "/h"), null);
 });
 
+test("readSpaceCheckouts keeps checkouts and nulls, drops junk entries, rejects non-objects", () => {
+  const c = spaceCheckout("r", "/d/ws");
+  assert.deepEqual(
+    readSpaceCheckouts({
+      s1: { ...c, extra: 1 },
+      s2: null,
+      s3: { ...c, linked: "yes" },
+      s4: "dotfiles",
+      s5: { name: "x" },
+    }),
+    { s1: c, s2: null },
+  );
+  for (const junk of [undefined, null, "x", 3, [c]])
+    assert.equal(readSpaceCheckouts(junk), null);
+});
+
 test("buildTree hangs finished terminals under their live parent, oldest first", () => {
   const tree = buildTree(
     treeInput({
@@ -1255,6 +1273,16 @@ test("finishedTerminalOf reads a finished terminal from hc get --json", () => {
   );
   for (const junk of ["", "not json", "[]", "null"])
     assert.equal(finishedTerminalOf("t3a", junk), null, junk);
+});
+
+test("readFinishedTerminals keeps the finished terminals of a shared value", () => {
+  const f = finishedTerminal("t3a", "t29", 5, { extra: true });
+  const { extra: _, ...clean } = f;
+  assert.deepEqual(readFinishedTerminals([f, { address: "t1" }, null, 3]), [
+    clean,
+  ]);
+  for (const junk of [undefined, null, "x", 3, { t3a: f }])
+    assert.deepEqual(readFinishedTerminals(junk), []);
 });
 
 // Installs an in-memory `localStorage` holding `items` (key -> stored

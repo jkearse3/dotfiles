@@ -234,6 +234,11 @@ in
             herdrAppMods = config.packages.herdr-app-mods;
           };
 
+          # The home build runs no test of the find mod's pure files.
+          herdr-app-find = unstablePkgs.callPackage ../modules/home/terminal/herdr-app/find-check.nix {
+            herdrAppMods = config.packages.herdr-app-mods;
+          };
+
           # Runs the Neovim configuration's plenary specs on the plugin
           # derivations Home Manager installs (`modules/home/neovim/plugins.nix`).
           neovim = unstablePkgs.callPackage ../modules/home/neovim/nvim/tests/check.nix {

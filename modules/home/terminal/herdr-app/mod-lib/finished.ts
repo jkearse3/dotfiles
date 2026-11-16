@@ -2,8 +2,9 @@
 // whose record the core keeps until someone removes it, as views list them
 // under the live terminal that started them. It reads them from the CLI
 // (`finishedAddresses` of `hc ls --all --json`, `finishedTerminalOf` of
-// `hc get <address> --json`), and says how one ended (`finishedOutcome`) and
-// what its row is called (`finishedLabel`).
+// `hc get <address> --json`), checks the copy shared under
+// `FINISHED_TERMINALS_KEY` (`readFinishedTerminals`), and says how one ended
+// (`finishedOutcome`) and what its row is called (`finishedLabel`).
 //
 // Each mod that uses this file links it into its own folder
 // (`mods/<mod>/finished.ts` -> `../../mod-lib/finished.ts`), and the
@@ -42,6 +43,55 @@ export interface FinishedTerminal {
   reason: string | null;
   // When it finished, in ms since the epoch; 0 when the core did not say.
   finishedMs: number;
+}
+
+// The `shared()` key of the finished terminals the desk-spaces sidebar
+// reads from the CLI, as an array of `FinishedTerminal`, for views that run
+// no `hc` of their own; `readFinishedTerminals` checks what it holds. The
+// sidebar writes it (`publishFinished` in `mods/desk-spaces/main.ts`) with
+// only the finished terminals whose parent is live, the ones a tree nests,
+// whenever that set changes. The find hub drops one it removed with `hc rm`
+// (`unshareFinished` in `mods/find/main.ts`), and the sidebar, seeing a value
+// it did not write, reads the CLI again (`followFinished`). The value
+// persists, so while no sidebar runs it holds what the last one wrote.
+export const FINISHED_TERMINALS_KEY = "terminals.finished";
+
+// `value`, as `shared(FINISHED_TERMINALS_KEY)` returns it, as finished
+// terminals with only `FinishedTerminal`'s fields, in its order. Empty when
+// `value` is not an array; an entry that is not a finished terminal is left
+// out.
+export function readFinishedTerminals(value: unknown): FinishedTerminal[] {
+  if (!Array.isArray(value)) return [];
+
+  const isNumberOrNull = (v: unknown) => v === null || typeof v === "number";
+  const isStringOrNull = (v: unknown) => v === null || typeof v === "string";
+  return value.flatMap((f): FinishedTerminal[] =>
+    f &&
+    typeof f === "object" &&
+    typeof f.address === "string" &&
+    isStringOrNull(f.parent) &&
+    isStringOrNull(f.name) &&
+    isStringOrNull(f.command) &&
+    typeof f.cwd === "string" &&
+    isNumberOrNull(f.exitCode) &&
+    isNumberOrNull(f.signal) &&
+    isStringOrNull(f.reason) &&
+    typeof f.finishedMs === "number"
+      ? [
+          {
+            address: f.address,
+            parent: f.parent,
+            name: f.name,
+            command: f.command,
+            cwd: f.cwd,
+            exitCode: f.exitCode,
+            signal: f.signal,
+            reason: f.reason,
+            finishedMs: f.finishedMs,
+          },
+        ]
+      : [],
+  );
 }
 
 // The addresses of the finished terminals in `stdout`, the output of

@@ -10,8 +10,8 @@
 //
 // The tree is data only, in the app's layout order. It draws nothing,
 // ranks nothing by urgency and does not nest a worktree's space under its
-// repository's; each view that shows the tree does those itself. The
-// desk-spaces sidebar lists it.
+// repository's; each view that shows the tree does those itself. The find
+// hub (`rows.ts` `findRows`) and the desk-spaces sidebar list it.
 //
 // Each mod that uses this file links it into its own folder
 // (`mods/<mod>/tree.ts` -> `../../mod-lib/tree.ts`), and the herdr-app-mods

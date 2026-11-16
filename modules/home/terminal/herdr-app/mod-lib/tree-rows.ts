@@ -2,7 +2,8 @@
 // header (`machineHeader`), a tab's divider (`tabDivider`), a live
 // terminal's row (`terminalRow`, from what `labels.ts` `terminalRowModel`
 // says it shows) and a finished terminal's row (`finishedRow`). The
-// desk-spaces sidebar draws its machines, tabs and terminals with them.
+// desk-spaces sidebar draws its machines, tabs and terminals with them, and
+// so does the find hub.
 //
 // These functions draw a row's content only. The caller places the row and
 // gives it what makes it interactive: its element id, padding, click

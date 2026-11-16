@@ -64,12 +64,13 @@
 // Started as a copy of the app's shipped `spaces` mod plus the agent rows of
 // its shipped `agents` mod (herdr-app 0.1.11).
 //
-// This file holds the view and its state; `checkouts.ts` looks up each
-// space's Git or jj checkout, `finished-loader.ts` reads the finished
-// terminals, `agents.ts` picks the agents that need you and tracks their
-// status and activity changes, `rows.ts` draws the space rows and the tray,
-// and `tree-rows.ts` draws the machine headers, tab dividers and terminal
-// rows.
+// This file holds the view and its state, and shares each space's
+// checkout (`publishCheckouts`); `checkouts.ts` looks up each space's Git or
+// jj checkout, `finished-loader.ts` reads the finished terminals,
+// `agents.ts` picks the agents that need you and
+// tracks their status and activity changes, `rows.ts` draws the space rows
+// and the tray, and `tree-rows.ts` draws the machine headers, tab dividers
+// and terminal rows.
 //
 // `agent-marks.ts`, `finished.ts`, `foreground.ts`, `labels.ts`,
 // `names.ts`, `paths.ts`, `program-icon.ts`, `quiet.ts`, `row-colors.ts`,
@@ -110,12 +111,12 @@ import type { AgentInfo, SpaceInfo, TabInfo } from "herdr";
 import { Checkouts, where } from "./checkouts.js";
 import { AgentHistory, needsYou } from "./agents.js";
 import { FinishedLoader } from "./finished-loader.js";
-import { finishedLabel } from "./finished.js";
+import { FINISHED_TERMINALS_KEY, finishedLabel } from "./finished.js";
 import type { FinishedTerminal } from "./finished.js";
 import { CommandStarts } from "./foreground.js";
 import { agentLabel, blockedKind, terminalRowModel } from "./labels.js";
 import { hoverFill } from "./row-colors.js";
-import { spaceOrder } from "./space-order.js";
+import { SPACE_CHECKOUTS_KEY, spaceOrder } from "./space-order.js";
 import { RANK, topStatus } from "./status.js";
 import type { AgentStatus } from "./status.js";
 import type { TerminalEntry } from "./terminals.js";
@@ -218,6 +219,9 @@ function toggleSidebar() {
 export default class SpacesAndAgents extends View {
   declare folded: Set<string | null>;
   declare checkouts: Checkouts;
+  // The JSON of the `SPACE_CHECKOUTS_KEY` value last written (see
+  // `publishCheckouts`).
+  declare publishedCheckouts: string;
   declare shown: Set<string>;
   // Space id -> when the space was first seen while this runs (ms).
   declare born: Record<string, number>;
@@ -232,6 +236,13 @@ export default class SpacesAndAgents extends View {
   declare history: AgentHistory;
   declare listings: Map<string, SpaceListing>;
   declare finished: FinishedLoader;
+  // The JSON of the `FINISHED_TERMINALS_KEY` value last written (see
+  // `publishFinished`).
+  declare publishedFinished: string;
+  // The JSON of the last `FINISHED_TERMINALS_KEY` value another view wrote
+  // that this one read the finished terminals again for (see
+  // `followFinished`); null before any.
+  declare followedFinished: string | null;
   // The address of the finished terminal whose row shows the "Remove" chip
   // (`finishedRowElement`); null when no row does.
   declare removeChipAddress: string | null;
@@ -249,6 +260,11 @@ export default class SpacesAndAgents extends View {
     );
     // Each space's checkout, looked up while this runs (see `Checkouts`).
     this.checkouts = new Checkouts(this.folded);
+    // What an earlier run left there (the value persists), so an unchanged
+    // value is not written again.
+    this.publishedCheckouts = JSON.stringify(
+      shared(SPACE_CHECKOUTS_KEY) ?? null,
+    );
     // Spaces made while this runs wait (at most a moment) for their git, so a
     // worktree appears under its repo instead of jumping there.
     this.shown = new Set(spaces().map((s) => s.id));
@@ -269,8 +285,14 @@ export default class SpacesAndAgents extends View {
     // `spaceListing`).
     this.listings = new Map();
     // The finished terminals, read when the live ones change, on the
-    // machines tick, and after a removal.
+    // machines tick, after a removal, and when another view changes the
+    // shared ones.
     this.finished = new FinishedLoader();
+    // As with `publishedCheckouts`, what an earlier run left there.
+    this.publishedFinished = JSON.stringify(
+      shared(FINISHED_TERMINALS_KEY) ?? null,
+    );
+    this.followedFinished = null;
     this.removeChipAddress = null;
     // Kept across restarts; `checkNew` stamps new commands.
     this.commands = new CommandStarts();
@@ -291,13 +313,68 @@ export default class SpacesAndAgents extends View {
       .filter((k) => k.state === "live")
       .map((k) => k.address);
     this.finished.checkLive(liveAddresses, cx);
+    this.publishFinished(liveAddresses);
+    this.followFinished(cx);
     for (const s of sp) if (!this.shown.has(s.id)) this.born[s.id] ??= now;
     const due = this.checkouts.due(now, sp, panes());
     if (due.size) this.checkouts.refreshGit(due, cx);
+    this.publishCheckouts(sp);
     if (sp.some((s) => !this.shown.has(s.id))) cx.notify();
     // A command's row line appears once it has run long enough, and goes
     // when it ends.
     if (this.commands.track(entries, now)) cx.notify();
+  }
+
+  // Shares each space's checkout (`SPACE_CHECKOUTS_KEY`: space id ->
+  // `SpaceCheckout`, null for a folder in no repo, a space not looked up yet
+  // left out, a space that is gone dropped) for views that run no jj or git
+  // of their own. `setShared` persists the value and re-renders every mod,
+  // so it writes only when the value differs from the last one written;
+  // running from `checkNew`'s timer rather than `render`, it picks up a
+  // finished look or a removed space within a tick.
+  publishCheckouts(sp: SpaceInfo[]): void {
+    const value = this.checkouts.spaceCheckouts(sp);
+    const json = JSON.stringify(value);
+    if (json === this.publishedCheckouts) return;
+
+    this.publishedCheckouts = json;
+    setShared(SPACE_CHECKOUTS_KEY, value);
+  }
+
+  // Shares the finished terminals the tree nests, those whose parent is one
+  // of the live terminals `liveAddresses` (`FINISHED_TERMINALS_KEY`: an
+  // array of `FinishedTerminal`, in the loader's order), for views that run
+  // no `hc` of their own. Like `publishCheckouts`, it writes only when the
+  // value differs from the last one written, from `checkNew`'s timer.
+  publishFinished(liveAddresses: string[]): void {
+    const live = new Set(liveAddresses);
+    const value = this.finished.finished.filter(
+      (f) => f.parent !== null && live.has(f.parent),
+    );
+    const json = JSON.stringify(value);
+    if (json === this.publishedFinished) return;
+
+    this.publishedFinished = json;
+    setShared(FINISHED_TERMINALS_KEY, value);
+  }
+
+  // Reads the finished terminals again when another view wrote
+  // `FINISHED_TERMINALS_KEY` (the find hub drops a terminal it removed with
+  // `hc rm`), so this sidebar's rows catch up at once rather than on the
+  // machines tick; `publishFinished` then writes the result if its view
+  // changed. It reads once per value written by another view
+  // (`followedFinished`), and writes nothing itself, so it cannot loop: a
+  // read that changes nothing leaves the other value standing and is not
+  // repeated, and two writers each write only when their own view changes.
+  // It runs after `publishFinished`, so a read that just finished is
+  // written before the values are compared.
+  followFinished(cx: AsyncContext): void {
+    const json = JSON.stringify(shared(FINISHED_TERMINALS_KEY) ?? null);
+    if (json === this.publishedFinished || json === this.followedFinished)
+      return;
+
+    this.followedFinished = json;
+    this.finished.refresh(cx);
   }
 
   // Reads the other machines (`hc machine ls`) and, until it has it, this

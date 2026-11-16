@@ -1,6 +1,6 @@
 // The title bar of a popup terminal: a modal dialog overlay whose layout
 // holds this block above a `{ terminal }` block, opened by the launcher mods
-// (`find`, `jj-workspace-pick`, `jj-workspace-remove`, `space-new`) for an
+// (`jj-workspace-pick`, `jj-workspace-remove`, `space-new`) for an
 // interactive CLI running in a core terminal. The overlay closes by itself
 // when that terminal's program ends.
 //
