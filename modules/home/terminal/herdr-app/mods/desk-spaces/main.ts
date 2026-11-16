@@ -1,16 +1,49 @@
 // Spaces with their agents under them, the `desk` layout's sidebar list:
-// - The spaces: a stable color tick each, Git worktrees and jj workspaces under
-//   their repo's main checkout, grouped by machine when more than one is
-//   known. Under each space's name, the checkout its own folder is in
+// - The machines: a header for each (`machineHeader`), even when this
+//   computer is the only one, naming this computer as its herdr-core does.
+//   While `hc machine ls` reports a machine as other than connected, its
+//   header shows that state and how long it has lasted ("needs login ·
+//   14m"), and its spaces are dimmed. A header folds its machine's spaces
+//   away; its "+" makes a space there.
+// - The spaces under their machine: a stable color tick each, Git worktrees
+//   and jj workspaces under their repo's main checkout. Under each space's
+//   name, the checkout its folder is in
 //   ("dotfiles / ws3"), then, only where unusual, its branch and
-//   ahead/behind (a jj checkout shows what the terminal prompt shows). Every
-//   agent of a space has a row beneath it, one agent or many (sub-agents
-//   under their agent), saying what it is (`agentName`) and, on a dim line,
-//   where it is and what it is doing now or how far along it is. The chevron
-//   on the space's name line folds them; folded, it shows the count in the
-//   most urgent status's color. A space whose agents are all quiet (none
-//   working or blocked) gets a "conflict" badge on its checkout line for a
-//   jj conflict, else "review" for unshipped work.
+//   ahead/behind (a jj checkout shows what the terminal prompt shows).
+//   Beneath it, each of the space's tabs in order starts with a divider
+//   (`tabDivider`: its name and a rule), empty tabs included, followed by a
+//   row for every live terminal the shared tree (`buildTree`) places in that
+//   tab, agents and plain shells alike, with the terminals each started
+//   nested under it, a step further in per level (`DEPTH_INDENT`), even
+//   when they show in another tab. Every row is `terminalRow`'s: its
+//   program and title, then on a dim second line the folder it is in now;
+//   an agent's adds a third line with why it is blocked, what it is doing
+//   now, or else its status word, and at its end how long it has been in
+//   its status. Clicking a row focuses its pane, or peeks at a terminal
+//   without one; the focused terminal's row is filled and holds the focus
+//   mark.
+//   After a terminal's nested rows come the terminals it started that have
+//   finished, oldest first (`finishedRow`: a ✓, or a ✗ when it failed, its
+//   name, how it ended and when); clicking one goes to the terminal that
+//   started it, and
+//   right-clicking one offers a "Remove" chip at its end that removes it
+//   with `hc rm` (any other press dismisses the chip). A settled
+//   tab's divider is dimmed, and its rows stay hidden (`tabFolded`) until an
+//   agent in it is blocked or done or a finished terminal in it failed;
+//   there is no toggle. The space's terminals in
+//   no tab of it follow its tabs, without a divider, marked "no pane". The
+//   chevron on the space's name line folds all of that; folded, it shows how
+//   many agents, at any depth, in the most urgent status's color (finished
+//   terminals count for neither). A space
+//   whose agents are all quiet (none working or blocked) gets a "conflict"
+//   badge on its checkout line for a jj conflict, else "review" for
+//   unshipped work.
+// - Last under each machine, its terminals no space holds
+//   (`TreeMachine.elsewhere`, such as background terminals) under a small
+//   "ELSEWHERE" heading, drawn and clicked like a space's terminal rows,
+//   each without a pane marked "no pane", the section a little dimmed. It
+//   has no fold of its own, and no space's rail status or fold count
+//   includes it.
 // - "Needs you", a tray of fixed height at the bottom, so the spaces above
 //   never move when it changes: every blocked agent, then every agent that
 //   finished while you weren't looking (`done`, which the app turns `idle`
@@ -24,16 +57,21 @@
 // its shipped `agents` mod (herdr-app 0.1.11).
 //
 // This file holds the view and its state; `checkouts.ts` looks up each
-// space's Git or jj checkout, `agents.ts` gathers agents and tracks their
-// status changes, and `rows.ts` draws the rows.
+// space's Git or jj checkout, `finished-loader.ts` reads the finished
+// terminals, `agents.ts` picks the agents that need you and tracks their
+// status changes, `rows.ts` draws the space rows and the tray,
+// and `tree-rows.ts` draws the machine headers, tab dividers and terminal
+// rows.
 //
-// `paths.ts` (imported by `checkouts.ts` and `rows.ts`) and `names.ts`
-// (imported by `agents.ts`) beside these files are links to the shared copies
-// in `mod-lib/`.
+// `agent-marks.ts`, `finished.ts`, `labels.ts`, `names.ts`, `paths.ts`,
+// `program-icon.ts`, `row-colors.ts`, `space-order.ts`, `status.ts`,
+// `terminals.ts`, `tree-rows.ts` and `tree.ts` beside these files are links
+// to the shared copies in `mod-lib/`.
 
 import { View, div, svg } from "gpui-kit";
 import type {
   AsyncContext,
+  Color,
   Context,
   Element,
   MouseButtonEvent,
@@ -47,31 +85,51 @@ import {
   spaces,
   machines,
   panes,
+  terminals,
   run,
   openOverlay,
   hc,
+  home,
+  notify,
   theme,
   shared,
   setShared,
   window,
   layout,
 } from "herdr";
-import type { SpaceInfo, Status } from "herdr";
+import type { AgentInfo, SpaceInfo, TabInfo } from "herdr";
 import { Checkouts, where } from "./checkouts.js";
+import { AgentHistory, needsYou } from "./agents.js";
+import { FinishedLoader } from "./finished-loader.js";
+import { finishedLabel } from "./finished.js";
+import type { FinishedTerminal } from "./finished.js";
+import { agentLabel, terminalRowModel } from "./labels.js";
+import { hoverFill } from "./row-colors.js";
+import { spaceOrder } from "./space-order.js";
+import { RANK, topStatus } from "./status.js";
+import type { AgentStatus } from "./status.js";
+import type { TerminalEntry } from "./terminals.js";
+import { buildTree, rowStatus, tabFolded, walkTree } from "./tree.js";
+import type {
+  MachineEntry,
+  TreeMachine,
+  TreeFinishedStep,
+  TreeSpace,
+  TreeTerminal,
+  TreeTerminalStep,
+} from "./tree.js";
 import {
-  AgentHistory,
-  RANK,
-  gatherAgents,
-  needsYou,
-  topStatus,
-} from "./agents.js";
-import type { AgentStatus, CrewMember } from "./agents.js";
+  finishedRow,
+  machineHeader,
+  tabDivider,
+  terminalRow,
+} from "./tree-rows.js";
 import {
   ROW_GAP,
   ROW_X,
+  DEPTH_INDENT,
   TEXT_X,
   TICK_X,
-  agentRow,
   assignSpaceColors,
   avatarFill,
   checkoutBadge,
@@ -79,10 +137,8 @@ import {
   compact,
   focusBar,
   gitTail,
-  hoverFill,
   jjTail,
   needsYouRows,
-  subRow,
 } from "./rows.js";
 import type { SpaceRow, ThemeColors } from "./rows.js";
 
@@ -94,16 +150,15 @@ interface LayoutNode {
   children?: LayoutNode[];
 }
 
-// A machine as `hc machine ls --json` lists it, the fields this mod reads.
-interface MachineEntry {
-  name: string;
-  state: string;
-  temporary?: boolean;
-}
-
 // The fields of `hc machine ls --json` this mod reads.
 interface MachineList {
   machines?: MachineEntry[];
+}
+
+// The fields of `hc server status --json` this mod reads: the name of this
+// computer's herdr-core.
+interface ServerStatus {
+  core?: { name?: string };
 }
 
 function find(node: LayoutNode | null, id: string): LayoutNode | null {
@@ -158,10 +213,15 @@ export default class SpacesAndAgents extends View {
   declare pressed: number | null;
   declare over: number | null;
   declare machines: MachineEntry[];
+  // What `hc server status` names this computer; null until it answers.
+  declare thisComputerName: string | null;
   declare foldedSpaces: Record<string, string | null>;
   declare history: AgentHistory;
-  declare crews: Map<string, CrewMember[]>;
-  declare listed: Map<string, Status>;
+  declare listings: Map<string, SpaceListing>;
+  declare finished: FinishedLoader;
+  // The address of the finished terminal whose row shows the "Remove" chip
+  // (`finishedRowElement`); null when no row does.
+  declare removeChipAddress: string | null;
 
   init(_props: Props | undefined, cx: AsyncContext): void {
     // Machines whose spaces are folded away under their header.
@@ -180,17 +240,22 @@ export default class SpacesAndAgents extends View {
     this.pressed = null;
     this.over = null;
     this.machines = [];
-    // Space id -> its machine (null: this computer), for spaces whose agent
-    // rows are folded away.
+    this.thisComputerName = null;
+    // Space id -> its machine (null: this computer), for spaces whose
+    // terminal rows are folded away.
     this.foldedSpaces = JSON.parse(
       localStorage.getItem("spaces.folded") ?? "{}",
     ) as Record<string, string | null>;
     // Each agent's last status change (kept across restarts) and the focused
     // agent's held next/previous rank.
     this.history = new AgentHistory();
-    // Space id -> its agents as listed this render (see `gatherAgents`).
-    this.crews = new Map();
-    this.listed = new Map(); // agent address -> its status this render
+    // Space id -> its tabs' and loose terminal rows this render (see
+    // `spaceListing`).
+    this.listings = new Map();
+    // The finished terminals, read when the live ones change, on the
+    // machines tick, and after a removal.
+    this.finished = new FinishedLoader();
+    this.removeChipAddress = null;
     // Agent durations count in minutes.
     cx.timer.every(30000, (cx) => cx.notify());
     this.refreshMachines(cx);
@@ -203,13 +268,21 @@ export default class SpacesAndAgents extends View {
   checkNew(cx: AsyncContext): void {
     const now = Date.now();
     const sp = spaces();
+    const liveAddresses = (terminals() as TerminalEntry[])
+      .filter((k) => k.state === "live")
+      .map((k) => k.address);
+    this.finished.checkLive(liveAddresses, cx);
     for (const s of sp) if (!this.shown.has(s.id)) this.born[s.id] ??= now;
     const due = this.checkouts.due(now, sp, panes());
     if (due.size) this.checkouts.refreshGit(due, cx);
     if (sp.some((s) => !this.shown.has(s.id))) cx.notify();
   }
 
+  // Reads the other machines (`hc machine ls`) and, until it has it, this
+  // computer's name (`hc server status`), then redraws. A failed read keeps
+  // what the last one gave. It also reads the finished terminals again.
   refreshMachines(cx: AsyncContext): void {
+    this.finished.refresh(cx);
     cx.spawn(async (cx) => {
       try {
         const r = await hc(["machine", "ls", "--json"]);
@@ -218,6 +291,13 @@ export default class SpacesAndAgents extends View {
             (JSON.parse(r.stdout) as MachineList).machines ?? []
           ).filter((m) => !m.temporary);
       } catch {}
+      if (this.thisComputerName === null)
+        try {
+          const r = await hc(["server", "status", "--json"]);
+          if (r.code === 0)
+            this.thisComputerName =
+              (JSON.parse(r.stdout) as ServerStatus).core?.name || null;
+        } catch {}
       cx.notify();
     });
   }
@@ -233,7 +313,9 @@ export default class SpacesAndAgents extends View {
     });
   }
 
-  // Spaces in order, each worktree space moved under its main checkout's.
+  // Spaces in order (`spaceOrder`), each worktree space moved under its main
+  // checkout's. A space new since the sidebar opened is left out until its
+  // checkout is known or 1.5s have passed.
   ordered(): SpaceRow[] {
     const sp = spaces();
     const ready = (w: SpaceInfo) =>
@@ -243,40 +325,28 @@ export default class SpacesAndAgents extends View {
     for (const w of sp)
       if (!this.shown.has(w.id) && ready(w)) this.shown.add(w.id);
     const list = sp
-      .map((w, i) => ({ w, i, g: this.checkouts.git[where(w)] ?? null }))
+      .map((w, i) => ({ w, i }))
       .filter((r) => this.shown.has(r.w.id));
-    const mains = new Set(
-      // The filter kept only rows with a checkout.
-      list.filter((r) => r.g && !r.g.linked).map((r) => r.g!.repo),
+    return spaceOrder(list, (r) => this.checkouts.git[where(r.w)] ?? null).map(
+      ({ space, checkout, tree }) => ({ ...space, g: checkout, tree }),
     );
-    const nested = (r: Omit<SpaceRow, "tree">) =>
-      r.g?.linked && mains.has(r.g.repo);
-    const out: SpaceRow[] = [];
-    const placed = new Set(); // repos whose worktrees are listed (under the first of its spaces)
-    for (const r of list) {
-      if (nested(r)) continue;
-      out.push({ ...r, tree: null });
-      if (!r.g || r.g.linked || placed.has(r.g.repo)) continue;
-      placed.add(r.g.repo);
-      // `nested` holds only with a checkout, and the `continue` above
-      // skipped a row without one.
-      const kids = list.filter((k) => nested(k) && k.g!.repo === r.g!.repo);
-      kids.forEach((k, n) =>
-        out.push({ ...k, tree: n === kids.length - 1 ? "└─" : "├─" }),
-      );
-    }
-    return out;
   }
 
-  // The rows, under a header per machine once one isn't this computer.
-  // Each space row comes with its agent rows (none on the rail).
+  // The rows under a header per machine of `treeMachines` (`buildTree`), in
+  // its order, even when this computer is the only one: each machine's space
+  // rows from `rows` in their order, or, without any, a loading row or a
+  // "New space there" row, then its Elsewhere section (`elsewhereSection`,
+  // none on the rail); none of these while the machine is folded. Each space
+  // row comes with its terminal rows (none on the rail). The spaces of a
+  // machine `hc machine ls` reports as other than connected are dimmed.
   grouped(
     t: ThemeColors,
     collapsed: boolean,
+    treeMachines: TreeMachine[],
     rows: SpaceRow[],
     now: number,
   ): Element[] {
-    // Each space with its agent rows is one group. A hairline above each
+    // Each space with its terminal rows is one group. A hairline above each
     // space that isn't a worktree sets it apart from the one before; a
     // worktree stays under its repo's. Every group keeps 4px below its last
     // row, so a focused row's fill clears the next hairline. The active
@@ -284,7 +354,7 @@ export default class SpacesAndAgents extends View {
     // you are in, apart from the accent bar on the one row holding focus.
     const draw = (r: SpaceRow) => {
       if (collapsed) return [compact(r, t, this.spaceStatus(r.w))];
-      const rows = [this.row(r, t), ...this.agentRows(r, t, now)];
+      const rows = [this.row(r, t), ...this.terminalRows(r, t, now)];
       // A space's color in the gutter left of its rows: a tick beside its
       // name, or, for the active space, the rail. A worktree has its branch
       // mark instead of a tick.
@@ -309,14 +379,14 @@ export default class SpacesAndAgents extends View {
           .when(!r.w.active && !r.tree, (el) => el.child(mark.h(16))),
       ];
     };
-    const groups = this.machineGroups(rows);
-    const loading = (m: string | null) => {
-      const layout = machines().find((k) => k.name === m)?.layout;
+    const loading = (m: TreeMachine) => {
+      const layout = machines().find((k) => k.name === m.name)?.layout;
       return (
         layout === "loading" ||
-        (!layout &&
-          this.machines.some((k) => k.name === m && k.state === "connected")) ||
-        spaces().some((s) => (s.machine ?? null) === m && !this.shown.has(s.id))
+        (!layout && m.state === "connected") ||
+        spaces().some(
+          (s) => (s.machine ?? null) === m.name && !this.shown.has(s.id),
+        )
       );
     };
     const loadingRow = (m: string | null) =>
@@ -328,13 +398,12 @@ export default class SpacesAndAgents extends View {
         .text_size(12)
         .text_color(t.dim)
         .child(collapsed ? "…" : "Loading…");
-    if (groups.length === 1)
-      return loading(null) && !rows.length
-        ? [loadingRow(null)]
-        : rows.flatMap(draw);
-    return groups.flatMap(([m, mine]) => {
-      const machine = this.machines.find((k) => k.name === m);
-      const connected = !m || machine?.state === "connected";
+    return treeMachines.flatMap((machine) => {
+      const m = machine.name;
+      const mine = rows.filter((r) => (r.w.machine ?? null) === m);
+      const connected = m === null || machine.state === "connected";
+      // `hc machine ls` reports it, in a state other than connected.
+      const isAway = machine.state !== null && !connected;
       const folded = this.folded.has(m);
       const head = h_flex()
         .id(`machine-${m ?? "local"}`)
@@ -346,7 +415,7 @@ export default class SpacesAndAgents extends View {
         .text_size(11)
         .text_color(t.dim)
         .cursor_pointer()
-        .hover((s) => s.bg(hoverFill(t)))
+        .hover((s) => s.bg(hoverFill(t, t.chrome)))
         .on_click((_e, cx) => {
           folded ? this.folded.delete(m) : this.folded.add(m);
           localStorage.setItem(
@@ -356,25 +425,13 @@ export default class SpacesAndAgents extends View {
           cx.notify();
         })
         .child(
-          svg(`mods/workspace-chrome/${m ? "server" : "monitor"}.svg`)
-            .size(13)
-            .flex_none(),
+          machineHeader(t, machine, now, {
+            thisComputerName: this.thisComputerName,
+            narrow: collapsed,
+          }),
         )
         .when(!collapsed, (el) =>
           el
-            .child(
-              div()
-                .flex_1()
-                .truncate()
-                .child(m ?? "This computer"),
-            )
-            .when(!connected, (el) =>
-              el.child(
-                div()
-                  .flex_none()
-                  .child((machine?.state ?? "asleep").replace(/_/g, " ")),
-              ),
-            )
             .when(connected, (el) =>
               el.child(
                 div()
@@ -419,44 +476,25 @@ export default class SpacesAndAgents extends View {
         .on_click(() => newSpace(m))
         .child(svg("mods/workspace-chrome/plus.svg").size(12))
         .when(!collapsed, (el) => el.child("New space there"));
-      return [
-        head,
-        ...(folded
-          ? []
-          : mine.length
-            ? mine.flatMap(draw)
-            : [loading(m) ? loadingRow(m) : empty]),
-      ];
+      const spaceRows = mine.length
+        ? mine.flatMap(draw).map((el) => (isAway ? el.opacity(0.5) : el))
+        : [loading(machine) ? loadingRow(m) : empty];
+      if (folded) return [head];
+      const elsewhere = collapsed
+        ? null
+        : this.elsewhereSection(machine, isAway, t, now);
+      return [head, ...spaceRows, ...(elsewhere ? [elsewhere] : [])];
     });
-  }
-
-  // `rows` by machine, in the order `grouped` draws them: [machine, its rows]
-  // pairs, this computer (null) first, then every other machine by name, each
-  // one with spaces in `rows` or listed by `hc machine ls` (`this.machines`),
-  // so a pair's rows may be empty. Without other machines, the one pair holds
-  // every row. Each machine's rows keep their order in `rows`.
-  machineGroups(rows: SpaceRow[]): [string | null, SpaceRow[]][] {
-    const remote = [
-      ...new Set([
-        ...rows.map((r) => r.w.machine).filter(Boolean),
-        ...this.machines.map((m) => m.name),
-      ]),
-    ].sort();
-    if (!remote.length) return [[null, rows]];
-    return [null, ...remote].map((m) => [
-      m,
-      rows.filter((r) => (r.w.machine ?? null) === m),
-    ]);
   }
 
   row({ w, i, g, tree }: SpaceRow, t: ThemeColors): Element {
     // The active space says so by its name, bold and bright, and by its rail
-    // (`grouped`). Its row holds the focus mark when no agent row of it does:
-    // a shell has focus, or its agent rows are folded away.
+    // (`grouped`). Its row holds the focus mark when no terminal row of it
+    // does: its rows are folded away, or focus is on no terminal of it.
     const on = w.active;
-    const holdsFocus = on && !this.agentRowFocused(w);
+    const holdsFocus = on && !this.terminalRowFocused(w);
     const checkout = checkoutLine(w, g, t);
-    const badge = checkoutBadge(this.crew(w), g, t);
+    const badge = checkoutBadge(this.agentStatuses(w), g, t);
     const quietRepo = Boolean(tree) || Boolean(checkout);
     const tail = g
       ? g.jj
@@ -477,7 +515,7 @@ export default class SpacesAndAgents extends View {
       .flex_none()
       .justify_center()
       .rounded(6)
-      .hover((s) => s.bg(hoverFill(t)))
+      .hover((s) => s.bg(hoverFill(t, t.chrome)))
       .when(holdsFocus, (el) => el.bg(t.hover).child(focusBar(t)))
       .when(this.pressed === i && this.over !== i, (el) => el.opacity(0.5))
       .when(
@@ -580,23 +618,40 @@ export default class SpacesAndAgents extends View {
       );
   }
 
-  crew(w: SpaceInfo): CrewMember[] {
-    return this.crews.get(w.id) ?? [];
+  // The space's live terminal rows this render, in the order they are
+  // drawn: each tab's, then the loose ones. Finished rows are left out.
+  listing(w: SpaceInfo): TerminalListing[] {
+    const listing = this.listings.get(w.id);
+    if (!listing) return [];
+    return terminalRowsOf([
+      ...listing.tabs.flatMap((tab) => tab.rows),
+      ...listing.loose,
+    ]);
   }
 
-  // The most urgent status among a space's agents, null without agents.
+  // The statuses the space's terminal rows show (`rowStatus`), leaving out
+  // terminals that report none, in row order.
+  agentStatuses(w: SpaceInfo): AgentStatus[] {
+    return this.listing(w)
+      .map((row) => row.status)
+      .filter((status): status is AgentStatus => status !== null);
+  }
+
+  // The most urgent status among a space's terminal rows, null without any.
   spaceStatus(w: SpaceInfo): AgentStatus | null {
-    return topStatus(this.crew(w).map((m) => m.status));
+    return topStatus(this.agentStatuses(w));
   }
 
-  // Whether focus sits on one of the space's agent rows (an agent, or a
-  // sub-agent shown in its place): never when its agent rows are folded away.
-  agentRowFocused(w: SpaceInfo): boolean {
-    if (w.id in this.foldedSpaces) return false;
-    const shown = focused()?.agent;
-    return this.crew(w).some(
-      (m) => m.a.focused || m.subs.some((s) => s.t.address === shown),
-    );
+  // Whether focus sits on one of the space's terminal rows: never when the
+  // space is folded or the row's tab is (`tabFolded`).
+  terminalRowFocused(w: SpaceInfo): boolean {
+    const listing = this.listings.get(w.id);
+    if (!listing || w.id in this.foldedSpaces) return false;
+    const shown = focused()?.terminal;
+    return terminalRowsOf([
+      ...listing.tabs.flatMap((tab) => (tab.folded ? [] : tab.rows)),
+      ...listing.loose,
+    ]).some(({ step }) => step.node.terminal.address === shown);
   }
 
   setSpaceFolded(w: SpaceInfo, folded: boolean): void {
@@ -622,12 +677,14 @@ export default class SpacesAndAgents extends View {
     localStorage.setItem("spaces.folded", JSON.stringify(this.foldedSpaces));
   }
 
-  // The end of the name line of a space with agents: a chevron that folds
-  // their rows and, folded, adds how many agents in the most urgent one's
-  // color. Pressing it neither selects nor drags the space.
+  // The end of the name line of a space with rows under it (a tab, or a
+  // loose terminal): a chevron that folds them and, folded, adds how many
+  // agents they show at any depth in the most urgent one's color. Pressing
+  // it neither selects nor drags the space.
   foldToggle(w: SpaceInfo, t: ThemeColors): Element | null {
-    const crew = this.crew(w);
-    if (!crew.length) return null;
+    const listing = this.listings.get(w.id);
+    if (!listing || (!listing.tabs.length && !listing.loose.length))
+      return null;
     const keep = (_e: MouseButtonEvent, cx: Context) => cx.stop_propagation();
     const open = !(w.id in this.foldedSpaces);
     // A null `top` (no status ranks) indexes `t` as "null": no color, so dim.
@@ -650,7 +707,7 @@ export default class SpacesAndAgents extends View {
         this.setSpaceFolded(w, open);
         cx.notify();
       })
-      .when(!open, (el) => el.child(String(crew.length)))
+      .when(!open, (el) => el.child(String(this.agentStatuses(w).length)))
       .child(
         svg(`mods/workspace-chrome/chevron-${open ? "down" : "right"}.svg`)
           .size(11)
@@ -658,16 +715,252 @@ export default class SpacesAndAgents extends View {
       );
   }
 
-  // The agent rows under an unfolded space, their icons under the start of
-  // its name (past its color tick, or a worktree's branch mark).
-  agentRows({ w, tree }: SpaceRow, t: ThemeColors, now: number): Element[] {
-    if (w.id in this.foldedSpaces) return [];
+  // The rows under an unfolded space: each tab's divider followed by its
+  // terminal rows (a settled tab's divider dimmed, and its rows left out
+  // while it is folded, `tabFolded`), then the loose terminal rows, each
+  // terminal followed by the rows nested under it and then its finished
+  // terminals' rows. Dividers and icons start under the start of the
+  // space's name (past its color tick, or a worktree's branch mark).
+  terminalRows({ w, tree }: SpaceRow, t: ThemeColors, now: number): Element[] {
+    const listing = this.listings.get(w.id);
+    if (!listing || w.id in this.foldedSpaces) return [];
     const indent = tree ? 52 : TEXT_X;
-    const shown = focused()?.agent;
-    return this.crew(w).flatMap((m) => [
-      agentRow(m, indent, t, now, this.history.since(m.a)),
-      ...m.subs.map((s) => subRow(t, s, shown, indent + 4, this.listed)),
-    ]);
+
+    // A row's terminal is loose when no tab of the space shows it; one
+    // without a pane at all says so.
+    return [
+      ...listing.tabs.flatMap(({ tab, rows, folded }) => [
+        div()
+          .id(`tab-divider-${tab.id}`)
+          .pl(indent - ROW_X)
+          .pr(8)
+          .child(tabDivider(t, tab, { dim: tab.settled })),
+        ...(folded
+          ? []
+          : rows.map((row) => this.listingRowElement(row, indent, t, now))),
+      ]),
+      ...listing.loose.map((row) =>
+        this.listingRowElement(row, indent, t, now, {
+          markPaneless: true,
+        }),
+      ),
+    ];
+  }
+
+  // A machine's Elsewhere section, for its terminals no space holds
+  // (`TreeMachine.elsewhere`): a small "ELSEWHERE" heading, then a row for
+  // each, with the terminals each started nested under it, live then
+  // finished, every live one
+  // without a pane marked "no pane". The section is a little dimmed, as
+  // terminals outside the spaces you work in, or as dim as the machine's
+  // spaces while the machine is away (`isAway`). It has no fold of its own.
+  // Null when the machine has no such terminals.
+  elsewhereSection(
+    machine: TreeMachine,
+    isAway: boolean,
+    t: ThemeColors,
+    now: number,
+  ): Element | null {
+    const rows = listingRows(machine.elsewhere);
+    if (!rows.length) return null;
+    return v_flex()
+      .id(`machine-elsewhere-${machine.name ?? "local"}`)
+      .flex_none()
+      .pl(ROW_X)
+      .pt(4)
+      .pb(4)
+      .gap(ROW_GAP)
+      .border_t(1)
+      .border_color(t.border)
+      .opacity(isAway ? 0.5 : 0.8)
+      .child(
+        div()
+          .pl(TEXT_X - ROW_X)
+          .pt(2)
+          .text_size(10.5)
+          .font_semibold()
+          .text_color(t.dim)
+          .child("ELSEWHERE"),
+      )
+      .children(
+        rows.map((row) =>
+          this.listingRowElement(row, TEXT_X, t, now, {
+            markPaneless: true,
+          }),
+        ),
+      );
+  }
+
+  // A listing row in the sidebar: a live terminal's (`terminalRowElement`,
+  // given `opts`) or a finished one's (`finishedRowElement`).
+  listingRowElement(
+    row: ListingRow,
+    indent: number,
+    t: ThemeColors,
+    now: number,
+    opts?: { markPaneless?: boolean },
+  ): Element {
+    return row.kind === "terminal"
+      ? this.terminalRowElement(row, indent, t, now, opts)
+      : this.finishedRowElement(row.step, indent, t, now);
+  }
+
+  // A terminal's row in the sidebar, its content `terminalRow`'s, its icon
+  // `indent` px from the left of its group plus `DEPTH_INDENT` per level it
+  // is nested; the row's fill and focus mark move in with it. Clicking it
+  // focuses its pane, or peeks at a terminal without one; the focused
+  // terminal's row is filled and holds the focus mark. `opts.markPaneless`
+  // notes "no pane" on a row without a pane.
+  terminalRowElement(
+    { step, status }: TerminalListing,
+    indent: number,
+    t: ThemeColors,
+    now: number,
+    opts?: { markPaneless?: boolean },
+  ): Element {
+    const { node, depth } = step;
+    const address = node.terminal.address;
+    const pane = node.pane;
+    const isFocused = address === (focused()?.terminal ?? null);
+    const model = terminalRowModel(
+      {
+        ...node,
+        status,
+      },
+      home(),
+    );
+    const since = node.info
+      ? this.history.since(node.info) || null
+      : (node.terminal.status_ms ?? null);
+    return h_flex()
+      .id(`terminal-${address}`)
+      .flex_none()
+      .ml(depth * DEPTH_INDENT)
+      .pl(indent - ROW_X)
+      .pr(8)
+      .relative()
+      .rounded(6)
+      .cursor_pointer()
+      .hover((s) => s.bg(hoverFill(t, t.chrome)))
+      .when(isFocused, (el) => el.bg(t.hover).child(focusBar(t)))
+      .on_click(() =>
+        pane
+          ? run("pane.focus", { pane: pane.pane })
+          : run("terminal.peek", { terminal: address }),
+      )
+      .child(
+        terminalRow(t, model, now, {
+          since,
+          note: opts?.markPaneless && pane === null ? "no pane" : undefined,
+          dimTitle: !isFocused && (status === null || status === "idle"),
+        }),
+      );
+  }
+
+  // A finished terminal's row in the sidebar, its content `finishedRow`'s,
+  // its mark `indent` px from the left of its group plus `DEPTH_INDENT` per
+  // level it is nested, its fill moving in with it. Clicking it goes to the
+  // live terminal that started it: focuses that terminal's pane, or peeks at
+  // it without one. Right-clicking it shows a "Remove" chip at its end
+  // (`removeChipAddress`) until a press anywhere else; clicking the chip
+  // removes the finished terminal (`removeFinished`).
+  finishedRowElement(
+    { finished, parent, depth }: TreeFinishedStep,
+    indent: number,
+    t: ThemeColors,
+    now: number,
+  ): Element {
+    const pane = parent.pane;
+    const showsRemoveChip = this.removeChipAddress === finished.address;
+    return h_flex()
+      .id(`finished-${finished.address}`)
+      .flex_none()
+      .ml(depth * DEPTH_INDENT)
+      .pl(indent - ROW_X)
+      .pr(8)
+      .relative()
+      .rounded(6)
+      .cursor_pointer()
+      .hover((s) => s.bg(hoverFill(t, t.chrome)))
+      .on_click((_e, cx) => {
+        this.dismissRemoveChip(cx);
+        if (pane) run("pane.focus", { pane: pane.pane });
+        else run("terminal.peek", { terminal: parent.terminal.address });
+      })
+      .on_mouse_down("right", (_e, cx) => {
+        this.removeChipAddress = finished.address;
+        cx.notify();
+      })
+      .child(finishedRow(t, finished, now))
+      .when(showsRemoveChip, (el) =>
+        el
+          .on_mouse_down_out((_e, cx) => this.dismissRemoveChip(cx))
+          .child(this.removeChip(finished, t)),
+      );
+  }
+
+  // The "Remove" chip at the end of a finished terminal's row, a badge in
+  // the blocked color like the "conflict" one (`checkoutBadge`): removing
+  // is the one action in the sidebar that deletes something. Clicking it
+  // removes `finished` (`removeFinished`) without going to its parent.
+  removeChip(finished: FinishedTerminal, t: ThemeColors): Element {
+    return div()
+      .id(`finished-remove-${finished.address}`)
+      .flex_none()
+      .self_center()
+      .ml(6)
+      .h(16)
+      .px(5)
+      .flex()
+      .items_center()
+      .rounded(4)
+      .bg((t.blocked + "26") as Color)
+      .hover((s) => s.bg((t.blocked + "40") as Color))
+      .text_size(10.5)
+      .font_semibold()
+      .text_color(t.blocked)
+      .on_mouse_down("left", (_e, cx) => cx.stop_propagation())
+      .on_click((_e, cx) => {
+        cx.stop_propagation();
+        this.dismissRemoveChip(cx);
+        this.removeFinished(finished, cx);
+      })
+      .child("Remove");
+  }
+
+  // Hides the "Remove" chip, if a row shows it.
+  dismissRemoveChip(cx: Context): void {
+    if (this.removeChipAddress === null) return;
+
+    this.removeChipAddress = null;
+    cx.notify();
+  }
+
+  // Removes the finished terminal `finished` with `hc rm`, then reads the
+  // finished terminals again so its row goes. When `hc rm` exits non-zero
+  // or cannot run, posts an error notification with the first line of what
+  // it said.
+  removeFinished(finished: FinishedTerminal, cx: Context): void {
+    const title = `Couldn't remove ${finishedLabel(finished)}`;
+    cx.spawn(async (cx) => {
+      try {
+        const r = await hc(["rm", finished.address]);
+        if (r.code !== 0)
+          notify({
+            title,
+            body: firstLine(r.stderr || r.stdout) || `hc rm exited ${r.code}`,
+            level: "error",
+          });
+      } catch (e) {
+        notify({
+          title,
+          body: firstLine(e instanceof Error ? e.message : String(e)),
+          level: "error",
+        });
+      }
+
+      this.finished.refresh(cx);
+    });
   }
 
   render(): Element {
@@ -681,21 +974,50 @@ export default class SpacesAndAgents extends View {
     this.history.track(list, now);
     this.history.hold(list);
     this.pruneFoldedSpaces(sp);
-    const { byAddress, crews, listed } = gatherAgents(list, sp);
-    this.crews = crews;
-    this.listed = listed;
+    const allTerminals = terminals() as TerminalEntry[];
+    const tree = buildTree({
+      terminals: allTerminals,
+      agents: list,
+      panes: panes(),
+      spaces: sp,
+      machines: this.machines,
+      finished: this.finished.finished,
+    });
+    this.listings = new Map(
+      tree.machines.flatMap((m) =>
+        m.spaces.map((s) => [s.space.id, spaceListing(s)]),
+      ),
+    );
     const tray = needsYou(list, (a) => RANK[a.status] ?? 0);
+    const terminalByAddress = new Map(allTerminals.map((k) => [k.address, k]));
+    const labelOf = (a: AgentInfo) =>
+      agentLabel({
+        terminal: terminalByAddress.get(a.address) ?? { address: a.address },
+        info: a,
+        pane: null,
+      });
 
     // Next/previous agent: "Needs you", then the tree in the machine order
-    // `grouped` draws, folded machines and spaces included. The focused agent
+    // `grouped` draws, folded machines and spaces included: the agents with a
+    // pane among the terminal rows, each machine's Elsewhere rows after its
+    // spaces', in row order. The focused agent
     // keeps its "Needs you" slot here after looking turns it from done to
     // idle (`orderRank`), so stepping on reaches the one after it, though the
     // tray itself drops it. An agent whose space isn't shown yet is left out
     // here; the app appends it.
     const rows = this.ordered();
-    const treeOrder = this.machineGroups(rows).flatMap(([, mine]) =>
-      mine.flatMap((r) => this.crew(r.w).map((m) => m.a.address)),
-    );
+    const agentsWithPane = (listing: TerminalListing[]) =>
+      listing
+        .filter(
+          ({ step }) => step.node.pane !== null && step.node.status !== null,
+        )
+        .map(({ step }) => step.node.terminal.address);
+    const treeOrder = tree.machines.flatMap((m) => [
+      ...rows
+        .filter((r) => (r.w.machine ?? null) === m.name)
+        .flatMap((r) => agentsWithPane(this.listing(r.w))),
+      ...agentsWithPane(terminalRowsOf(listingRows(m.elsewhere))),
+    ]);
     const trayOrder = needsYou(list, (a) => this.history.orderRank(a)).map(
       (a) => a.address,
     );
@@ -744,7 +1066,7 @@ export default class SpacesAndAgents extends View {
             this.pressed = null;
             cx.notify();
           })
-          .children(this.grouped(t, collapsed, rows, now)),
+          .children(this.grouped(t, collapsed, tree.machines, rows, now)),
       )
       .when(!collapsed, (el) =>
         el.child(
@@ -758,9 +1080,7 @@ export default class SpacesAndAgents extends View {
             .border_t(1)
             .border_color(t.border)
             .children(
-              needsYouRows(tray, byAddress, t, now, (a) =>
-                this.history.since(a),
-              ),
+              needsYouRows(tray, labelOf, t, now, (a) => this.history.since(a)),
             ),
         ),
       )
@@ -783,4 +1103,78 @@ export default class SpacesAndAgents extends View {
         ),
       );
   }
+}
+
+// A space's rows, grouped as the sidebar draws them: `tabs`, every tab of
+// the space in order (empty ones included) with the rows of the terminals
+// the tree places in it, then `loose`, the rows of the space's terminals in
+// none of its tabs.
+interface SpaceListing {
+  // `folded` (`tabFolded`): the tab is settled with nothing in it needing
+  // the person, so the sidebar draws its divider without its rows.
+  tabs: { tab: TabInfo; rows: ListingRow[]; folded: boolean }[];
+  loose: ListingRow[];
+}
+
+function spaceListing(treeSpace: TreeSpace): SpaceListing {
+  return {
+    tabs: treeSpace.tabs.map((treeTab) => ({
+      tab: treeTab.tab,
+      rows: listingRows(treeTab.terminals),
+      folded: tabFolded(treeTab),
+    })),
+    loose: listingRows(treeSpace.loose),
+  };
+}
+
+// One row the sidebar lists under a space or Elsewhere: a live terminal's
+// (`TerminalListing`) or a finished terminal's (`FinishedListing`).
+type ListingRow = TerminalListing | FinishedListing;
+
+// One live terminal row: its `walkTree` step, with the depth it is indented
+// by, and the status it shows (`rowStatus`).
+interface TerminalListing {
+  kind: "terminal";
+  step: TreeTerminalStep;
+  status: AgentStatus | null;
+}
+
+// One finished terminal row: its `walkTree` step, with the depth it is
+// indented by and the live terminal it hangs under. It shows no status: rail
+// status, fold counts and the agent order leave it out.
+interface FinishedListing {
+  kind: "finished";
+  step: TreeFinishedStep;
+}
+
+// The rows of the top-level terminals `nodes` and every live and finished
+// terminal nested under them, in `walkTree` order.
+function listingRows(nodes: TreeTerminal[]): ListingRow[] {
+  // The terminal last walked at each depth: a row's parent is the one a
+  // level up.
+  const ancestors: TreeTerminal[] = [];
+  return [...walkTree(nodes)].map((step): ListingRow => {
+    if (step.kind === "finished")
+      return {
+        kind: "finished",
+        step,
+      };
+    ancestors[step.depth] = step.node;
+    const parent = step.depth > 0 ? ancestors[step.depth - 1] : null;
+    return {
+      kind: "terminal",
+      step,
+      status: rowStatus(step.node, parent),
+    };
+  });
+}
+
+// The live terminal rows of `rows`, in their order.
+function terminalRowsOf(rows: ListingRow[]): TerminalListing[] {
+  return rows.filter((row): row is TerminalListing => row.kind === "terminal");
+}
+
+// The first line of `text`, without surrounding whitespace.
+function firstLine(text: string): string {
+  return text.trim().split("\n", 1)[0];
 }

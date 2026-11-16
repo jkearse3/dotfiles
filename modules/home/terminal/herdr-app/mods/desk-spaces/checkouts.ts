@@ -7,6 +7,7 @@ import type { AsyncContext } from "gpui-kit";
 import { exec, home, machines, watchFolder, window } from "herdr";
 import type { ExecResult, PaneInfo, SpaceInfo } from "herdr";
 import { cliPath } from "./paths.js";
+import { base } from "./space-order.js";
 
 // A space's or repo's location: its machine (null for this computer) and a
 // folder there. `where()` keys and checkouts' `repo` are these as JSON.
@@ -58,9 +59,6 @@ export type Checkout = GitCheckout | JjCheckout;
 // `Checkouts.due` never looks at.
 export const where = (s: SpaceInfo): string =>
   JSON.stringify([s.machine ?? null, s.folder || (s.machine ? "" : home())]);
-// `split` always returns at least one element, so `pop` finds one.
-export const base = (path: string): string =>
-  path.replace(/\/+$/, "").split("/").pop()!;
 // `path` made absolute against `from`, without "." or ".." segments.
 const resolve = (from: string, path: string): string => {
   const out: string[] = [];

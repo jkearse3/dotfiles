@@ -228,6 +228,12 @@ in
           # build runs no test of it.
           herdr-app-names = unstablePkgs.callPackage ../modules/home/terminal/herdr-app/names-check.nix { };
 
+          # The home build runs no test of the mod-lib files the desk-spaces
+          # sidebar draws its tree with.
+          herdr-app-mod-lib = unstablePkgs.callPackage ../modules/home/terminal/herdr-app/mod-lib-check.nix {
+            herdrAppMods = config.packages.herdr-app-mods;
+          };
+
           # Runs the Neovim configuration's plenary specs on the plugin
           # derivations Home Manager installs (`modules/home/neovim/plugins.nix`).
           neovim = unstablePkgs.callPackage ../modules/home/neovim/nvim/tests/check.nix {

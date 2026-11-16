@@ -1,0 +1,1218 @@
+// Tests the mod-lib pure files the desk-spaces sidebar draws its tree with:
+// `buildTree`, `spaceTerminals`, `tabFolded`, `rowStatus` and `walkTree` from
+// `tree.ts`, `agentDoing`, `folderOf` and `terminalRowModel` from `labels.ts`,
+// `machineOf` from `terminals.ts`, `spaceOrder` and `checkoutText` from
+// `space-order.ts`, the finished-terminal readers, outcome and label from
+// `finished.ts`, and `hoverFill` from
+// `row-colors.ts`, against the terminals(), agents(), panes() and spaces()
+// entry shapes the Herdr app hands mods. It imports the built,
+// type-stripped `desk-spaces/*.js` from the herdr-app-mods output named by
+// `HERDR_APP_MODS`, where the mod's links to `mod-lib` have been copied in.
+// Run with
+// `HERDR_APP_MODS=$(nix build --no-link --print-out-paths .#herdr-app-mods) node --test`;
+// flake/checks.nix registers it as the `herdr-app-mod-lib` check through
+// mod-lib-check.nix, which sets it.
+import assert from "node:assert/strict";
+import { test } from "node:test";
+
+const mods = process.env.HERDR_APP_MODS;
+if (!mods) {
+  throw new Error(
+    "HERDR_APP_MODS is unset: set it to the herdr-app-mods build output",
+  );
+}
+const { agentDoing, folderOf, terminalRowModel } = await import(
+  `${mods}/desk-spaces/labels.js`
+);
+const { machineOf } = await import(`${mods}/desk-spaces/terminals.js`);
+const { checkoutText, spaceOrder } = await import(
+  `${mods}/desk-spaces/space-order.js`
+);
+const { buildTree, rowStatus, spaceTerminals, tabFolded, walkTree } =
+  await import(`${mods}/desk-spaces/tree.js`);
+const {
+  finishedAddresses,
+  finishedLabel,
+  finishedOutcome,
+  finishedTerminalOf,
+} = await import(`${mods}/desk-spaces/finished.js`);
+const { hoverFill } = await import(`${mods}/desk-spaces/row-colors.js`);
+
+// A terminals() entry: a live terminal at `address` reporting `status`, with
+// `fields` overriding the defaults.
+function terminal(address, status, fields = {}) {
+  return {
+    address,
+    status,
+    state: "live",
+    parent: null,
+    name: null,
+    ...fields,
+  };
+}
+
+// An agents() entry for the agent at `address` with a pane, reporting
+// `status`, with `fields` overriding the defaults.
+function agent(address, status, fields = {}) {
+  return {
+    address,
+    pane: `p-${address}`,
+    space: "s1",
+    space_name: "one",
+    tab: "t1",
+    tab_index: 1,
+    tab_name: "1",
+    status,
+    app: "claude-code",
+    program: {
+      name: "Claude Code",
+      key: "claude",
+    },
+    title: "",
+    seq: 0,
+    pinned: false,
+    focused: false,
+    ...fields,
+  };
+}
+
+// A panes() entry showing terminal `address` in tab `tab`; a null `address`
+// gives a pane without a terminal, as a mod pane has.
+function pane(address, tab) {
+  return {
+    pane: `p-${address}`,
+    terminal: address,
+    tab,
+    title: "",
+    cwd: null,
+    branch: null,
+    status: null,
+    app: null,
+    focused: false,
+    zoomed: false,
+    movable: false,
+  };
+}
+
+// A spaces() entry `id` named `name` holding tabs with ids `tabIds`.
+function space(id, name, tabIds, machine = null) {
+  return {
+    id,
+    index: 1,
+    name,
+    named: true,
+    folder: "",
+    machine,
+    branch: null,
+    active: false,
+    status: null,
+    tabs: tabIds.map((tabId, i) => ({
+      id: tabId,
+      index: i + 1,
+      name: `tab ${tabId}`,
+      named: true,
+      active: i === 0,
+      status: null,
+      panes: 1,
+      zoomed: false,
+      settled: false,
+      settled_at: null,
+      changed_at: null,
+      working_since: null,
+    })),
+  };
+}
+
+test("machineOf: the part before the first slash, else null", () => {
+  assert.equal(machineOf("box/w1:t1"), "box");
+  assert.equal(machineOf("w1:t1"), null);
+});
+
+// A plain fish shell's terminals() entry at `address` in folder `cwd`.
+const fish = (address, cwd, fields = {}) =>
+  terminal(address, null, {
+    program: {
+      name: "fish",
+      key: "shell",
+    },
+    cwd,
+    ...fields,
+  });
+
+test("agentDoing says a blocked agent's kind, else the activity, else the status word", () => {
+  const doing = (fields) =>
+    agentDoing({
+      status: "working",
+      reportKind: null,
+      activity: null,
+      ...fields,
+    });
+
+  assert.deepEqual(
+    doing({
+      status: "blocked",
+      reportKind: "permission",
+      activity: "Reading the docs",
+    }),
+    {
+      kind: "blocked",
+      text: "permission",
+    },
+  );
+  assert.deepEqual(
+    doing({
+      status: "blocked",
+      activity: "Reading the docs",
+    }),
+    {
+      kind: "activity",
+      text: "Reading the docs",
+    },
+  );
+  for (const status of ["working", "idle", "done"])
+    assert.deepEqual(
+      doing({
+        status,
+        reportKind: "question",
+        activity: "Reading the docs",
+      }),
+      {
+        kind: "activity",
+        text: "Reading the docs",
+      },
+      status,
+    );
+  for (const status of ["working", "blocked", "idle", "done"])
+    assert.deepEqual(
+      doing({ status }),
+      {
+        kind: "status",
+        text: status,
+      },
+      status,
+    );
+});
+
+// The row model of the live terminal at `address` in `w`'s tree, with
+// /home/me as this computer's home.
+const rowModelOf = (w, address) => {
+  const tree = buildTree(w);
+  const nodes = [
+    ...tree.machines
+      .flatMap((m) => m.spaces)
+      .flatMap((s) => [...walkTree(spaceTerminals(s))]),
+    ...tree.machines.flatMap((m) => [...walkTree(m.elsewhere)]),
+  ].map((step) => step.node);
+  return terminalRowModel(
+    nodes.find((n) => n.terminal.address === address),
+    "/home/me",
+  );
+};
+
+test("terminalRowModel: an agent's label, program name, title, status, folder and detail; a plain terminal's label, title and folder", () => {
+  const w = treeInput({
+    terminals: [
+      terminal("asking", "blocked", {
+        name: "fixer",
+        cwd: "/home/me/dots",
+        report: {
+          state: "blocked",
+          msg: "Reading the docs",
+          kind: "permission",
+        },
+        turn: 2,
+      }),
+      terminal("reading", "working", {
+        cwd: "/home/me/dots",
+        foreground: {
+          pid: 12,
+          name: "claude",
+          argv: ["claude"],
+          cwd: "/home/me/dots/src",
+        },
+        report: {
+          state: "working",
+          msg: "✳ Reading the docs",
+          kind: "question",
+        },
+        turn: 3,
+      }),
+      // Paneless, so no agents() entry: no activity, though it has turns.
+      terminal("kid", "working", {
+        parent: "reading",
+        report: {
+          state: "working",
+          msg: "Reading",
+        },
+        turn: 1,
+      }),
+      terminal("resting", "idle", {
+        cwd: "/home/me/r",
+        turn: 4,
+      }),
+      terminal("finished", "done", {
+        cwd: "/home/me/f",
+        turn: 5,
+      }),
+      fish("named", "/home/me/x", { name: "server" }),
+      fish("unnamed", "/home/me/y"),
+      fish("self-named", "/home/me/z", { name: " Fish " }),
+      terminal("nameless", null, { cwd: "/home/me/w" }),
+    ],
+    agents: [
+      agent("asking", "blocked"),
+      agent("reading", "working"),
+      agent("resting", "idle"),
+      agent("finished", "done"),
+    ],
+    panes: [
+      pane("asking", "t1"),
+      pane("reading", "t1"),
+      pane("resting", "t1"),
+      pane("finished", "t1"),
+      pane("named", "t1"),
+      pane("unnamed", "t1"),
+      pane("self-named", "t1"),
+      pane("nameless", "t1"),
+    ],
+    spaces: [space("s1", "dots", ["t1"])],
+  });
+
+  assert.deepEqual(rowModelOf(w, "asking"), {
+    address: "asking",
+    label: "claude  fixer",
+    program: {
+      name: "Claude Code",
+      key: "claude",
+    },
+    programName: "claude",
+    title: "fixer",
+    status: "blocked",
+    folder: "~/dots",
+    detail: {
+      kind: "blocked",
+      text: "permission",
+    },
+  });
+
+  // The folder is the terminal's current one, its foreground's, not the
+  // one it started in.
+  const reading = rowModelOf(w, "reading");
+  assert.equal(reading.status, "working");
+  assert.equal(reading.folder, "~/dots/src");
+  assert.deepEqual(reading.detail, {
+    kind: "activity",
+    text: "Reading the docs",
+  });
+
+  // A turn count never fills in for what an agent is doing.
+  const kid = rowModelOf(w, "kid");
+  assert.deepEqual(kid.detail, {
+    kind: "status",
+    text: "working",
+  });
+  assert.equal(kid.folder, null);
+  assert.deepEqual(rowModelOf(w, "resting").detail, {
+    kind: "status",
+    text: "idle",
+  });
+  assert.deepEqual(rowModelOf(w, "finished").detail, {
+    kind: "status",
+    text: "done",
+  });
+
+  assert.deepEqual(rowModelOf(w, "named"), {
+    address: "named",
+    label: "fish  server",
+    program: {
+      name: "fish",
+      key: "shell",
+    },
+    programName: "fish",
+    title: "server",
+    status: null,
+    folder: "~/x",
+    detail: null,
+  });
+  const unnamed = rowModelOf(w, "unnamed");
+  assert.equal(unnamed.label, "fish  ~/y");
+  assert.equal(unnamed.programName, "fish");
+  assert.equal(unnamed.title, null);
+  assert.equal(unnamed.folder, "~/y");
+  assert.equal(unnamed.detail, null);
+
+  // A name that only names the program leaves no title.
+  const selfNamed = rowModelOf(w, "self-named");
+  assert.equal(selfNamed.label, "fish");
+  assert.equal(selfNamed.title, null);
+  assert.equal(selfNamed.folder, "~/z");
+
+  // Without a program, the address titles an unnamed terminal.
+  const nameless = rowModelOf(w, "nameless");
+  assert.equal(nameless.label, "nameless  ~/w");
+  assert.equal(nameless.programName, null);
+  assert.equal(nameless.title, "nameless");
+});
+
+test("folderOf: the foreground's folder, else the one it started in, ~ at home on this computer only", () => {
+  const foreground = (cwd) => ({
+    pid: 7,
+    name: "make",
+    argv: ["make", "dev"],
+    cwd,
+  });
+
+  assert.equal(
+    folderOf(
+      fish("t1", "/home/me/a", { foreground: foreground("/home/me/b") }),
+      "/home/me",
+    ),
+    "~/b",
+  );
+  // A foreground without a folder falls back to the start folder.
+  assert.equal(
+    folderOf(
+      fish("t1", "/home/me/a", { foreground: foreground(null) }),
+      "/home/me",
+    ),
+    "~/a",
+  );
+  assert.equal(
+    folderOf(
+      fish("t1", "/home/me/a", { foreground: foreground("") }),
+      "/home/me",
+    ),
+    "~/a",
+  );
+  assert.equal(
+    folderOf(fish("t1", "/home/me/a", { foreground: null }), "/home/me"),
+    "~/a",
+  );
+  assert.equal(
+    folderOf(fish("t1", null, { foreground: foreground(null) }), "/home/me"),
+    null,
+  );
+  // Another machine's folder keeps its home unabbreviated.
+  assert.equal(
+    folderOf(
+      fish("box/t1", "/home/me/a", { foreground: foreground("/home/me/b") }),
+      "/home/me",
+    ),
+    "/home/me/b",
+  );
+});
+
+// A TreeWorld with `fields` overriding the empty defaults.
+function treeInput(fields) {
+  return {
+    terminals: [],
+    agents: [],
+    panes: [],
+    spaces: [],
+    machines: [],
+    finished: [],
+    ...fields,
+  };
+}
+
+// A FinishedTerminal at `address` started by `parent`, having exited 0 at
+// `finishedMs`, with `fields` overriding the defaults.
+function finishedTerminal(address, parent, finishedMs, fields = {}) {
+  return {
+    address,
+    parent,
+    name: null,
+    command: "make",
+    cwd: "/home/me/src",
+    exitCode: 0,
+    signal: null,
+    reason: "exited",
+    finishedMs,
+    ...fields,
+  };
+}
+
+// `nodes` and their children, depth first, as addresses indented two spaces
+// per level.
+const outline = (nodes, depth = 0) =>
+  nodes.flatMap((n) => [
+    `${"  ".repeat(depth)}${n.terminal.address}`,
+    ...outline(n.children, depth + 1),
+  ]);
+
+// The space `id` in `tree`.
+const treeSpace = (tree, id) =>
+  tree.machines.flatMap((m) => m.spaces).find((s) => s.space.id === id);
+
+// The elsewhere terminals of machine `name` (null for this computer) in
+// `tree`.
+const elsewhereOf = (tree, name) =>
+  tree.machines.find((m) => m.name === name).elsewhere;
+
+// The outline of each tab of space `id` in `tree`, by tab id.
+const tabOutlines = (tree, id) =>
+  Object.fromEntries(
+    treeSpace(tree, id).tabs.map((t) => [t.tab.id, outline(t.terminals)]),
+  );
+
+test("buildTree lists this computer first, then machines by name, skipping temporary ones", () => {
+  const tree = buildTree(
+    treeInput({
+      spaces: [
+        space("lab/s2", "lab two", ["lt1"], "lab"),
+        space("s1", "one", ["t1"]),
+        space("zed/s3", "zed three", ["zt1"], "zed"),
+        space("lab/s4", "lab four", ["lt2"], "lab"),
+      ],
+      machines: [
+        {
+          name: "zed",
+          state: "connected",
+          since_ms: null,
+        },
+        {
+          name: "box",
+          state: "unreachable",
+          since_ms: 5000,
+        },
+        {
+          name: "tmp",
+          state: "connected",
+          temporary: true,
+        },
+      ],
+    }),
+  );
+  assert.deepEqual(
+    tree.machines.map((m) => [
+      m.name,
+      m.state,
+      m.sinceMs,
+      m.spaces.map((s) => s.space.id),
+    ]),
+    [
+      [null, null, null, ["s1"]],
+      ["box", "unreachable", 5000, []],
+      // A machine only a space names has no state.
+      ["lab", null, null, ["lab/s2", "lab/s4"]],
+      ["zed", "connected", null, ["zed/s3"]],
+    ],
+  );
+});
+
+test("buildTree lists every tab in order and each terminal once, by its first pane", () => {
+  const s1 = space("s1", "one", ["t1", "t2", "t3"]);
+  s1.tabs[1].settled = true;
+  const tree = buildTree(
+    treeInput({
+      terminals: [terminal("b", null), terminal("c", "idle")],
+      agents: [agent("c", "idle")],
+      panes: [
+        pane("c", "t1"),
+        pane(null, "t1"),
+        pane("b", "t1"),
+        pane("b", "t3"),
+      ],
+      spaces: [s1],
+    }),
+  );
+  assert.deepEqual(tabOutlines(tree, "s1"), {
+    t1: ["c", "b"],
+    t2: [],
+    t3: [],
+  });
+  assert.deepEqual(treeSpace(tree, "s1").loose, []);
+  assert.deepEqual(
+    tree.machines.map((m) => m.elsewhere),
+    [[]],
+  );
+});
+
+test("buildTree fills each terminal's agent entry, first pane, status and machine", () => {
+  const p1 = pane("a", "t1");
+  const tree = buildTree(
+    treeInput({
+      terminals: [
+        terminal("a", "working"),
+        terminal("k", "error", { parent: "a" }),
+        terminal("d", "done", { parent: "a" }),
+        terminal("sh", null, { parent: "a" }),
+        terminal("box/r", "idle"),
+      ],
+      agents: [agent("a", "blocked")],
+      panes: [p1, pane("sh", "t1")],
+      spaces: [space("s1", "one", ["t1"])],
+    }),
+  );
+  const [a] = treeSpace(tree, "s1").tabs[0].terminals;
+  assert.equal(a.info.address, "a");
+  assert.equal(a.pane, p1);
+  // The agents() status wins over the terminals() word.
+  assert.equal(a.status, "blocked");
+  assert.equal(a.machine, null);
+  assert.deepEqual(a.finished, []);
+  assert.deepEqual(
+    a.children.map((c) => [c.terminal.address, c.status, c.info, c.finished]),
+    [
+      // A paneless sub-agent's error counts as blocked, its done as idle.
+      ["k", "blocked", null, []],
+      ["d", "idle", null, []],
+      // A terminal reporting no status has none.
+      ["sh", null, null, []],
+    ],
+  );
+  const [r] = elsewhereOf(tree, "box");
+  assert.equal(r.machine, "box");
+  assert.equal(r.pane, null);
+});
+
+test("buildTree nests a terminal under its parent in the same space, even in another tab", () => {
+  const tree = buildTree(
+    treeInput({
+      terminals: [
+        terminal("a", "idle"),
+        terminal("k2", "working", { parent: "a" }),
+        terminal("k1", "idle", { parent: "a" }),
+        terminal("g", "idle", { parent: "k1" }),
+      ],
+      panes: [
+        pane("a", "t1"),
+        pane("k1", "t2"),
+        pane("k2", "t2"),
+        pane("g", "t2"),
+      ],
+      spaces: [space("s1", "one", ["t1", "t2"])],
+    }),
+  );
+  assert.deepEqual(tabOutlines(tree, "s1"), {
+    // Children keep terminals() order, not panes() order.
+    t1: ["a", "  k2", "  k1", "    g"],
+    t2: [],
+  });
+});
+
+test("buildTree leaves a terminal whose parent is in another space at the top of its own", () => {
+  const tree = buildTree(
+    treeInput({
+      terminals: [
+        terminal("a", "idle"),
+        terminal("k", "idle", { parent: "a" }),
+      ],
+      panes: [pane("a", "t1"), pane("k", "t2")],
+      spaces: [space("s1", "one", ["t1"]), space("s2", "two", ["t2"])],
+    }),
+  );
+  assert.deepEqual(tabOutlines(tree, "s1"), { t1: ["a"] });
+  assert.deepEqual(tabOutlines(tree, "s2"), { t2: ["k"] });
+});
+
+test("buildTree qualifies a remote child's bare parent with the child's machine", () => {
+  const tree = buildTree(
+    treeInput({
+      terminals: [
+        terminal("a1", "idle"),
+        terminal("box/a1", "idle"),
+        terminal("box/k1", "idle", { parent: "a1" }),
+      ],
+      panes: [pane("a1", "t1"), pane("box/a1", "bt1")],
+      spaces: [
+        space("s1", "one", ["t1"]),
+        space("box/s1", "box one", ["bt1"], "box"),
+      ],
+    }),
+  );
+  assert.deepEqual(tabOutlines(tree, "s1"), { t1: ["a1"] });
+  assert.deepEqual(tabOutlines(tree, "box/s1"), {
+    bt1: ["box/a1", "  box/k1"],
+  });
+});
+
+test("buildTree puts the first terminal of a parent cycle at the top level", () => {
+  const tree = buildTree(
+    treeInput({
+      terminals: [
+        terminal("x", "idle", { parent: "y" }),
+        terminal("y", "idle", { parent: "x" }),
+        terminal("z", "idle", { parent: "z" }),
+      ],
+      panes: [pane("y", "t1"), pane("z", "t1"), pane("x", "t1")],
+      spaces: [space("s1", "one", ["t1"])],
+    }),
+  );
+  assert.deepEqual(tabOutlines(tree, "s1"), { t1: ["z", "x", "  y"] });
+});
+
+test("buildTree finishes a parent chain longer than the ancestor walk", () => {
+  const chain = Array.from({ length: 40 }, (_, i) =>
+    terminal(`c${i}`, "idle", { parent: i === 0 ? null : `c${i - 1}` }),
+  );
+  const tree = buildTree(
+    treeInput({
+      terminals: chain,
+      panes: [pane("c0", "t1")],
+      spaces: [space("s1", "one", ["t1"])],
+    }),
+  );
+  // The walk up from c33 and below stops 32 steps short of c0's pane, so
+  // they belong to no space and start their own chain under elsewhere.
+  const inSpace = outline(treeSpace(tree, "s1").tabs[0].terminals);
+  assert.equal(inSpace.length, 33);
+  assert.equal(inSpace[32], `${"  ".repeat(32)}c32`);
+  const elsewhere = outline(elsewhereOf(tree, null));
+  assert.deepEqual(elsewhere[0], "c33");
+  assert.equal(elsewhere.at(-1), `${"  ".repeat(6)}c39`);
+});
+
+test("buildTree puts a paneless terminal its label or an ancestor's places in loose", () => {
+  const tree = buildTree(
+    treeInput({
+      terminals: [
+        terminal("bg", null, { labels: { "herdr.space": "s1" } }),
+        terminal("box/bg", null, { labels: { "herdr.space": "s2" } }),
+        terminal("p", "done", {
+          state: "exited",
+          labels: { "herdr.space": "s1" },
+        }),
+        terminal("k", "idle", { parent: "p" }),
+        terminal("a", "idle", { labels: { "herdr.space": "s1" } }),
+        terminal("ka", "idle", { parent: "a" }),
+      ],
+      spaces: [
+        space("s1", "one", ["t1"]),
+        space("box/s2", "box two", ["bt1"], "box"),
+      ],
+    }),
+  );
+  assert.deepEqual(outline(treeSpace(tree, "s1").loose), [
+    "bg",
+    // An ended parent's label places k, but k cannot nest under it.
+    "k",
+    "a",
+    "  ka",
+  ]);
+  assert.deepEqual(outline(treeSpace(tree, "box/s2").loose), ["box/bg"]);
+  assert.deepEqual(tabOutlines(tree, "s1"), { t1: [] });
+});
+
+test("buildTree lists live terminals no space holds under their machine's elsewhere and drops ended ones", () => {
+  const tree = buildTree(
+    treeInput({
+      terminals: [
+        terminal("e", "idle"),
+        terminal("box/e", "idle"),
+        terminal("gone", "idle", { state: "exited" }),
+        terminal("ek", "idle", { parent: "e" }),
+        terminal("box/ek", "idle", { parent: "e" }),
+        terminal("orphan", null, { labels: { "herdr.space": "nope" } }),
+        terminal("zed/e", "idle"),
+        terminal("shown-gone", null, { state: "exited" }),
+      ],
+      panes: [pane("shown-gone", "t1")],
+      spaces: [space("s1", "one", ["t1"])],
+      machines: [
+        {
+          name: "zed",
+          state: "connected",
+        },
+      ],
+    }),
+  );
+  assert.deepEqual(
+    tree.machines.map((m) => [m.name, m.state, outline(m.elsewhere)]),
+    [
+      [null, null, ["e", "  ek", "orphan"]],
+      // A machine only an elsewhere terminal names gets an entry with no
+      // state, in name order.
+      ["box", null, ["box/e", "  box/ek"]],
+      ["zed", "connected", ["zed/e"]],
+    ],
+  );
+  assert.deepEqual(tabOutlines(tree, "s1"), { t1: [] });
+});
+
+test("spaceTerminals lists each tab's terminals in tab order, then the loose ones", () => {
+  const tree = buildTree(
+    treeInput({
+      terminals: [
+        terminal("bg", null, { labels: { "herdr.space": "s1" } }),
+        terminal("b", "idle"),
+        terminal("a", "idle"),
+        terminal("k", "idle", { parent: "a" }),
+      ],
+      panes: [pane("b", "t2"), pane("a", "t1")],
+      spaces: [space("s1", "one", ["t1", "t2"])],
+    }),
+  );
+  assert.deepEqual(
+    spaceTerminals(treeSpace(tree, "s1")).map((n) => n.terminal.address),
+    ["a", "b", "bg"],
+  );
+});
+
+// The one tab of space s1, settled when `settled`, in a tree where it holds
+// idle agent "a" with agent "k", reporting `kidStatus`, nested under it.
+function settledTab(settled, kidStatus) {
+  const s1 = space("s1", "one", ["t1"]);
+  s1.tabs[0].settled = settled;
+  const tree = buildTree(
+    treeInput({
+      terminals: [
+        terminal("a", "idle"),
+        terminal("k", kidStatus, { parent: "a" }),
+      ],
+      agents: [agent("a", "idle"), agent("k", kidStatus)],
+      panes: [pane("a", "t1"), pane("k", "t1")],
+      spaces: [s1],
+    }),
+  );
+  return treeSpace(tree, "s1").tabs[0];
+}
+
+test("tabFolded folds a settled tab whose terminals are all quiet", () => {
+  assert.equal(tabFolded(settledTab(true, "idle")), true);
+  assert.equal(tabFolded(settledTab(true, "working")), true);
+});
+
+test("tabFolded unfolds a settled tab with a blocked or done terminal at any depth", () => {
+  assert.equal(tabFolded(settledTab(true, "blocked")), false);
+  assert.equal(tabFolded(settledTab(true, "done")), false);
+});
+
+test("tabFolded never folds a tab that is not settled", () => {
+  assert.equal(tabFolded(settledTab(false, "idle")), false);
+});
+
+test("rowStatus shows a done agent nested under an agent as idle, else its own status", () => {
+  const tree = buildTree(
+    treeInput({
+      terminals: [
+        terminal("a", "idle"),
+        terminal("k", "done", { parent: "a" }),
+        terminal("kw", "working", { parent: "a" }),
+        terminal("sh", null),
+        terminal("d", "done", { parent: "sh" }),
+      ],
+      agents: [
+        agent("a", "idle"),
+        agent("k", "done"),
+        agent("kw", "working"),
+        agent("d", "done"),
+      ],
+      panes: [
+        pane("a", "t1"),
+        pane("k", "t1"),
+        pane("kw", "t1"),
+        pane("sh", "t1"),
+        pane("d", "t1"),
+      ],
+      spaces: [space("s1", "one", ["t1"])],
+    }),
+  );
+  const [a, sh] = treeSpace(tree, "s1").tabs[0].terminals;
+  const [k, kw] = a.children;
+  const [d] = sh.children;
+  assert.equal(rowStatus(a, null), "idle");
+  assert.equal(rowStatus(k, a), "idle");
+  assert.equal(rowStatus(kw, a), "working");
+  // A plain shell reports no status, so its done sub-agent stays done.
+  assert.equal(rowStatus(sh, null), null);
+  assert.equal(rowStatus(d, sh), "done");
+  // At the top level a done agent stays done.
+  assert.equal(rowStatus(k, null), "done");
+});
+
+test("walkTree walks depth first with each row's depth", () => {
+  const tree = buildTree(
+    treeInput({
+      terminals: [
+        terminal("a", "idle"),
+        terminal("k1", "idle", { parent: "a" }),
+        terminal("g1", "idle", { parent: "k1" }),
+        terminal("g2", "idle", { parent: "k1" }),
+        terminal("k2", "idle", { parent: "a" }),
+        terminal("g3", "idle", { parent: "k2" }),
+        terminal("b", "idle"),
+      ],
+      panes: [pane("a", "t1"), pane("b", "t1")],
+      spaces: [space("s1", "one", ["t1"])],
+    }),
+  );
+  assert.deepEqual(
+    [...walkTree(spaceTerminals(treeSpace(tree, "s1")))].map(
+      ({ node, depth }) => [node.terminal.address, depth],
+    ),
+    [
+      ["a", 0],
+      ["k1", 1],
+      ["g1", 2],
+      ["g2", 2],
+      ["k2", 1],
+      ["g3", 2],
+      ["b", 0],
+    ],
+  );
+  assert.deepEqual([...walkTree([])], []);
+});
+
+// A checkout of repo `repo` named "dotfiles", linked unless `main`, with
+// root folder `top`.
+function spaceCheckout(repo, top, main = false) {
+  return {
+    name: "dotfiles",
+    top,
+    repo,
+    linked: !main,
+  };
+}
+
+// The space names of `spaceOrder(spaces, checkouts[name])`, each after its
+// branch mark when it has one.
+function orderedNames(names, checkouts) {
+  return spaceOrder(names, (n) => checkouts[n] ?? null).map(
+    ({ space, tree }) => (tree ? `${tree} ${space}` : space),
+  );
+}
+
+test("spaceOrder moves linked spaces under their repo's first main space, the last marked └─", () => {
+  assert.deepEqual(
+    orderedNames(["ws1", "plain", "main", "ws2", "main2"], {
+      ws1: spaceCheckout("r", "/d/ws1"),
+      main: spaceCheckout("r", "/d", true),
+      ws2: spaceCheckout("r", "/d/ws2"),
+      main2: spaceCheckout("r", "/d", true),
+    }),
+    ["plain", "main", "├─ ws1", "└─ ws2", "main2"],
+  );
+});
+
+test("spaceOrder keeps a linked space whose main checkout has no space in place", () => {
+  assert.deepEqual(
+    orderedNames(["a", "ws", "b"], {
+      ws: spaceCheckout("r", "/d/ws"),
+      b: spaceCheckout("other", "/o", true),
+    }),
+    ["a", "ws", "b"],
+  );
+  assert.deepEqual(orderedNames([], {}), []);
+});
+
+test("spaceOrder hands back each space's checkout", () => {
+  const ws = spaceCheckout("r", "/d/ws");
+  const main = spaceCheckout("r", "/d", true);
+  assert.deepEqual(
+    spaceOrder(["ws", "main"], (n) => ({ ws, main })[n]),
+    [
+      { space: "main", checkout: main, tree: null },
+      { space: "ws", checkout: ws, tree: "└─" },
+    ],
+  );
+});
+
+test("checkoutText: repo / checkout folder, the repo alone when they match, ~ at home", () => {
+  const here = { folder: "/h/x", machine: null };
+  assert.equal(
+    checkoutText(here, spaceCheckout("r", "/d/ws3"), "/h"),
+    "dotfiles / ws3",
+  );
+  assert.equal(
+    checkoutText(here, spaceCheckout("r", "/src/DotFiles/", true), "/h"),
+    "dotfiles",
+  );
+  assert.equal(checkoutText(here, null, "/h"), "x");
+  assert.equal(checkoutText({ folder: "/h", machine: null }, null, "/h"), "~");
+  assert.equal(checkoutText({ folder: "", machine: "box" }, null, "/h"), "~");
+  // Another machine's folder that equals this computer's home is named.
+  assert.equal(checkoutText({ folder: "/h", machine: "box" }, null, "/h"), "h");
+  assert.equal(checkoutText({ folder: "/", machine: null }, null, "/h"), null);
+});
+
+test("buildTree hangs finished terminals under their live parent, oldest first", () => {
+  const tree = buildTree(
+    treeInput({
+      terminals: [
+        terminal("a", "idle"),
+        terminal("k", "idle", { parent: "a" }),
+        terminal("gone", null, { state: "finished" }),
+      ],
+      panes: [pane("a", "t1")],
+      spaces: [space("s1", "one", ["t1"])],
+      finished: [
+        finishedTerminal("f2", "a", 20),
+        finishedTerminal("f1", "a", 10),
+        finishedTerminal("fk", "k", 5),
+        // Its parent has finished too, so it hangs nowhere.
+        finishedTerminal("orphan", "gone", 1),
+        finishedTerminal("unknown", "nobody", 2),
+        finishedTerminal("top", null, 3),
+      ],
+    }),
+  );
+  const [a] = treeSpace(tree, "s1").tabs[0].terminals;
+  assert.deepEqual(
+    a.finished.map((f) => f.address),
+    ["f1", "f2"],
+  );
+  assert.deepEqual(
+    a.children[0].finished.map((f) => f.address),
+    ["fk"],
+  );
+  assert.deepEqual(
+    [...walkTree(spaceTerminals(treeSpace(tree, "s1")))].map((step) =>
+      step.kind === "finished"
+        ? step.finished.address
+        : step.node.terminal.address,
+    ),
+    ["a", "k", "fk", "f1", "f2"],
+  );
+});
+
+test("buildTree hangs a remote finished terminal under its remote parent", () => {
+  const tree = buildTree(
+    treeInput({
+      terminals: [terminal("box/t1", "idle"), terminal("t1", "idle")],
+      finished: [finishedTerminal("box/t9", "box/t1", 1)],
+    }),
+  );
+  assert.deepEqual(
+    elsewhereOf(tree, "box")[0].finished.map((f) => f.address),
+    ["box/t9"],
+  );
+  assert.deepEqual(elsewhereOf(tree, null)[0].finished, []);
+});
+
+test("walkTree puts finished terminals after their parent's children", () => {
+  const tree = buildTree(
+    treeInput({
+      terminals: [
+        terminal("a", "idle"),
+        terminal("k", "idle", { parent: "a" }),
+        terminal("b", "idle"),
+      ],
+      panes: [pane("a", "t1"), pane("b", "t1")],
+      spaces: [space("s1", "one", ["t1"])],
+      finished: [
+        finishedTerminal("g", "k", 1),
+        finishedTerminal("f1", "a", 2),
+        finishedTerminal("f2", "a", 3),
+      ],
+    }),
+  );
+  const steps = [...walkTree(spaceTerminals(treeSpace(tree, "s1")))];
+  assert.deepEqual(
+    steps.map((step) =>
+      step.kind === "finished"
+        ? [
+            "finished",
+            step.finished.address,
+            step.parent.terminal.address,
+            step.depth,
+          ]
+        : ["terminal", step.node.terminal.address, step.depth],
+    ),
+    [
+      ["terminal", "a", 0],
+      ["terminal", "k", 1],
+      ["finished", "g", "k", 2],
+      ["finished", "f1", "a", 1],
+      ["finished", "f2", "a", 1],
+      ["terminal", "b", 0],
+    ],
+  );
+});
+
+test("tabFolded unfolds a settled tab with a failed finished terminal at any depth", () => {
+  // A settled tab whose idle agent "a" holds idle agent "k", which started
+  // finished terminal "f" with `fields`.
+  const tabWith = (fields) => {
+    const s1 = space("s1", "one", ["t1"]);
+    s1.tabs[0].settled = true;
+    const tree = buildTree(
+      treeInput({
+        terminals: [
+          terminal("a", "idle"),
+          terminal("k", "idle", { parent: "a" }),
+        ],
+        agents: [agent("a", "idle"), agent("k", "idle")],
+        panes: [pane("a", "t1")],
+        spaces: [s1],
+        finished: [finishedTerminal("f", "k", 1, fields)],
+      }),
+    );
+    return treeSpace(tree, "s1").tabs[0];
+  };
+  assert.equal(tabFolded(tabWith({ exitCode: 0 })), true);
+  assert.equal(tabFolded(tabWith({ exitCode: 2 })), false);
+  assert.equal(
+    tabFolded(tabWith({ exitCode: null, reason: "killed", signal: 9 })),
+    false,
+  );
+});
+
+test("finishedOutcome says how a finished terminal ended and whether it failed", () => {
+  const outcome = (fields) =>
+    finishedOutcome(finishedTerminal("f", null, 1, fields));
+  assert.deepEqual(outcome({}), { failed: false, text: "exit 0" });
+  assert.deepEqual(outcome({ exitCode: 2 }), { failed: true, text: "exit 2" });
+  assert.deepEqual(
+    outcome({ exitCode: null, signal: 15, reason: "signaled" }),
+    { failed: true, text: "signal 15" },
+  );
+  // A kill says so rather than naming its signal.
+  assert.deepEqual(outcome({ exitCode: null, signal: 9, reason: "killed" }), {
+    failed: true,
+    text: "killed",
+  });
+  for (const reason of [
+    "holder_lost",
+    "stopped_by_restart",
+    "server_stop",
+    "host_shutdown",
+  ])
+    assert.deepEqual(
+      outcome({ exitCode: null, reason }),
+      { failed: true, text: "lost" },
+      reason,
+    );
+  assert.deepEqual(outcome({ exitCode: null, reason: null }), {
+    failed: true,
+    text: "ended",
+  });
+});
+
+test("finishedLabel is the name, else the command, else the address", () => {
+  assert.equal(
+    finishedLabel(finishedTerminal("t9", null, 1, { name: "build" })),
+    "build",
+  );
+  assert.equal(finishedLabel(finishedTerminal("t9", null, 1)), "make");
+  assert.equal(
+    finishedLabel(finishedTerminal("t9", null, 1, { command: null })),
+    "t9",
+  );
+});
+
+test("finishedAddresses lists the finished terminals of hc ls --all --json", () => {
+  const stdout = JSON.stringify({
+    hidden_finished: 0,
+    terminals: [
+      {
+        address: "t1k",
+        agent: "fish",
+        cwd: "/home/me",
+        state: "live",
+        turn: 0,
+        where: "dotfiles / 1",
+      },
+      {
+        address: "t3a",
+        agent: "make",
+        cwd: "/home/me/src",
+        name: "build",
+        state: "finished",
+        turn: 0,
+      },
+      {
+        address: "t3b",
+        agent: "sleep",
+        cwd: "/home/me",
+        state: "finished",
+        turn: 0,
+      },
+    ],
+  });
+  assert.deepEqual(finishedAddresses(stdout), ["t3a", "t3b"]);
+  assert.deepEqual(
+    finishedAddresses(JSON.stringify({ hidden_finished: 0, terminals: [] })),
+    [],
+  );
+  for (const junk of ["", "not json", "[]", "null", '{"terminals":3}'])
+    assert.equal(finishedAddresses(junk), null, junk);
+});
+
+// The `hc get <address> --json` output of a finished `make` that exited
+// with `fields` overriding the defaults.
+function getOutput(fields = {}) {
+  return JSON.stringify({
+    address: "t3a",
+    argv: ["/usr/bin/make", "-j4"],
+    cols: 80,
+    created_ms: 1794195337640,
+    cwd: "/home/me/src",
+    die_with_parent: false,
+    exit_code: 2,
+    finished_ms: 1794195399000,
+    foreground: null,
+    identity: "ghostty",
+    keep: false,
+    labels: {},
+    name: null,
+    notify: true,
+    parent: "t29",
+    pid: null,
+    reason: "exited",
+    reported: false,
+    rm: false,
+    rows: 24,
+    screen: "exact",
+    signal: null,
+    state: "finished",
+    status: null,
+    status_ms: null,
+    template: null,
+    title: "",
+    turn: 0,
+    ...fields,
+  });
+}
+
+test("finishedTerminalOf reads a finished terminal from hc get --json", () => {
+  assert.deepEqual(finishedTerminalOf("t3a", getOutput()), {
+    address: "t3a",
+    parent: "t29",
+    name: null,
+    command: "make",
+    cwd: "/home/me/src",
+    exitCode: 2,
+    signal: null,
+    reason: "exited",
+    finishedMs: 1794195399000,
+  });
+  // A remote terminal's bare parent is on its machine.
+  const remote = finishedTerminalOf(
+    "box/t3a",
+    getOutput({ name: "build", exit_code: null, signal: 9, reason: "killed" }),
+  );
+  assert.equal(remote.address, "box/t3a");
+  assert.equal(remote.parent, "box/t29");
+  assert.equal(remote.name, "build");
+  assert.equal(remote.signal, 9);
+  assert.equal(remote.exitCode, null);
+  assert.equal(
+    finishedTerminalOf("t3a", getOutput({ parent: null, argv: [] })).parent,
+    null,
+  );
+  assert.equal(
+    finishedTerminalOf("t3a", getOutput({ argv: [] })).command,
+    null,
+  );
+  assert.equal(
+    finishedTerminalOf("t3a", getOutput({ state: "live", exit_code: null })),
+    null,
+  );
+  for (const junk of ["", "not json", "[]", "null"])
+    assert.equal(finishedTerminalOf("t3a", junk), null, junk);
+});
+
+test("hoverFill mixes the backdrop halfway toward the theme's hover color", () => {
+  assert.equal(hoverFill({ hover: "#ffffff" }, "#000000"), "#808080ff");
+  assert.equal(hoverFill({ hover: "#204060" }, "#fff"), "#90a0b0ff");
+});
+
+test("hoverFill falls back to the hover color when either color isn't hex", () => {
+  assert.equal(hoverFill({ hover: "#ffffff" }, "transparent"), "#ffffff");
+  assert.equal(hoverFill({ hover: "rgb(1, 2, 3)" }, "#000000"), "rgb(1, 2, 3)");
+});
+
+test("hoverFill mixes a #rrggbbaa color's alpha like its other channels", () => {
+  assert.equal(hoverFill({ hover: "#ffffff00" }, "#00000080"), "#80808040");
+});

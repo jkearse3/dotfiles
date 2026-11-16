@@ -1,17 +1,19 @@
 // What the desk-spaces sidebar draws in its rows: the space colors, a space's
-// rail entry and checkout lines, agent and sub-agent rows with their status
-// marks, and the "Needs you" tray. Plain functions; the view (`main.ts`)
+// rail entry and checkout lines, and the "Needs you" tray. The terminal rows
+// themselves are `tree-rows.ts` `terminalRow`'s. Plain functions; the view (`main.ts`)
 // passes in what each needs from its state.
 
-import { div, image, svg } from "gpui-kit";
+import { div } from "gpui-kit";
 import type { Color, Element } from "gpui-kit";
 import { v_flex, h_flex } from "gpui-base";
 import { run, shared, setShared, home } from "herdr";
-import type { AgentInfo, Program, SpaceInfo, Status } from "herdr";
-import { base } from "./checkouts.js";
+import type { AgentInfo, SpaceInfo } from "herdr";
+import { programIcon } from "./program-icon.js";
+import { duration, statusMark } from "./agent-marks.js";
+import { checkoutText } from "./space-order.js";
+import { hoverFill } from "./row-colors.js";
 import type { Checkout, GitCheckout, JjCheckout } from "./checkouts.js";
-import { kidStatus } from "./agents.js";
-import type { AgentSpot, AgentStatus, CrewMember, SubAgent } from "./agents.js";
+import type { AgentStatus } from "./status.js";
 
 // The theme's colors by name. The app's typings type `theme()` as
 // `Record<string, string>`, though every value is a color.
@@ -81,6 +83,9 @@ export const TICK_X = 8;
 // Where a group's rows begin: right of the tick column, so a row's rounded
 // hover and focus fills never run under the tick or rail.
 export const ROW_X = 14;
+// How much further in a nested terminal row starts than its parent's, in px
+// per level of nesting, its fill and focus mark included.
+export const DEPTH_INDENT = 16;
 // Where the focus bar sits: midway between the tick column and the rows'
 // text, which starts at `TEXT_X`.
 const BAR_X = 17;
@@ -90,27 +95,6 @@ export const TEXT_X = 26;
 export const ROW_GAP = 5;
 // The "Needs you" rows' height: three two-line rows and the gaps between.
 const TRAY_H = 3 * 44 + 2 * ROW_GAP;
-
-// A hex color "#rgb", "#rrggbb" or "#rrggbbaa" as [r, g, b, a], or null.
-function channels(hex: string | undefined): number[] | null {
-  const m = /^#([0-9a-f]{3}|[0-9a-f]{6}|[0-9a-f]{8})$/i.exec(hex ?? "");
-  if (!m) return null;
-  const h = m[1].length === 3 ? [...m[1]].map((c) => c + c).join("") : m[1];
-  return [0, 2, 4, 6].map((i) =>
-    i < h.length ? parseInt(h.slice(i, i + 2), 16) : 255,
-  );
-}
-
-// A hovered row's fill: halfway from the sidebar's own color to the focused
-// row's `t.hover`, so a hovered row next to the focused one reads as a lighter
-// touch, not a second selection. `t.hover` itself when either color isn't hex.
-export function hoverFill(t: ThemeColors): Color {
-  const a = channels(t.chrome);
-  const b = channels(t.hover);
-  if (!a || !b) return t.hover;
-  const mix = a.map((v, i) => Math.round((v + b[i]) / 2));
-  return `#${mix.map((v) => v.toString(16).padStart(2, "0")).join("")}`;
-}
 
 // The mark of the one row holding focus: a short rounded accent bar at
 // `BAR_X`. Its row must be `relative()` and begin at `ROW_X`.
@@ -138,7 +122,7 @@ export function compact(
     .justify_center()
     .gap(4)
     .when(w.active, (el) => el.bg(t.raised))
-    .hover((s) => s.bg(hoverFill(t)))
+    .hover((s) => s.bg(hoverFill(t, t.chrome)))
     .on_click(() => run("space.select", { id: w.id }))
     .child(
       div()
@@ -162,28 +146,17 @@ function tone(t: ThemeColors, status: AgentStatus | null): Color {
 }
 
 // The checkout line under every space's name, shown whether or not the
-// space was renamed so rows read alike: the folder its checkout (or, outside
-// a repo, the space's own folder) is named after, after its repo
-// ("dotfiles / ws3", just "dotfiles" when they match); "~" at its machine's
-// home, which an empty folder means. The checkout is that of the space's own
-// folder (`where`), so a shell that cds elsewhere no longer moves it. Null
-// only when there is no folder to name (the filesystem root). The
-// `space-rename-all` mod's rows show the same checkout, read from the same
-// folder (its `checkoutLabel` and `checkout`); change them together.
+// space was renamed so rows read alike: `checkoutText` of space `w` and its
+// checkout `g` ("dotfiles / ws3"), null when that is. The `space-rename-all`
+// mod's rows say the same (its `checkoutLabel` and `checkout`); change them
+// together.
 export function checkoutLine(
   w: SpaceInfo,
   g: Checkout | null,
   t: ThemeColors,
 ): Element | null {
-  const path = g ? g.top : w.folder;
-  const folder = !path || (!w.machine && path === home()) ? "~" : base(path);
-  const same = (a: string, b: string) => a.toLowerCase() === b.toLowerCase();
-  if (!folder) return null;
-  const text = !g
-    ? folder
-    : same(g.name, folder)
-      ? g.name
-      : `${g.name} / ${folder}`;
+  const text = checkoutText(w, g, home());
+  if (!text) return null;
   return div()
     .min_w(0)
     .truncate()
@@ -192,19 +165,20 @@ export function checkoutLine(
     .child(text);
 }
 
-// A badge for the checkout line of a quiet space, by its `crew` (agents
-// there, none working or blocked) and checkout `g`: "conflict" when its jj
+// A badge for the checkout line of a quiet space, by the statuses of its
+// agents (`agentStatuses`: some, none working or blocked) and checkout `g`:
+// "conflict" when its jj
 // checkout has one, else "review" when it has unshipped work (jj: edits in @
 // or revisions after the nearest bookmark; git: commits ahead of upstream).
 // Null otherwise.
 export function checkoutBadge(
-  crew: CrewMember[],
+  agentStatuses: AgentStatus[],
   g: Checkout | null,
   t: ThemeColors,
 ): Element | null {
   const quiet =
-    crew.length > 0 &&
-    !crew.some((m) => m.status === "working" || m.status === "blocked");
+    agentStatuses.length > 0 &&
+    !agentStatuses.some((s) => s === "working" || s === "blocked");
   if (!g || !quiet) return null;
   const conflict = Boolean(g.jj && g.conflict);
   const unshipped = g.jj
@@ -313,240 +287,14 @@ export function jjTail(
     );
 }
 
-// An agent's row, its lines in the order you read them, beside its icon,
-// each one line, cut off at its end, and whole when hovered:
-// - what it is (`agentName`), with the time since its status changed and
-//   the status itself at the row's end (no time while it works: its spinner
-//   says so);
-// - what it is doing now ("Reading the docs") while it says, else its turn
-//   count ("turn 3");
-// - where it is: its tab (`tabText`), cut off, and "· pane 2" at the end
-//   of the line, under the time and status, when its tab holds more than
-//   one agent. The pane counts every pane of the tab in the app's pane order,
-//   which follows how the tab was split, not where the panes now sit on
-//   screen.
-// `since` is when its status last changed (ms, `AgentHistory.since`).
-export function agentRow(
-  { a, label, spot, activity, turn }: CrewMember,
-  indent: number,
-  t: ThemeColors,
-  now: number,
-  since: number,
-): Element {
-  const pic = icon(a.program, 14, t.foreground);
-  const when = a.status === "working" ? 0 : since;
-  const idle = a.status === "idle" && !a.focused;
-  // Null when there is nothing to say; the row's `when(Boolean(doing))`
-  // leaves its line out then.
-  const doing = activity || (turn != null ? `turn ${turn}` : null);
-  return h_flex()
-    .id(`agent-${a.address}`)
-    .flex_none()
-    .py(6)
-    .pl(indent - ROW_X)
-    .pr(8)
-    .gap(8)
-    .items_start()
-    .relative()
-    .rounded(6)
-    .text_size(12.5)
-    .cursor_pointer()
-    .hover((s) => s.bg(hoverFill(t)))
-    .when(a.focused, (el) => el.bg(t.hover).child(focusBar(t)))
-    .on_click(() => run("pane.focus", { pane: a.pane }))
-    .when(Boolean(pic), (el) => el.child(div().mt(2).child(pic!)))
-    .child(
-      v_flex()
-        .flex_1()
-        .min_w(0)
-        .gap(2)
-        .line_height(1.3)
-        .child(
-          h_flex()
-            .min_w(0)
-            .gap(6)
-            .items_center()
-            .child(
-              div()
-                .id(`agent-name-${a.address}`)
-                .flex_1()
-                .min_w(0)
-                .truncate()
-                .text_color(idle ? t.muted : t.foreground)
-                .tooltip(label)
-                .child(label),
-            )
-            .when(Boolean(when), (el) =>
-              el.child(
-                div()
-                  .flex_none()
-                  .text_size(11)
-                  .text_color(t.dim)
-                  .child(duration(now - when)),
-              ),
-            )
-            .child(div().flex_none().child(statusMark(t, a.status))),
-        )
-        .when(Boolean(doing), (el) =>
-          el.child(
-            div()
-              .id(`agent-doing-${a.address}`)
-              .min_w(0)
-              .truncate()
-              .text_size(11.5)
-              .text_color(activity ? t.muted : t.dim)
-              .tooltip(doing!)
-              .child(doing!),
-          ),
-        )
-        .child(
-          h_flex()
-            .min_w(0)
-            .gap(6)
-            .text_size(11)
-            .text_color(t.dim)
-            .child(
-              div()
-                .id(`agent-tab-${a.address}`)
-                .flex_1()
-                .min_w(0)
-                .truncate()
-                .tooltip(tabText(spot))
-                .child(tabText(spot)),
-            )
-            .when(spot.pane != null, (el) =>
-              el.child(div().flex_none().child(`\u00b7 pane ${spot.pane}`)),
-            ),
-        ),
-    );
-}
-
-// An agent's tab as the tab bar names it: "tab 1", or a name someone gave it.
-function tabText(spot: AgentSpot): string {
-  return spot.named ? spot.tab : `tab ${spot.tab}`;
-}
-
-// A sub-agent's row: `s` a `tree` entry, `shown` the focused agent's
-// address (null or undefined when none has focus), `listed` the agent statuses `gatherAgents` returns.
-export function subRow(
-  t: ThemeColors,
-  s: SubAgent,
-  shown: string | null | undefined,
-  indent: number,
-  listed: Map<string, Status>,
-): Element {
-  const k = s.t;
-  const st = kidStatus(k, listed);
-  const pic = icon(k.program, 14, t.foreground);
-  const on = k.address === shown;
-  return h_flex()
-    .id(`sub-${k.address}`)
-    .pl(indent - ROW_X)
-    .pr(8)
-    .relative()
-    .rounded(6)
-    .h(26)
-    .flex_none()
-    .gap(0)
-    .items_center()
-    .text_size(12.5)
-    .hover((s) => s.bg(hoverFill(t)))
-    .when(on, (el) => el.bg(t.hover).child(focusBar(t)))
-    .on_click(() => run("terminal.peek", { terminal: k.address }))
-    .children(
-      s.lines.map((l) =>
-        div()
-          .self_start()
-          .mt(-4 - ROW_GAP)
-          .w(9)
-          .h(17 + ROW_GAP)
-          .mr(4)
-          .flex_none()
-          .when(Boolean(l), (el) => el.border_l(1.5).border_color(t.input))
-          .when(l === "└" || l === "├", (el) => el.border_b(1.5).rounded_bl(6)),
-      ),
-    )
-    .when(Boolean(pic), (el) => el.child(div().mr(8).child(pic!)))
-    .child(
-      div()
-        .flex_1()
-        .truncate()
-        .text_color(on ? t.foreground : t.muted)
-        .child(k.name || k.template || k.program?.name || k.address),
-    )
-    .child(statusMark(t, st));
-}
-
-// An agent status as the shipped agents list draws it in priority view: a
-// spinner for working, a "!" for blocked, a dot for done, a ring for idle.
-// The rail's one-character `glyph` and `tone` stay separate from this.
-function statusMark(t: ThemeColors, status: AgentStatus | null): Element {
-  if (status === "working")
-    return svg("mods/workspace-chrome/spinner.svg")
-      .size(12)
-      .mx(1)
-      .flex_none()
-      .text_color(t.working)
-      .spin(900);
-  if (status === "blocked")
-    return div()
-      .size(14)
-      .flex_none()
-      .flex()
-      .items_center()
-      .justify_center()
-      .rounded(4)
-      .bg((t.blocked + "26") as Color)
-      .text_size(10.5)
-      .font_bold()
-      .text_color(t.blocked)
-      .child("!");
-  if (status === "idle")
-    return div()
-      .size(7)
-      .mx(3)
-      .flex_none()
-      .rounded(4)
-      .border(1.5)
-      .border_color(t.idle ?? t.dim);
-  return div()
-    .size(7)
-    .mx(3)
-    .flex_none()
-    .rounded(4)
-    .bg(status === "done" ? (t.done ?? t.dim) : ((t.dim + "00") as Color));
-}
-
-// `duration` and `icon` are copied from the shipped `agents` mod.
-
-function duration(ms: number): string {
-  const m = Math.floor(ms / 60000);
-  if (m < 1) return "<1m";
-  if (m < 60) return `${m}m`;
-  const h = Math.floor(m / 60);
-  return h < 24 ? `${h}h` : `${Math.floor(h / 24)}d`;
-}
-
-// The agent's icon from the app's program table: a one-color glyph or a
-// picture.
-function icon(
-  p: Program | undefined,
-  size: number,
-  color: Color,
-): Element | null {
-  if (!p?.icon) return null;
-  return p.tint
-    ? svg(p.icon).size(size).flex_none().text_color(color)
-    : image(p.icon).w(size).h(size).flex_none();
-}
-
 // The "Needs you" section: a heading with how many, then blocked agents and
 // done ones, newest first; `since` gives when an agent's status last changed.
-// With none, the heading shows "0", all dim, over a dim "Nothing waiting";
-// the label turns amber when one does.
+// `labelOf` gives what an agent is (`agentLabel`). With none, the heading
+// shows "0", all dim, over a dim "Nothing waiting"; the label turns amber
+// when one does.
 export function needsYouRows(
   needsYou: AgentInfo[],
-  byAddress: Map<string, CrewMember>,
+  labelOf: (a: AgentInfo) => string,
   t: ThemeColors,
   now: number,
   since: (a: AgentInfo) => number,
@@ -557,7 +305,7 @@ export function needsYouRows(
   // both say how long ago. The tree above fills the focused row; here focus
   // only brightens the text.
   const row = (a: AgentInfo) => {
-    const pic = icon(a.program, 14, t.foreground);
+    const pic = programIcon(a.program, 14, t.foreground);
     const when = since(a);
     return h_flex()
       .id(`needs-${a.address}`)
@@ -569,7 +317,7 @@ export function needsYouRows(
       .rounded(6)
       .text_size(12.5)
       .cursor_pointer()
-      .hover((s) => s.bg(hoverFill(t)))
+      .hover((s) => s.bg(hoverFill(t, t.chrome)))
       .on_click(() => run("pane.focus", { pane: a.pane }))
       .child(
         div()
@@ -599,7 +347,7 @@ export function needsYouRows(
                   .truncate()
                   .text_color(t.foreground)
                   .when(a.focused, (el) => el.font_semibold())
-                  .child(byAddress.get(a.address)?.label ?? a.address),
+                  .child(labelOf(a)),
               )
               .when(Boolean(when), (el) =>
                 el.child(
