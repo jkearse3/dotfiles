@@ -41,14 +41,11 @@ interface HcRunOutput {
   address?: string;
 }
 
-// What `showPopup` shows: the core terminal's address, the title bar's text,
-// the dialog's fractional size, and extra props for the `popup` mod.
+// What `showPopup` shows: the core terminal's address and the title bar's
+// text.
 interface Popup {
   terminal: string;
   title: string;
-  width?: number;
-  height?: number;
-  popup?: Record<string, unknown>;
 }
 
 // Runs the launcher opened as overlay `props().overlay`, titled TITLE.
@@ -91,18 +88,18 @@ export function launch(cx: Context, { title, prepare }: Launcher): void {
 // The overlay this launcher was opened as, or undefined. `herdr-app check`
 // renders the mod with no props, outside an overlay. Start nothing then: `hc`
 // would start a core when none runs.
-export function launcherOverlay(): string | undefined {
+function launcherOverlay(): string | undefined {
   return props()?.overlay;
 }
 
 // Closes the launcher OVERLAY and shows why it starts nothing as a warning.
-export function refuse(overlay: string, title: string, body: string): void {
+function refuse(overlay: string, title: string, body: string): void {
   closeOverlay(overlay);
   notify({ title, body, level: "warning" });
 }
 
 // Closes the launcher OVERLAY and shows ERROR, which stopped the launch.
-export function fail(overlay: string, title: string, error: unknown): void {
+function fail(overlay: string, title: string, error: unknown): void {
   closeOverlay(overlay);
   notify({
     title,
@@ -117,10 +114,7 @@ export function fail(overlay: string, title: string, error: unknown): void {
 // herdr labels, so it never becomes a pane; no parent, so it never types
 // notes into the terminal that happened to be focused; `--rm`, so no
 // finished record stays behind.
-export async function startTerminal(
-  folder: string,
-  argv: string[],
-): Promise<string> {
+async function startTerminal(folder: string, argv: string[]): Promise<string> {
   const r = await hc([
     "run",
     "--bg",
@@ -141,33 +135,29 @@ export async function startTerminal(
   return address;
 }
 
-// Closes the launcher OVERLAY and shows TERMINAL in a modal dialog of
-// fractional size WIDTH x HEIGHT, under the `popup` mod's 30px title bar
-// showing TITLE; POPUP adds props for the `popup` mod.
+// Closes the launcher OVERLAY and shows TERMINAL in a modal dialog of 0.6 ×
+// 0.5 of the window, under the `popup` mod's 30px title bar showing TITLE.
 //
 // The order matters: in one synchronous turn the launcher closes itself
 // before opening the popup. Opening focuses the popup's terminal, whereas a
 // dialog closed afterwards would hand the keyboard to the popup's frame
 // instead (herdr-app `src/window.rs` `remove_overlay`, `restore_focus`).
-export function showPopup(
-  overlay: string,
-  { terminal, title, width = 0.6, height = 0.5, popup = {} }: Popup,
-): void {
+function showPopup(overlay: string, { terminal, title }: Popup): void {
   closeOverlay(overlay);
   openOverlay({
     kind: "dialog",
     // A click beside it does not close it; Esc goes to the program in the
     // popup.
     modal: true,
-    width,
-    height,
+    width: 0.6,
+    height: 0.5,
     layout: {
       type: "column",
       children: [
         {
           type: "block",
           size: { px: 30 },
-          content: { mod: "popup", props: { terminal, title, ...popup } },
+          content: { mod: "popup", props: { terminal, title } },
         },
         { type: "block", content: { terminal } },
       ],

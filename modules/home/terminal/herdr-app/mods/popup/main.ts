@@ -6,47 +6,21 @@
 //
 // Props:
 // - `overlay`: this popup's overlay id, filled in by the host.
-// - `title`: the text shown in the bar, and the title of its error toasts.
+// - `title`: the text shown in the bar.
 // - `terminal`: the address of the terminal shown below the bar.
-// - `keepTerminal` (optional): true leaves the terminal running when the
-//   popup closes, for a long-lived terminal shown again by a later popup.
-//   Absent or false, this block owns the terminal's lifetime: when the
-//   overlay closes any other way than its program ending (its ✕, a layout
-//   switch, quit), `close()` kills it, so no popup terminal outlives its
-//   popup.
-// - `openCommand` (optional, `{ command, args }`): run once through `exec`
-//   when the popup opens. When it exits nonzero or cannot start, the popup
-//   posts an error toast with its stderr and closes itself.
-// - `closeCommand` (optional, `{ command, args }`): run through `exec` when
-//   the popup closes, by any route; its result is ignored.
-// In either command's `args`, an element exactly equal to `{overlay}` is
-// replaced with this popup's overlay id.
+//
+// This block owns the terminal's lifetime: when the overlay closes any other
+// way than its program ending (its ✕, a layout switch, quit), `close()` kills
+// it, so no popup terminal outlives its popup.
 
 import { View, div } from "gpui-kit";
 import type { AsyncContext, Color, Context } from "gpui-kit";
-import type { Props } from "gpui-shell";
 import { h_flex } from "gpui-base";
-import {
-  closeOverlay,
-  exec,
-  notify,
-  props,
-  run,
-  terminals,
-  theme,
-} from "herdr";
-
-const OVERLAY_PLACEHOLDER = "{overlay}";
+import { closeOverlay, props, run, terminals, theme } from "herdr";
 
 // The theme's colors by name. The app's typings type `theme()` as
 // `Record<string, string>`, though every value is a color.
 type ThemeColors = Record<string, Color>;
-
-// An `openCommand` or `closeCommand` prop.
-interface PopupCommand {
-  command: string;
-  args?: string[];
-}
 
 // This block's props, as the header describes them. All are absent when
 // `herdr-app check` renders the mod.
@@ -54,42 +28,9 @@ interface PopupProps {
   overlay?: string;
   title?: string;
   terminal?: string;
-  keepTerminal?: boolean;
-  openCommand?: PopupCommand;
-  closeCommand?: PopupCommand;
-}
-
-// Runs a `{ command, args }` prop through `exec`, with the overlay
-// placeholder in ARGS replaced by OVERLAY.
-function execCommand({ command, args = [] }: PopupCommand, overlay: string) {
-  return exec(
-    command,
-    args.map((arg) => (arg === OVERLAY_PLACEHOLDER ? overlay : arg)),
-  );
 }
 
 export default class Popup extends View {
-  init(_props: Props | undefined, cx: AsyncContext): void {
-    // `herdr-app check` renders the mod with no props, outside an overlay.
-    // Start nothing then.
-    const { overlay, title, openCommand }: PopupProps = props() ?? {};
-    if (!overlay || !openCommand) return;
-
-    cx.spawn(async (_cx) => {
-      let body: string;
-      try {
-        const r = await execCommand(openCommand, overlay);
-        if (r.code === 0) return;
-        body =
-          r.stderr.trim() || `${openCommand.command} exited with ${r.code}`;
-      } catch (error) {
-        body = String((error as Error)?.message ?? error);
-      }
-      notify({ title: title ?? "Popup", body, level: "error" });
-      closeOverlay(overlay);
-    });
-  }
-
   render(_cx: Context) {
     const t = theme() as ThemeColors;
     const { title, overlay }: PopupProps = props() ?? {};
@@ -126,28 +67,16 @@ export default class Popup extends View {
       );
   }
 
-  // Runs once when the overlay goes, by any route. On quit only `exec` and
-  // `terminal.kill` still go out (an `hc` call would be lost), so the close
-  // command uses `exec` and the kill is a synchronous `run`. The kill skips
-  // a terminal that is no longer listed: one that ended normally is already
-  // gone, and killing it would show an error toast. A close within
-  // milliseconds of opening, before the terminal is listed, therefore leaves
-  // it running; that is accepted.
-  async close(_cx: AsyncContext): Promise<void> {
-    const { overlay, terminal, keepTerminal, closeCommand }: PopupProps =
-      props() ?? {};
-    // `close` runs only when an overlay goes, and the host fills in
-    // `overlay` for every overlay it opens.
-    const closing = closeCommand
-      ? execCommand(closeCommand, overlay!).catch(() => {})
-      : undefined;
-    if (
-      terminal &&
-      keepTerminal !== true &&
-      terminals().some((t) => t.address === terminal)
-    ) {
+  // Runs once when the overlay goes, by any route. On quit only
+  // `terminal.kill` still goes out (an `hc` call would be lost), so the kill
+  // is a synchronous `run`. The kill skips a terminal that is no longer
+  // listed: one that ended normally is already gone, and killing it would
+  // show an error toast. A close within milliseconds of opening, before the
+  // terminal is listed, therefore leaves it running; that is accepted.
+  close(_cx: AsyncContext): void {
+    const { terminal }: PopupProps = props() ?? {};
+    if (terminal && terminals().some((t) => t.address === terminal)) {
       run("terminal.kill", { terminal });
     }
-    await closing;
   }
 }
