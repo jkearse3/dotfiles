@@ -1,7 +1,7 @@
 # How the Findings Questions Show Up in Code
 
 Common code defects, each under the Findings question it answers. Each one is a
-finding only under SKILL.md's Findings rules: someone gets hurt, on a real path.
+finding only under `findings.md`'s rules: someone gets hurt, on a real path.
 
 ## Question 2: does it work, and does everything else still work?
 
