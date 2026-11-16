@@ -13,9 +13,9 @@
 // herdr-app-mods build copies the file in place of the link and strips its
 // types to `tree-rows.js`. The app refuses imports that leave a mod's own
 // folder; `./tree-rows.js` beside the importing file is allowed. The
-// `./agent-marks.js`, `./finished.js` and `./program-icon.js` this file
-// imports must be linked beside it too, with what they import (`labels.ts`
-// and `tree.ts` give only types).
+// `./agent-marks.js`, `./finished.js`, `./program-icon.js` and
+// `./row-colors.js` this file imports must be linked beside it too, with what
+// they import (`labels.ts` and `tree.ts` give only types).
 
 import { div, svg } from "gpui-kit";
 import type { Color, Element } from "gpui-kit";
@@ -26,6 +26,7 @@ import { finishedLabel, finishedOutcome } from "./finished.js";
 import type { FinishedTerminal } from "./finished.js";
 import type { TerminalRowDetail, TerminalRowModel } from "./labels.js";
 import { programIcon } from "./program-icon.js";
+import { stripeColor } from "./row-colors.js";
 import type { TreeMachine } from "./tree.js";
 
 // The start of a machine's header row, in small dim text: a monitor icon
@@ -113,8 +114,11 @@ export function tabDivider(
 }
 
 // A live terminal's row content, from `model` (`terminalRowModel`), its
-// lines cut off at their end unless said otherwise. After the program's
-// icon (an empty square without one, so labels align), up to three lines:
+// lines cut off at their end unless said otherwise. First a 3px rounded
+// stripe as tall as its lines, in the color of the terminal's state
+// (`stripeColor`), in a column `STATE_COLUMN_W` wide; then the program's
+// icon (an empty square without one, so labels align), then up to three
+// lines:
 // - a first line with the program's short name (`programName`) semibold,
 //   then its `title` when it has one, `opts.parentHint` ("↳ lead"),
 //   `opts.hint`, `opts.note`, and for an agent its status mark;
@@ -131,7 +135,7 @@ export function tabDivider(
 //   without its `since`).
 // `opts.emphasized` makes the title semibold and `opts.dimTitle` mutes it.
 // `now` is the time in ms since the epoch. `t` is the theme's colors by
-// name (`theme()`). The content keeps 6px above and below.
+// name (`theme()`). The content keeps `ROW_PAD_Y` above and below.
 export function terminalRow(
   t: Record<string, Color>,
   model: TerminalRowModel,
@@ -199,6 +203,15 @@ export function terminalRow(
     .py(ROW_PAD_Y)
     .items_start()
     .text_size(12.5)
+    .child(
+      div()
+        .flex_none()
+        .self_stretch()
+        .w(STRIPE_W)
+        .mr(STATE_COLUMN_W - STRIPE_W)
+        .rounded(2)
+        .bg(stripeColor(t, model)),
+    )
     .child(div().flex_none().mt(2).mr(8).child(icon))
     .child(
       v_flex()
@@ -287,14 +300,16 @@ export interface TerminalRowOptions {
   commandFont?: string;
 }
 
-// A finished terminal's row content, one line: a "✓" in the done color
-// where a live row has its program icon, or a "✗" in the blocked color when
-// it failed (`finishedOutcome`), then its label (`finishedLabel`) muted, and
-// at the end, dim, `opts.parentHint` ("↳ lead") and `opts.hint` as on a
-// `terminalRow`, how it ended ("exit 1") and how long ago (none when the
-// core gave no time). `now` is the time in ms since the epoch. `t` is the
-// theme's colors by name (`theme()`). Like `terminalRow`'s, the content
-// keeps 6px above and below. Without `opts`, it shows no hints.
+// A finished terminal's row content, one line: an empty column where a live
+// row has its stripe (a finished terminal has no state to show), then a "✓"
+// in the done color where a live row has its program icon, or a "✗" in the
+// blocked color when it failed (`finishedOutcome`), then its label
+// (`finishedLabel`) muted, and at the end, dim, `opts.parentHint`
+// ("↳ lead") and `opts.hint` as on a `terminalRow`, how it ended ("exit 1")
+// and how long ago (none when the core gave no time). `now` is the time in
+// ms since the epoch. `t` is the theme's colors by name (`theme()`). Like
+// `terminalRow`'s, the content keeps `ROW_PAD_Y` above and below. Without
+// `opts`, it shows no hints.
 export function finishedRow(
   t: Record<string, Color>,
   f: FinishedTerminal,
@@ -346,6 +361,7 @@ export function finishedRow(
     .py(ROW_PAD_Y)
     .items_start()
     .text_size(12.5)
+    .child(div().flex_none().w(STATE_COLUMN_W))
     .child(mark)
     .child(v_flex().flex_1().min_w(0).line_height(1.3).child(line));
 }
@@ -353,4 +369,10 @@ export function finishedRow(
 // The side of a row's square program icon, in px.
 const ICON_SIZE = 14;
 // The space above and below a terminal row's content, in px.
-const ROW_PAD_Y = 6;
+const ROW_PAD_Y = 4;
+// The width of a terminal row's state stripe, in px.
+const STRIPE_W = 3;
+// The width of the column a terminal row's stripe sits in, from the row's
+// left edge to its icon, in px: the stripe and the gap after it. A finished
+// row leaves the column empty, so its mark lines up with the icons.
+const STATE_COLUMN_W = 10;

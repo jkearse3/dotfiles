@@ -5,9 +5,9 @@
 // `space-order.ts`, the finished-terminal readers, outcome and label from
 // `finished.ts`, `runningCommand`, `shellCommandText`, `commandText` and
 // `CommandStarts` (over an in-memory `localStorage`) from `foreground.ts`,
-// and `hoverFill` from
-// `row-colors.ts`, against the terminals(), agents(), panes() and spaces()
-// entry shapes the Herdr app hands mods. It imports the built,
+// and `hoverFill` and `stripeColor` from `row-colors.ts`, against the
+// terminals(), agents(), panes() and spaces() entry shapes the Herdr app
+// hands mods. It imports the built,
 // type-stripped `desk-spaces/*.js` from the herdr-app-mods output named by
 // `HERDR_APP_MODS`, where the mod's links to `mod-lib` have been copied in.
 // Run with
@@ -38,7 +38,9 @@ const {
   finishedOutcome,
   finishedTerminalOf,
 } = await import(`${mods}/desk-spaces/finished.js`);
-const { hoverFill } = await import(`${mods}/desk-spaces/row-colors.js`);
+const { hoverFill, stripeColor } = await import(
+  `${mods}/desk-spaces/row-colors.js`
+);
 const {
   COMMAND_SETTLE_MS,
   CommandStarts,
@@ -1520,4 +1522,58 @@ test("hoverFill falls back to the hover color when either color isn't hex", () =
 
 test("hoverFill mixes a #rrggbbaa color's alpha like its other channels", () => {
   assert.equal(hoverFill({ hover: "#ffffff00" }, "#00000080"), "#80808040");
+});
+
+// A theme whose every stripe color is distinct, so each assertion tells
+// which color a row got.
+const stripeTheme = {
+  working: "#000001",
+  blocked: "#000002",
+  done: "#000003",
+  idle: "#000004",
+  dim: "#000005",
+  ansi6: "#000006",
+};
+
+test("stripeColor colors an agent row by its status", () => {
+  const agent = (status, detail) =>
+    stripeColor(stripeTheme, { status, detail });
+  assert.equal(
+    agent("working", { kind: "activity", text: "Reading" }),
+    "#000001",
+  );
+  // A working agent that reports no activity is still working.
+  assert.equal(
+    agent("working", { kind: "status", text: "working" }),
+    "#000001",
+  );
+  assert.equal(
+    agent("blocked", { kind: "blocked", text: "permission" }),
+    "#000002",
+  );
+  assert.equal(agent("done", { kind: "status", text: "done" }), "#000003");
+  assert.equal(agent("idle", { kind: "status", text: "idle" }), "#000004");
+  assert.equal(
+    agent("running", { kind: "status", text: "running" }),
+    "#000004",
+  );
+});
+
+test("stripeColor colors a plain row cyan only while it runs a command", () => {
+  assert.equal(
+    stripeColor(stripeTheme, { status: null, detail: null }),
+    "#000004",
+  );
+  const command = { kind: "command", text: "make dev", since: null };
+  assert.equal(
+    stripeColor(stripeTheme, { status: null, detail: command }),
+    "#000006",
+  );
+});
+
+test("stripeColor falls back to dim for a theme without idle or done", () => {
+  const { idle, done, ...theme } = stripeTheme;
+  assert.equal(stripeColor(theme, { status: "idle", detail: null }), "#000005");
+  assert.equal(stripeColor(theme, { status: "done", detail: null }), "#000005");
+  assert.equal(stripeColor(theme, { status: null, detail: null }), "#000005");
 });

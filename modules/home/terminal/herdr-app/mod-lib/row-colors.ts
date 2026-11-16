@@ -1,6 +1,7 @@
-// The colors a row fills itself with beyond the theme's own: a hovered row's
+// The colors a row draws itself with beyond the theme's own: a hovered row's
 // fill (`hoverFill`), mixed from the backdrop the row sits on and the theme's
-// `hover` color.
+// `hover` color, and the stripe on a terminal row's left edge that shows its
+// state (`stripeColor`).
 //
 // Each mod that uses this file links it into its own folder
 // (`mods/<mod>/row-colors.ts` -> `../../mod-lib/row-colors.ts`), and the
@@ -10,6 +11,7 @@
 // only types, so it needs no other file beside it.
 
 import type { Color } from "gpui-kit";
+import type { TerminalRowModel } from "./labels.js";
 
 // A hovered row's fill: halfway from `backdrop`, the color the row sits on,
 // to the focused row's `t.hover`, so a hovered row next to the focused one
@@ -32,4 +34,23 @@ function channels(hex: string | undefined): number[] | null {
   return [0, 2, 4, 6].map((i) =>
     i < h.length ? parseInt(h.slice(i, i + 2), 16) : 255,
   );
+}
+
+// The color of the stripe on a terminal row's left edge, which tells the
+// terminal's state at a glance: an agent's status (`model.status`) in the
+// colors `statusMark` draws it with, working `t.working`, blocked
+// `t.blocked`, done `t.done` (`t.dim` without one), and idle or any other
+// word, such as a sub-agent's raw status, `t.idle` (`t.dim` without one); a
+// plain terminal running a command (`model.detail` of kind "command") cyan
+// `t.ansi6`, and any other plain terminal the idle agent's grey. A sub-agent
+// that is done gets the idle grey: the sidebar shows it idle (`rowStatus`).
+export function stripeColor(
+  t: Record<string, Color>,
+  model: Pick<TerminalRowModel, "status" | "detail">,
+): Color {
+  if (model.status === null && model.detail?.kind === "command") return t.ansi6;
+  if (model.status === "working") return t.working;
+  if (model.status === "blocked") return t.blocked;
+  if (model.status === "done") return t.done ?? t.dim;
+  return t.idle ?? t.dim;
 }

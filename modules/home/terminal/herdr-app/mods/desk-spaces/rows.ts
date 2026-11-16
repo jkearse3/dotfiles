@@ -84,20 +84,33 @@ export const TICK_X = 8;
 // hover and focus fills never run under the tick or rail.
 export const ROW_X = 14;
 // How much further in a nested terminal row starts than its parent's, in px
-// per level of nesting, its fill and focus mark included.
+// per level of nesting, its fill included.
 export const DEPTH_INDENT = 16;
 // Where the focus bar sits: midway between the tick column and the rows'
 // text, which starts at `TEXT_X`.
 const BAR_X = 17;
 export const TEXT_X = 26;
+// How far a top-level terminal row's fill starts right of `ROW_X`, in px,
+// so its rounded fill sits inside the space's rows rather than flush with
+// the tick column; with `TERMINAL_ROW_PAD_X` and the 10px column
+// `terminalRow` draws its stripe in, its stripe starts at x 20 and its icon
+// at x 30, 4px right of the space's name at `TEXT_X`.
+export const TERMINAL_ROW_INSET = 4;
+// The space between a terminal row's fill edge and its state stripe, in px.
+export const TERMINAL_ROW_PAD_X = 2;
 // The space between stacked rows, so two filled rows (one hovered, one
 // focused) read as two rounded shapes rather than one block.
 export const ROW_GAP = 5;
+// The space between stacked terminal rows (a tab's, the loose ones, or
+// Elsewhere's), wider than `ROW_GAP` so each terminal, with its stripe,
+// reads as a unit of its own.
+export const TERMINAL_ROW_GAP = 7;
 // The "Needs you" rows' height: three two-line rows and the gaps between.
 const TRAY_H = 3 * 44 + 2 * ROW_GAP;
 
-// The mark of the one row holding focus: a short rounded accent bar at
-// `BAR_X`. Its row must be `relative()` and begin at `ROW_X`.
+// The mark of a space row holding focus: a short rounded accent bar at
+// `BAR_X`. Its row must be `relative()` and begin at `ROW_X`. A terminal
+// row holding focus shows it by its fill alone.
 export const focusBar = (t: ThemeColors): Element =>
   div()
     .absolute()

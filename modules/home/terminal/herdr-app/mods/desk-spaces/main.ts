@@ -15,20 +15,24 @@
 //   row for every live terminal the shared tree (`buildTree`) places in that
 //   tab, agents and plain shells alike, with the terminals each started
 //   nested under it, a step further in per level (`DEPTH_INDENT`), even
-//   when they show in another tab. Every row is `terminalRow`'s: its
-//   program and title, then on a dim second line the folder it is in now;
-//   an agent's adds a third line with why it is blocked, what it is doing
-//   now, or else its status word, and at its end how long it has been in
-//   its status. A plain terminal running a command other than its shell
-//   (`make dev`) adds a third line with that command in cyan, in the
-//   terminal's font, and how long it has run, once it has run 2 seconds
-//   (`CommandStarts`), so quick commands do not make rows jump. Clicking a
-//   row focuses its pane, or peeks at a terminal without one; the focused
-//   terminal's row is filled and holds the focus mark.
+//   when they show in another tab, the rows spaced a little wider apart
+//   than the space rows (`TERMINAL_ROW_GAP`). Every row is `terminalRow`'s:
+//   a 3px stripe down its left edge in the color of its state
+//   (`stripeColor`: an agent's status color, cyan for a plain terminal
+//   running a command, else grey), then its program and title, then on a
+//   dim second line the folder it is in now; an agent's adds a third line
+//   with why it is blocked, what it is doing now, or else its status word,
+//   and at its end how long it has been in its status. A plain terminal
+//   running a command other than its shell (`make dev`) adds a third line
+//   with that command in cyan, in the terminal's font, and how long it has
+//   run, once it has run 2 seconds (`CommandStarts`), so quick commands do
+//   not make rows jump. Clicking a row focuses its pane, or peeks at a
+//   terminal without one; the focused terminal's row is filled, and any
+//   other one under the mouse fainter.
 //   After a terminal's nested rows come the terminals it started that have
-//   finished, oldest first (`finishedRow`: a ✓, or a ✗ when it failed, its
-//   name, how it ended and when); clicking one goes to the terminal that
-//   started it, and
+//   finished, oldest first (`finishedRow`: no stripe, a ✓, or a ✗ when it
+//   failed, under the live rows' icons, its name, how it ended and when);
+//   clicking one goes to the terminal that started it, and
 //   right-clicking one offers a "Remove" chip at its end that removes it
 //   with `hc rm` (any other press dismisses the chip). A settled
 //   tab's divider is dimmed, and its rows stay hidden (`tabFolded`) until an
@@ -133,6 +137,9 @@ import {
   ROW_GAP,
   ROW_X,
   DEPTH_INDENT,
+  TERMINAL_ROW_GAP,
+  TERMINAL_ROW_INSET,
+  TERMINAL_ROW_PAD_X,
   TEXT_X,
   TICK_X,
   assignSpaceColors,
@@ -365,7 +372,7 @@ export default class SpacesAndAgents extends View {
     // worktree stays under its repo's. Every group keeps 4px below its last
     // row, so a focused row's fill clears the next hairline. The active
     // space's color tick grows into a rail down its whole group: the space
-    // you are in, apart from the accent bar on the one row holding focus.
+    // you are in, apart from the fill on the one row holding focus.
     const draw = (r: SpaceRow) => {
       if (collapsed) return [compact(r, t, this.spaceStatus(r.w))];
       const rows = [this.row(r, t), ...this.terminalRows(r, t, now)];
@@ -503,8 +510,9 @@ export default class SpacesAndAgents extends View {
 
   row({ w, i, g, tree }: SpaceRow, t: ThemeColors): Element {
     // The active space says so by its name, bold and bright, and by its rail
-    // (`grouped`). Its row holds the focus mark when no terminal row of it
-    // does: its rows are folded away, or focus is on no terminal of it.
+    // (`grouped`). Its row holds focus (filled, with the accent bar) when no
+    // terminal row of it does: its rows are folded away, or focus is on no
+    // terminal of it.
     const on = w.active;
     const holdsFocus = on && !this.terminalRowFocused(w);
     const checkout = checkoutLine(w, g, t);
@@ -733,8 +741,10 @@ export default class SpacesAndAgents extends View {
   // terminal rows (a settled tab's divider dimmed, and its rows left out
   // while it is folded, `tabFolded`), then the loose terminal rows, each
   // terminal followed by the rows nested under it and then its finished
-  // terminals' rows. Dividers and icons start under the start of the
-  // space's name (past its color tick, or a worktree's branch mark).
+  // terminals' rows. Dividers start under the start of the space's name
+  // (past its color tick, or a worktree's branch mark), and terminal rows
+  // are placed from there (`terminalRowElement`). Each run of terminal rows
+  // (a tab's, or the loose ones) is spaced by `TERMINAL_ROW_GAP`.
   terminalRows({ w, tree }: SpaceRow, t: ThemeColors, now: number): Element[] {
     const listing = this.listings.get(w.id);
     if (!listing || w.id in this.foldedSpaces) return [];
@@ -749,14 +759,18 @@ export default class SpacesAndAgents extends View {
           .pl(indent - ROW_X)
           .pr(8)
           .child(tabDivider(t, tab, { dim: tab.settled })),
-        ...(folded
-          ? []
-          : rows.map((row) => this.listingRowElement(row, indent, t, now))),
+        ...terminalRun(
+          folded
+            ? []
+            : rows.map((row) => this.listingRowElement(row, indent, t, now)),
+        ),
       ]),
-      ...listing.loose.map((row) =>
-        this.listingRowElement(row, indent, t, now, {
-          markPaneless: true,
-        }),
+      ...terminalRun(
+        listing.loose.map((row) =>
+          this.listingRowElement(row, indent, t, now, {
+            markPaneless: true,
+          }),
+        ),
       ),
     ];
   }
@@ -797,10 +811,12 @@ export default class SpacesAndAgents extends View {
           .child("ELSEWHERE"),
       )
       .children(
-        rows.map((row) =>
-          this.listingRowElement(row, TEXT_X, t, now, {
-            markPaneless: true,
-          }),
+        terminalRun(
+          rows.map((row) =>
+            this.listingRowElement(row, TEXT_X, t, now, {
+              markPaneless: true,
+            }),
+          ),
         ),
       );
   }
@@ -819,12 +835,11 @@ export default class SpacesAndAgents extends View {
       : this.finishedRowElement(row.step, indent, t, now);
   }
 
-  // A terminal's row in the sidebar, its content `terminalRow`'s, its icon
-  // `indent` px from the left of its group plus `DEPTH_INDENT` per level it
-  // is nested; the row's fill and focus mark move in with it. Clicking it
-  // focuses its pane, or peeks at a terminal without one; the focused
-  // terminal's row is filled and holds the focus mark. `opts.markPaneless`
-  // notes "no pane" on a row without a pane.
+  // A terminal's row in the sidebar, its content `terminalRow`'s, placed by
+  // `terminalRowX` from `indent`, where its space's name starts (`TEXT_X`,
+  // or further in for a worktree), and its depth. Clicking it focuses its
+  // pane, or peeks at a terminal without one; the focused terminal's row is
+  // filled. `opts.markPaneless` notes "no pane" on a row without a pane.
   terminalRowElement(
     { step, status }: TerminalListing,
     indent: number,
@@ -848,17 +863,18 @@ export default class SpacesAndAgents extends View {
     const since = node.info
       ? this.history.since(node.info) || null
       : (node.terminal.status_ms ?? null);
+    // A hover style layers over the base style, so only rows that are not
+    // focused get one; the focused row keeps its fill under the mouse.
     return h_flex()
       .id(`terminal-${address}`)
       .flex_none()
-      .ml(depth * DEPTH_INDENT)
-      .pl(indent - ROW_X)
+      .ml(terminalRowX(indent, depth))
+      .pl(TERMINAL_ROW_PAD_X)
       .pr(8)
-      .relative()
       .rounded(6)
       .cursor_pointer()
-      .hover((s) => s.bg(hoverFill(t, t.chrome)))
-      .when(isFocused, (el) => el.bg(t.hover).child(focusBar(t)))
+      .when(isFocused, (el) => el.bg(t.hover))
+      .when(!isFocused, (el) => el.hover((s) => s.bg(hoverFill(t, t.chrome))))
       .on_click(() =>
         pane
           ? run("pane.focus", { pane: pane.pane })
@@ -875,8 +891,8 @@ export default class SpacesAndAgents extends View {
   }
 
   // A finished terminal's row in the sidebar, its content `finishedRow`'s,
-  // its mark `indent` px from the left of its group plus `DEPTH_INDENT` per
-  // level it is nested, its fill moving in with it. Clicking it goes to the
+  // placed as a live terminal's row at its depth (`terminalRowX`), so its
+  // mark lines up with the icons. Clicking it goes to the
   // live terminal that started it: focuses that terminal's pane, or peeks at
   // it without one. Right-clicking it shows a "Remove" chip at its end
   // (`removeChipAddress`) until a press anywhere else; clicking the chip
@@ -892,8 +908,8 @@ export default class SpacesAndAgents extends View {
     return h_flex()
       .id(`finished-${finished.address}`)
       .flex_none()
-      .ml(depth * DEPTH_INDENT)
-      .pl(indent - ROW_X)
+      .ml(terminalRowX(indent, depth))
+      .pl(TERMINAL_ROW_PAD_X)
       .pr(8)
       .relative()
       .rounded(6)
@@ -1201,4 +1217,25 @@ function terminalRowsOf(rows: ListingRow[]): TerminalListing[] {
 // The first line of `text`, without surrounding whitespace.
 function firstLine(text: string): string {
   return text.trim().split("\n", 1)[0];
+}
+
+// How far right of `ROW_X` a terminal row's fill starts, in px, under a
+// space whose name starts `indent` px from the left of its group and
+// nested `depth` levels: `TERMINAL_ROW_INSET`, plus however far the name
+// sits right of `TEXT_X` (a worktree's, past its branch mark), plus
+// `DEPTH_INDENT` per level. A top-level row under a space's name at
+// `TEXT_X` (26) fills from x 18, after `TERMINAL_ROW_PAD_X` its stripe
+// starts at x 20, and past the stripe's 10px column its icon at x 30.
+function terminalRowX(indent: number, depth: number): number {
+  return indent - TEXT_X + TERMINAL_ROW_INSET + depth * DEPTH_INDENT;
+}
+
+// A run of terminal rows (`rows`, live and finished) stacked
+// `TERMINAL_ROW_GAP` apart, as one element of the group, which spaces its
+// own elements `ROW_GAP` apart; none when `rows` is empty, so an empty run
+// adds no gap.
+function terminalRun(rows: Element[]): Element[] {
+  return rows.length
+    ? [v_flex().flex_none().gap(TERMINAL_ROW_GAP).children(rows)]
+    : [];
 }
