@@ -1,7 +1,8 @@
 // The find hub: one popup listing spaces with their agents and plain
 // terminals under a header for each machine, the rows that make a new
 // terminal or space, and a preview of the selected row beside the list.
-// `ctrl-b f` opens it. With an empty query the
+// `ctrl-b f`, `cmd-p`, the `palette` mod's "Find space, agent or terminal…"
+// entry and the `desk-chrome` search button open it. With an empty query the
 // list shows a space tree in the app's layout order (`findRows` in
 // `rows.ts`): each of a space's tabs, empty ones included, starts with a
 // divider as the sidebar draws one (`tabDivider` in `tree-rows.ts`), members

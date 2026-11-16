@@ -1,9 +1,10 @@
 // The frame's command palette: everything you can do, by name, with its key.
-// Places (spaces, tabs) stay in the picker. Fuzzy: your letters in
+// Spaces, agents and terminals are in the find hub. Fuzzy: your letters in
 // order, word starts and runs rank higher. Empty: recent first, then every
 // group. Choices are entries of their own ("Layout: Zen"); commands that need
 // a name ask for it. Enter runs, ↑/↓ or ctrl+j/ctrl+k move (wrapping at the
-// ends), Esc closes. Its "Go to" entry opens the `goto` mod.
+// ends), Esc closes. Its "Find space, agent or terminal…" entry opens the
+// `find` mod.
 //
 // Started as a copy of the app's own frame-palette mod (herdr-app 0.1.11),
 // which `mod.clone` cannot clone: the copy's asset path points at its own
@@ -109,10 +110,10 @@ const NAMED: NamedCommand[] = [
   ["tab.new", {}, "Tab", "New tab", "tab agent new task"],
   [
     "mod.open",
-    { name: "goto" },
+    { name: "find" },
     "Tab",
-    "Go to space or tab…",
-    "switch jump find",
+    "Find space, agent or terminal…",
+    "switch jump find go to",
   ],
   ["tab.rename", {}, "Tab", "Rename tab", "tab"],
   ["tab.close", {}, "Tab", "Close tab", "tab kill"],
@@ -637,7 +638,7 @@ export default class Palette extends View {
               .text_size(13)
               .text_color(t.dim)
               .child(
-                `Nothing matches "${this.query}". Places are in the picker.`,
+                `Nothing matches "${this.query}". Spaces, agents and terminals are in Find.`,
               ),
       );
   }

@@ -29,9 +29,9 @@
   sections = {
     global = {
       "ctrl-b" = "mod.open:prefix";
-      # The app's `cmd-p` opens its built-in picker; open `goto`, the personal
-      # clone with ctrl-j/ctrl-k, instead.
-      "cmd-p" = "mod.open:goto";
+      # The app's `cmd-p` opens its built-in picker; open `find`, the find hub,
+      # instead.
+      "cmd-p" = "mod.open:find";
       # Likewise `cmd-shift-p` opens `palette`, the personal copy of the
       # command palette with ctrl-j/ctrl-k, instead of `app.palette`.
       "cmd-shift-p" = "mod.open:palette";
@@ -72,11 +72,10 @@
       # one. The TUI binds the same keys to the jj workspace plugin actions.
       "shift-g" = "mod.open:jj-workspace-pick";
       "shift-q" = "mod.open:jj-workspace-remove";
-      # The TUI's workspace picker and go-to both open `goto`, the personal
-      # clone of the app's picker with ctrl-j/ctrl-k.
-      "w" = "mod.open:goto";
-      "g" = "mod.open:goto";
-      # The TUI user binding for finding agents and workspaces with fzf.
+      # The TUI user binding for finding agents and workspaces: the native find
+      # hub, which filters its rows with fzf. `cmd-p` opens it too. The TUI's
+      # workspace-picker (`w`) and go-to (`g`) keys stay unbound because the
+      # hub covers both.
       "f" = "mod.open:find";
       # The TUI's detach: closing the window leaves its terminals running.
       "q" = "window.close";
@@ -142,10 +141,6 @@
       {
         action = "mod.open:find";
         label = "find";
-      }
-      {
-        action = "mod.open:goto";
-        label = "go to";
       }
       {
         action = "pane.zoom";

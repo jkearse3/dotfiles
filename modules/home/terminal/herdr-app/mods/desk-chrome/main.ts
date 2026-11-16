@@ -1,7 +1,7 @@
 // The sidebar's header and footer in the `desk` layout. Started as a copy of
 // the app's shipped `workspace-chrome` mod (herdr-app 0.1.11), with its asset
-// paths pointing at its own folder and its search button opening the `goto`
-// mod instead of the built-in picker.
+// paths pointing at its own folder and its search button opening the `find`
+// mod (the find hub) instead of the built-in picker.
 
 import { View, div, image, svg } from "gpui-kit";
 import type { ClickEvent, Color, Context, Element } from "gpui-kit";
@@ -155,7 +155,7 @@ export default class WorkspaceChrome extends View {
             this.button(
               "search",
               svg("mods/desk-chrome/search.svg").size(15),
-              () => run("mod.open", { name: "goto" }),
+              () => run("mod.open", { name: "find" }),
             ),
           ),
         )
