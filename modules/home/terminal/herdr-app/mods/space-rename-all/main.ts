@@ -1,6 +1,6 @@
 // Renames every space at once (`ctrl-b ctrl-w`), in a dialog styled like the
 // app's rename prompt: one row per space, with its colored avatar, the
-// checkout its first terminal is in ("dotfiles / ws3", a machine's spaces
+// checkout its folder is in ("dotfiles / ws3", a machine's spaces
 // after that machine's name), and a field holding its name. Tab, down or
 // ctrl-j moves to the next field, Shift-Tab, up or ctrl-k to the previous;
 // Enter or Save renames each space whose name changed, and Esc or Cancel
@@ -46,6 +46,7 @@ interface RenameRow {
   input: InputState;
   machine: string | null;
   path: string;
+  folder: string;
   automatic: string | null;
   checkout: Checkout | null;
   focused: boolean;
@@ -72,10 +73,13 @@ export default class SpaceRenameAll extends View {
     // One row per space as the dialog opened: `initial` is the name a field
     // starts with, empty for a space nobody named; `automatic` the name an
     // empty field saves to, shown greyed in it (a renamed space's is worked
-    // out, so null until known, see `automaticName`); `checkout` its first
-    // terminal's checkout once known (see `checkout`); and `focused` whether
-    // its field holds the keyboard now. `this.current` stays on the last
-    // focused row after the keyboard leaves it, so Tab still moves from there.
+    // out, so null until known, see `automaticName`); `path` where its first
+    // terminal is, which the automatic name follows; `folder` the space's own
+    // folder (empty: its machine's home), which desk-spaces' checkout line
+    // follows; `checkout` that folder's checkout once known (see `checkout`);
+    // and `focused` whether its field holds the keyboard now. `this.current`
+    // stays on the last focused row after the keyboard leaves it, so Tab
+    // still moves from there.
     this.rows = spaces().map((space, i): RenameRow => {
       const initial = space.named ? space.name : "";
       // The field's own placeholder is fixed at creation, before a renamed
@@ -99,6 +103,7 @@ export default class SpaceRenameAll extends View {
         input,
         machine: space.machine,
         path: place(space, ps),
+        folder: space.folder,
         automatic: space.named ? null : space.name,
         checkout: null,
         focused: false,
@@ -137,9 +142,12 @@ export default class SpaceRenameAll extends View {
           row.automatic = await automaticName(row.path, row.machine);
           cx.notify();
         });
-      if (!row.path) continue;
+      // As desk-spaces' `where`: this computer's home stands in for an empty
+      // folder; another machine's empty folder is not looked up.
+      const cwd = row.folder || (row.machine ? "" : home());
+      if (!cwd) continue;
       cx.spawn(async (cx) => {
-        row.checkout = await checkout(row.path, row.machine);
+        row.checkout = await checkout(cwd, row.machine);
         cx.notify();
       });
     }
@@ -421,13 +429,11 @@ const rowsHeight = (count: number): number =>
 // "dotfiles / ws3" for a checkout whose folder differs from its repo's name,
 // "dotfiles" when they match, and the folder alone outside a repo ("~" at
 // its machine's home). Another machine's space starts with that machine's
-// name. `row.path` is where its first terminal is, else the folder the space
-// was made in (empty for a new space on another machine until its terminal
-// reports one); `row.checkout` its checkout, null until known or outside a
-// repo.
+// name. `row.folder` is the space's own folder (empty: its machine's home);
+// `row.checkout` that folder's checkout, null until known or outside a repo.
 function checkoutLabel(space: SpaceInfo, row: RenameRow): string {
   const c = row.checkout;
-  const path = c?.top ?? row.path;
+  const path = c?.top ?? row.folder;
   const folder =
     !path || (!space.machine && path === home()) ? "~" : base(path);
   const same = (a: string, b: string) => a.toLowerCase() === b.toLowerCase();

@@ -1,11 +1,12 @@
 // Each space's checkout as the desk-spaces sidebar shows it: which Git or jj
-// checkout its first terminal is in, with branch or bookmark, ahead/behind and
-// its repo, looked up again only when the answer could have changed.
+// checkout the space's own folder is in, with branch or bookmark,
+// ahead/behind and its repo, looked up again only when the answer could have
+// changed.
 
 import type { AsyncContext } from "gpui-kit";
-import { exec, machines, watchFolder, window } from "herdr";
+import { exec, home, machines, watchFolder, window } from "herdr";
 import type { ExecResult, PaneInfo, SpaceInfo } from "herdr";
-import { cliPath, place } from "./paths.js";
+import { cliPath } from "./paths.js";
 
 // A space's or repo's location: its machine (null for this computer) and a
 // folder there. `where()` keys and checkouts' `repo` are these as JSON.
@@ -50,10 +51,13 @@ export interface JjCheckout {
 // A place's checkout, Git or jj (`jj` tells them apart).
 export type Checkout = GitCheckout | JjCheckout;
 
-// A space's place: its machine and its first terminal's folder, as one string
-// key (JSON) for `Checkouts`' maps.
-export const where = (s: SpaceInfo, ps: PaneInfo[]): string =>
-  JSON.stringify([s.machine ?? null, place(s, ps)]);
+// A space's place: its machine and the space's own folder (where its new
+// terminals start, not where its terminals have since moved), as one string
+// key (JSON) for `Checkouts`' maps. An empty folder is that machine's home:
+// this computer's is filled in; another machine's stays empty, a place
+// `Checkouts.due` never looks at.
+export const where = (s: SpaceInfo): string =>
+  JSON.stringify([s.machine ?? null, s.folder || (s.machine ? "" : home())]);
 // `split` always returns at least one element, so `pop` finds one.
 export const base = (path: string): string =>
   path.replace(/\/+$/, "").split("/").pop()!;
@@ -100,13 +104,14 @@ export class Checkouts {
     this.folded = folded;
   }
 
-  // Places whose git could have changed: new ones (a new space, a cd), where a
+  // Places whose git could have changed: new ones (a new space, a space whose
+  // folder changed; a shell that cds elsewhere no longer moves it), where a
   // command or an agent's turn just ended (a checkout, a commit, edits), those
   // on a machine that is back, and repos in view whose fallback is due.
   due(now: number, sp: SpaceInfo[], ps: PaneInfo[]): Set<string> {
     // Moved there: what it knew of that place may be old.
     const at: Record<string, string> = {};
-    for (const s of sp) at[s.id] = where(s, ps);
+    for (const s of sp) at[s.id] = where(s);
     const keys = new Set(
       Object.values(at).filter((k) => (JSON.parse(k) as MachinePath)[1]),
     );

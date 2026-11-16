@@ -1,7 +1,7 @@
 // Spaces with their agents under them, the `desk` layout's sidebar list:
 // - The spaces: a stable color tick each, Git worktrees and jj workspaces under
 //   their repo's main checkout, grouped by machine when more than one is
-//   known. Under each space's name, the checkout its first terminal is in
+//   known. Under each space's name, the checkout its own folder is in
 //   ("dotfiles / ws3"), then, only where unusual, its branch and
 //   ahead/behind (a jj checkout shows what the terminal prompt shows). Every
 //   agent of a space has a row beneath it, one agent or many (sub-agents
@@ -235,16 +235,15 @@ export default class SpacesAndAgents extends View {
 
   // Spaces in order, each worktree space moved under its main checkout's.
   ordered(): SpaceRow[] {
-    const sp = spaces(),
-      ps = panes();
+    const sp = spaces();
     const ready = (w: SpaceInfo) =>
       this.shown.has(w.id) ||
-      where(w, ps) in this.checkouts.git ||
+      where(w) in this.checkouts.git ||
       Date.now() - (this.born[w.id] ??= Date.now()) > 1500;
     for (const w of sp)
       if (!this.shown.has(w.id) && ready(w)) this.shown.add(w.id);
     const list = sp
-      .map((w, i) => ({ w, i, g: this.checkouts.git[where(w, ps)] ?? null }))
+      .map((w, i) => ({ w, i, g: this.checkouts.git[where(w)] ?? null }))
       .filter((r) => this.shown.has(r.w.id));
     const mains = new Set(
       // The filter kept only rows with a checkout.

@@ -8,7 +8,6 @@ import type { Color, Element } from "gpui-kit";
 import { v_flex, h_flex } from "gpui-base";
 import { run, shared, setShared, home } from "herdr";
 import type { AgentInfo, Program, SpaceInfo, Status } from "herdr";
-import { place } from "./paths.js";
 import { base } from "./checkouts.js";
 import type { Checkout, GitCheckout, JjCheckout } from "./checkouts.js";
 import { kidStatus } from "./agents.js";
@@ -163,18 +162,21 @@ function tone(t: ThemeColors, status: AgentStatus | null): Color {
 }
 
 // The checkout line under every space's name, shown whether or not the
-// space was renamed so rows read alike: the folder its first terminal's
-// checkout (or, outside a repo, the folder itself) is named after, after its
-// repo ("dotfiles / ws3", just "dotfiles" when they match). Null only when
-// there is no folder to name. The `space-rename-all` mod's rows say the
-// same (its `checkoutLabel` and `checkout`); change them together.
+// space was renamed so rows read alike: the folder its checkout (or, outside
+// a repo, the space's own folder) is named after, after its repo
+// ("dotfiles / ws3", just "dotfiles" when they match); "~" at its machine's
+// home, which an empty folder means. The checkout is that of the space's own
+// folder (`where`), so a shell that cds elsewhere no longer moves it. Null
+// only when there is no folder to name (the filesystem root). The
+// `space-rename-all` mod's rows show the same checkout, read from the same
+// folder (its `checkoutLabel` and `checkout`); change them together.
 export function checkoutLine(
   w: SpaceInfo,
   g: Checkout | null,
   t: ThemeColors,
 ): Element | null {
-  const path = g ? g.top : place(w);
-  const folder = !w.machine && path === home() ? "~" : base(path ?? "");
+  const path = g ? g.top : w.folder;
+  const folder = !path || (!w.machine && path === home()) ? "~" : base(path);
   const same = (a: string, b: string) => a.toLowerCase() === b.toLowerCase();
   if (!folder) return null;
   const text = !g
