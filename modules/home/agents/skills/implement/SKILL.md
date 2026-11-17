@@ -5,10 +5,11 @@ description: >-
   ones, changes folded into existing ones, or both. Plans a roadmap of
   milestones, gives each milestone to one fresh implementer subagent that plans
   it from the code already landed and builds its changes while this session
-  lands each one, and converges the result with diff-fix. Use when the user asks
-  to implement, build, or carry out a change from any input: a request, issue,
-  plan, note, or spec. Not for fixing review findings (use diff-fix), read-only
-  investigation or review, Git-only checkouts, or publication.
+  lands each one. Use when the user asks to implement, build, or carry out a
+  change from any input: a request, issue, plan, note, or spec. To implement and
+  then review in one go, use iterate. Not for fixing review findings (use
+  diff-fix), read-only investigation or review, Git-only checkouts, or
+  publication.
 ---
 
 # Implement
@@ -50,9 +51,9 @@ one cannot be held, that needs the user.
   revision or in the existing revision whose concern it belongs to, and later
   revisions that use what it changed are updated to match.
 - **Nothing else moves.** No revision off the branch changes, and no other
-  workspace's working copy is rewritten or rebased. A fold, conflict resolution,
-  or `diff-fix` fix changes only revisions the user authored, pushed or not, or
-  the request names.
+  workspace's working copy is rewritten or rebased. A fold or conflict
+  resolution changes only revisions the user authored, pushed or not, or the
+  request names.
 - **A bookmark marks the tip.** Use a bookmark on `@`, or on `@-` when the
   branch has revisions, asking when more than one qualifies; otherwise create
   one. It always points at the branch's tip.
@@ -73,18 +74,20 @@ run directory.
 Invoking this skill authorizes writing the run directory; creating revisions on
 the branch; rebasing its revisions, and changing and rewording those the user
 authored or the request names; discarding attempts that did not land; creating
-or moving the branch's bookmark; and running `diff-fix` on the branch. Besides
-the branch, the store, the run directory, and the session scratchpad, it
-authorizes no other writes, external changes, or publication.
+or moving the branch's bookmark. Besides the branch, the store, the run
+directory, and the session scratchpad, it authorizes no other writes, external
+changes, or publication.
 
 ## Run Record
 
-`run.md` in the run directory is the source of truth: reread it after compaction
-or whenever memory and the file could differ. Only this session writes it,
-whenever its contents change; subagents read it. It holds:
+`run.md` in the run directory is the source of truth: reread it, and the skill
+its header names after `Then:`, after compaction or whenever memory and the file
+could differ; after Report, continue with that skill's next step. Only this
+session writes it, whenever its contents change; subagents read it. It holds:
 
-- a header: the workspace path, the branch's base, the bookmark, and the input's
-  source;
+- a header: the workspace path, the branch's base, the bookmark, the input's
+  source, and, when the invoking skill asks for it, `Then:` with the skill whose
+  step follows this one;
 - `Input`: the outcome, criteria, exclusions, settled decisions, and binding
   requirements verbatim, or, for an input file under the `.agent/` directory
   that holds the run store, its path and which of its sections map to each;
@@ -94,7 +97,7 @@ whenever its contents change; subagents read it. It holds:
   or changed;
 - `Current milestone`: its planned changes, each `pending` or `landed` with the
   revision it created or changed and its check reports;
-- `Outcome`, written at the end, with the `diff-fix` result.
+- `Outcome`, written at the end.
 
 Throwaway files, such as description drafts and check logs, stay in the session
 scratchpad.
@@ -106,9 +109,7 @@ mutation, scratch files in the repository, or delegation. Each gets the path of
 `run.md` and `finalize-changes`' Sequencing section verbatim, and returns its
 questions for the user and the defaults it chose instead of asking. Show the
 user the defaults and ask the questions at once, record the answers, and send
-them back to the agent that planned when they change its plan. When the user
-asked not to review, skip every `diff-fix`; a `diff-fix` result of `blocked` or
-`stopped by user` ends the run with that outcome.
+them back to the agent that planned when they change its plan.
 
 When something needs the user, ask, offering decide or stop. A decision goes to
 the agent whose plan it changes: the milestone's implementer for the current
@@ -160,17 +161,12 @@ Stop ends the run and goes to Report.
    the user.
 5. Repeat from step 2 until no milestone is `pending`.
 
-## Converge
-
-When the run created or changed a revision, follow `diff-fix` from the earliest
-such revision to the tip, with the input's criteria and binding requirements as
-its criteria, its exclusions as context, and the user decisions.
-
 ## Report
 
 A stop before `run.md` exists only says why. Otherwise write `Outcome` to
 `run.md`: `done`, `blocked`, or `stopped by user`. Lead the report with that
 outcome, and list the revisions created and changed, in branch order, with
 change IDs and descriptions; the bookmark; any revision left conflicted; the
-planned changes and milestones that did not land; the user decisions; the
-`diff-fix` result; and the run directory's absolute path.
+planned changes and milestones that did not land; the user decisions; and the
+run directory's absolute path. Unless the header names a `Then:` skill, end by
+offering `diff-fix` on the run's revisions to review them.
