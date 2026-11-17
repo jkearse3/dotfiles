@@ -56,13 +56,13 @@ _jjx() {
           'backup[Preserve remote bookmark history locally]' \
           'current[Print the nearest current bookmark]' \
           'default[Print the trunk bookmark]' \
+          'land[Land a stack onto a bookmark, deleting bookmarks it passes]' \
           'nearest[Query nearest matching bookmarks]' \
           'previous[Print the previous stacked bookmark]' \
           'push[Interactively push bookmarks]' \
           'rebase[Interactively rebase bookmarks]' \
           'select[Interactively select bookmarks]' \
-          'stacked[List bookmarks from the current change to trunk]' \
-          'sweep[Move a bookmark forward, deleting bookmarks it passes]'
+          'stacked[List bookmarks from the current change to trunk]'
         ;;
       change)
         _values 'change command' 'select[Interactively select a change]'
@@ -125,13 +125,13 @@ _jjx() {
         '--config[additional configuration]:name=value:' \
         '--config-file[additional configuration file]:path:_files'
       ;;
-    'bookmark sweep')
+    'bookmark land')
       _arguments \
         '(-h --help)'{-h,--help}'[show help]' \
-        '(-t --to)'{-t,--to}'[target revision]:revision:_jjx_revisions' \
-        '--forget[forget swept bookmarks]' \
-        '--dry-run[show the sweep plan]' \
-        '1:bookmark to move:_jjx_bookmarks'
+        '(-o --onto)'{-o,--onto}'[bookmark to move]:bookmark:_jjx_bookmarks' \
+        '--forget[forget passed bookmarks]' \
+        '--dry-run[show the land plan]' \
+        '1:revision to land:_jjx_revisions'
       ;;
     'description format')
       _arguments \

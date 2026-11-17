@@ -74,15 +74,15 @@
 
     fish.shellAliases = {
       jjbb = "jjx bookmark backup";
+      jjbl = "jjx bookmark land";
       jjbp = "jjx bookmark push";
       jjbr = "jjx bookmark rebase";
-      jjbs = "jjx bookmark sweep";
     };
     zsh.shellAliases = {
       jjbb = "jjx bookmark backup";
+      jjbl = "jjx bookmark land";
       jjbp = "jjx bookmark push";
       jjbr = "jjx bookmark rebase";
-      jjbs = "jjx bookmark sweep";
     };
   };
 

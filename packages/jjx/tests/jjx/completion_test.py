@@ -3,6 +3,7 @@ from __future__ import annotations
 import subprocess
 import unittest
 from pathlib import Path
+from tempfile import TemporaryDirectory
 from typing import final
 
 from jjx.cli import COMMANDS
@@ -10,8 +11,10 @@ from jjx.cli import COMMANDS
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 
 
-def fish_completion_descriptions(commandline: str) -> dict[str, str]:
-    """Return Fish completion candidates mapped to their descriptions."""
+def fish_completion_descriptions(
+    commandline: str, *, cwd: Path | None = None
+) -> dict[str, str]:
+    """Return Fish completion candidates in CWD mapped to their descriptions."""
     result = subprocess.run(
         [
             "fish",
@@ -21,6 +24,7 @@ def fish_completion_descriptions(commandline: str) -> dict[str, str]:
             str(PROJECT_ROOT / "completions"),
             commandline,
         ],
+        cwd=cwd,
         check=True,
         capture_output=True,
         text=True,
@@ -33,9 +37,9 @@ def fish_completion_descriptions(commandline: str) -> dict[str, str]:
     return completions
 
 
-def fish_candidates(commandline: str) -> set[str]:
-    """Return Fish completion candidates for COMMANDLINE."""
-    return set(fish_completion_descriptions(commandline))
+def fish_candidates(commandline: str, *, cwd: Path | None = None) -> set[str]:
+    """Return Fish completion candidates for COMMANDLINE in CWD."""
+    return set(fish_completion_descriptions(commandline, cwd=cwd))
 
 
 @final
@@ -74,27 +78,28 @@ class CompletionTests(unittest.TestCase):
                 "backup",
                 "current",
                 "default",
+                "land",
                 "nearest",
                 "previous",
                 "push",
                 "rebase",
                 "select",
                 "stacked",
-                "sweep",
             },
             candidates,
         )
 
     def test_leaf_arguments_do_not_repeat_command_names(self) -> None:
-        candidates = fish_candidates("jjx bookmark sweep ")
+        candidates = fish_candidates("jjx bookmark land ")
 
-        self.assertFalse({"backup", "stacked", "sweep"} & candidates)
+        self.assertFalse({"backup", "land", "stacked"} & candidates)
 
     def test_every_fish_leaf_declares_its_options(self) -> None:
         expected_options = {
             "bookmark backup": {"--help", "--remote"},
             "bookmark current": {"--help"},
             "bookmark default": {"--help"},
+            "bookmark land": {"--dry-run", "--forget", "--help", "--onto"},
             "bookmark nearest": {"--help"},
             "bookmark previous": {"--help"},
             "bookmark push": {
@@ -107,7 +112,6 @@ class CompletionTests(unittest.TestCase):
             "bookmark rebase": {"--help"},
             "bookmark select": {"--help"},
             "bookmark stacked": {"--help"},
-            "bookmark sweep": {"--dry-run", "--forget", "--help", "--to"},
             "change select": {"--help"},
             "description format": {
                 "--body-width", "--dry-run", "--help", "--revision", "--subject-width",
@@ -146,6 +150,8 @@ class CompletionTests(unittest.TestCase):
     def test_fish_stops_completing_consumed_positionals(self) -> None:
         self.assertNotIn("@", fish_candidates("jjx bookmark nearest @ "))
         self.assertNotIn("@", fish_candidates("jjx bookmark rebase main "))
+        self.assertNotIn("@", fish_candidates("jjx bookmark land @ "))
+        self.assertNotIn("@", fish_candidates("jjx bookmark land --dry-run @- "))
         self.assertNotIn("package.nix", fish_candidates("jjx ensure . "))
 
     def test_every_zsh_subcommand_has_its_cli_description(self) -> None:
@@ -184,7 +190,7 @@ class CompletionTests(unittest.TestCase):
         script = (
             "function _arguments { print -rl -- $@; }; "
             "function _describe {}; function _values {}; "
-            "typeset -a words; words=(jjx bookmark sweep --); CURRENT=4; source $1"
+            "typeset -a words; words=(jjx bookmark land --); CURRENT=4; source $1"
         )
         result = subprocess.run(
             [
@@ -201,13 +207,37 @@ class CompletionTests(unittest.TestCase):
         )
 
         lines = result.stdout.splitlines()
-        self.assertIn("--forget[forget swept bookmarks]", lines)
-        self.assertIn("--dry-run[show the sweep plan]", lines)
-        self.assertTrue(any("--to" in line for line in lines))
+        self.assertIn("--forget[forget passed bookmarks]", lines)
+        self.assertIn("--dry-run[show the land plan]", lines)
+        self.assertIn("(-o --onto)-o[bookmark to move]:bookmark:_jjx_bookmarks", lines)
+        self.assertIn(
+            "(-o --onto)--onto[bookmark to move]:bookmark:_jjx_bookmarks", lines
+        )
+        self.assertIn("1:revision to land:_jjx_revisions", lines)
 
     def test_leaf_completes_options(self) -> None:
-        candidates = fish_candidates("jjx bookmark sweep --")
+        candidates = fish_candidates("jjx bookmark land -")
 
         self.assertTrue(
-            {"--dry-run", "--forget", "--help", "--to"} <= candidates
+            {"-o", "--dry-run", "--forget", "--help", "--onto"} <= candidates
         )
+
+    def test_fish_land_completes_bookmarks_and_revisions(self) -> None:
+        with TemporaryDirectory() as directory:
+            repository = Path(directory)
+            for command in (
+                ["jj", "git", "init", "."],
+                ["jj", "bookmark", "create", "release", "-r", "@"],
+            ):
+                _ = subprocess.run(command, cwd=repository, check=True, capture_output=True)
+
+            for onto in ("--onto", "-o"):
+                with self.subTest(onto=onto):
+                    candidates = fish_candidates(
+                        f"jjx bookmark land {onto} ", cwd=repository
+                    )
+                    self.assertIn("release", candidates)
+                    self.assertNotIn("@", candidates)
+
+            revisions = fish_candidates("jjx bookmark land -o release ", cwd=repository)
+            self.assertTrue({"@", "@-", "release"} <= revisions)

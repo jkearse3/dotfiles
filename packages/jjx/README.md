@@ -7,7 +7,7 @@ dotfiles.
 
 | Command       | Purpose                                                      |
 | ------------- | ------------------------------------------------------------ |
-| `bookmark`    | Query, select, back up, push, rebase, and sweep bookmarks.   |
+| `bookmark`    | Query, select, back up, push, rebase, and land bookmarks.    |
 | `change`      | Interactively select a change.                               |
 | `description` | Format a revision description.                               |
 | `workspace`   | Create prepared jj workspaces and remove them.               |
@@ -18,12 +18,12 @@ Explore the command tree and preview description formatting:
 
 ```console
 $ jjx --help
-$ jjx bookmark sweep --help
+$ jjx bookmark land --help
 $ jjx description format --dry-run
 ```
 
 Home Manager configures `jj x` as an alias for `jjx`, so commands also work as
-`jj x bookmark sweep`.
+`jj x bookmark land`.
 
 ## Checkout setup
 
