@@ -3,12 +3,12 @@ name: implement
 description: >-
   Implements a requested change in a jj repository as finalized revisions: new
   ones, changes folded into existing ones, or both. Plans a roadmap of
-  milestones, plans each milestone in detail from the code already landed,
-  builds each change through a fresh implementer subagent so this session's
-  context stays small, and converges the result with diff-fix. Use when the user
-  asks to implement, build, or carry out a change from any input: a request,
-  issue, plan, note, or spec. Not for fixing review findings (use diff-fix),
-  read-only investigation or review, Git-only checkouts, or publication.
+  milestones, gives each milestone to one fresh implementer subagent that plans
+  it from the code already landed and builds its changes while this session
+  lands each one, and converges the result with diff-fix. Use when the user asks
+  to implement, build, or carry out a change from any input: a request, issue,
+  plan, note, or spec. Not for fixing review findings (use diff-fix), read-only
+  investigation or review, Git-only checkouts, or publication.
 ---
 
 # Implement
@@ -20,7 +20,8 @@ the host cannot start fresh agents, stop and report.
 
 Plan coarsely across the whole task and in detail only for the next milestone,
 from the code that has landed, so no detailed plan is written against code that
-does not exist yet.
+does not exist yet. One implementer plans and builds each milestone, so the
+agent that explored the code is the one that changes it.
 
 ## Input
 
@@ -100,21 +101,22 @@ scratchpad.
 
 ## Loop
 
-Every planner works read-only, with no edits, VCS mutation, scratch files in the
-repository, or delegation. It gets the path of `run.md` and `finalize-changes`'
-Sequencing section verbatim, and returns its questions for the user and the
-defaults it chose instead of asking. Show the user each planner's defaults and
-ask its questions at once, record the answers, and dispatch a fresh planner with
-them when they change its plan. When the user asked not to review, skip every
-`diff-fix`; a `diff-fix` result of `blocked` or `stopped by user` ends the run
-with that outcome.
+A planner, and an implementer while it plans, works read-only: no edits, VCS
+mutation, scratch files in the repository, or delegation. Each gets the path of
+`run.md` and `finalize-changes`' Sequencing section verbatim, and returns its
+questions for the user and the defaults it chose instead of asking. Show the
+user the defaults and ask the questions at once, record the answers, and send
+them back to the agent that planned when they change its plan. When the user
+asked not to review, skip every `diff-fix`; a `diff-fix` result of `blocked` or
+`stopped by user` ends the run with that outcome.
 
 When something needs the user, ask, offering decide or stop. A decision goes to
-a fresh planner, which revises the remaining changes and pending milestones to
-carry it out, for example by dropping a change and what depends on it or by
-adding one that fixes landed work. A revision that drops or changes an input
-criterion, settled decision, or binding requirement needs the user too. Stop
-ends the run and goes to Report.
+the agent whose plan it changes: the milestone's implementer for the current
+milestone, or a fresh planner for pending milestones or landed work, which
+revises them to carry it out, for example by dropping a change and what depends
+on it or by adding one that fixes landed work. A revision that drops or changes
+an input criterion, settled decision, or binding requirement needs the user too.
+Stop ends the run and goes to Report.
 
 1. **Roadmap.** Dispatch a fresh planner to explore as far as the roadmap needs
    and return ordered milestones, and every user-owned decision the input leaves
@@ -122,37 +124,40 @@ ends the run and goes to Report.
    relies only on earlier milestones; a small task is one milestone. Write the
    roadmap, show it, and continue without waiting for approval.
 2. **Plan the milestone.** For the earliest `pending` milestone, dispatch a
-   fresh planner to read the branch as it now stands and return the milestone's
-   changes in order. Each change has a goal, its targets, the checks that prove
-   it, and where it lands: a new revision above a named revision, or a fold into
-   a named revision, either of which may be an earlier change of this plan. Give
-   each change one concern that one implementer can build in a focused session,
-   and include the follow-up folds that keep later revisions valid. The planner
-   also returns evidence when a later milestone is wrong.
+   fresh implementer with the path of `run.md` and the milestone. It first plans
+   from the branch as it now stands and returns the milestone's changes in
+   order. Each change has a goal, its targets, the checks that prove it, and
+   where it lands: a new revision above a named revision, or a fold into a named
+   revision, either of which may be an earlier change of this plan. Give each
+   change one concern, and include the follow-up folds that keep later revisions
+   valid. The implementer also returns evidence when a later milestone is wrong.
 3. **Build and land** each change in order. Put a fresh working copy where the
-   change belongs and dispatch a fresh implementer with the path of `run.md` and
-   the change. It follows `coding-style`, edits only the working copy, performs
-   no VCS mutation or delegation, and runs the change's checks on its final
-   edits. It never writes description text; when the revision's description no
-   longer accounts for it, it returns the facts. It returns `done` with each
-   check's command, result, and the commit it ran on, or `blocked` with the
-   evidence or question.
+   change belongs and send the change to the milestone's implementer. It follows
+   `coding-style`, edits only the working copy, performs no VCS mutation or
+   delegation, and runs the change's checks on its final edits. It never writes
+   description text; when the revision's description no longer accounts for it,
+   it returns the facts. It returns `done` with each check's command, result,
+   and the commit it ran on, or `blocked` with the evidence or question. When
+   the host cannot continue an agent, or this session no longer has it, such as
+   after compaction, give each remaining change to a fresh implementer with the
+   path of `run.md` and the change.
 
    Land the change when its diff does what its plan says, changes nothing else,
    and passed its checks on the tree that lands, composing any new description
    from the diff and the facts. Resolve conflicts it causes in later revisions
    as `diff-fix`'s Resolve conflicts step does. A change that does not land gets
-   one more fresh implementer with the failure; a second failure or a `blocked`
-   return needs the user.
+   one more attempt from a fresh implementer briefed with the plan and the
+   failure, which then carries on with the milestone; a second failure or a
+   `blocked` return needs the user.
 
 4. **Finish the milestone.** Before a later milestone starts, the milestone's
-   change checks pass at the tip: a fresh agent that edits nothing reruns each
-   one that has not yet passed on the tip's tree, and a failure goes to a fresh
-   planner, which adds a change that fixes it. Then record the milestone's
-   revisions as they now stand and mark it `done`. When a planner or the
-   milestone's result shows the pending milestones are wrong, dispatch a fresh
-   planner to revise them, and record why; when it shows a `done` milestone took
-   the wrong path, that needs the user.
+   change checks pass at the tip: the implementer reruns each one that has not
+   yet passed on the tip's tree, and a failure becomes a change it plans and
+   builds as step 3 does. Then record the milestone's revisions as they now
+   stand and mark it `done`. When a planner or the milestone's result shows the
+   pending milestones are wrong, dispatch a fresh planner to revise them, and
+   record why; when it shows a `done` milestone took the wrong path, that needs
+   the user.
 5. Repeat from step 2 until no milestone is `pending`.
 
 ## Converge
