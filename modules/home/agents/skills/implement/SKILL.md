@@ -38,10 +38,10 @@ Hold these throughout, choosing the jj commands; when one cannot hold, that
 needs the user.
 
 - **One branch.** The run works on the branch `@` sits on (`mutable() & ::@-`)
-  plus the revisions it adds. It starts only from an empty, undescribed `@` with
-  one parent, on a branch without merges or undescribed revisions; otherwise
-  stop and say why. When the request names a revision off that branch, ask the
-  user to check out its branch.
+  plus the revisions it adds. It starts only from an empty, undescribed `@` on a
+  linear branch of described revisions; otherwise stop and say why. When the
+  request names a revision off that branch, ask the user to check out its
+  branch.
 - **Valid history.** Every revision the run creates or changes holds one
   concern, is described as `finalize-changes`'
   `references/revision-descriptions.md` requires, and is valid on its own under
@@ -100,10 +100,9 @@ planned when they change its plan.
 
 When something needs the user, ask, offering decide or stop. A decision goes to
 the agent whose plan it changes: the current milestone's implementer, or a fresh
-planner for pending milestones or landed work, which revises them, for example
-by dropping a change and what depends on it or adding one that fixes landed
-work. Dropping or changing a criterion, settled decision, or binding requirement
-needs the user. Stop goes to Report.
+planner for pending milestones or landed work, which revises them. Dropping or
+changing a criterion, settled decision, or binding requirement needs the user.
+Stop goes to Report.
 
 1. **Roadmap.** A fresh planner explores as far as the roadmap needs and returns
    ordered milestones and every user-owned decision the input leaves open across
