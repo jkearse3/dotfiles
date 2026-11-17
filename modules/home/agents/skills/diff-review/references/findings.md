@@ -63,9 +63,12 @@ Name each defect's **root cause**: the guarantee the code lacks, such as "every
 loop path either makes progress or asks", not just the path that broke. Check
 every path in the target that guarantee should cover; each one that fails joins
 the finding's **path set**. Defects that share a missing guarantee are one
-finding. When earlier findings keep recurring in one component, or several
-defects stem from its structure, so that a simpler structure would remove them,
-report one finding proposing that structure, with those defects as its path set.
+finding. When earlier findings keep recurring in one component, several defects
+stem from its structure, or new defects arise in what corrections of earlier
+findings added, so that a simpler structure would remove them, report one
+finding proposing that structure, which may drop the added mechanism when the
+earlier findings it fixed no longer count or the structure resolves them, with
+those defects as its path set.
 
 ## Correction
 
