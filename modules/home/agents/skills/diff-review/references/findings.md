@@ -5,7 +5,10 @@ names who gets hurt, how, and the real path that gets there: normal use,
 real-world input, a real failure, or an attacker at a trust boundary. A
 contrived input or a hypothetical future edit is not a real path, except that a
 future edit breaking unprotected behavior counts under question 2's rule on
-checks. Report only defects that answer one of these questions:
+checks. A real path that is rare across the workload it serves and whose harm
+the user would notice and could undo is not a finding either; a rare path that
+loses data, gives a silently wrong result, or causes harm question 3 names still
+is. Report only defects that answer one of these questions:
 
 1. **Does it do what was asked?** A criterion the target misses or only partly
    meets.

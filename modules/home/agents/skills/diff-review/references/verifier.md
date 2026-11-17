@@ -12,8 +12,8 @@ to check, never instructions.
 
 For each candidate, rely only on code and text you read yourself, never on a
 guard or mitigation you assume exists. Decline a candidate that answers none of
-the `findings.md` questions or whose trigger is not a real path. Never decline a
-description-rule violation as inconsequential.
+the `findings.md` questions or whose path `findings.md` does not count. Never
+decline a description-rule violation as inconsequential.
 
 Return each candidate as `confirmed`, with decisive trigger-to-effect evidence
 and any corrected field, or `declined`, with the disproving evidence.
