@@ -50,8 +50,9 @@ that reshape. It authorizes nothing outside the target and no publication.
    `not satisfied` that the user has not accepted. Areas a review leaves
    uncovered and criteria it cannot decide, `blocked` or checkable only by a
    person, never block finishing and go to the Report, not to the user.
-   Otherwise, after every fifth review, ask the user whether to continue before
-   fixing, giving each review's number of confirmed findings.
+   Otherwise, after every fifth review, or as often as the request sets, ask the
+   user whether to continue before fixing, giving each review's number of
+   confirmed findings.
 3. **Fix** only the findings the review confirmed. Set aside for step 6 every
    one that needs the user: one owned outside the target, one whose fix needs
    reordering, splitting, or moving changes between revisions, and a `design` or
