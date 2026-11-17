@@ -49,10 +49,17 @@ if git -C "$ROOT" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
 		exit 1
 	fi
 elif command -v jj >/dev/null 2>&1; then
-	if ! tracked_files=$(jj --ignore-working-copy -R "$ROOT" file list "root:\"$STORE_RELATIVE\""); then
+	# jj warns on stderr when the store does not exist yet, which is the normal
+	# first run; drop only that warning and pass any other output through.
+	jj_err=$(mktemp)
+	if ! tracked_files=$(jj --ignore-working-copy -R "$ROOT" file list "root:\"$STORE_RELATIVE\"" 2>"$jj_err"); then
+		cat "$jj_err" >&2
+		rm -f "$jj_err"
 		printf '%s\n' "prepare-run: could not inspect jj tracking for $STORE_RELATIVE" >&2
 		exit 1
 	fi
+	grep -v '^Warning: No matching entries for paths:' "$jj_err" >&2 || true
+	rm -f "$jj_err"
 	if [[ -n $tracked_files ]]; then
 		printf '%s\n' "prepare-run: $STORE_RELATIVE must be entirely untracked" >&2
 		exit 1

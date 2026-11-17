@@ -63,9 +63,9 @@ Before the first planner, run
 `scripts/prepare-run.sh --workspace <workspace-root> <slug>` by its path, with
 the workspace's absolute root and a short slug for the outcome. It prepares the
 ignored `.agent/implement/` store and prints a new run directory's absolute
-path; a jj `No matching entries` warning is benign. On a non-zero status, stop
-and report the error; never fall back to the scratchpad or the workspace. Never
-track, publish, or delete the store or a run directory.
+path. On a non-zero status, stop and report the error; never fall back to the
+scratchpad or the workspace. Never track, publish, or delete the store or a run
+directory.
 
 Invoking this skill authorizes writing the store and run directory; creating
 revisions on the branch; rebasing its revisions and changing those the user

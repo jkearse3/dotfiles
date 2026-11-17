@@ -153,6 +153,7 @@ non_colocated="$TMPDIR_ROOT/non colocated"
 make_jj_non_colocated "$non_colocated"
 run_prepare --workspace "$non_colocated/second" 'Fast Run!'
 assert_status 0 "$prepare_status" 'non-colocated jj reservation succeeds'
+assert_lacks 'No matching entries' "$prepare_err" 'non-colocated jj reservation prints no jj path warning'
 assert_eq "$non_colocated/default/.agent/implement" "$(dirname "$prepare_out")" 'non-colocated jj run directory is under the default workspace'
 [[ -d $prepare_out ]] || fail 'non-colocated jj run directory exists'
 assert_eq '' "$(ls -A "$prepare_out")" 'run directory is created empty'
