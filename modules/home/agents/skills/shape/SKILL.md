@@ -72,13 +72,14 @@ absent or could mean materially different changes.
    decide. Record settled names under `Decisions`.
 
 5. **Model.** When the chosen solution changes types, schemas, persisted data,
-   or contracts, follow `model` in design mode for it. Resolve each of its
-   findings before continuing: ask a user-owned choice under step 4's rules,
+   or contracts, follow `domain-model` in design mode for it. Resolve each of
+   its findings before continuing: ask a user-owned choice under step 4's rules,
    revise the solution when a finding shows it admits states the domain forbids,
    and record a residual hazard under `Risks`. When resolving a finding revises
    the solution or introduces a durable name, settle each new name under step 4
-   and follow `model` again on the revised solution. Carry the final target
-   model into `Model`. Skip this step when the change touches none of these.
+   and follow `domain-model` again on the revised solution. Carry the final
+   target model into `Model`. Skip this step when the change touches none of
+   these.
 6. **Specify.** Derive acceptance criteria from the problem, not the solution:
    each is an observable result that shows the problem is solved or an invariant
    preserved, with the command, test, or inspection that proves it. When the
@@ -93,10 +94,10 @@ absent or could mean materially different changes.
    migrations rather than restating it. Name exact files and symbols only when
    grounding established them. Leave revision sequencing to the implementer.
 7. **Pressure test.** Follow `pressure-test` on the draft spec, as step 5
-   follows `model`. Skip this step for a small, reversible change that touches
-   no persisted state, contracts, or external consumers. Take the draft spec as
-   the steelman, reuse steps 1 and 2's grounding and problem definition instead
-   of re-deriving them, and skip its next-step offer.
+   follows `domain-model`. Skip this step for a small, reversible change that
+   touches no persisted state, contracts, or external consumers. Take the draft
+   spec as the steelman, reuse steps 1 and 2's grounding and problem definition
+   instead of re-deriving them, and skip its next-step offer.
 
    Each round, give the breaker the ledger of prior breaks with their
    `confirmed` or `declined` verdicts so it does not re-raise declined ones
@@ -188,9 +189,9 @@ and the cause when it differs from the symptom.>
 
 ## Model
 
-<Optional: the target model from `model`, as a delta from the current model:
-concepts across layers, relationships, invariant enforcement, lifecycles, key
-signatures and call paths, and change impact. Resolve its findings into
+<Optional: the target model from `domain-model`, as a delta from the current
+model: concepts across layers, relationships, invariant enforcement, lifecycles,
+key signatures and call paths, and change impact. Resolve its findings into
 `Decisions`, `Solution`, or `Risks` rather than copying them here.>
 
 ## Acceptance Criteria

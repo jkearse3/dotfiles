@@ -1,5 +1,5 @@
 ---
-name: model
+name: domain-model
 description: >-
   Builds and checks a system's type and relationship model across its typed
   layers, such as database schema, domain types, API contracts, UI state,
@@ -11,7 +11,7 @@ description: >-
   implementation.
 ---
 
-# Model
+# Domain Model
 
 Make a system's concepts, relationships, invariants, and lifecycles explicit
 across every typed layer, and find where the model admits states the domain
@@ -174,6 +174,6 @@ concepts.>
   being written to `coding-style`, and a full change spec to `shape`.
 - Do not decide a user-owned choice the model surfaces, such as delete semantics
   or a sum type versus a table. Record it as a finding with a recommendation for
-  the caller or user to decide; `shape` asks the user when it invokes `model` in
-  design mode.
+  the caller or user to decide; `shape` asks the user when it invokes
+  `domain-model` in design mode.
 - Ground every claim in inspected evidence; mark inference as inference.
