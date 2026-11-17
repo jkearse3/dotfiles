@@ -48,13 +48,11 @@ needs the user.
   `finalize-changes`' Sequencing. A change lands in a new revision or in the
   existing revision whose concern it belongs to, and later revisions that use it
   are updated to match.
-- **Nothing else moves.** No revision off the branch changes, and no other
-  workspace's working copy is rewritten or rebased. Folds and conflict
+- **Nothing else moves.** No revision off the branch changes. Folds and conflict
   resolutions change only revisions the user authored, pushed or not, or the
   request names.
-- **A bookmark marks the tip.** Use a bookmark on `@`, or on `@-` when the
-  branch has revisions, asking when more than one qualifies; otherwise create
-  one. Keep it on the tip.
+- **A bookmark marks the tip.** The task bookmark the version-control rules
+  establish always points at the branch's tip.
 - **A clean working copy.** Between changes, when asking the user, and at the
   end, `@` is an empty child of the tip with no unlanded attempt on the branch.
 - **Resumable.** `run.md` holds enough to resume after compaction.
