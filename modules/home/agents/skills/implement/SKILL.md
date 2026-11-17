@@ -66,13 +66,15 @@ the workspace's absolute root and a slug of a few words for the outcome. It
 prepares the ignored `.agent/implement/` store, reserves a new run directory,
 and prints its absolute path; a jj `No matching entries` warning on stderr is
 benign. On a non-zero status, stop and report its error; never fall back to the
-scratchpad or the workspace.
+scratchpad or the workspace. Never track, publish, or delete the store or the
+run directory.
 
 Invoking this skill authorizes writing the run directory; creating revisions on
 the branch; rebasing its revisions, and changing and rewording those the user
 authored or the request names; discarding attempts that did not land; creating
-or moving the branch's bookmark; and running `diff-fix` on the branch. It
-authorizes nothing else and no publication.
+or moving the branch's bookmark; and running `diff-fix` on the branch. Besides
+the branch, the store, the run directory, and the session scratchpad, it
+authorizes no other writes, external changes, or publication.
 
 ## Run Record
 
@@ -147,12 +149,11 @@ ends the run and goes to Report.
    change checks pass at the tip: a fresh agent that edits nothing reruns each
    one that has not yet passed on the tip's tree, and a failure goes to a fresh
    planner, which adds a change that fixes it. Then record the milestone's
-   revisions as they now stand and mark it `done`.
-5. **Adjust.** When a planner or a milestone's result shows the pending
-   milestones are wrong, dispatch a fresh planner to revise them, and record
-   why. When it shows a `done` milestone took the wrong path, that needs the
-   user.
-6. Repeat from step 2 until no milestone is `pending`.
+   revisions as they now stand and mark it `done`. When a planner or the
+   milestone's result shows the pending milestones are wrong, dispatch a fresh
+   planner to revise them, and record why; when it shows a `done` milestone took
+   the wrong path, that needs the user.
+5. Repeat from step 2 until no milestone is `pending`.
 
 ## Converge
 
@@ -168,11 +169,3 @@ outcome, and list the revisions created and changed, in branch order, with
 change IDs and descriptions; the bookmark; any revision left conflicted; the
 planned changes and milestones that did not land; the user decisions; the
 `diff-fix` result; and the run directory's absolute path.
-
-## Boundaries
-
-- Never push, publish, or mutate external systems.
-- Besides the branch and the session scratchpad, write only the
-  `.agent/implement/` store and this run's directory. Never track, publish, or
-  delete them.
-- Never let a subagent decide a user-owned question; return it to the user.
