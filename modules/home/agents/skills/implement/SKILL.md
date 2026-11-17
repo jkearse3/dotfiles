@@ -68,8 +68,7 @@ directory.
 Invoking this skill authorizes writing the store and run directory; creating
 revisions on the branch; rebasing its revisions and changing those the user
 authored or the request names; discarding attempts that did not land; and
-creating or moving the branch's bookmark. It authorizes no other writes beyond
-the session scratchpad, no external changes, and no publication.
+creating or moving the branch's bookmark. It authorizes nothing else.
 
 ## Run Record
 
@@ -89,9 +88,6 @@ Report, continue with that skill's next step. It holds:
 - `Current milestone`: its changes, each `pending` or `landed` with the revision
   it created or changed and its check reports;
 - `Outcome`, written at the end.
-
-Throwaway files, such as description drafts and check logs, go in the session
-scratchpad.
 
 ## Loop
 
