@@ -5,8 +5,8 @@ description: >-
   idea. Use when shared understanding depends on unresolved intent, ownership,
   priorities, risk tolerance, or tradeoffs, or when the user asks to
   interrogate, validate, refine, de-risk, or clarify their thinking. Not for
-  factual investigation, trying to break a plan or find a simpler path (use
-  pressure-test), implementation planning, or routine implementation choices.
+  factual investigation, implementation planning, or routine implementation
+  choices.
 ---
 
 # Interrogate
