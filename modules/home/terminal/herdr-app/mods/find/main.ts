@@ -666,7 +666,7 @@ export default class Find extends View {
     const t = theme() as ThemeColors;
 
     const world: FindWorld = {
-      terminals: terminals() as TerminalEntry[],
+      terminals: terminals() as unknown as TerminalEntry[],
       agents: agents(),
       panes: panes(),
       spaces: spaces(),

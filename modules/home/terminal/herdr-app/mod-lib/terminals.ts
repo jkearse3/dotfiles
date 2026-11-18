@@ -13,7 +13,8 @@ import type { Program } from "herdr";
 
 // The fields of a `terminals()` entry (a core terminal, agent or not) that
 // the mods linking this file read. The app's typings type `terminals()`
-// entries as `any`.
+// entries only as an open record with a `selection`, so a mod casts the list
+// through `unknown` to this type.
 export interface TerminalEntry {
   // Bare on this computer, "<machine>/<id>" on another.
   address: string;

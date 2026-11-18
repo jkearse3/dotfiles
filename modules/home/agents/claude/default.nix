@@ -241,7 +241,7 @@ let
         echo "claude-code no longer carries the settings precedence chain userSettings -> projectSettings -> localSettings -> flagSettings -> policySettings, so the --settings pin no longer outranks the machine-local layer; re-check how it resolves before trusting the pin" >&2
         exit 1
       fi
-      if ! grep -a -F -q 'Path to a settings JSON file or a JSON string' "$binary"; then
+      if ! grep -a -F -q '"--settings <file-or-json>","Settings file or JSON string' "$binary"; then
         echo "claude-code --settings no longer documents accepting a JSON string, which is how the overlay hands over its payload; re-check how it accepts settings before trusting the pin" >&2
         exit 1
       fi

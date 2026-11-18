@@ -308,7 +308,7 @@ export default class SpacesAndAgents extends View {
   checkNew(cx: AsyncContext): void {
     const now = Date.now();
     const sp = spaces();
-    const entries = terminals() as TerminalEntry[];
+    const entries = terminals() as unknown as TerminalEntry[];
     const liveAddresses = entries
       .filter((k) => k.state === "live")
       .map((k) => k.address);
@@ -1083,7 +1083,7 @@ export default class SpacesAndAgents extends View {
 
     const now = Date.now();
     const list = agents();
-    const allTerminals = terminals() as TerminalEntry[];
+    const allTerminals = terminals() as unknown as TerminalEntry[];
     this.history.track(list, allTerminals, now);
     this.history.trackActivity(allTerminals, now);
     this.history.hold(list);

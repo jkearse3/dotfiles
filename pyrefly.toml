@@ -20,3 +20,12 @@ search-path = [
   "packages/nix-cleanup",
   "packages/scratch-sweep",
 ]
+
+# A unittest fixture declares its attributes on the class and assigns them in
+# `setUp`, which runs before every test; this rule does not count assignments
+# in `setUp` as initialization, so it would flag every such fixture.
+[[sub-config]]
+matches = "**/tests/**"
+
+[sub-config.errors]
+uninitialized-instance-variable = false
