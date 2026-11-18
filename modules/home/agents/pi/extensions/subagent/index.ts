@@ -288,12 +288,14 @@ export default function subagentExtension(pi: ExtensionAPI): void {
       renderCall(args, theme) {
         const lines = subagentCallLines(args);
         return createSubagentComponent(() => lines, theme, {
+          measure: visibleWidth,
           truncate: truncateSubagentLine,
         });
       },
       renderResult(result, { expanded }, theme, renderContext) {
         const report = readSubagentReport(result.details);
         const layout = {
+          measure: visibleWidth,
           truncate: truncateSubagentLine,
           wrap: expanded ? wrapTextWithAnsi : undefined,
         };

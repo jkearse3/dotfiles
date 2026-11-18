@@ -6,6 +6,7 @@ import {
   readSubagentReport,
   subagentCallLines,
   subagentResultLines,
+  type SubagentLine,
 } from "./presentation.ts";
 import type { TaskSnapshot } from "./tasks.ts";
 
@@ -24,8 +25,16 @@ const task: TaskSnapshot = {
   projectTrusted: true,
 };
 
-function text(lines: { text: string }[]): string {
-  return lines.map((line) => line.text).join("\n");
+function text(lines: SubagentLine[]): string {
+  return lines
+    .map((line) =>
+      "fields" in line
+        ? line.fields
+            .map((field) => (typeof field === "string" ? field : field[0]))
+            .join(" · ")
+        : line.text,
+    )
+    .join("\n");
 }
 
 const usageDiagnostics = {
@@ -178,18 +187,114 @@ test("task usage stays compact when collapsed and complete when expanded", () =>
   );
 });
 
+const conversation = {
+  conversationId: "a46e007b-0000-4000-8000-000000000001",
+  resumed: false,
+  resumable: true,
+  createdAt: "2026-01-01T00:00:00.000Z",
+  lastUsedAt: "2026-01-02T00:00:00.000Z",
+  sessionBytes: 2048,
+};
+
+const followUp = {
+  label: "check-auth-tests",
+  conversationId: conversation.conversationId,
+};
+
+test("resume headers identify the conversation before results without dropping the call label", () => {
+  assert.equal(
+    text(subagentCallLines(followUp)),
+    "subagent · Resumed a46e007b · check-auth-tests",
+  );
+  assert.equal(
+    text(subagentCallLines({ ...followUp, action: "run" })),
+    "subagent · Resumed a46e007b · check-auth-tests",
+  );
+  assert.equal(
+    text(subagentCallLines({ conversationId: conversation.conversationId })),
+    "subagent · Resumed a46e007b · …",
+  );
+  assert.equal(
+    text(subagentCallLines({ label: task.label })),
+    "subagent · find-auth",
+  );
+  for (const conversationId of [
+    undefined,
+    123,
+    "a46e007b",
+    `\x1b[31m${conversation.conversationId}`,
+    `${conversation.conversationId}\n`,
+  ]) {
+    assert.equal(
+      text(subagentCallLines({ ...followUp, conversationId })),
+      "subagent · check-auth-tests",
+    );
+  }
+  assert.equal(
+    text(subagentCallLines({ ...followUp, action: "status" })),
+    "subagent · status · check-auth-tests",
+  );
+});
+
+test("fresh foreground results show the matching short ID before usage in progress and terminal states", () => {
+  const call = { label: task.label };
+  const statuses = [
+    ["running", "◌ Running", "accent"],
+    ["completed", "✓ Completed", "success"],
+    ["failed", "✗ Failed", "error"],
+    ["cancelled", "■ Cancelled", "warning"],
+  ] as const;
+  for (const [status, expected, tone] of statuses) {
+    const lines = subagentResultLines(
+      {
+        tasks: [{ ...task, status, usageDiagnostics }],
+        conversation,
+      },
+      call,
+      false,
+    );
+    const [statusLine] = lines;
+    assert.equal(statusLine?.tone, tone);
+    assert.ok(statusLine && "fields" in statusLine);
+    assert.deepEqual(statusLine.fields.slice(0, 4), [
+      expected,
+      "12s",
+      ["New conversation a46e007b", "New a46e007b", "a46e007b"],
+      "↑42.1k",
+    ]);
+    assert.doesNotMatch(text(lines), /a46e007b-/u);
+  }
+  const report = { tasks: [task], conversation };
+  const multipleTasks = subagentResultLines(
+    {
+      tasks: [task, { ...task, taskId: "other-task", label: "other" }],
+      conversation: { ...conversation, resumable: false },
+    },
+    call,
+    false,
+  );
+  assert.equal(
+    text(multipleTasks).match(/New conversation a46e007b/gu)?.length,
+    1,
+  );
+  for (const lines of [
+    subagentResultLines({ tasks: [task] }, call, false),
+    subagentResultLines(
+      { ...report, conversation: { ...conversation, resumed: true } },
+      followUp,
+      false,
+    ),
+    subagentResultLines(report, { action: "status" }, false),
+    subagentResultLines({ ...report, tasks: [] }, call, false),
+  ]) {
+    assert.doesNotMatch(text(lines), /New conversation|Resumed|a46e007b/u);
+  }
+});
+
 test("expanded results identify durable conversations without exposing storage paths", () => {
-  const conversation = {
-    conversationId: "00000000-0000-4000-8000-000000000001",
-    resumed: true,
-    resumable: true,
-    createdAt: "2026-01-01T00:00:00.000Z",
-    lastUsedAt: "2026-01-02T00:00:00.000Z",
-    sessionBytes: 2048,
-  };
   const report = {
     tasks: [{ ...task, status: "completed" as const }],
-    conversation,
+    conversation: { ...conversation, resumed: true },
   };
   assert.equal(readSubagentReport(report), report);
   const expanded = text(
@@ -203,8 +308,26 @@ test("expanded results identify durable conversations without exposing storage p
       true,
     ),
   );
-  assert.match(expanded, /Conversation: .* · resumed · resumable/u);
+  assert.ok(
+    expanded.includes(
+      `Conversation: ${conversation.conversationId} · resumed · resumable`,
+    ),
+  );
   assert.match(expanded, /Stored context: 2 KiB/u);
+  assert.doesNotMatch(expanded, /New conversation/u);
+  const fresh = text(
+    subagentResultLines(
+      { ...report, conversation },
+      { label: task.label },
+      true,
+    ),
+  );
+  assert.ok(
+    fresh.includes(
+      `Conversation: ${conversation.conversationId} · new · resumable`,
+    ),
+  );
+  assert.doesNotMatch(fresh, /New conversation/u);
   assert.doesNotMatch(expanded, /session\.jsonl|storage path/u);
   assert.equal(
     readSubagentReport({

@@ -1,6 +1,6 @@
 import type { Theme } from "@earendil-works/pi-coding-agent";
 import type { Component } from "@earendil-works/pi-tui";
-import type { SubagentLine } from "./presentation.ts";
+import type { SubagentField, SubagentLine } from "./presentation.ts";
 
 export interface SubagentTextColumns {
   slice(text: string, startColumn: number, length: number): string;
@@ -19,12 +19,14 @@ export function createSubagentTruncator(
   };
 }
 
+/** Terminal-column operations; wrapping, when enabled, applies to plain-text lines. */
 export interface SubagentTextLayout {
+  measure(text: string): number;
   truncate(text: string, width: number): string;
   wrap?(text: string, width: number): string[];
 }
 
-/** Renders terminal-column-aware lines, optional Markdown output, then details. */
+/** Renders field continuations and text rows, then optional Markdown output and details. */
 export function createSubagentComponent(
   lines: () => SubagentLine[],
   theme: Pick<Theme, "fg">,
@@ -42,9 +44,7 @@ export function createSubagentComponent(
         );
         const contentWidth = width - indent;
         const prefix = " ".repeat(indent);
-        const text = theme.fg(line.tone, line.text);
-        const content = layout.wrap ? layout.wrap(text, contentWidth) : [text];
-        return content.map(
+        return styledRows(line, contentWidth).map(
           (part) => `${prefix}${layout.truncate(part, contentWidth)}`,
         );
       });
@@ -61,4 +61,39 @@ export function createSubagentComponent(
       details?.invalidate();
     },
   };
+
+  function styledRows(line: SubagentLine, width: number): string[] {
+    if ("fields" in line)
+      return fitFields(line.fields, width, layout.measure).map((row) =>
+        theme.fg(line.tone, row),
+      );
+
+    const styled = theme.fg(line.tone, line.text);
+    return layout.wrap ? layout.wrap(styled, width) : [styled];
+  }
+}
+
+function fitFields(
+  [first, ...rest]: readonly [SubagentField, ...SubagentField[]],
+  width: number,
+  measure: SubagentTextLayout["measure"],
+): string[] {
+  const rows: string[] = [];
+  let row = fitField(first);
+  for (const field of rest) {
+    const text = fitField(field);
+    const joined = `${row} · ${text}`;
+    if (measure(joined) <= width) row = joined;
+    else {
+      rows.push(row);
+      row = text;
+    }
+  }
+  rows.push(row);
+  return rows;
+
+  function fitField(field: SubagentField): string {
+    if (typeof field === "string") return field;
+    return field.find((text) => measure(text) <= width) ?? field.at(-1)!;
+  }
 }

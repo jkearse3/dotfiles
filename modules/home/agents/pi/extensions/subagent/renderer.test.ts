@@ -8,6 +8,7 @@ import type { SubagentLine } from "./presentation.ts";
 
 const plainTheme = { fg: (_tone: string, text: string) => text };
 const layout = {
+  measure: (text: string) => text.length,
   truncate: (text: string, width: number) => text.slice(0, width),
 };
 
@@ -37,6 +38,33 @@ test("compact components clip instead of wrapping and tolerate zero width", () =
   assert.deepEqual(component.render(9), ["long task"]);
   assert.deepEqual(component.render(1), ["l"]);
   assert.deepEqual(component.render(0), []);
+});
+
+test("field continuations clip only fields that cannot fit on their own", () => {
+  const component = createSubagentComponent(
+    () => [
+      {
+        fields: ["Running", "New conversation a46e007b", "↑42.1k"],
+        tone: "accent",
+      },
+    ],
+    plainTheme,
+    {
+      ...layout,
+      truncate: createSubagentTruncator({
+        measure: layout.measure,
+        slice: (text, start, length) => text.slice(start, start + length),
+      }),
+    },
+  );
+  assert.deepEqual(component.render(17), [
+    "Running",
+    "New conversation…",
+    "↑42.1k",
+  ]);
+  assert.deepEqual(component.render(44), [
+    "Running · New conversation a46e007b · ↑42.1k",
+  ]);
 });
 
 test("live lines and theme styles are reevaluated after updates and invalidation", () => {

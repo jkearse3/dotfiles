@@ -466,6 +466,7 @@ for (const config of scenarios) {
             ),
           );
 
+          rmSync(uiChecks);
           const {
             code: restartedCode,
             events: restartedEvents,
@@ -485,6 +486,11 @@ for (const config of scenarios) {
             restartedCode,
             0,
             `${restartedStderr}\n${restartedStdout}`,
+          );
+          assert.equal(
+            readFileSync(uiChecks, "utf8"),
+            "passed",
+            `Restarted UI checks:\n${restartedStderr}\n${restartedStdout}`,
           );
           assert.equal(parentCalls, 6);
           assert.equal(childCalls, 3);
@@ -567,6 +573,7 @@ function createDisposablePiFixture(
     uiProbeExtension(
       uiChecks,
       scenario === "foreground-cancel" ? owned : undefined,
+      scenario === "resume",
     ),
   );
   writeFileSync(seed, "disposable evidence");
@@ -853,15 +860,21 @@ export default function(pi) {
 }
 
 /** Exercise the real host components and TUI lifecycle without a terminal or credentials. */
-function uiProbeExtension(checksPath: string, abortPath?: string): string {
+function uiProbeExtension(
+  checksPath: string,
+  abortPath: string | undefined,
+  expectConversation: boolean,
+): string {
   return `import assert from "node:assert/strict";
 import { existsSync, writeFileSync } from "node:fs";
+import { stripVTControlCharacters } from "node:util";
 import { visibleWidth } from "@earendil-works/pi-tui";
 import registerSubagent from ${JSON.stringify(extensionPath)};
 export default function(pi) {
-  let tool, theme, failure;
+  const expectConversation = ${expectConversation};
+  let tool, theme, failure, freshConversationId;
   function check(component) {
-    for (const width of [80, 20, 1, 0]) {
+    for (const width of [120, 80, 40, 20, 1, 0]) {
       const lines = component.render(width);
       for (const line of lines) {
         assert.ok(visibleWidth(line) <= width, "line exceeds width " + width);
@@ -882,10 +895,33 @@ export default function(pi) {
         tool = definition;
         pi.registerTool({ ...definition, execute: async (...args) => {
           const ctx = args[4];
+          const call = args[1];
           const originalUpdate = args[3];
+          if (expectConversation && call.conversationId) {
+            try {
+              if (call.label === "integration-follow-up")
+                assert.equal(call.conversationId, freshConversationId, "match the ID from fresh progress");
+              const header = tool.renderCall(call, theme, { args: call });
+              const rendered = header.render(40).join("\\n");
+              assert.ok(rendered.includes("Resumed " + call.conversationId.slice(0, 8)), rendered);
+              assert.ok(rendered.includes(call.label), rendered);
+              check(header);
+            } catch (error) { failure ??= error; }
+          }
           args[3] = (partial) => {
-            try { check(tool.renderResult(partial, { expanded: false, isPartial: true }, theme, { args: args[1] })); }
-            catch (error) { failure = error; }
+            try {
+              const view = tool.renderResult(partial, { expanded: false, isPartial: true }, theme, { args: call });
+              if (expectConversation && !call.conversationId && !freshConversationId) {
+                const conversation = partial.details?.conversation;
+                assert.ok(conversation, "the first progress result carries the fresh conversation ID");
+                assert.equal(conversation.resumed, false);
+                const rendered = view.render(40).join("\\n");
+                assert.ok(rendered.includes("New conversation " + conversation.conversationId.slice(0, 8)), rendered);
+                assert.ok(!rendered.includes(conversation.conversationId), rendered);
+                freshConversationId = conversation.conversationId;
+              }
+              check(view);
+            } catch (error) { failure ??= error; }
             originalUpdate?.(partial);
           };
           const abortPath = ${JSON.stringify(abortPath)};
@@ -914,7 +950,19 @@ export default function(pi) {
       check(renderedCall);
       const receipt = tool.renderResult({ content: [], details: { tasks: [task] } }, { expanded: false, isPartial: false }, theme, { args: call });
       assert.match(receipt.render(20).join("\\n"), /Running/u);
+      assert.doesNotMatch(receipt.render(80).join("\\n"), /New conversation|Resumed/u);
       check(receipt);
+
+      if (expectConversation) checkContinuity(task, call);
+
+      const unsupported = tool.renderResult({
+        content: [{ type: "text", text: "Historical result" }],
+        details: { tasks: [task], conversation: { conversationId: "a46e007b" } }
+      }, { expanded: false, isPartial: false }, theme, { args: call });
+      const historical = unsupported.render(80).join("\\n");
+      assert.match(historical, /Historical result/u);
+      assert.doesNotMatch(historical, /New conversation|Resumed|a46e007b/u);
+      check(unsupported);
       for (const status of ["running", "completed", "failed", "cancelled"]) {
         const report = { tasks: [{ ...task, status, transcript: [
           { kind: "assistant", text: "I’ll inspect it." },
@@ -935,8 +983,96 @@ export default function(pi) {
       }
       check(tool.renderResult({ content: [{ type: "text", text: "Invalid task ID" }] }, { expanded: false, isPartial: true }, theme, { args: {}, isError: true }));
       check(tool.renderResult({ content: [], details: { tasks: [] } }, { expanded: true, isPartial: false }, theme, { args: {} }));
-    } catch (error) { failure = error; }
+    } catch (error) { failure ??= error; }
   });
+  function checkContinuity(task, call) {
+    const conversationId = "a46e007b-0000-4000-8000-000000000001";
+    const conversation = {
+      conversationId,
+      resumed: false,
+      resumable: true,
+      createdAt: "2026-01-01T00:00:00Z",
+      lastUsedAt: "2026-01-02T00:00:00Z",
+      sessionBytes: 2048,
+    };
+    const completedTask = {
+      ...task,
+      status: "completed",
+      usageDiagnostics: {
+        totals: {
+          input: 42100,
+          output: 3200,
+          cacheRead: 88400,
+          cacheWrite: 5100,
+          totalTokens: 138800,
+          cost: {
+            input: 0.0421,
+            output: 0.096,
+            cacheRead: 0.00884,
+            cacheWrite: 0.0255,
+            total: 0.17244,
+          },
+        },
+        latestCacheHitRate: 72.25,
+        compactionCount: 1,
+      },
+    };
+    const renderHeader = (label) => {
+      const args = { label, conversationId };
+      return tool.renderCall(args, theme, { args });
+    };
+    const renderReport = (details, expanded = false, isPartial = false) =>
+      tool.renderResult({ content: [], details }, { expanded, isPartial }, theme, { args: call });
+    const plain = (component, width) => component.render(width).map(stripVTControlCharacters);
+    const resumed = renderHeader("integration-follow-up");
+    const wideLabel = renderHeader("中文中文中文");
+    const running = renderReport({ tasks: [task], conversation }, false, true);
+    const report = { tasks: [completedTask], conversation };
+    const completed = renderReport(report);
+    const legacy = renderReport({ tasks: [completedTask] });
+    const expanded = renderReport(report, true);
+
+    const resumeHeader = "subagent · Resumed a46e007b";
+    const completedStatus = "✓ Completed · 12s";
+    const cue = "New conversation a46e007b";
+    const tokenUsage = "↑42.1k · ↓3.2k · R88.4k · W5.1k";
+    const cacheAndCost = "CH72.3% · $0.172";
+    const expandHint = "Ctrl+O to expand";
+    assert.deepEqual({
+      resumedAt40: plain(resumed, 40),
+      resumedAt80: plain(resumed, 80),
+      wideLabelAt40: plain(wideLabel, 40),
+      runningAt40: plain(running, 40),
+      completedAt80: plain(completed, 80),
+      completedAt120: plain(completed, 120),
+      legacyAt80: plain(legacy, 80),
+    }, {
+      resumedAt40: [resumeHeader, "integration-follow-up"],
+      resumedAt80: [resumeHeader + " · integration-follow-up"],
+      wideLabelAt40: [resumeHeader, "中文中文中文"],
+      runningAt40: ["◌ Running · 12s", cue, "read finished"],
+      completedAt80: [[completedStatus, cue, tokenUsage].join(" · "), cacheAndCost, expandHint],
+      completedAt120: [[completedStatus, cue, tokenUsage, cacheAndCost].join(" · "), expandHint],
+      legacyAt80: [[completedStatus, tokenUsage, cacheAndCost].join(" · "), expandHint],
+    });
+    const showsCue = (view, width, cue) => plain(view, width).some((row) => row.split(" · ").includes(cue));
+    for (const [width, freshCue, resumedCue] of [
+      [8, "a46e007b", "a46e007b"],
+      [11, "a46e007b", "a46e007b"],
+      [12, "New a46e007b", "a46e007b"],
+      [15, "New a46e007b", "a46e007b"],
+      [16, "New a46e007b", "Resumed a46e007b"],
+      [20, "New a46e007b", "Resumed a46e007b"],
+      [24, "New a46e007b", "Resumed a46e007b"],
+      [25, cue, "Resumed a46e007b"],
+    ]) {
+      assert.ok(showsCue(running, width, freshCue), "fresh cue at width " + width);
+      assert.ok(showsCue(completed, width, freshCue), "completed cue at width " + width);
+      assert.ok(showsCue(resumed, width, resumedCue), "resume cue at width " + width);
+    }
+    for (const view of [resumed, wideLabel, running, completed, legacy, expanded]) check(view);
+    assert.ok(plain(expanded, 80).join("\\n").includes("Conversation: " + conversationId));
+  }
   pi.on("session_shutdown", () => {
     try {
       assert.ifError(failure);

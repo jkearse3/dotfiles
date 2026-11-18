@@ -24,11 +24,17 @@ export interface SubagentCall {
   conversationId?: string;
 }
 
-export interface SubagentLine {
-  text: string;
+/** One logical line: plain text or independent fields that can continue on a new row. */
+export type SubagentLine = {
   tone: "accent" | "muted" | "text" | "success" | "warning" | "error";
   indentColumns?: number;
-}
+} & (
+  | { text: string }
+  | { fields: readonly [SubagentField, SubagentField, ...SubagentField[]] }
+);
+
+/** Plain text, or variants from full to shortest for when the field cannot fit on its own row. */
+export type SubagentField = string | readonly [string, string, ...string[]];
 
 /** Separates primary result lines from diagnostics shown after the outcome. */
 export interface SubagentResultPresentation {
@@ -182,10 +188,7 @@ function isConversationReport(
   )
     return false;
   return (
-    typeof conversation.conversationId === "string" &&
-    /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u.test(
-      conversation.conversationId,
-    ) &&
+    isConversationId(conversation.conversationId) &&
     typeof conversation.resumed === "boolean" &&
     typeof conversation.resumable === "boolean" &&
     typeof conversation.createdAt === "string" &&
@@ -195,6 +198,19 @@ function isConversationReport(
     Number.isSafeInteger(conversation.sessionBytes) &&
     conversation.sessionBytes! >= 0
   );
+}
+
+function isConversationId(value: unknown): value is string {
+  return (
+    typeof value === "string" &&
+    /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u.test(
+      value,
+    )
+  );
+}
+
+function shortConversationId(conversationId: string): string {
+  return conversationId.slice(0, 8);
 }
 
 function safeTranscriptText(
@@ -235,15 +251,31 @@ function readSubagentCall(value: unknown): SubagentCall {
     label: typeof call.label === "string" ? call.label : undefined,
     taskId: typeof call.taskId === "string" ? call.taskId : undefined,
     prompt: typeof call.prompt === "string" ? call.prompt : undefined,
-    conversationId:
-      typeof call.conversationId === "string" ? call.conversationId : undefined,
+    conversationId: isConversationId(call.conversationId)
+      ? call.conversationId
+      : undefined,
   };
 }
 
+/** Builds the call header from streamed arguments, before any result is available. */
 export function subagentCallLines(value: unknown): SubagentLine[] {
   const call = readSubagentCall(value);
   const foreground = call.action === undefined || call.action === "run";
   const target = call.label ?? call.taskId?.slice(0, 8);
+  if (foreground && call.conversationId) {
+    const id = shortConversationId(call.conversationId);
+    return [
+      {
+        fields: [
+          "subagent",
+          [`Resumed ${id}`, id],
+          target ? inline(target) : "…",
+        ],
+        tone: "accent",
+      },
+    ];
+  }
+
   return [
     {
       text: foreground
@@ -273,6 +305,7 @@ function taskLine(
   task: TaskSnapshot,
   started = false,
   includeLabel = true,
+  shortNewConversationId?: string,
 ): SubagentLine {
   const states = {
     running: { icon: "◌", label: "Running", tone: "accent" },
@@ -287,11 +320,29 @@ function taskLine(
       tone: state.tone,
     };
 
+  const elapsed = formatSubagentElapsed(task.elapsedSeconds);
+  const statusFields: [string, string, ...string[]] = includeLabel
+    ? [`${state.icon} ${inline(task.label)}`, state.label, elapsed]
+    : [`${state.icon} ${state.label}`, elapsed];
   const usage = task.usageDiagnostics
-    ? ` · ${compactUsage(task.usageDiagnostics)}`
-    : "";
+    ? compactUsageFields(task.usageDiagnostics)
+    : [];
+  if (shortNewConversationId)
+    return {
+      fields: [
+        ...statusFields,
+        [
+          `New conversation ${shortNewConversationId}`,
+          `New ${shortNewConversationId}`,
+          shortNewConversationId,
+        ],
+        ...usage,
+      ],
+      tone: state.tone,
+    };
+
   return {
-    text: `${state.icon} ${includeLabel ? `${inline(task.label)} · ` : ""}${state.label} · ${formatSubagentElapsed(task.elapsedSeconds)}${usage}`,
+    text: [...statusFields, ...usage].join(" · "),
     tone: state.tone,
   };
 }
@@ -311,6 +362,11 @@ export function subagentResultPresentation(
     };
 
   const visible = expanded ? report.tasks : report.tasks.slice(0, 4);
+  const conversation = report.conversation;
+  const shortNewConversationId =
+    !expanded && foreground && conversation && !conversation.resumed
+      ? shortConversationId(conversation.conversationId)
+      : undefined;
   const hasExpandedOutcome = expanded && Boolean(report.result?.trim());
   const lines: SubagentLine[] = [];
   const details: SubagentLine[] = [];
@@ -320,12 +376,13 @@ export function subagentResultPresentation(
       tone: "muted",
     });
 
-  for (const task of visible) {
+  for (const [index, task] of visible.entries()) {
     lines.push(
       taskLine(
         task,
         call.action === "start" && task.status === "running",
         !foreground || !call.label || report.tasks.length > 1,
+        index === 0 ? shortNewConversationId : undefined,
       ),
     );
     if (task.error)
@@ -384,17 +441,17 @@ export function subagentResultPresentation(
         tone: "muted",
         indentColumns: 2,
       },
-      ...(report.conversation
+      ...(conversation
         ? [
             {
-              text: `Conversation: ${inline(report.conversation.conversationId)} · ${report.conversation.resumed ? "resumed" : "new"} · ${report.conversation.resumable ? "resumable" : "context limit reached"}`,
-              tone: report.conversation.resumable
+              text: `Conversation: ${inline(conversation.conversationId)} · ${conversation.resumed ? "resumed" : "new"} · ${conversation.resumable ? "resumable" : "context limit reached"}`,
+              tone: conversation.resumable
                 ? ("muted" as const)
                 : ("warning" as const),
               indentColumns: 2,
             },
             {
-              text: `Stored context: ${formatBytes(report.conversation.sessionBytes)} · last used ${inline(report.conversation.lastUsedAt)}`,
+              text: `Stored context: ${formatBytes(conversation.sessionBytes)} · last used ${inline(conversation.lastUsedAt)}`,
               tone: "muted" as const,
               indentColumns: 2,
             },
@@ -548,7 +605,7 @@ function toolCallLines(
   }));
 }
 
-function compactUsage(diagnostics: TaskUsageDiagnostics): string {
+function compactUsageFields(diagnostics: TaskUsageDiagnostics): string[] {
   const { totals } = diagnostics;
   const fields = [
     `↑${formatCompactCount(totals.input)}`,
@@ -561,7 +618,7 @@ function compactUsage(diagnostics: TaskUsageDiagnostics): string {
   if (diagnostics.latestCacheHitRate !== undefined)
     fields.push(`CH${diagnostics.latestCacheHitRate.toFixed(1)}%`);
   fields.push(formatCost(totals.cost.total));
-  return fields.join(" · ");
+  return fields;
 }
 
 function usageDiagnosticLines(
