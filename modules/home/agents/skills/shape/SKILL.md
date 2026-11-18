@@ -7,9 +7,8 @@ description: >-
   when the user wants to figure out how to make, shape, scope, spec, or
   de-ambiguate a ticket, idea, bug fix, refactor, or other change before
   implementing it. Not for explaining a concept, root-cause diagnosis or other
-  questions where no change is requested (use investigate), resolving decisions
-  without producing a spec (use interrogate), implementation, or saving the
-  result.
+  questions where no change is requested (use investigate), implementation, or
+  saving the result.
 ---
 
 # Shape
@@ -48,23 +47,16 @@ absent or could mean materially different changes.
    Include a smaller change or no change when credible. Recommend one. When only
    one approach is credible, state why in a sentence instead of inventing
    alternatives.
-4. **Resolve decisions.** Classify each material unknown, one whose answer could
-   change the outcome, behavior, scope, compatibility, risk, or validation:
-   - Establish facts from evidence rather than asking.
-   - Ask the user for choices that depend on their intent, priorities,
-     ownership, risk tolerance, or accepted tradeoffs, including the solution
-     when the comparison does not settle it. Never infer these from defaults,
-     prior behavior, or convenience.
-   - Leave an implementation choice to the implementer only when any reasonable
-     answer stays within the spec's boundaries.
-   - State a non-material assumption only when it affects interpretation, with
-     what would invalidate it.
-
-   Ask one question per turn, parent decisions before dependents. State the
-   decision and its context, recommend an answer with its rationale and
-   tradeoffs, and wait. Reassess after every answer. Stop asking when the user
+4. **Resolve decisions.** Resolve each material unknown, one whose answer could
+   change the outcome, behavior, scope, compatibility, risk, or validation,
+   under the reasoning rules for asking; the solution is the user's to choose
+   when step 3's comparison does not settle it. Leave an implementation choice
+   to the implementer only when any reasonable answer stays within the spec's
+   boundaries. Record a non-material assumption under `Assumptions` only when it
+   affects interpretation, with what would invalidate it. When the user
    declines, defers, or cannot answer a question whose answer would still change
-   the spec; record it under `Open Questions` and return a `Blocked` spec.
+   the spec, record it under `Open Questions` and return a `Blocked` spec.
+
    Settle each new durable name before the spec relies on it: persisted fields
    and enum values, API and message fields, configuration and environment keys,
    command-line flags, metric and log keys, and exported symbols. Define the
