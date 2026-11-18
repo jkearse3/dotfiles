@@ -7,8 +7,7 @@ description: >-
   when the user wants to figure out how to make, shape, scope, spec, or
   de-ambiguate a ticket, idea, bug fix, refactor, or other change before
   implementing it. Not for explaining a concept, root-cause diagnosis or other
-  questions where no change is requested (use investigate), implementation, or
-  saving the result.
+  questions where no change is requested, implementation, or saving the result.
 ---
 
 # Shape

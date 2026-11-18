@@ -6,9 +6,8 @@ description: >-
   configuration, and build or deployment definitions. Use when the user wants to
   map an existing system's data model, audit it for representable illegal states
   or misplaced invariants, or design the target model for a proposed change. Not
-  for open questions beyond the model (use investigate), types local to code
-  being written (use coding-style), a full change spec (use shape), or
-  implementation.
+  for open questions beyond the model, types local to code being written (use
+  coding-style), a full change spec (use shape), or implementation.
 ---
 
 # Domain Model
@@ -170,8 +169,9 @@ concepts.>
 
 - Do not edit files, mutate version control, or change external systems while
   modeling.
-- Route open questions beyond the model to `investigate`, types local to code
-  being written to `coding-style`, and a full change spec to `shape`.
+- Answer open questions beyond the model directly or leave them out of it. Route
+  types local to code being written to `coding-style` and a full change spec to
+  `shape`.
 - Do not decide a user-owned choice the model surfaces, such as delete semantics
   or a sum type versus a table. Record it as a finding with a recommendation for
   the caller or user to decide; `shape` asks the user when it invokes
