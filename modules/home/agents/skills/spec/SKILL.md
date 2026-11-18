@@ -1,5 +1,5 @@
 ---
-name: shape
+name: spec
 description: >-
   Shapes a change before anyone builds it: defines the problem from evidence,
   compares credible solutions, resolves the user's decisions, and returns a spec
@@ -10,7 +10,7 @@ description: >-
   questions where no change is requested, implementation, or saving the result.
 ---
 
-# Shape
+# Spec
 
 Remove ambiguity from a change before it is built. Produce a spec that a fresh
 implementer, or `implement`, can carry out without reopening its problem,
@@ -158,7 +158,7 @@ content; never write `None` placeholders. Keep detail proportional to the
 change.
 
 ```markdown
-# Shape: <concise outcome>
+# Spec: <concise outcome>
 
 Readiness: Ready | Blocked
 

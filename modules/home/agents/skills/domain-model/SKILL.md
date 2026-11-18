@@ -7,7 +7,7 @@ description: >-
   map an existing system's data model, audit it for representable illegal states
   or misplaced invariants, or design the target model for a proposed change. Not
   for open questions beyond the model, types local to code being written (use
-  coding-style), a full change spec (use shape), or implementation.
+  coding-style), a full change spec (use spec), or implementation.
 ---
 
 # Domain Model
@@ -171,9 +171,9 @@ concepts.>
   modeling.
 - Answer open questions beyond the model directly or leave them out of it. Route
   types local to code being written to `coding-style` and a full change spec to
-  `shape`.
+  `spec`.
 - Do not decide a user-owned choice the model surfaces, such as delete semantics
   or a sum type versus a table. Record it as a finding with a recommendation for
-  the caller or user to decide; `shape` asks the user when it invokes
+  the caller or user to decide; `spec` asks the user when it invokes
   `domain-model` in design mode.
 - Ground every claim in inspected evidence; mark inference as inference.
