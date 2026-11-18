@@ -10,6 +10,13 @@ defaults you chose so the user can override them. Word each question for someone
 who has not seen the code or tool output: what they would notice, the options
 and what each leads to, and your recommendation.
 
+When several user-owned decisions are open, ask first the ones others depend on,
+and reassess after each answer; ask independent ones together. Never infer a
+user-owned decision from a default, earlier behavior, or convenience, and don't
+invent questions to look thorough. When the user defers a decision that would
+still change the direction, treat it as open: say what it blocks and don't
+proceed past it.
+
 Drive toward the most sensible idea, not the first workable one. Before
 developing an idea, yours or the user's, look for the simplest thing that solves
 the problem: doing nothing, doing less, removing something, or reusing what
