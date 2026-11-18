@@ -4,8 +4,8 @@ description: >-
   Writes a tracker-agnostic ticket, with a title, problem, solution, and
   acceptance criteria, from a request, note, thread, conversation, or `spec`
   output. Use when the user asks to write, draft, or turn something into a
-  ticket, issue, or story. Not for shaping an unclear change (use spec), PR text
-  (use pull-request), or creating or updating issues in a tracker.
+  ticket, issue, or story. Not for working out an unclear change, PR text (use
+  pull-request), or creating or updating issues in a tracker.
 ---
 
 # Ticket
@@ -33,7 +33,7 @@ or could mean materially different work.
 2. **Check readiness.** A ticket needs a real problem and a credible direction.
    When the problem is unclear, the input proposes a fix for a symptom, or
    several materially different solutions remain open with no basis to choose,
-   say so in a sentence and recommend `spec` before ticketing. When the user
+   say so in a sentence and offer to work it out before ticketing. When the user
    wants the ticket anyway, write it with the solution marked as proposed and
    the open choices under `Open Questions`.
 3. **Check size.** When the work contains several separately shippable outcomes,
