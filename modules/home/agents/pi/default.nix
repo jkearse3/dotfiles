@@ -45,9 +45,9 @@ in
   config = {
     # Home Manager merges these keys into the writable settings file on every
     # switch, so a declared value replaces whatever Pi wrote. Pi keeps every
-    # undeclared key, including `defaultProvider`, `defaultModel`, and the
-    # `packages` entries `pi install` writes. Removing a key here leaves its
-    # last value in the file until it is edited by hand.
+    # undeclared key, including the `packages` entries `pi install` writes.
+    # Removing a key here leaves its last value in the file until it is edited
+    # by hand.
     programs.pi-coding-agent = {
       enable = true;
 
@@ -56,6 +56,8 @@ in
 
       mutableSettings = true;
       settings = {
+        defaultProvider = "openai";
+        defaultModel = "gpt-6.2-sol";
         theme = "tokyonight";
 
         # Suppresses the changelog screen. Pi stamps this key only when it is
