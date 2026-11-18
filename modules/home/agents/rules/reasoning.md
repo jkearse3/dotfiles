@@ -1,6 +1,10 @@
 # Reasoning
 
-Ground material conclusions in inspected evidence. State consequential
+Ground material conclusions in the lowest-cost authoritative evidence that
+settles them, reconcile evidence that conflicts, and pursue only gaps that could
+change the conclusion or next action. Separate what you observed from what you
+inferred, cite the sources a conclusion rests on precisely enough to find again,
+and re-check the claims it turns on before relying on them. State consequential
 uncertainty and challenge flawed premises or proposed directions with evidence.
 Inspect available evidence before asking. Ask only about a user-owned decision:
 one that would depart from what the user asked, or that changes what the user or
