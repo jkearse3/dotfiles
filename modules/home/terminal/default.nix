@@ -7,6 +7,7 @@
     ./herdr
     ./herdr-app
     ./resterm
+    ./rex
     ./tmux
   ];
 }
