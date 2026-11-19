@@ -57,6 +57,14 @@ in
   targets.darwin.defaults."com.superlogical.rex" = {
     "Workspace.terminalStartupCommand" =
       "${config.home.profileDirectory}/bin/fish --login --interactive";
+    # JetBrains Mono with Nerd Font icons, from the Homebrew cask in
+    # modules/darwin/homebrew.nix, without ligatures, as Ghostty had it
+    # (its default font with `font-feature = -calt/-liga/-dlig`).
+    "Workspace.terminalFontName" = "JetBrainsMono Nerd Font";
+    "Workspace.terminalAllowsLigatures" = false;
+    # The size the Herdr app (../herdr-app/settings.json) and Ghostty (its
+    # macOS default) use.
+    "Workspace.terminalFontPointSize" = 13;
     # Remote Control (Settings > Server > Client Info) lets the `rex` CLI and
     # agents perform app actions, which the theme activation above uses.
     "rex.client.remoteControl" = true;
