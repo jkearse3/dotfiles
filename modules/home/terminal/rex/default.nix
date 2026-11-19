@@ -17,6 +17,10 @@ let
     ];
     text = builtins.readFile ./apply-theme.sh;
   };
+
+  # Hosts known to have the xterm-rex entry, one per line, which
+  # `rex terminfo host` records; the ssh guard below sends them xterm-rex.
+  terminfoHosts = "${config.home.homeDirectory}/.config/rex/terminfo-hosts";
 in
 {
   home = {
@@ -38,6 +42,27 @@ in
       # (`client.theme.import`). Rex ships no Tokyo Night of its own.
       ".config/rex/themes/tokyonight_night".source =
         "${pkgs.vimPlugins.tokyonight-nvim}/extras/ghostty/tokyonight_night";
+
+      # The ssh guard `rex terminfo setup` writes, verbatim so Rex sees it
+      # as current, at the path Rex looks for it. A Rex terminal claims
+      # TERM=xterm-rex only once ssh would announce xterm-256color instead
+      # to hosts without that entry, since a host without it cannot run
+      # curses programs. Outside a Rex terminal the Match does nothing.
+      # Rex's setup cannot add the Include line itself because Home Manager
+      # owns ~/.ssh/config, so programs.ssh adds it.
+      ".config/rex/ssh_config".text = ''
+        # Written by "rex terminfo setup". Rex owns this file and rewrites it, so
+        # edits made here are lost. Remove it with "rex terminfo remove".
+        #
+        # Rex terminals may set TERM=xterm-rex. A host that has no terminfo entry by
+        # that name cannot run curses programs at all, so announce xterm-256color to
+        # every host except the ones recorded in
+        # ${terminfoHosts}
+        # as having the entry. Outside a Rex terminal this block does nothing.
+
+        Match exec "/bin/sh -c '[ x$TERM = xxterm-rex ] && ! grep -qxF -- %h ${terminfoHosts} 2>/dev/null'"
+            SetEnv TERM=xterm-256color
+      '';
     };
 
     # Rex keeps imported themes in an opaque preference with generated IDs,
@@ -48,7 +73,24 @@ in
       run ${lib.getExe applyTheme} ${lib.escapeShellArg rexCli} \
         "$HOME/.config/rex/themes/tokyonight_night"
     '';
+
+    # Installs Rex's terminfo entry, xterm-rex, in ~/.terminfo from the
+    # installed Rex, so it follows Rex updates. The entry is Ghostty's,
+    # describing what Rex terminals support beyond xterm-256color, such as
+    # styled underlines and synchronized output.
+    activation.rexTerminfo = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
+      if [ -x ${lib.escapeShellArg rexCli} ]; then
+        run ${lib.escapeShellArg rexCli} --autostart=false terminfo setup --entry-only >/dev/null ||
+          warnEcho "rex terminfo: could not install the xterm-rex entry"
+      else
+        warnEcho "rex terminfo: Rex is not installed; xterm-rex was not installed"
+      fi
+    '';
   };
+
+  # SetEnv keeps the first value ssh parses, so the guard comes before every
+  # other block.
+  programs.ssh.includes = [ "${config.home.homeDirectory}/.config/rex/ssh_config" ];
 
   # Rex starts new terminals with the macOS login shell (zsh) unless its
   # Startup Command setting (Settings > Terminal) says otherwise. init.lua
