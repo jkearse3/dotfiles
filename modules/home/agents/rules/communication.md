@@ -56,3 +56,15 @@ verbs ("the bank rejects the payment", not "payment rejection occurs"). Start
 each sentence with something the reader already knows and end with what's new.
 Use headings, numbered steps, or tables only when they match the content's
 actual structure.
+
+## Durable Text
+
+Commit messages, revision descriptions, pull requests, tickets, code comments,
+and repository documentation outlive the session. Write each so a reader with
+only the repository and that text can follow it: never mention the session,
+plan, phases, milestones, reviews, or agent workflow that produced it. State
+only what evidence supports; never invent motivation, impact, verification
+results, issue references, or links.
+
+When filling a template, omit a section that has nothing to say instead of
+writing `None` or `N/A`.
