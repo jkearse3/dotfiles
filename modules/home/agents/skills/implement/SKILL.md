@@ -127,12 +127,15 @@ Stop goes to Report.
    implementer with the path of `run.md` and the change.
 
    Land a change when its diff does what the plan says, changes nothing else,
-   and passed its checks on the tree that lands, composing any new description
-   from the diff and the facts. Resolve conflicts it causes in later revisions
-   as `diff-fix`'s Resolve conflicts step does. A change that does not land gets
-   one more attempt from a fresh implementer briefed with the plan and the
-   failure, which then carries on; a second failure or a `blocked` return needs
-   the user.
+   and passed its checks on the tree that lands. Compose any new description
+   from the diff and the facts as `finalize-changes`' Runbook step 3 does, and
+   pass `jj describe` or `jj squash --message` only the value that
+   `commit-message format` produced and `commit-message validate --require-body`
+   accepted with the options `references/revision-descriptions.md` sets. Resolve
+   conflicts it causes in later revisions as `diff-fix`'s Resolve conflicts step
+   does. A change that does not land gets one more attempt from a fresh
+   implementer briefed with the plan and the failure, which then carries on; a
+   second failure or a `blocked` return needs the user.
 
 4. **Finish the milestone.** The next milestone starts only once every change
    check of this one passes at the tip: the implementer reruns each one not yet

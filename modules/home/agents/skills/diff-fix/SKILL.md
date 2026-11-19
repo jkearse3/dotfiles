@@ -73,9 +73,11 @@ decision, and no other revision changes.
    `fixed` with each check it ran and the result, `rejected` with evidence, or
    `needs-decision` with the question. Land each owner before visiting the next.
 4. **Land.** For description facts, compose the replacement from the owner's
-   description, the facts, and the fix's diff as `finalize-changes`'
-   `references/revision-descriptions.md` requires. Confirm the fix's diff and
-   any replacement fix each `fixed` finding, change nothing else, and pass the
+   description, the facts, and the fix's diff as `finalize-changes`' Runbook
+   step 3 does, then format it with `commit-message format` and validate that
+   exact value with `commit-message validate --require-body` and the options
+   `references/revision-descriptions.md` sets. Confirm the fix's diff and any
+   replacement fix each `fixed` finding, change nothing else, and pass the
    fixer's checks; then run `jj squash --from @ --into <owner>`, adding
    `--message "$desc"` for a replacement, or, when only the description changes,
    `jj describe <owner> --message "$desc"`. Otherwise run `jj abandon @`; the
