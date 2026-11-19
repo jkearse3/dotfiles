@@ -21,3 +21,16 @@ rebased descendants, and rerun affected checks.
 After fixes, repeat only affected verification and review. Do not report
 completion until required verification and review are complete, declared
 criteria are satisfied, and confirmed findings are resolved.
+
+## Responding To Feedback
+
+Judge each review suggestion by what the repository would look like with it:
+better, no worse, or worse. Make every suggestion that leaves it better or no
+worse. A suggestion doesn't need to fix a defect: a nit, a readability nudge, or
+hardening for a path the code doesn't reach today all qualify. Decline only with
+evidence that the change makes the repository worse, such as when it is wrong,
+breaks or narrows behavior, weakens safety or performance, adds complexity or
+maintenance its benefit doesn't justify, or contradicts a recorded decision or
+the repository's conventions. "Not needed today" is never a reason to decline.
+When a suggestion reaches beyond the change's scope, ask the user whether to
+include it or take it as follow-up work.

@@ -97,12 +97,13 @@ works read-only: no edits, VCS mutation, scratch files in the repository, or
 delegation. For each item it checks the claim against the code at the recorded
 head, on its own evidence, and returns one verdict with decisive evidence:
 
-- `fix`: the comment identifies something that must change. Include the smallest
-  sufficient correction and the owning revision: the earliest PR revision whose
-  diff introduces the defect or whose concern the request belongs to.
+- `fix`: the requested change leaves the repository better or no worse, whether
+  or not it fixes a defect. Include the smallest sufficient correction and the
+  owning revision: the earliest PR revision whose diff introduces what the
+  comment targets or whose concern the request belongs to.
 - `addressed`: the head already does what the comment asks. Cite where.
-- `decline`: the comment is wrong or its change would cause harm. Cite the
-  evidence.
+- `decline`: the requested change would leave the repository worse, as Change
+  Review's Responding To Feedback defines it. Cite the evidence.
 - `answer`: a question that needs a reply, not a change. Give the answer.
 - `decision`: a design, scope, or tradeoff choice that belongs to the user.
   State the options and their consequences.
