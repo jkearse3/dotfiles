@@ -41,6 +41,7 @@ in
       type = lib.types.listOf lib.types.str;
       default = [
         "shared/shell-environment"
+        "shared/rex-terminal"
         "shared/communication"
         "shared/reasoning"
         "shared/delegation"
