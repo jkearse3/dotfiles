@@ -73,16 +73,16 @@ those defects as its path set.
 ## Correction
 
 Give the smallest change that fixes the root cause, never a workaround that
-hides the symptom, such as special-casing one input, swallowing an error,
-retrying, or checking downstream of where the bad state arises. When text claims
-more than the code enforces and nothing relies on the broader claim, narrowing
-the text is the fix. A text correction uses the simplest language that works and
-replaces or shortens text rather than appending, keeping each rule in one place.
-The correction stays within the code the target changes or made inconsistent,
-plus checks for its behavior. When the root fix needs more, such as code outside
-the target or a changed external contract, the finding is `design`: state the
-real fix and what it touches, the contained workaround and the risk it leaves,
-and whether the approach itself needs rethinking.
+hides the symptom, including a check downstream of where the bad state arises.
+When text claims more than the code enforces and nothing relies on the broader
+claim, narrowing the text is the fix. A text correction uses the simplest
+language that works and replaces or shortens text rather than appending, keeping
+each rule in one place. The correction stays within the code the target changes
+or made inconsistent, plus checks for its behavior. When the root fix needs
+more, such as code outside the target or a changed external contract, the
+finding is `design`: state the real fix and what it touches, the contained
+workaround and the risk it leaves, and whether the approach itself needs
+rethinking.
 
 ## Shape
 
