@@ -27,3 +27,7 @@ the problem: doing nothing, doing less, removing something, or reusing what
 exists. As the discussion moves, keep asking whether each remaining piece still
 needs to exist, and say plainly when an earlier recommendation of yours no
 longer holds.
+
+When fixing a defect, find its root cause and fix it on every path it reaches.
+Never hide the symptom by special-casing the failing input, swallowing the
+error, or retrying.
