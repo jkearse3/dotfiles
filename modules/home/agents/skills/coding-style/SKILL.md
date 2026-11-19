@@ -4,47 +4,39 @@ description: >-
   Use whenever writing, editing, generating, or refactoring source code. Make
   changes easy for search-driven agents and humans to find, understand, modify,
   and verify: name and locate concepts with consistent domain vocabulary, reuse
-  existing code and keep changes minimal, explain code through symbol contracts
-  and self-contained repository text, enforce correctness with types that make
-  invalid states unrepresentable and risk-based durable checks, handle failure
-  safely, keep cost proportional on unbounded paths, and lay out code with
-  progressive declaration order, semantic code paragraphs, and scannable record
-  construction. Apply proportionally without unrelated cleanup or reformatting.
+  existing code and keep changes minimal, document symbol contracts, enforce
+  correctness with types that make invalid states unrepresentable and risk-based
+  durable checks, handle failure safely, keep cost proportional on unbounded
+  paths, and lay out code with progressive declaration order, semantic code
+  paragraphs, and scannable record construction. Apply proportionally without
+  unrelated cleanup or reformatting.
 ---
 
 # Coding Style
 
 Write code so a reader can move from likely task language to the correct
 implementation with a few searches, understand each symbol's contract at its
-definition, rely on types to reject states the code does not support and on
-durable checks to protect the rest, and scan its control and data flow through
-coherent semantic paragraphs.
+definition, rely on types to reject unsupported states and on durable checks to
+protect the rest, and scan its flow through coherent semantic paragraphs.
+Optimize ambiguity, navigation cost, and scanability, not identifier length,
+file count, or the number of blank lines.
 
-Apply this skill to every source-code change. Routine local edits may need only
-consistent vocabulary, clear types, and coherent formatting. Public interfaces,
-cross-module behavior, and structural refactors warrant deliberate retrieval and
-flow checks. Apply durable-check guidance at either depth because it depends on
-behavior and risk, not change size.
-
-Do not rework code outside the requested change solely to make it conform to
-this skill.
+Routine local edits may need only consistent vocabulary, clear types, and
+coherent formatting; public interfaces, cross-module behavior, and structural
+refactors warrant the retrieval and flow checks too. Apply **Write Durable
+Checks** at either depth, because it depends on behavior and risk, not change
+size. Do not rework code outside the requested change solely to make it conform.
 
 ## Name and Locate Concepts
 
 ### Inspect First
 
-Before choosing names or moving code:
-
-1. Search the whole repository for its existing terms for the concept: schema,
-   public interfaces, code, tests, documentation, and user-facing text. Treat
-   that combined usage as the repository's vocabulary; where usages conflict,
-   follow the durable usage and report the conflict.
-2. Check candidate identifiers and filenames for unrelated collisions.
-3. Inspect neighboring source, tests, public interfaces, and conventions.
-4. Prefer established domain vocabulary over new synonyms.
-
-Do not rename unrelated code or broaden the requested change solely to improve
-discoverability.
+Before choosing names or moving code, search the whole repository for its
+existing terms for the concept: schema, public interfaces, code, tests,
+documentation, and user-facing text. Treat that combined usage as the
+repository's vocabulary; where usages conflict, follow the durable usage and
+report the conflict. Check candidate identifiers and filenames for unrelated
+collisions.
 
 ### Choose Names
 
@@ -66,21 +58,17 @@ means, then check that it is searchable.
 - Qualify generic nouns such as `data`, `info`, `type`, `status`, `state`,
   `kind`, `value`, `item`, `manager`, `handler`, and `util` with the domain
   question they answer: `approvalStatus`, not `status`.
-- Give symbols enough domain context to distinguish them from unrelated
-  concepts. Public and widely used names need more context than short-lived
-  locals.
 - Prefer the shortest accurate name whose search results are mostly relevant.
-  Give generic operations an informative object when needed:
-  `validateSmtpConfig`, not `validateConfig`.
+  Public and widely used names need more context than short-lived locals; give
+  generic operations an informative object: `validateSmtpConfig`, not
+  `validateConfig`. Do not repeat context that is already reliably visible.
 - Use one spelling for one concept across its behavior, checks, and other
   references, so a search for that spelling finds them together. Avoid aliases
   and near-synonyms unless an external interface requires them.
 - Treat filenames and directories as search terms. Name concept-bearing modules
   after the behavior or domain question they answer.
-- Respect meaningful language qualification and established framework
-  conventions. Do not repeat context that is already reliably visible.
-- Rename misleading identifiers when behavior changes and the requested scope
-  permits the compatibility impact.
+- Rename an existing identifier that the change makes misleading when the
+  requested scope permits the compatibility impact.
 
 ### Treat Durable Names as Decisions
 
@@ -106,9 +94,10 @@ term the change introduces or changes.
 
 ### Improve Search Landings
 
-A definition's immediate context should normally reveal what it does, its
-important inputs and outputs, hidden constraints, and where delegated behavior
-lives.
+A definition's immediate context should reveal what it does, its important
+inputs and outputs, hidden constraints, and where delegated behavior lives.
+Confirm that a search with likely domain terms lands on the changed concept
+without excessive unrelated hits.
 
 - Split large mixed modules when distinct task-sized concepts repeatedly land
   readers in unrelated code. Do not fragment cohesive code into tiny files.
@@ -118,78 +107,50 @@ lives.
 ### Preserve Operational Trails
 
 - Keep stable error codes, event names, configuration keys, and protocol values
-  searchable as literals when operational lookup depends on them.
-- Give runtime errors enough stable context to locate their source.
-- Name important types and validation errors so diagnostics lead back to the
-  relevant concept.
+  searchable as literals when operational lookup depends on them. Do not
+  duplicate authoritative constants or weaken a sound data model merely to
+  repeat strings.
+- Give runtime errors and validation failures enough stable context to lead back
+  to their source and concept.
 - Mark retained legacy APIs as deprecated and point to the supported path.
 - Document intentional non-behavior where a maintainer would reasonably search
   for an implementation that does not exist.
 
-Do not duplicate authoritative constants or weaken a sound data model merely to
-repeat strings. Prefer one source of truth when drift is the greater risk.
-
 ## Keep the Change Minimal
 
-Reuse first. Search for implementations the way **Inspect First** searches for
-terms: before writing a helper, type, or utility, look for one that already does
-the job, including code written earlier in the same change, and extend it when
-the extension stays coherent.
+Before writing a helper, type, or utility, search for one that already does the
+job, including code written earlier in the same change, and extend it when the
+extension stays coherent. Add only the parameters, branches, indirection,
+configuration, and state the requested behavior needs; add no hooks for
+hypothetical callers.
 
-Add only the parameters, branches, indirection, configuration, and state the
-requested behavior needs. Do not add hooks for hypothetical callers.
+## Document Symbol Contracts
 
-## Explain Code
+Give each public or exported symbol the work introduces or materially changes
+concise definition-site documentation, so callers understand its contract
+through generated documentation, an IDE, or an LSP without reading the
+implementation. Judge internal-package or module symbols by conceptual
+importance rather than visibility alone; do not comment trivial locals or
+obvious private helpers.
 
-### Document Symbol Contracts
-
-Give each public or exported API symbol introduced or materially changed by the
-work—such as a function, type, field, or constant—concise definition-site
-documentation so callers can understand its contract through generated
-documentation, an IDE, or an LSP without reading the implementation. Treat
-visibility limited to an internal package, crate, or module according to the
-symbol's conceptual importance rather than visibility alone. Do not comment
-trivial locals or obvious private helpers mechanically, or expand the requested
-scope to remediate unrelated documentation gaps.
-
-Describe the symbol's purpose and caller-relevant behavior. Include important
-input and output semantics, constraints, units, ordering, ownership, lifecycle,
-side effects, failure behavior such as returned errors, exceptions, or panics,
-meaningful empty or default behavior, concurrency, and security boundaries when
-relevant. A concise contract summary remains valuable even when a reader could
-infer it from the implementation.
-
-Follow the language's documentation conventions so tools associate the text with
-the symbol. Describe behavior rather than narrating implementation steps, avoid
-merely restating the name or signature, and update the documentation when the
-contract changes.
-
-### Keep Repository Text Self-Contained
-
-Comments, docstrings, documents, and fixtures must be understandable from the
-repository alone or from a cited, resolvable external artifact. Never rely on
-the plan, ticket prose, session, or agent workflow that produced the change.
-References to internal planning structure—plan or phase names, stage or step
-numbers, task or milestone labels, or the producing agent's workflow state—carry
-no durable meaning and must not appear.
-
-Describe what the code does and why in durable terms. Cite an issue ID or stable
-design document only when that reference adds information a later reader can
-resolve.
+Describe purpose and caller-relevant behavior: input and output semantics,
+constraints, units, ordering, ownership, lifecycle, side effects, failure
+behavior, meaningful empty or default behavior, concurrency, and security
+boundaries when relevant. A concise contract summary remains valuable even when
+a reader could infer it from the implementation. Follow the language's
+documentation conventions, describe behavior rather than narrating
+implementation steps, and do not merely restate the name or signature.
 
 ## Enforce Correctness
-
-Types, boundary parsers, and declarative layers rule out states the code does
-not support; durable checks protect behavior those mechanisms do not guarantee.
 
 ### Make Invalid States Unrepresentable
 
 Prefer precise input and output types over `any`, unstructured maps, or
 convention-only fields.
 
-When code depends on an invariant—a value is present, in range, already
-validated, or a workflow step has already happened—enforce it with the strongest
-mechanism the language and repository already provide, in this order:
+When code depends on an invariant (a value is present, in range, already
+validated, or a workflow step has already happened), enforce it with the
+strongest mechanism the language and repository already provide, in this order:
 
 1. Shape types so the invalid state cannot be constructed. Use tagged unions
    instead of combinations of nullable fields, required fields instead of
@@ -204,35 +165,32 @@ mechanism the language and repository already provide, in this order:
    scattered across consumers.
 3. Move what remains into a declarative layer the system already enforces, such
    as data-store constraints, configuration or interface schemas, or build-time
-   checks, so the rule is declared once where the data is defined rather than
-   checked by each piece of code that reads it. An invariant that spans records
-   or concurrent writers, such as uniqueness or a reference to another record,
-   belongs in the layer every writer passes through, such as a data-store
-   constraint, even when a boundary parser also checks it.
+   checks, so the rule is declared once where the data is defined. An invariant
+   that spans records or concurrent writers, such as uniqueness or a reference
+   to another record, belongs in the layer every writer passes through, such as
+   a data-store constraint, even when a boundary parser also checks it.
 4. Fall back to a runtime assertion only when the earlier mechanisms cannot
    express the invariant, or when encoding it would cost more than the defect it
    prevents. Put the check in the boundary that owns the invariant, not in each
    consumer, and name its error after the violated invariant.
 
 Treat the urge to write an `assert`, `ensure`, or `must` helper in production
-code as a prompt to revisit steps 1 through 3. A remaining runtime check usually
+code as a prompt to revisit steps 1 through 3: a remaining runtime check usually
 means a type or declarative rule still allows a state the code does not support.
-Test assertions are unaffected.
-
-Use the language's own idioms and the repository's existing mechanisms. Do not
-introduce type-level machinery, validation libraries, or encodings whose reading
-cost exceeds the risk they remove.
+Test assertions are unaffected. Do not introduce type-level machinery,
+validation libraries, or encodings whose reading cost exceeds the risk they
+remove.
 
 ### Handle Failure
 
-- Handle or propagate every error; never swallow one silently. Give it the
-  context **Preserve Operational Trails** describes.
-- Release acquired resources on every path, including failure.
+- Handle or propagate every error with the context **Preserve Operational
+  Trails** describes; never swallow one silently. Release acquired resources on
+  every path, including failure.
 - Where a partial result would matter, make a mutation complete or leave state
   recoverable through atomic replace, idempotent retry, or explicit rollback.
 - Never interpolate untrusted input into commands, queries, paths, or markup
-  without the language's escaping or parameterization.
-- Keep secrets out of logs, errors, and output.
+  without the language's escaping or parameterization, and keep secrets out of
+  logs, errors, and output.
 
 ### Write Durable Checks
 
@@ -244,17 +202,14 @@ Add a durable check when all of these are true:
    behavior.
 3. No existing check directly protects it.
 
-Common cases include behavior that:
+Common cases include deterministic results over inputs with meaningful edge or
+failure cases, including malformed or empty input; mutations of files,
+persistent state, or an external system; and runtime contracts such as
+arguments, output streams, exit codes, idempotence, or change detection.
 
-- computes deterministic results over inputs with meaningful edge or failure
-  cases, including caller-supplied malformed or empty input;
-- mutates files, persistent state, or an external system; or
-- exposes a runtime contract such as arguments, output streams, exit codes,
-  idempotence, or change detection.
-
-Use the repository's existing check mechanism rather than introducing a new
-harness. Missing checks among immediate neighbors are not a reason to skip one;
-compare behavior with repository examples carrying similar risk.
+Use the repository's existing check mechanism rather than a new harness. Missing
+checks among immediate neighbors are not a reason to skip one; compare with
+repository examples carrying similar risk.
 
 Do not add tautological checks, which pass whether or not the behavior is
 correct: restating a compiler, schema, or build guarantee; asserting a mock
@@ -262,21 +217,18 @@ returns its configured value; deriving the expected value from the code under
 test; or asserting on unreviewed snapshots. Confirm each new check fails when
 the behavior it protects is broken.
 
-Durable checks must use repository fixtures, temporary files, in-memory state,
-explicitly provisioned disposable state, or sandboxed integrations. They must
-not read sensitive data or access or mutate protected, production, shared, or
-non-disposable user state. Treat explicitly authorized validation against such
-state as separate manual validation.
-
 Mocks and fakes count when they enforce behavior the artifact owns, such as
 request construction, call sequencing, error handling, or suppression of a side
 effect. They do not establish external compatibility when they merely restate
 assumptions about the external system.
 
-If representative automation is impractical, add the strongest meaningful safe
-partial check and report the remaining validation gap. If no meaningful partial
-check exists, report the whole gap. Do not touch sensitive state or add a
-disproportionate harness solely to satisfy this section.
+Durable checks use repository fixtures, temporary files, in-memory state,
+explicitly provisioned disposable state, or sandboxed integrations. They never
+read sensitive data or touch protected, production, shared, or non-disposable
+user state; treat explicitly authorized validation against such state as
+separate manual validation. If representative automation is impractical, add the
+strongest meaningful safe partial check and report the remaining validation gap,
+or the whole gap when no partial check is meaningful.
 
 ## Keep Cost Proportional
 
@@ -286,47 +238,39 @@ evidence, such as a profile, benchmark, or measured regression.
 
 ## Lay Out Code
 
-Apply these layout rules fully to new files and to new or substantially
-rewritten code. In existing code, apply them to the code the change introduces
-or materially reworks. Do not move, reorder, or reformat untouched code solely
-to make an existing file conform, and avoid whitespace-only changes outside the
-code the change touches. Follow mandatory formatters where they control layout.
+Apply these rules fully to new files and new or substantially rewritten code,
+and otherwise only to the code the change introduces or materially reworks. Do
+not move, reorder, or reformat untouched code, and avoid whitespace-only changes
+outside it. Mandatory formatters win where they control layout.
 
 ### Order Top-Level Declarations for Progressive Disclosure
 
 At the top level of a file, module, namespace, or equivalent scope, organize
 each coherent region for progressive top-down reading. After language-mandated
-elements, lead with the region's primary concept—whether public or private—then
-place its supporting declarations and lower-level implementation details beneath
-it. Repeat this structure for each primary concept; do not group symbols merely
-by visibility.
+elements, lead with the region's primary concept, whether public or private,
+then place its supporting declarations and lower-level details beneath it.
+Repeat this for each primary concept; do not group symbols merely by visibility.
 
-Keep direct support relationships contiguous. Place a supporting declaration
+Keep direct support relationships contiguous: place a supporting declaration
 next to the declaration whose contract, shape, or implementation depends on it,
 and do not let an unrelated helper, factory, type, constant, or secondary
-concept split them.
-
-Where the language permits references to later declarations, use that freedom
-for reader clarity rather than unnecessary dependency-first ordering. Actual
-language constraints, generated-code requirements, mandatory tooling, and
+concept split them. Where the language permits references to later declarations,
+use that freedom for reader clarity rather than dependency-first ordering.
+Language constraints, generated-code requirements, mandatory tooling, and
 established repository conventions take precedence.
 
-Treat a substantially rewritten top-level region as new. In an existing file,
-keep the declarations the change introduces or materially reworks in a coherent
-local group and place that group at the most sensible point in the existing
+In an existing file, keep the declarations the change introduces or materially
+reworks in a coherent local group at the most sensible point in the existing
 order. When ideal placement would require broader reordering, preserve the
-existing structure and make the changed region as clear as possible within it.
+existing structure.
 
 ### Structure Code Paragraphs
 
-Use blank lines as semantic delimiters. Each paragraph should perform one
-coherent step; a blank line should signal a distinct purpose in the function's
-flow.
-
-Start a new paragraph when the code changes phase, such as preparing inputs,
-consuming a validated result, moving from derivation to a side effect, changing
-the subject or abstraction level, or completing setup before the main control
-flow. Keep short, indivisible work in one paragraph.
+Use blank lines as semantic delimiters: each paragraph performs one coherent
+step, and a blank line signals a distinct purpose in the function's flow. Start
+a new paragraph when the code changes phase, such as preparing inputs, consuming
+a validated result, moving from derivation to a side effect, changing the
+subject or abstraction level, or completing setup before the main control flow.
 
 Do not separate statements whose direct relationship matters. Keep together:
 
@@ -350,66 +294,18 @@ print(y)
 ```
 
 The assignment prepares the input, the call and error check form one atomic
-operation, and the final statement consumes the successful result. Do not
-flatten these phases or put a blank line between an operation and its error
-check.
+operation, and the final statement consumes the successful result.
 
-Prefer one blank line between paragraphs. Do not use repeated blank lines as
-stronger separators or put a blank line after every statement; blank lines
-should expose existing structure, not manufacture stages. Keep compact branches
-and loops compact when they perform one coherent step. If paragraph boundaries
-cannot make complex logic clear, use extraction, naming, or comments instead.
-Follow syntax conventions that govern blank lines.
+Use one blank line between paragraphs, never repeated blank lines as stronger
+separators or a blank line after every statement; blank lines expose existing
+structure, not manufactured stages. Keep compact branches and loops compact when
+they perform one step. If paragraph boundaries cannot make complex logic clear,
+use extraction, naming, or comments instead.
 
 ### Format Record Construction
 
 When a struct, record, or object literal initializes more than one named field,
-write it as a multiline block with one named field or property per line. Apply
-the rule recursively to nested record values so their shape remains scannable.
-
-Keep empty and single-field literals compact when clearer. This rule does not
-require one-per-line formatting for positional arguments or collection elements.
-
-## Check the Result
-
-For each materially changed concept:
-
-1. Search with likely domain terms. Confirm the relevant file or symbol appears
-   without excessive unrelated hits and its landing context identifies the
-   implementation or next delegation.
-2. Confirm related behavior and checks use consistent, discoverable vocabulary.
-   List the identifiers the change introduced and rename any whose meaning no
-   longer matches the final behavior; names chosen early in a change often
-   describe an earlier understanding.
-3. Confirm the task summary reports each new durable name with its rejected
-   alternatives.
-4. Confirm symbols covered by **Document Symbol Contracts** have concise,
-   conventionally formatted documentation of their contracts.
-5. Confirm each runtime assertion added to production code, other than a
-   boundary parser or validating constructor, guards an invariant that types, a
-   boundary parser, or a declarative layer could not express, or that would cost
-   more to encode than the defect it prevents.
-6. Confirm behavior covered by **Write Durable Checks** has the strongest
-   practical safe coverage, each new check fails when that behavior is broken,
-   and report any remaining validation gap.
-7. Confirm declarations introduced or materially reworked use primary-first
-   disclosure and contiguous supporting declarations without unrelated
-   reordering.
-8. Scan changed functions for coherent semantic paragraphs and atomic groups.
-9. Confirm multi-field record construction uses one named field or property per
-   line, including nested records.
-10. Confirm the change reuses an existing helper, type, or utility wherever one
-    does the job, and adds no parameter, branch, indirection, configuration, or
-    state the requested behavior does not need.
-11. Confirm errors are handled or propagated, failure releases resources and
-    leaves partial mutations recoverable, untrusted input is escaped or
-    parameterized, and secrets stay out of logs, errors, and output.
-12. Confirm unbounded paths avoid quadratic work, I/O inside loops, and N+1
-    queries, and that any other optimization rests on evidence.
-13. Run the project's formatter and focused type, lint, and test checks.
-14. Inspect the diff for unnecessary renaming, comments, modules, API changes,
-    whitespace-only changes, and repository text that depends on internal
-    planning or workflow context.
-
-Optimize ambiguity, navigation cost, and semantic scanability—not identifier
-length, file count, or the number of blank lines.
+write it as a multiline block with one named field or property per line, and
+apply the rule recursively to nested record values. Keep empty and single-field
+literals compact when clearer. Positional arguments and collection elements are
+exempt.
