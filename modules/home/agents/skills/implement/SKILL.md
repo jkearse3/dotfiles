@@ -79,9 +79,10 @@ Report, continue with that skill's next step. It holds:
   directory, its path and which sections hold each;
 - `Decisions`: each user answer, dated;
 - `Roadmap`: ordered milestones, each with its goal, the criteria it completes,
-  and `pending` or `done` with the revisions it created or changed;
+  and `pending` or `done` with the revisions it created or changed and their
+  unsettled suspected defects;
 - `Current milestone`: its changes, each `pending` or `landed` with the revision
-  it created or changed and its check reports;
+  it created or changed, its check reports, and its unsettled suspected defects;
 - `Outcome`, written at the end.
 
 ## Loop
@@ -115,12 +116,15 @@ Stop goes to Report.
 3. **Build and land** each change in order. Put a fresh working copy where it
    belongs and send the change to the implementer. It follows `coding-style`,
    edits only the working copy, performs no VCS mutation or delegation, and runs
-   the change's checks on its final edits. It writes no description text and
-   instead returns facts when the revision's description no longer fits. It
-   returns `done` with each check's command, result, and commit, or `blocked`
-   with evidence or a question. When the host cannot continue an agent, or this
-   session has lost it, such as after compaction, give each remaining change to
-   a fresh implementer with the path of `run.md` and the change.
+   the change's checks on its final edits. Before returning, it reviews its diff
+   for defects as steps 2 to 5 of `diff-review`'s `references/reviewer.md` do,
+   judged by `references/findings.md`, and fixes what it finds. It writes no
+   description text and instead returns facts when the revision's description no
+   longer fits. It returns `done` with each check's command, result, and commit
+   and the suspected defects it could not settle, or `blocked` with evidence or
+   a question. When the host cannot continue an agent, or this session has lost
+   it, such as after compaction, give each remaining change to a fresh
+   implementer with the path of `run.md` and the change.
 
    Land a change when its diff does what the plan says, changes nothing else,
    and passed its checks on the tree that lands, composing any new description
@@ -133,10 +137,11 @@ Stop goes to Report.
 4. **Finish the milestone.** The next milestone starts only once every change
    check of this one passes at the tip: the implementer reruns each one not yet
    passed on the tip's tree, and a failure becomes a change it plans and builds
-   as in step 3. Then record the milestone's revisions as they now stand and
-   mark it `done`. When a planner or the milestone's result shows pending
-   milestones are wrong, a fresh planner revises them and the reason is
-   recorded; when a `done` milestone took the wrong path, that needs the user.
+   as in step 3. Then record the milestone's revisions as they now stand, with
+   its changes' unsettled suspected defects, and mark it `done`. When a planner
+   or the milestone's result shows pending milestones are wrong, a fresh planner
+   revises them and the reason is recorded; when a `done` milestone took the
+   wrong path, that needs the user.
 5. Repeat from step 2 until no milestone is `pending`.
 
 ## Report
@@ -145,5 +150,6 @@ A stop before `run.md` exists only says why. Otherwise write `Outcome`: `done`,
 `blocked`, or `stopped by user`. Report it, then list the revisions created and
 changed in branch order with change IDs and descriptions, the bookmark, any
 revision left conflicted, planned changes and milestones that did not land, the
-user decisions, and the run directory's absolute path. Unless `Then:` names a
-skill, end by offering `diff-fix` on the run's revisions.
+unsettled suspected defects from `Roadmap` and `Current milestone`, the user
+decisions, and the run directory's absolute path. Unless `Then:` names a skill,
+end by offering `diff-fix` on the run's revisions.

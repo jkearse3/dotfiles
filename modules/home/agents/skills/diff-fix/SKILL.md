@@ -64,9 +64,12 @@ decision, and no other revision changes.
    findings, the criteria and context, and the user's decisions. The fixer
    follows `coding-style`, edits only the working copy, performs no VCS mutation
    or delegation, and fixes each finding's root cause on every path the owner
-   holds; the next review raises paths that later revisions hold. It never
-   writes description text; when a finding concerns the owner's description or
-   the description no longer holds, it returns the facts. Per finding it returns
+   holds; the next review raises paths that later revisions hold. Before
+   returning, it reviews its fix for defects it adds to the owner as steps 2 to
+   5 of `diff-review`'s `references/reviewer.md` do, judged by
+   `references/findings.md`, and fixes what it finds. It never writes
+   description text; when a finding concerns the owner's description or the
+   description no longer holds, it returns the facts. Per finding it returns
    `fixed` with each check it ran and the result, `rejected` with evidence, or
    `needs-decision` with the question. Land each owner before visiting the next.
 4. **Land.** For description facts, compose the replacement from the owner's
