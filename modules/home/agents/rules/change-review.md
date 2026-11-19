@@ -1,7 +1,7 @@
 # Change Review
 
 Before finalizing task-owned changes, inspect the complete task diff, confirm
-declared criteria, and run checks proportionate to the claims and risks.
+declared criteria, and run the checks Running Checks calls for.
 
 Recheck every name the task introduced against the final behavior before
 finalizing, and rename task-introduced names that describe an earlier
@@ -13,9 +13,6 @@ run checks proportionate to each revision's risks. Checks that are unavailable
 or disproportionately expensive may be skipped, but report the affected
 revisions, skipped checks, reasons, and residual risks. Best-effort verification
 does not permit a known-failing revision.
-
-Use an independent reviewer when its expected benefit exceeds coordination and
-verification costs; otherwise review in the owning context.
 
 For fixes to mutable jj history, use a fresh child of the earliest affected
 revision where the fix is valid. Verify it there, squash it back, inspect
