@@ -6,11 +6,11 @@ changes it currently represents.
 1. Require one unambiguous open or draft PR. Stop on a merged or closed PR, or
    when the intended PR cannot be distinguished safely.
 2. If the user explicitly requested publication before the update, verify that
-   the task-owned local branch or bookmark is the PR head, inspect the exact
-   outgoing commits and diff, and require the remote head to be an ancestor of
-   the finalized local head. Push only that head without force, then verify the
-   remote head resolves to the inspected local commit. Stop on divergence or any
-   mismatch.
+   the task-owned local branch or bookmark is the PR head and inspect the exact
+   outgoing commits and diff. Push only that head, without force when the remote
+   head is an ancestor of the finalized local head and otherwise under the
+   force-push boundary in `../SKILL.md`, then verify the remote head resolves to
+   the inspected local commit. Stop on any mismatch.
 3. Treat the PR's remote base and remote head as authoritative. Retrieve and
    inspect their exact commit identifiers and effective diff. If the finalized
    local head contains unpushed changes and publication was not authorized,

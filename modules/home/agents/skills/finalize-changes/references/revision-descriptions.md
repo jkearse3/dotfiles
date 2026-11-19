@@ -11,37 +11,32 @@ hard limit the validator enforces. Choose the type by effect: agent
 configuration is `feat` when behavior changes, `refactor` when reorganized, and
 `docs` only when behavior is unchanged.
 
-Every agent-authored description requires a non-redundant body. Use the body to
-record useful context or details that are not obvious from the subject.
-
-Explain why when a meaningful rationale is known. Include prior state or
-constraints only when they add value. If no useful rationale is apparent,
-emphasize non-obvious implementation details, durable behavior, compatibility,
-risks, exclusions, or a design choice whose consequence the diff does not
-already reveal.
+Every agent-authored description requires a non-redundant body that records
+context or details not obvious from the subject. Explain why when a meaningful
+rationale is known. Include prior state or constraints only when they add value.
+If no useful rationale is apparent, emphasize non-obvious implementation
+details, durable behavior, compatibility, risks, exclusions, or a design choice
+whose consequence the diff does not already reveal.
 
 When a description explains a change by its prior behavior, a constraint, or a
-precedent, state that directly so the description is resolvable from itself and
-its own diff; cite an issue, commit, or component by name only to reinforce what
-the description already explains, never as the pointer a reader must follow to
-recover it.
+precedent, state that directly; cite an issue, commit, or component by name only
+to reinforce what the description already explains, never as the pointer a
+reader must follow to recover it.
 
 Give each distinct chunk of information its own paragraph. In particular, keep
 prior state or constraints, the change made in response, and auxiliary details
 in separate paragraphs when more than one appears.
 
-Exclude review history, tool output, scratch work, agent actions, task state,
-workflow narration, alternatives weighed but not taken, and unsupported claims.
-Never reference internal planning structure — plan or phase names, stage or step
-numbers, or milestone labels such as "Stage 1" or "Step 3"; describe the change
-in durable terms instead.
+Beyond the durable-text rules, also exclude tool output and alternatives weighed
+but not taken.
 
 Wrap body and footer lines at 72 characters except unbreakable URLs and inline
 code. The final metadata section is the footer block: separate it from the body
 with a blank line, keep its entries contiguous, and put each entry on its own
 line. A native Git trailer uses `Token: value`, with one space after the colon
 and hyphens instead of spaces in its token. Use established hyphenated tokens
-such as `Signed-off-by` and `Co-authored-by`; the supported conventional
+such as `Signed-off-by` (never add `Co-authored-by` unless the user names a
+co-author, per the version-control rules); the supported conventional
 single-word tokens are `Cc`, `Link`, and `Reverts`. This bounded vocabulary
 keeps ordinary prose such as `Records: ...` unambiguous. Wrapped trailer values
 use indented continuation lines. `BREAKING CHANGE: description` is the
@@ -63,13 +58,17 @@ When the change set has a governing issue or ticket, source its identifier from
 the task-owned branch or bookmark name, the plan or contract in scope, or the
 issue description driving the work. Omit the issue-reference footer only when no
 such issue exists. It is a cross-reference and automation aid, not a substitute
-for a self-resolvable description. Do not invent an issue reference, sign-off,
-reviewer, or external link.
+for a self-resolvable description.
 
 Format each complete agent-authored message into `desc`, validate that exact
 value, and pass it unchanged to the mutation:
 
 ```bash
+desc='type(scope): description
+
+Prior state or constraint, when it adds value.
+
+The change made in response.'
 desc="$(printf '%s\n' "$desc" | commit-message format)"
 printf '%s\n' "$desc" | commit-message validate --require-body --conventional
 ```

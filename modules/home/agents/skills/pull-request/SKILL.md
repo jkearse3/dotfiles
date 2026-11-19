@@ -42,9 +42,8 @@ ambiguous.
 
 ## Runbook
 
-1. Establish the repository mode, task-owned head, intended base, publication
-   state, and operation from local history and explicit context. Follow all
-   governing repository and VCS instructions.
+1. Establish the task-owned head, intended base, publication state, and
+   operation from local history and explicit context.
 2. Require the relevant work to be finalized.
    - In Git, require a clean worktree and index.
    - In jj, require the task bookmark to identify the finalized tip and the
@@ -58,17 +57,13 @@ ambiguous.
      and effective diff from the selected base to the finalized head.
    - For an existing PR, inspect the effective diff between the PR's remote base
      and remote head. Unpushed local commits are not represented by the PR.
-5. Inspect the complete represented diff, commits, and relevant repository
-   guidance before writing. Block on unrelated, unexpected, uncertain-ownership,
-   or unfinalized work.
-6. Discover conventions and compose presentation according to the sections
-   below. Ground every material claim in the represented change set or explicit
-   user-supplied context.
-7. Select and read exactly one procedure:
+5. Block on unrelated, unexpected, uncertain-ownership, or unfinalized work in
+   the represented change set.
+6. Compose presentation according to the sections below.
+7. Read and follow exactly one procedure:
    - `procedures/draft.md` to preview presentation without remote mutation.
    - `procedures/create.md` to push a finalized head and create a PR.
    - `procedures/update.md` to change title, body, or both on an existing PR.
-8. Execute only the selected procedure and report its specified result.
 
 ## Base and Head
 
@@ -154,7 +149,6 @@ Write the summary in one or two short paragraphs:
 - Lead with the real problem, limitation, need, or maintenance purpose.
 - Follow with the solution or resulting outcome.
 - For routine work, combine purpose and action in one concise sentence.
-- Never manufacture a problem or motivation.
 - Avoid repeating the title without adding context.
 
 Use `What's Changed` for reviewer-significant behavior and implementation
@@ -174,8 +168,7 @@ Append these sections only when they contain useful information:
 ## Review Guide
 ```
 
-Remove empty or inapplicable sections unless a repository template requires
-them.
+Keep an empty section only when a repository template requires it.
 
 ### Verification Evidence
 
@@ -189,8 +182,7 @@ represented content:
 Never infer that checks passed from the presence of tests or configuration. Do
 not reuse evidence after the verified content changes. If a template requires
 verification text but reliable evidence is unavailable, stop and ask for
-suitable public wording rather than inventing a result or exposing internal
-procedure.
+suitable public wording.
 
 ### Related Work
 
@@ -208,10 +200,16 @@ close the ticket. Otherwise link it without implying complete resolution.
 - After creation, change only title or body through the update procedure. Do not
   change base, draft/ready state, reviewers, assignees, labels, milestones,
   projects, or other metadata.
-- Never force-push.
-- Preserve unrelated and uncertain-ownership work by stopping rather than
-  absorbing, resetting, stashing, or discarding it.
-- Do not expose agent procedures, internal workflow names, or unsupported
-  verification claims in public PR content.
+- When the remote head is not an ancestor of the finalized local head, push only
+  when every remote commit missing from the local head is one the local history
+  rewrote, as when the remote head is a commit the local branch held before the
+  rewrite according to Git's reflog or jj's operation log, and only with the
+  user's explicit approval to force-push that branch. Push through
+  `jj git push`, which refuses when the remote bookmark moved from its last
+  fetched position or the local bookmark is conflicted, or Git's
+  `--force-with-lease=<branch>:<remote-head-oid>` with that inspected remote
+  head as the expected oid. When a remote commit is neither in the local head
+  nor rewritten by it, stop and report those commits; without the approval, stop
+  and report that the branch was rewritten.
 - Use safe non-interactive input for bodies rather than interpolating Markdown
   through an unsafe shell command.

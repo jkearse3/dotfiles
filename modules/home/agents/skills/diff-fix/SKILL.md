@@ -20,7 +20,8 @@ cannot start fresh agents, stop and report.
 Rounds share only the user's decisions, every review's confirmed findings, and
 the last review's declined candidates. This session passes findings on without
 matching them; each review judges which still hold or keep recurring and finds
-again whatever else is still wrong.
+again whatever else is still wrong. Never lower the finding bar, edit criteria,
+or phrase requests to suppress findings.
 
 ## Target
 
@@ -30,9 +31,9 @@ each review and at the end, `@` is an empty child of the target's tip. Refer to
 revisions by change ID, since every squash rewrites commits.
 
 Take criteria, context, user decisions, and check evidence from the request.
-Invoking this skill authorizes squashing fixes into target revisions and
-rebasing their descendants, and a user decision to reshape the target authorizes
-that reshape. It authorizes nothing outside the target and no publication.
+Invoking this skill authorizes squashing fixes into any target revision and
+rebasing its descendants within the task's stack; a reshape needs a user
+decision, and no other revision changes.
 
 ## Loop
 
@@ -54,26 +55,26 @@ that reshape. It authorizes nothing outside the target and no publication.
    user whether to continue before fixing, giving each review's number of
    confirmed findings.
 3. **Fix** only the findings the review confirmed. Set aside for step 6 every
-   one that needs the user: one owned outside the target, one whose fix needs
-   reordering, splitting, or moving changes between revisions, and a `design` or
-   `question` finding no user decision settles. For the rest, visit each owning
-   revision, earliest first. Run `jj new <owner>` and dispatch a fresh fixer
-   with the owner's change ID, its findings, the criteria and context, and the
-   user's decisions. The fixer follows `coding-style`, edits only the working
-   copy, performs no VCS mutation or delegation, and fixes each finding's root
-   cause on every path the owner holds; the next review raises paths that later
-   revisions hold. It never writes description text; when a finding concerns the
-   owner's description or the description no longer holds, it returns the facts.
-   Per finding it returns `fixed` with each check it ran and the result,
-   `rejected` with evidence, or `needs-decision` with the question. Land each
-   owner before visiting the next.
+   one that needs the user: one owned outside the target, one whose owner has a
+   descendant outside the task's stack that the user has not authorized
+   rebasing, one whose fix needs reordering, splitting, or moving changes
+   between revisions, and a `design` or `question` finding no user decision
+   settles. For the rest, visit each owning revision, earliest first. Run
+   `jj new <owner>` and dispatch a fresh fixer with the owner's change ID, its
+   findings, the criteria and context, and the user's decisions. The fixer
+   follows `coding-style`, edits only the working copy, performs no VCS mutation
+   or delegation, and fixes each finding's root cause on every path the owner
+   holds; the next review raises paths that later revisions hold. It never
+   writes description text; when a finding concerns the owner's description or
+   the description no longer holds, it returns the facts. Per finding it returns
+   `fixed` with each check it ran and the result, `rejected` with evidence, or
+   `needs-decision` with the question. Land each owner before visiting the next.
 4. **Land.** For description facts, compose the replacement from the owner's
    description, the facts, and the fix's diff as `finalize-changes`'
-   `references/revision-descriptions.md` requires, never mentioning reviews or
-   fixes. Confirm the fix's diff and any replacement fix each `fixed` finding,
-   change nothing else, and pass the fixer's checks; then run
-   `jj squash --from @ --into <owner>`, adding `--message "$desc"` for a
-   replacement, or, when only the description changes,
+   `references/revision-descriptions.md` requires. Confirm the fix's diff and
+   any replacement fix each `fixed` finding, change nothing else, and pass the
+   fixer's checks; then run `jj squash --from @ --into <owner>`, adding
+   `--message "$desc"` for a replacement, or, when only the description changes,
    `jj describe <owner> --message "$desc"`. Otherwise run `jj abandon @`; the
    next review raises what is still wrong.
 5. **Resolve conflicts** after each landing. List
@@ -96,14 +97,7 @@ that reshape. It authorizes nothing outside the target and no publication.
 
 ## Report
 
-Lead with the outcome, `finished`, `blocked`, or `stopped by user`, and the
-number of reviews. Then list the last review's open findings, the areas it left
-uncovered and the criteria it could not decide, revisions rewritten and
-descendants rebased, and where `@` ends.
-
-## Boundaries
-
-- Never push, publish, or mutate external systems.
-- Never rewrite references outside the target, except rebasing its descendants.
-- Never lower the finding bar, edit criteria, or phrase requests to suppress
-  findings.
+Give the outcome, `finished`, `blocked`, or `stopped by user`, and the number of
+reviews. Then list the last review's open findings, the areas it left uncovered
+and the criteria it could not decide, revisions rewritten and descendants
+rebased, and where `@` ends.

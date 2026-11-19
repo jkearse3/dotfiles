@@ -14,11 +14,21 @@ read-only Git inspection.
 
 ## History And References
 
-Implementation authorization includes locally finalizing verified,
-agent-authored task changes without further confirmation; it does not authorize
-publication. Use `finalize-changes` for finalization and history shaping.
-Rewriting published, unrelated, user-authored, or uncertain-ownership history
-requires explicit authorization.
+Implementation authorization includes locally finalizing verified task changes
+without further confirmation; it does not authorize publication. Use
+`finalize-changes` for finalization and history shaping unless an invoked skill
+prescribes its own history procedure.
+
+The task's stack is every mutable revision from trunk up to the task's Git
+branch or jj bookmark, including the user's own change sets under other
+references beneath it. The user prefers clean history to forward fixes. Within
+the task's stack, fold each fix into the revision it belongs to rather than
+adding a fix-up revision on top, including revisions the user authored and
+revisions already pushed. Rewriting a revision rebases its descendants, so a
+descendant outside the task's stack counts as a revision outside it. Rewriting
+revisions outside the task's stack, or revisions another person authored or of
+uncertain ownership, requires explicit authorization. Pushing any rewritten
+revision remains a force push under Publication.
 
 Finalized revisions must be useful bisect points and safe to land on main
 individually: if history stops at any revision, the codebase must be safe to
@@ -48,24 +58,25 @@ change set. In jj, inspect `@` directly; bookmark an empty `@`, or create and
 bookmark an empty child. Stack on current work unless the user specifies another
 base. Reuse a reference only for the same change set and keep it at the
 change-set tip. Treat reference-helper output as discovery; verify exact
-attachment and stack ownership before mutation.
+attachment and stack ownership before mutation. When jj work is finalized, leave
+`@` as an empty child of the change-set tip.
 
 ## Shared jj Workspaces
 
 A checkout whose `.jj/repo` is a file is a jj workspace that shares its
 repository, operation log, and bookmarks with the repository's other workspaces,
 each with its own `@`. Treat another workspace's working-copy commit, shown as
-`<name>@`, and its ancestors outside trunk and your task-owned stack as owned by
-that workspace; rewriting, abandoning, or moving bookmarks on them requires
-explicit authorization. So do repository-wide operation commands such as
-`jj op restore` and any `--allow-cross-workspace` override. Target abandon,
-rebase, and bookmark commands by change IDs and bookmark names your task
-created, never by a revset rooted at trunk. When jj refuses because another
-workspace's commit is immutable, narrow the target; `--ignore-immutable`
-requires explicit authorization. To reverse a cross-workspace mistake, use
+`<name>@`, and its ancestors outside trunk and the task's stack as owned by that
+workspace; rewriting, abandoning, or moving bookmarks on them requires explicit
+authorization. So do repository-wide operation commands such as `jj op restore`
+and any `--allow-cross-workspace` override. Target abandon, rebase, and bookmark
+commands by change IDs and bookmark names your task created, never by a revset
+rooted at trunk. When jj refuses because another workspace's commit is
+immutable, narrow the target; `--ignore-immutable` requires explicit
+authorization. To reverse a cross-workspace mistake, use
 `jj op revert <operation>`, not `jj undo`. When jj reports a stale working copy,
-run `jj workspace update-stale` only if the rewritten revisions belong to your
-task-owned stack; otherwise stop and report it.
+run `jj workspace update-stale` only if the rewritten revisions belong to the
+task's stack; otherwise stop and report it.
 
 ## Remote Bookmarks
 

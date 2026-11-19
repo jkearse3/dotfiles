@@ -29,15 +29,11 @@ Target and Fetch sections describe, with the same stops. Also stop when the PR
 is not open, or when its author is not the authenticated `gh` user
 (`gh api user --jq .login`): the fixes rewrite the head branch's history.
 
-Continue the head branch under its own name. Run
-`jj bookmark list --all '"<headRefName>"'`. If `"<headRefName>"@<remote>` is
-already tracked, use the local bookmark; stop if it is conflicted or does not
-point at `headRefOid`, since it then carries unpushed changes or a stale head.
-If an untracked local `<headRefName>` exists elsewhere, stop and report it.
-Otherwise run `jj bookmark track '"<headRefName>"' --remote <remote>` and
-confirm with the same listing that it is tracked, not conflicted, and at
-`headRefOid`. Below, `<head>` is the revset `'"<headRefName>"'`, the local
-bookmark quoted as `pr-review` requires.
+Continue the head branch under its own name, tracking `"<headRefName>"@<remote>`
+as the version-control rules describe. Also stop when the local bookmark does
+not point at `headRefOid`, since it then carries unpushed changes or a stale
+head. Below, `<head>` is the revset `'"<headRefName>"'`, the local bookmark
+quoted as `pr-review` requires.
 
 The PR revisions, `<pr>` below, are the range
 `fork_point(<headRefOid> | "<baseRefName>"@<remote>)..<headRefOid>`. Record
@@ -158,8 +154,7 @@ it, and with these differences:
   and described as `finalize-changes` describes. When it lands after the head,
   move the head bookmark to it.
 - Keep every touched description accurate to its revision's resulting behavior:
-  express what the revision now does, never that it changed after review. Never
-  mention reviews, reviewers, comments, or feedback in a description.
+  express what the revision now does, never that it changed after review.
 - A fixer's `rejected` return with evidence makes the item `decline`, unless the
   user decided the item, in which case it goes back to the user. A
   `needs-decision` return, and an item that `diff-fix`'s Fix step holds for its
@@ -174,9 +169,7 @@ it, and with these differences:
   ends `decline`, `unresolved`, or with the user, abandon the prerequisite with
   `jj abandon <change ID>` and resolve any conflicts this leaves in its
   descendants, as for a landing.
-- Run checks proportionate to each fix's risk on every revision it touched, and
-  at the head, one heavy check at a time; each revision must stay safe to land
-  on its own.
+- Run checks on every revision a fix touched, and at the head.
 
 After all fixes, run `jj new <head>`.
 
@@ -231,9 +224,9 @@ dropped drafts first. Stop there.
 
 ## Publish
 
-Only on the user's explicit go given after the Report, which covers the
-force-update the preview showed. A go in the original request does not count:
-the user has not yet seen the drafts or the preview.
+Only on the user's explicit go given after the Report, which is the force-push
+approval for the force-update the preview showed. A go in the original request
+does not count: the user has not yet seen the drafts or the preview.
 
 1. Fetch the head branch again. Stop if `"<headRefName>"@<remote>` moved from
    the recorded head: someone pushed meanwhile.

@@ -9,7 +9,8 @@ Publish a finalized task head and create a new GitHub pull request.
    commits, effective diff, requested draft state, and generated presentation.
 3. Verify that the base's expected local revision matches its remote ref. Push
    only the finalized task branch or bookmark, creating its remote ref when
-   absent. Stop on remote divergence or any push requiring force.
+   absent. A push requiring force follows the force-push boundary in
+   `../SKILL.md`.
 4. Confirm that the published head resolves to the inspected finalized commit.
    If it does not, stop without creating the PR.
 5. Create the PR with the generated title and body. Pass the body through a

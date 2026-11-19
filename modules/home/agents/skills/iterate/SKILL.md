@@ -27,9 +27,8 @@ through the tip, with:
 - the criteria: the run's criteria and binding requirements;
 - the context: its exclusions;
 - the user decisions: its settled decisions, its `Decisions`, and this one:
-  fixes, conflict resolutions, and reshapes change only revisions the user
-  authored, pushed or not, the request names, or the run created; a finding or
-  conflict in any other revision needs the user.
+  fixes, conflict resolutions, and reshapes change only revisions `implement`
+  could change; a finding or conflict in any other revision needs the user.
 
 Otherwise skip the review. During the review, record each answer the user gives
 in `run.md` `Decisions`.

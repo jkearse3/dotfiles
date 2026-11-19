@@ -48,12 +48,12 @@ needs the user.
   `finalize-changes`' Sequencing. A change lands in a new revision or in the
   existing revision whose concern it belongs to, and later revisions that use it
   are updated to match.
-- **Nothing else moves.** No revision off the branch changes. Folds and conflict
-  resolutions change only revisions the user authored, pushed or not, or the
-  request names.
-- **A bookmark marks the tip.** The task bookmark the version-control rules
-  establish always points at the branch's tip.
-- **A clean working copy.** Between changes, when asking the user, and at the
+- **Nothing else moves.** No revision off the branch changes. On it, folds and
+  conflict resolutions rewrite what the version-control rules allow in the
+  task's stack, plus any revision the request names.
+- **A bookmark marks the tip.** The task bookmark always points at the branch's
+  tip.
+- **A clean working copy.** Between changes and when asking the user, as at the
   end, `@` is an empty child of the tip with no unlanded attempt on the branch.
 - **Resumable.** `run.md` holds enough to resume after compaction.
 
@@ -61,14 +61,9 @@ Before the first planner, run
 `scripts/prepare-run.sh --workspace <workspace-root> <slug>` by its path, with
 the workspace's absolute root and a short slug for the outcome. It prepares the
 ignored `.agent/implement/` store and prints a new run directory's absolute
-path. On a non-zero status, stop and report the error; never fall back to the
-scratchpad or the workspace. Never track, publish, or delete the store or a run
-directory.
-
-Invoking this skill authorizes writing the store and run directory; creating
-revisions on the branch; rebasing its revisions and changing those the user
-authored or the request names; discarding attempts that did not land; and
-creating or moving the branch's bookmark. It authorizes nothing else.
+path. On failure, never fall back to the scratchpad or the workspace. Never
+track, publish, or delete the store or a run directory. Invoking this skill
+authorizes writing them and abandoning attempts that did not land.
 
 ## Run Record
 
@@ -95,8 +90,8 @@ Planners, and implementers while they plan, work read-only: no edits, VCS
 mutation, scratch files in the repository, or delegation. Each gets the path of
 `run.md` and `finalize-changes`' Sequencing section verbatim, and returns its
 questions and the defaults it chose instead of asking. Show the defaults, ask
-the questions at once, record the answers, and send them back to the agent that
-planned when they change its plan.
+the questions, record the answers, and send them back to the agent that planned
+when they change its plan.
 
 When something needs the user, ask, offering decide or stop. A decision goes to
 the agent whose plan it changes: the current milestone's implementer, or a fresh
@@ -147,8 +142,8 @@ Stop goes to Report.
 ## Report
 
 A stop before `run.md` exists only says why. Otherwise write `Outcome`: `done`,
-`blocked`, or `stopped by user`. Lead with it, then list the revisions created
-and changed in branch order with change IDs and descriptions, the bookmark, any
+`blocked`, or `stopped by user`. Report it, then list the revisions created and
+changed in branch order with change IDs and descriptions, the bookmark, any
 revision left conflicted, planned changes and milestones that did not land, the
 user decisions, and the run directory's absolute path. Unless `Then:` names a
 skill, end by offering `diff-fix` on the run's revisions.

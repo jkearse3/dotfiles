@@ -1,18 +1,12 @@
 # Finalize With Git
 
-Use this procedure only in a Git repository where jj is unavailable or
-explicitly unsupported. The target is verified working changes or an explicit
-unpublished, task-owned commit set authorized for rewrite.
-
 ## Inspect And Record
 
-1. Inspect the worktree, index, current branch, upstream, base, target commits,
-   full messages, and publication state. Require a clearly task-owned
-   non-default branch for new work. Stop for a detached HEAD, unrelated changes,
-   an uncertain base or branch, or commits that may be published.
-   Mutable-history finalization additionally requires a clean current worktree
-   and index before any rewrite; staged-boundary handling applies only to
-   working-change finalization.
+1. Require a clearly task-owned non-default branch for new work. Stop for a
+   detached HEAD, unrelated changes, an uncertain base or branch, or commits
+   outside the task's stack. Mutable-history finalization additionally requires
+   a clean current worktree and index before any rewrite; staged-boundary
+   handling applies only to working-change finalization.
 2. Record the immutable base and target tree. For working changes, the base is
    `HEAD`. Inspect staged and unstaged path sets separately and stop if a path
    occurs in both; divergent index and worktree content is ambiguous
@@ -37,8 +31,7 @@ unpublished, task-owned commit set authorized for rewrite.
    Include every descendant through the branch tip rather than dropping or
    implicitly authorizing it.
 
-3. Inventory every changed path and assign each hunk to a coherent proposed
-   commit. If independent commits require interactive hunk selection and no safe
+3. If independent commits require interactive hunk selection and no safe
    path-level boundary exists, stop or combine them rather than guessing.
 4. Inspect the real index separately. Stop if it contains a path outside the
    intended target. If the result needs multiple commits, require an initially
@@ -48,31 +41,11 @@ unpublished, task-owned commit set authorized for rewrite.
 
 - Prefer path-scoped, non-interactive staging such as `git add -- <paths>`.
   Never use `git add -p`, `git commit --interactive`, or an editor.
-- Before each commit, inspect the staged diff and confirm both its path set and
-  content exactly match one proposed coherent concern. Stop if any other staged
-  entry remains. Keep supporting tests, documentation, configuration, and
-  migrations with that concern.
-- Immediately before creating or rewriting each description, reread
-  `references/revision-descriptions.md`. Format and validate an agent-authored
-  message, then pass the exact value unchanged:
-
-  ```bash
-  desc='type(scope): description
-
-  Prior state or constraint, when it adds value.
-
-  The change made in response.'
-  desc="$(printf '%s\n' "$desc" | commit-message format)"
-  printf '%s\n' "$desc" | commit-message validate --require-body --conventional
-  git commit --no-edit -m "$desc"
-  ```
-
-  Drop `--conventional` only when repository documentation defines its own
-  format, as `references/revision-descriptions.md` says.
-
-  Never format an exact user-supplied message. Validate it unchanged and stop if
-  validation fails.
-
+- Before each commit, confirm the staged path set and content exactly match one
+  proposed concern. Stop if any other staged entry remains.
+- Format and validate every description as `references/revision-descriptions.md`
+  says, then pass the exact validated value unchanged, as in
+  `git commit --no-edit -m "$desc"`.
 - Rewrite an explicit mutable set in an isolated temporary worktree rooted at
   the immutable base:
   1. Record the task branch's old tip, confirm it equals the target tip, create
@@ -103,13 +76,8 @@ unpublished, task-owned commit set authorized for rewrite.
      `git worktree remove <temporary-directory>`. If it is not clean, leave it
      in place and report the blocker rather than forcing removal.
 
-  Do not rewrite the immutable base, merge boundaries, published commits, or
-  commits with uncertain ownership. Never perform the rewrite in the user's
-  current worktree.
-
-- Preserve commit dependencies and apply the Sequencing rules in `SKILL.md` with
-  the fewest commits. A requested single commit that contains independent
-  concerns is a blocker, not permission to obscure them.
+  Do not rewrite the immutable base or merge boundaries. Never perform the
+  rewrite in the user's current worktree.
 
 ## Preserve The Tree And Finish
 
@@ -119,6 +87,3 @@ unpublished, task-owned commit set authorized for rewrite.
    clean them with reset, checkout, restore, stash, or deletion.
 3. Show the ordered commit IDs and full descriptions from the immutable base
    through `HEAD`.
-4. Report rewritten commits, the final branch tip, aggregate-tree preservation,
-   conflicts, and the clean worktree. Never push, publish, merge, tag, or
-   release.
