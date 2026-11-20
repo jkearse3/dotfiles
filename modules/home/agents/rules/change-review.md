@@ -8,16 +8,16 @@ the checks Running Checks calls for. When delegates built the task's diffs and
 each reviewed its own this way, the session that lands them relies on those
 reviews instead of reviewing the diffs or their aggregate itself.
 
-Recheck every name the task introduced against the final behavior before
-finalizing, and rename task-introduced names that describe an earlier
-understanding. Renaming them before finalization is within the task's scope.
+Before finalizing, recheck every name the task introduced against the final
+behavior, and rename any that describe an earlier understanding; that renaming
+is within the task's scope.
 
 For a multi-revision change, inspect and verify each finalized revision in
-dependency order, then review the aggregate task change. Use agent judgment to
-run checks proportionate to each revision's risks. Checks that are unavailable
-or disproportionately expensive may be skipped, but report the affected
-revisions, skipped checks, reasons, and residual risks. Best-effort verification
-does not permit a known-failing revision.
+dependency order, then review the aggregate task change. Run the checks each
+revision's risks call for; you may skip one that is unavailable or
+disproportionately expensive, but report the affected revisions, skipped checks,
+reasons, and residual risks. Best-effort verification does not permit a
+known-failing revision.
 
 For fixes to mutable jj history, use a fresh child of the earliest affected
 revision where the fix is valid. Verify it there, squash it back, inspect
@@ -30,7 +30,7 @@ criteria are satisfied, and confirmed findings are resolved.
 ## Responding To Feedback
 
 Judge each review suggestion by what the repository would look like with it:
-better, no worse, or worse. Make every suggestion that leaves it better or no
+better, no worse, or worse. Apply every suggestion that leaves it better or no
 worse. A suggestion doesn't need to fix a defect: a nit, a readability nudge, or
 hardening for a path the code doesn't reach today all qualify. Decline only with
 evidence that the change makes the repository worse, such as when it is wrong,
