@@ -38,3 +38,23 @@ evaluating without new files is acceptable.
 The apps apply `DOTFILES_PRIVATE_LOCAL` (`1`, `true`, or `yes` for
 `~/dotfiles-private`, or a checkout path); plain `nix` commands need
 `--override-input dotfiles-private path:<checkout>` instead.
+
+## Workflow Tooling
+
+This repository defines the user's agent workflow and the tools it runs on. The
+workflow must stay composable and able to evolve piece by piece, so that losing
+or replacing one tool never takes a large part of the workflow with it. When
+proposing, adopting, or wiring a tool into it:
+
+- Keep workflow state in open, plain formats readable without the tool, such as
+  Markdown, Mermaid, JSON, or files in the repository.
+- Depend on a tool only through a narrow seam, such as one command name or a
+  documented format, so that replacing the tool changes only the seam's
+  implementation.
+- Make each tool optional to the flow: when it fails or is removed, the flow
+  falls back to a less convenient path instead of stopping.
+- Prefer small single-purpose tools over platforms that bundle storage,
+  integrations, and UI, and state the lock-in cost when proposing one that does.
+- Pin every tool in Nix through this flake, so the same lock always yields the
+  same tool. A prebuilt upstream release fetched by hash qualifies; an install
+  script, a global package manager, or anything fetched unpinned does not.
