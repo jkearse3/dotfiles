@@ -7,13 +7,14 @@
 # a jj change of their own, checks that every blueprint still evaluates, that
 # `nix flake check` passes, and that the selected blueprint's Home Manager and
 # nix-darwin configurations build, then commits the change with a description
-# listing what moved. A failed check leaves the update in `@`, and the next run
-# resumes it: it reruns the checks without updating again, so a fix made in `@`
-# lands in the same change; a fix to files other than the dependency pins
-# needs an explanation in the description of `@`. `jj` and `commit-message`
-# come from the user's PATH and the script's runtime inputs respectively. The
-# flake-update skill in `skills/flake-update` tells agents how to drive it, and
-# `flake-update-test.sh` checks that the output lines it quotes still appear.
+# listing what moved and gives it a local bookmark. A failed check leaves the
+# update in `@`, and the next run resumes it: it reruns the checks without
+# updating again, so a fix made in `@` lands in the same change; a fix to files
+# other than the dependency pins needs an explanation in the description of
+# `@`. `jj` and `commit-message` come from the user's PATH and the script's
+# runtime inputs respectively. The flake-update skill in `skills/flake-update`
+# tells agents how to drive it, and `flake-update-test.sh` checks that the
+# output lines it quotes still appear.
 
 # The subject of every dependency update. A non-empty `@` with this subject is
 # an update a previous run left for a fix, which the next run resumes.
@@ -26,7 +27,9 @@ dependency_update_subject="build(nix): update dependencies"
 # parent; when `@` holds a fix whose description lacks an explanation; and when
 # a check fails, `@` changes while the checks run, or jj
 # cannot describe or commit the update, leaving the update in `@` with
-# instructions to resume or discard it.
+# instructions to resume or discard it. A committed update gets a local
+# bookmark unless it already has one; when bookmarking fails, it warns and
+# still succeeds, since the update is committed.
 flake_update() {
 	local blueprint_id=$1
 	local home_configuration_name=$2
@@ -73,7 +76,59 @@ flake_update() {
 		fail_dependency_update "committing the update failed"
 	fi
 	printf '\n%s\n\n' "$description"
-	echo "==> Committed the dependency update as $(jj log -r @- --no-graph -T 'change_id.short()')"
+
+	local update_change bookmark_names bookmark_suffix=""
+	update_change="$(jj log -r @- --no-graph -T 'change_id.short()')" || update_change="@-"
+	if bookmark_names="$(bookmark_dependency_update)"; then
+		if [[ $bookmark_names == *$'\n'* ]]; then
+			bookmark_suffix=" (bookmarks ${bookmark_names//$'\n'/, })"
+		else
+			bookmark_suffix=" (bookmark $bookmark_names)"
+		fi
+	else
+		echo "warning: could not bookmark the dependency update $update_change" >&2
+	fi
+	echo "==> Committed the dependency update as $update_change$bookmark_suffix"
+}
+
+# Gives the committed dependency update in `@-` a local bookmark, so it can be
+# found and pushed, and prints the names of its local bookmarks, one per line,
+# in `jj log`'s order. When `@-` already has a local bookmark, such as one put
+# on the empty `@` the update was built in, it creates none and prints the
+# existing ones. Otherwise it creates the first free name from
+# `free_dependency_update_bookmark_name` and prints it. Fails, leaving jj's
+# error on standard error, when jj cannot read the bookmarks or create one.
+bookmark_dependency_update() {
+	local existing_names
+	existing_names="$(jj log -r @- --no-graph -T 'local_bookmarks.map(|bookmark| bookmark.name()).join("\n")')" || return
+	if [[ -n $existing_names ]]; then
+		printf '%s\n' "$existing_names"
+		return
+	fi
+
+	local bookmark_name
+	bookmark_name="$(free_dependency_update_bookmark_name)" || return
+	jj bookmark create --quiet -r @- "$bookmark_name" || return
+	printf '%s\n' "$bookmark_name"
+}
+
+# Prints the first bookmark name for a dependency update made today, by the
+# local date, that no local or remote bookmark uses: `flake-update-<YYYY-MM-DD>`,
+# then `flake-update-<YYYY-MM-DD>-2`, `-3`, and so on. A remote-only name counts
+# as taken, because a local bookmark of that name would merge with or conflict
+# against the remote one once tracked or pushed. Fails when jj cannot list the
+# bookmarks.
+free_dependency_update_bookmark_name() {
+	local taken_names today
+	taken_names="$(jj bookmark list --quiet --all -T 'name ++ "\n"')" || return
+	today="$(date +%F)" || return
+
+	local bookmark_name="flake-update-$today" suffix=1
+	while grep -Fxq -e "$bookmark_name" <<<"$taken_names"; do
+		suffix=$((suffix + 1))
+		bookmark_name="flake-update-$today-$suffix"
+	done
+	printf '%s\n' "$bookmark_name"
 }
 
 # Succeeds when `@` holds a dependency update that a previous run left

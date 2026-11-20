@@ -1,14 +1,14 @@
 #!/usr/bin/env bash
 
-# Tests how flake-update checks, resumes, guards, and describes a dependency
-# update, running it in a real jj repository made with `jj` from PATH, with
-# stub `nix` and `nix-store` commands that log their arguments and serve fake
-# configurations. It also checks that every line of output the flake-update
-# skill quotes appears in some run's output, so the skill cannot drift from the
-# command. Usage: flake-update-test.sh <dotfiles-apps executable> <blueprint ID
-# from the flake's inventory> <its Nix system> <its Rust target triple>
-# <flake-update SKILL.md>. Runs with HOME, XDG_CONFIG_HOME, and the jj config
-# in a temporary directory.
+# Tests how flake-update checks, resumes, guards, describes, and bookmarks a
+# dependency update, running it in a real jj repository made with `jj` from
+# PATH, with stub `nix` and `nix-store` commands that log their arguments and
+# serve fake configurations. It also checks that every line of output the
+# flake-update skill quotes appears in some run's output, so the skill cannot
+# drift from the command. Usage: flake-update-test.sh <dotfiles-apps
+# executable> <blueprint ID from the flake's inventory> <its Nix system> <its
+# Rust target triple> <flake-update SKILL.md>. Runs with HOME, XDG_CONFIG_HOME,
+# and the jj config in a temporary directory.
 
 set -uo pipefail
 
@@ -208,11 +208,52 @@ description_of() {
 	update_jj log -r "$1" --no-graph -T description
 }
 
+# Prints the local bookmark names of `revision` in the update repository,
+# separated by spaces.
+bookmarks_of() {
+	update_jj log -r "$1" --no-graph -T 'local_bookmarks.map(|bookmark| bookmark.name()).join(" ")'
+}
+
+# Prints the names of the local and remote `flake-update-*` bookmarks in the
+# update repository, one per line, each once.
+flake_update_bookmarks() {
+	update_jj bookmark list --quiet --all -T 'name ++ "\n"' | grep '^flake-update-' | sort -u
+}
+
+# Prints the last line of the last run's output.
+last_output_line() {
+	printf '%s\n' "${output##*$'\n'}"
+}
+
+# Prints the short change ID of `@-` in the update repository.
+committed_change() {
+	update_jj log -r @- --no-graph -T 'change_id.short()'
+}
+
+# The date flake-update names its bookmarks after. A run that crosses midnight
+# names its bookmark after the next day and fails these cases.
+today="$(date +%F)"
+
+# A `jj` that fails any call whose arguments contain STUB_JJ_FAIL_ON and passes
+# every other call to the real `jj`.
+real_jj="$(command -v jj)"
+mkdir -p "$work/failing-jj-bin"
+cat >"$work/failing-jj-bin/jj" <<STUB
+#!/usr/bin/env bash
+if [[ -n \${STUB_JJ_FAIL_ON-} && "\$*" == *"\$STUB_JJ_FAIL_ON"* ]]; then
+	echo "Error: stub jj refuses '\$STUB_JJ_FAIL_ON'" >&2
+	exit 1
+fi
+exec "$real_jj" "\$@"
+STUB
+chmod +x "$work/failing-jj-bin/jj"
+
 rm "$XDG_CONFIG_HOME/dotfiles/blueprint-id"
 reset_update_repo
 run_flake_update
 expect "flake-update without a marker names how to bootstrap" 1 "nix run .#switch-home -- --blueprint <blueprint-id>"
 expect_equal "flake-update without a marker runs no nix" "" "$(cat "$nix_log")"
+expect_equal "flake-update without a marker creates no bookmark" "" "$(flake_update_bookmarks)"
 printf '%s\n' "$blueprint_id" >"$XDG_CONFIG_HOME/dotfiles/blueprint-id"
 
 full_checks="eval-blueprints flake-check home-build system-build old-config old-config new-config new-config"
@@ -243,6 +284,40 @@ expect "flake-update commits once every check passes" 0 "==> Committed the depen
 expect_equal "flake-update updates, checks, then reads both configurations" "update $full_checks" "$(nix_steps)"
 expect_equal "the commit lists changed inputs, pins, and package versions" "$expected_description" "$(description_of @-)"
 expect_equal "the commit leaves an empty change on top" "true" "$(update_jj log -r @ --no-graph -T 'empty && !description')"
+expect_equal "the commit bookmarks the update by today's date" "flake-update-$today" "$(bookmarks_of @-)"
+expect_equal "the last line names the update and its bookmark" \
+	"==> Committed the dependency update as $(committed_change) (bookmark flake-update-$today)" "$(last_output_line)"
+
+run_flake_update STUB_NEW_LOCK="$work/old.lock" STUB_PIN_VERSION=1.0
+expect "a second update the same day commits" 0 "(bookmark flake-update-$today-2)"
+expect_equal "a second update the same day takes the next free name" "flake-update-$today-2" "$(bookmarks_of @-)"
+expect_equal "a second update the same day leaves the first one's bookmark" "flake-update-$today" "$(bookmarks_of @--)"
+
+reset_update_repo
+update_jj bookmark create --quiet -r @ mine
+run_flake_update
+expect "an update built in a bookmarked @ commits" 0 "Committed the dependency update"
+expect_equal "an update built in a bookmarked @ keeps only that bookmark" "mine" "$(bookmarks_of @-)"
+expect_equal "an update built in a bookmarked @ names that bookmark last" \
+	"==> Committed the dependency update as $(committed_change) (bookmark mine)" "$(last_output_line)"
+
+reset_update_repo
+update_jj bookmark create --quiet -r @ mine theirs
+run_flake_update
+expect_equal "an update with several bookmarks names them all last" \
+	"==> Committed the dependency update as $(committed_change) (bookmarks mine, theirs)" "$(last_output_line)"
+expect_equal "an update with several bookmarks gets no new one" "" "$(flake_update_bookmarks)"
+
+for failing_jj_call in "bookmark create" "bookmark list"; do
+	reset_update_repo
+	run_flake_update PATH="$work/failing-jj-bin:$stub_path" STUB_JJ_FAIL_ON="$failing_jj_call"
+	expect "a failing '$failing_jj_call' still commits" 0 \
+		"warning: could not bookmark the dependency update $(committed_change)"
+	expect_equal "a failing '$failing_jj_call' commits the update" "$expected_description" "$(description_of @-)"
+	expect_equal "a failing '$failing_jj_call' names no bookmark last" \
+		"==> Committed the dependency update as $(committed_change)" "$(last_output_line)"
+	expect_equal "a failing '$failing_jj_call' leaves no bookmark" "" "$(flake_update_bookmarks)"
+done
 
 reset_update_repo
 run_flake_update STUB_NEW_LOCK="$work/old.lock" STUB_PIN_VERSION=1.0
@@ -250,23 +325,27 @@ expect "unchanged dependencies commit nothing" 0 "Dependencies unchanged; nothin
 expect_equal "unchanged dependencies run no checks" "update" "$(nix_steps)"
 expect_equal "unchanged dependencies leave @ on the initial revision" "initial" \
 	"$(update_jj log -r @- --no-graph -T 'description.first_line()')"
+expect_equal "unchanged dependencies create no bookmark" "" "$(flake_update_bookmarks)"
 
 reset_update_repo
 run_flake_update STUB_PIN_VERSION=fail
 expect "a failing updater restores @" 1 "error: updating dependencies failed; @ is restored to its parent"
 expect_equal "a failing updater leaves @ empty" "true" "$(update_jj log -r @ --no-graph -T empty)"
+expect_equal "a failing updater creates no bookmark" "" "$(flake_update_bookmarks)"
 
 reset_update_repo
 run_flake_update STUB_NIX_FAIL_ON="flake check"
 expect "a failing flake check leaves the update in @" 1 "error: nix flake check failed."
 expect_equal "a failing flake check stops before the builds" "update eval-blueprints flake-check" "$(nix_steps)"
 expect_equal "a failing flake check leaves @ described as the update" "build(nix): update dependencies" "$(description_of @)"
+expect_equal "a failing flake check creates no bookmark" "" "$(flake_update_bookmarks)"
 
 echo fixed >"$update_repo/fix.nix"
 run_flake_update
 expect "a fix without an explanation is refused" 1 "also changes files beyond the dependency pins:
   fix.nix"
 expect_equal "a fix without an explanation runs no checks" "" "$(nix_steps)"
+expect_equal "a fix without an explanation creates no bookmark" "" "$(flake_update_bookmarks)"
 
 update_jj describe --quiet -m "build(nix): update dependencies
 
@@ -280,6 +359,7 @@ The fix explains itself here.
 
 ${expected_description#build(nix): update dependencies$'\n\n'}"
 expect_equal "resuming keeps the written explanation before the lists" "$expected_resumed" "$(description_of @-)"
+expect_equal "resuming bookmarks the update it commits" "flake-update-$today" "$(bookmarks_of @-)"
 
 # jj signs every commit it writes with a signing program that always fails.
 printf '[signing]\nbehavior = "own"\nbackend = "ssh"\nkey = "unused"\nbackends.ssh.program = "false"\n' \
@@ -291,11 +371,13 @@ update_jj status >/dev/null # Snapshots the lock before signing starts failing.
 run_flake_update JJ_CONFIG="$JJ_CONFIG:$work/jj-failing-signing.toml"
 expect "a failing commit leaves the update in @" 1 "error: committing the update failed."
 expect_equal "a failing commit keeps @ described as the update" "build(nix): update dependencies" "$(description_of @)"
+expect_equal "a failing commit creates no bookmark" "" "$(flake_update_bookmarks)"
 
 reset_update_repo
 run_flake_update STUB_NIX_TOUCH_ON=darwinConfigurations
 expect "a file changed during the checks blocks the commit" 1 "files in @ changed while the checks ran"
 expect_equal "a file changed during the checks leaves the update in @" "build(nix): update dependencies" "$(description_of @)"
+expect_equal "a file changed during the checks creates no bookmark" "" "$(flake_update_bookmarks)"
 
 reset_update_repo
 run_flake_update STUB_NIX_FAIL_ON=git+file:
@@ -310,8 +392,27 @@ expect_equal "DOTFILES_PRIVATE_LOCAL stays out of flake.lock" "0" "$(grep -c '^f
 expect_equal "DOTFILES_PRIVATE_LOCAL reaches the flake check" "1" \
 	"$(grep -c "^flake check .*--override-input dotfiles-private path:$work/private" "$nix_log")"
 
+# A remote bookmark with no local one: pushed, then deleted locally and
+# untracked, so only `jj bookmark list --all` shows it. This case runs last
+# because the remote bookmark outlives `reset_update_repo`; removing the remote
+# at its end forgets the bookmark too.
+git init --quiet --bare "$work/remote.git"
+reset_update_repo
+update_jj git remote add origin "$work/remote.git"
+update_jj bookmark create --quiet -r "$initial_change" "flake-update-$today"
+update_jj git push --quiet --remote origin --bookmark "flake-update-$today"
+update_jj bookmark delete --quiet "flake-update-$today"
+update_jj bookmark untrack --quiet "flake-update-$today" --remote origin
+run_flake_update
+expect "an update whose name is taken only on a remote commits" 0 "(bookmark flake-update-$today-2)"
+expect_equal "a name taken only on a remote counts as taken" "flake-update-$today-2" "$(bookmarks_of @-)"
+update_jj git remote remove origin
+reset_update_repo
+expect_equal "the remote bookmark leaves with its remote" "" "$(flake_update_bookmarks)"
+
 # The skill's Run section quotes each line flake-update prints as the first code
-# span of a list item; `<...>` stands for a varying part, such as a check name.
+# span of a list item; each `<...>` stands for a varying part, such as a check
+# name.
 quoted_lines=()
 # shellcheck disable=SC2016 # The backticks are Markdown code spans.
 while IFS= read -r quoted_line; do
@@ -321,10 +422,27 @@ if [[ ${#quoted_lines[@]} -lt 12 ]]; then
 	echo "not ok - the skill quotes the lines flake-update prints: found ${#quoted_lines[@]}" >&2
 	failures=$((failures + 1))
 fi
+
+# Succeeds when `flake_update_outputs` contains the quoted line $1, where each
+# `<...>` matches any text and the rest matches literally, glob characters
+# included. Finding each literal segment at its earliest place after the
+# previous one decides this, because any text may fill the gaps between them.
+outputs_contain_quoted_line() {
+	local unmatched_line=$1 unmatched_outputs=$flake_update_outputs
+	local placeholder_regex='<[^>]+>' placeholder literal_segment
+
+	while [[ $unmatched_line =~ $placeholder_regex ]]; do
+		placeholder=${BASH_REMATCH[0]}
+		literal_segment=${unmatched_line%%"$placeholder"*}
+		unmatched_line=${unmatched_line#*"$placeholder"}
+		[[ $unmatched_outputs == *"$literal_segment"* ]] || return 1
+		unmatched_outputs=${unmatched_outputs#*"$literal_segment"}
+	done
+	[[ $unmatched_outputs == *"$unmatched_line"* ]]
+}
+
 for quoted_line in "${quoted_lines[@]}"; do
-	quoted_pattern=${quoted_line//<*>/*}
-	# shellcheck disable=SC2053 # The placeholders are meant to match as globs.
-	if [[ $flake_update_outputs == *$quoted_pattern* ]]; then
+	if outputs_contain_quoted_line "$quoted_line"; then
 		echo "ok - the skill's quoted line '$quoted_line' is printed by flake-update"
 	else
 		echo "not ok - the skill quotes '$quoted_line', which no flake-update run printed" >&2

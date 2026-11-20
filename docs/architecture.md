@@ -129,7 +129,14 @@ prints the new pins without editing files). `flake-update`
 updaters in a jj change of its own, described `build(nix): update dependencies`.
 When anything changed, it builds `eval-blueprints`, runs `nix flake check`, and
 builds the Home Manager and nix-darwin configurations of the blueprint the
-marker selects, then commits the change with jj.
+marker selects, then commits the change with jj and gives it a local bookmark,
+so the update can be found and pushed. The bookmark is named
+`flake-update-<YYYY-MM-DD>` after the local date, or, when a local or remote
+bookmark already has that name, `flake-update-<YYYY-MM-DD>-2`, `-3`, and so on.
+An update whose revision already has a local bookmark, such as one put on the
+empty `@` it was built in, keeps that bookmark and gets no other. When
+bookmarking fails, the run warns and still succeeds, since the update is
+committed. Runs that end before the commit create no bookmark.
 
 The commit description lists the flake inputs whose revisions moved, the package
 pins whose versions changed, and the package versions that differ from the
@@ -140,7 +147,7 @@ together share a line, and the heading names the blueprint's Nix system in place
 of the target-triple suffix some toolchain components carry. `flake-update`
 formats and validates it with `commit-message`. Each phase of a run starts with
 a `==>` line, and a successful run ends with
-`==> Committed the dependency update as <change-id>`.
+`==> Committed the dependency update as <change-id> (bookmark <name>)`.
 
 When a check fails, `flake-update` exits 1 and leaves the update uncommitted in
 `@`. Fix the failure there and run it again: seeing a non-empty `@` with the

@@ -68,8 +68,11 @@ doing so skips the checks or drops the generated lists.
    - `==> Building the configurations of @- to compare package versions`: slow
      when the parent was never built.
    - `==> Committing the dependency update`: signing and committing.
-   - `==> Committed the dependency update as <change-id>`: done; the description
-     is printed just before it.
+   - `==> Committed the dependency update as <change-id> (bookmark <name>)`:
+     done; the description is printed just before it. `<name>` is the update's
+     local bookmark, `flake-update-<YYYY-MM-DD>` with a `-2`, `-3`, and so on
+     suffix when that name is taken, or the bookmark `@` already had, which the
+     command keeps. An update with several reads `(bookmarks <a>, <b>)`.
 3. Act on the outcome:
    - `Dependencies unchanged; nothing to commit`: report it and stop.
    - `error: <check> failed.`: read the lines before it in the log; see Fix.
@@ -84,6 +87,8 @@ doing so skips the checks or drops the generated lists.
      1Password, then rerun.
    - `warning: could not build the configurations of @-`: the commit lacks the
      package-version list; mention it in the report.
+   - `warning: could not bookmark the dependency update <change-id>`: the update
+     is committed but has no bookmark. Report it with jj's error from the log.
    - Anything else that looks wrong, in the output or the description it
      generates: see Improve the Command.
 
@@ -177,7 +182,7 @@ update must start over, and say so.
 
 ## Report
 
-Report the committed change ID and its full description, the notable version
-changes in it, each fix and why it was needed, and anything left undone.
-Activation is a separate step: run `switch-home` or `switch-system` only when
-the user asks.
+Report the committed change ID, its bookmark, and its full description, the
+notable version changes in it, each fix and why it was needed, and anything left
+undone. Activation is a separate step: run `switch-home` or `switch-system` only
+when the user asks.
