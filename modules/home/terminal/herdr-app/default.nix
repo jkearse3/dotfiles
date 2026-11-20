@@ -137,4 +137,10 @@ in
     herdr-app = appSkill;
     herdr-core = "${dotfilesPackages.herdr-core}/share/skills/herdr-core/herdr-core";
   };
+
+  # How agents inside herdr-core run background jobs, as a shared rule in the
+  # agent instruction files this repo renders. The upstream skill loads only
+  # on demand and misses or contradicts some of the `hc` behavior this works
+  # around, which `packages/herdr-core/README.md` records with reproductions.
+  agents.sharedRules.herdr-core = ./agent-rule.md;
 }

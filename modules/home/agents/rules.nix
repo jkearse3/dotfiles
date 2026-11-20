@@ -42,6 +42,7 @@ in
       default = [
         "shared/shell-environment"
         "shared/rex-terminal"
+        "shared/herdr-core"
         "shared/communication"
         "shared/reasoning"
         "shared/alignment"
