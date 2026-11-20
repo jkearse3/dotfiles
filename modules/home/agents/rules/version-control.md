@@ -8,11 +8,20 @@ Its documented local setup and repair have standing authorization, including for
 read-only work. Never invoke `jj git init` directly.
 
 After `jjx ensure` succeeds, use jj for repository mutation and do not mix
-mutation models. Use Git mutation only when jj is unavailable or unsupported, or
-Git is explicitly required. After any other `jjx ensure` failure, allow only
-read-only Git inspection.
+mutation models. When jj is missing or doesn't support the checkout, or Git is
+explicitly required, use Git for mutation. When `jjx ensure` fails for any other
+reason, inspect with read-only Git only.
 
 ## History And References
+
+Before new work, establish a task-owned Git branch or jj bookmark for that
+change set. In jj, inspect `@` directly; bookmark an empty `@`, or create and
+bookmark an empty child. Stack on current work unless the user specifies another
+base. Reuse a reference only for the same change set and keep it at the
+change-set tip. Treat the output of `jjx bookmark current`, `nearest`, and
+`stacked` as discovery; verify exact attachment and stack ownership before
+mutation. When jj work is finalized, leave `@` as an empty child of the
+change-set tip.
 
 Implementation authorization includes locally finalizing verified task changes
 without further confirmation; it does not authorize publication. Use
@@ -25,41 +34,36 @@ references beneath it. The user prefers clean history to forward fixes. Within
 the task's stack, fold each fix into the revision it belongs to rather than
 adding a fix-up revision on top, including revisions the user authored and
 revisions already pushed. Rewriting a revision rebases its descendants, so a
-descendant outside the task's stack counts as a revision outside it. Rewriting
-revisions outside the task's stack, or revisions another person authored or of
-uncertain ownership, requires explicit authorization. Pushing any rewritten
-revision remains a force push under Publication.
+rewrite that would rebase a revision outside the task's stack counts as
+rewriting outside it. Rewriting revisions outside the task's stack, or revisions
+another person authored or of uncertain ownership, requires explicit
+authorization. Pushing any rewritten revision remains a force push under
+Publication.
 
 Finalized revisions must be useful bisect points and safe to land on main
 individually: if history stops at any revision, the codebase must be safe to
 deploy and use as is. Each revision must contain one coherent concern and must
 not knowingly rely on a descendant revision to build, pass its applicable
 checks, preserve required behavior, or be safe to use. Prefer ordering over new
-mechanisms: land internals before the change that exposes them, add a
-replacement safeguard before removing the original, keep interfaces usable by
-consumers the revision cannot update, and keep persisted state the parent
-revision produced usable or migrate it within the revision. A breaking change to
-interfaces or persisted state is exempt from those two requirements only when
-the user requested or approved it and the revision description declares it. When
-compatibility costs more than it is worth, propose the break with that cost
-before implementing it. Keep supporting tests, documentation, configuration,
-migrations, and revision-local fixes in the earliest revision whose concern
-requires them. Repair a known-failing revision; retaining one requires explicit
-user approval.
+mechanisms:
+
+- Land internals before the change that exposes them.
+- Add a replacement safeguard before removing the original.
+- Keep interfaces usable by consumers the revision cannot update.
+- Keep persisted state the parent revision produced usable, or migrate it within
+  the revision.
+
+A breaking change to interfaces or persisted state is exempt from the last two
+only when the user requested or approved it and the revision description
+declares it. When compatibility costs more than it is worth, propose the break
+with that cost before implementing it. Keep supporting tests, documentation,
+configuration, migrations, and revision-local fixes in the earliest revision
+whose concern requires them. Repair a known-failing revision; retaining one
+requires explicit user approval.
 
 Never add attribution to commit messages, revision descriptions, or pull request
 text: no `Co-authored-by` trailer and no "Generated with" line, even when a
-harness supplies one. Add a co-author only when the user names one; the agent
-`jj` and `git` commands reject a `Co-authored-by` trailer otherwise, and
-`AGENT_ALLOW_CO_AUTHOR=1` on the command admits that requested co-author.
-
-Before new work, establish a task-owned Git branch or jj bookmark for that
-change set. In jj, inspect `@` directly; bookmark an empty `@`, or create and
-bookmark an empty child. Stack on current work unless the user specifies another
-base. Reuse a reference only for the same change set and keep it at the
-change-set tip. Treat reference-helper output as discovery; verify exact
-attachment and stack ownership before mutation. When jj work is finalized, leave
-`@` as an empty child of the change-set tip.
+harness supplies one. Add a co-author only when the user names one.
 
 ## Shared jj Workspaces
 
@@ -68,12 +72,12 @@ repository, operation log, and bookmarks with the repository's other workspaces,
 each with its own `@`. Treat another workspace's working-copy commit, shown as
 `<name>@`, and its ancestors outside trunk and the task's stack as owned by that
 workspace; rewriting, abandoning, or moving bookmarks on them requires explicit
-authorization. So do repository-wide operation commands such as `jj op restore`
-and any `--allow-cross-workspace` override. Target abandon, rebase, and bookmark
-commands by change IDs and bookmark names your task created, never by a revset
-rooted at trunk. When jj refuses because another workspace's commit is
-immutable, narrow the target; `--ignore-immutable` requires explicit
-authorization. To reverse a cross-workspace mistake, use
+authorization. Repository-wide operation commands, such as `jj op restore`, and
+any `--allow-cross-workspace` override need the same authorization. Target
+abandon, rebase, and bookmark commands by change IDs and bookmark names your
+task created, never by a revset rooted at trunk. When jj refuses because another
+workspace's commit is immutable, narrow the target; `--ignore-immutable`
+requires explicit authorization. To reverse a cross-workspace mistake, use
 `jj op revert <operation>`, not `jj undo`. When jj reports a stale working copy,
 run `jj workspace update-stale` only if the rewritten revisions belong to the
 task's stack; otherwise stop and report it.
