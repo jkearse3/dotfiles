@@ -25,7 +25,13 @@ Take from the request and context:
 - **Granularity:** per revision, the default, or as a whole when the request
   says so or says the history will be squashed.
 - **Criteria:** only outcomes the request, a referenced artifact, or a revision
-  description explicitly declares, kept verbatim with their proof methods.
+  description explicitly declares, kept verbatim with their proof methods. A
+  spec the target builds, in the shape `spec` defines, declares each acceptance
+  criterion and each `Boundaries` line as a criterion, and its acceptance
+  criteria together as the complete list of what the target may make visible. A
+  spec with a `Changes` section predates that shape and is read by its own
+  sections: its `Changes` are the complete list of what the target may make
+  visible, and its `Acceptance Criteria` are criteria.
 - **Context:** focus areas, non-goals, known issues, user decisions, and quoted
   evidence. Focus never narrows review; a non-goal excuses an absence, not a
   defect in changed behavior.

@@ -24,7 +24,10 @@ When `implement` ends `done` and created or changed a revision, follow
 `diff-fix` on the revisions from the earliest one the run created or changed
 through the tip, with:
 
-- the criteria: the run's criteria and binding requirements;
+- the criteria: the run's criteria and binding requirements, and its agreed spec
+  from `run.md` `Spec`, whose acceptance criteria are the complete list of what
+  the target may make visible, or the visible changes `Spec` records as that
+  list in their place;
 - the context: its exclusions;
 - the user decisions: its settled decisions, its `Decisions`, and this one:
   fixes, conflict resolutions, and reshapes change only revisions `implement`

@@ -11,7 +11,10 @@ loses data, gives a silently wrong result, or causes harm question 3 names still
 is. Report only defects that answer one of these questions:
 
 1. **Does it do what was asked?** A criterion the target misses or only partly
-   meets.
+   meets, and, when the criteria come from a spec, anything the target makes
+   visible, as the Alignment rule defines it, that the spec's acceptance
+   criteria do not require, or, for a spec with a `Changes` section, that its
+   `Changes` do not list.
 2. **Does it work, and does everything else still work?**
    - The new behavior gives the right result on every real path, reports its
      failures rather than hiding them or passing them off as success, and is
