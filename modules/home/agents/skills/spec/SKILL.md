@@ -223,13 +223,17 @@ absent or could mean materially different changes.
    the acceptance criteria or `Boundaries`, and return to step 4 first when it
    changed a criterion substantively.
 
-6. **Save.** Run `agent-store dir --workspace <workspace-root> specs` with the
-   absolute root of the repository the change belongs to. It prepares the
-   ignored store and prints its absolute path. Write the spec to
-   `<store>/<slug>.md`, with a short lowercase kebab-case slug for the outcome;
-   when revising a spec, rewrite its file in place. Never track or publish the
-   store. When the change belongs to no repository or `agent-store` fails, keep
-   the spec in the response only and say why.
+6. **Save.** For a new spec, choose a short lowercase kebab-case slug for the
+   outcome and run
+   `scripts/prepare-path.sh --workspace <workspace-root> <slug>`, passing the
+   absolute root of the repository the change belongs to as `<workspace-root>`.
+   Invoke the script by its path; it is independent of the current working
+   directory. It prepares the ignored store, atomically reserves a new dated
+   spec file, and prints its absolute path. Write the spec to that path. When
+   revising a spec, rewrite its existing file in place under its current name,
+   dated or not. Never track or publish the store. When the change belongs to no
+   repository or the script fails, keep the spec in the response only and say
+   why.
 
 ## Output
 

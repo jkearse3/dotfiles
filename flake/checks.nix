@@ -277,6 +277,25 @@ in
               unstablePkgs.coreutils
             ];
           };
+
+          spec-skill-scripts = mkScriptCheck {
+            name = "spec-skill-scripts";
+            src = lib.fileset.toSource {
+              root = ../modules/home/agents/skills/spec;
+              fileset = lib.fileset.unions [
+                ../modules/home/agents/skills/spec/scripts
+                ../modules/home/agents/skills/spec/tests
+              ];
+            };
+            script = "tests/spec-scripts.sh";
+            tools = [
+              config.packages.agent-store
+              unstablePkgs.git
+              unstablePkgs.jujutsu
+              unstablePkgs.coreutils
+              unstablePkgs.findutils
+            ];
+          };
         }
         # Starts Neovim as Home Manager installs it for the blueprint, so the
         # check exists only on that blueprint's system.
