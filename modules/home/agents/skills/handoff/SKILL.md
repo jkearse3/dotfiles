@@ -52,11 +52,10 @@ perform the described task or modify revision history.
 
 Execution requires an explicit `run` or `execute` request identifying one
 handoff. Resolve an explicit path directly. Otherwise run
-`scripts/resolve-store.sh --workspace <target-repo>`, passing the absolute path
-of the repository you are working in as `<target-repo>`. Invoke the script by
-its path; it is independent of the current working directory and never derives
-the target from where it runs. Then match an exact filename or unique slug below
-`<canonical-root>/.agent/handoffs/`. Preserve the resolver's ambiguity and
+`agent-store root --workspace <target-repo>`, passing the absolute path of the
+repository you are working in as `<target-repo>`; it never derives the target
+from the current working directory. Then match an exact filename or unique slug
+below `<canonical-root>/.agent/handoffs/`. Preserve agent-store's ambiguity and
 failure handling, and ask the user to choose when multiple files match.
 
 1. Read the complete handoff and report its resolved absolute path.

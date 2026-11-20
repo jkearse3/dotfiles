@@ -186,6 +186,20 @@ in
         config.packages
         // lintChecks
         // {
+          agent-store-tests = mkScriptCheck {
+            name = "agent-store-tests";
+            src = lib.fileset.toSource {
+              root = ../packages/agent-store;
+              fileset = ../packages/agent-store/test.sh;
+            };
+            script = "test.sh";
+            tools = [
+              config.packages.agent-store
+              unstablePkgs.git
+              unstablePkgs.jujutsu
+              unstablePkgs.coreutils
+            ];
+          };
           implement-skill-scripts = mkScriptCheck {
             name = "implement-skill-scripts";
             src = lib.fileset.toSource {
@@ -197,6 +211,7 @@ in
             };
             script = "tests/implement-scripts.sh";
             tools = [
+              config.packages.agent-store
               unstablePkgs.git
               unstablePkgs.jujutsu
               unstablePkgs.coreutils
@@ -256,13 +271,11 @@ in
             };
             script = "tests/handoff-scripts.sh";
             tools = [
+              config.packages.agent-store
               unstablePkgs.git
               unstablePkgs.jujutsu
               unstablePkgs.coreutils
-              config.packages.jjx
             ];
-            # The test skips its jj cases when jj or jjx is missing from PATH.
-            requiredOutputLines = [ "ok - non-Git jj workspace resolves its default workspace" ];
           };
         }
         # Starts Neovim as Home Manager installs it for the blueprint, so the

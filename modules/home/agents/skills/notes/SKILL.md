@@ -55,11 +55,10 @@ perform described follow-on work or modify revision history.
 
 ## Find And Read
 
-Resolve the store root with
-`scripts/resolve-store.sh --workspace <target-repo>`, passing the absolute path
-of the repository you are working in as `<target-repo>`. Invoke the script by
-its path; it is independent of the current working directory. Notes live
-directly under `<root>/.agent/notes/` as dated Markdown files.
+Resolve the store root with `agent-store root --workspace <target-repo>`,
+passing the absolute path of the repository you are working in as
+`<target-repo>`; it never derives the target from the current working directory.
+Notes live directly under `<root>/.agent/notes/` as dated Markdown files.
 
 List the store when the user asks what notes exist. To open a specific note,
 match its dated filename and slug against the request; the slug and date carry

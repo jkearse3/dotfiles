@@ -53,6 +53,7 @@ in
     home = {
       packages = [
         dotfilesPackages.agent-interactive-denied
+        dotfilesPackages.agent-store
         dotfilesPackages.scratch-sweep
         dotfilesPackages.token-count
         pkgs.tokscale

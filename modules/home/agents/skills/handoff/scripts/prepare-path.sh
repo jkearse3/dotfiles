@@ -7,7 +7,7 @@ usage() {
 	exit 2
 }
 
-# Parse the explicit target workspace before invoking the resolver, so malformed
+# Parse the explicit target workspace before invoking agent-store, so malformed
 # CLI input fails with a usage error rather than reaching repository discovery.
 if [[ ${1:-} != --workspace ]]; then
 	usage
@@ -21,56 +21,16 @@ if [[ $# -gt 1 ]]; then
 	usage
 fi
 
-SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
-# The resolver performs authoritative absolute/directory validation of the
-# workspace; its non-zero status and stderr propagate through this substitution.
-ROOT=$("$SCRIPT_DIR/resolve-store.sh" --workspace "$workspace")
-STORE_RELATIVE=.agent/handoffs
-STORE="$ROOT/$STORE_RELATIVE"
-IGNORE="$STORE/.gitignore"
+# agent-store resolves the main checkout the workspace shares, validates the
+# workspace, and prepares the untracked, fully ignored store; its non-zero
+# status and stderr propagate through this substitution.
+STORE=$(agent-store dir --workspace "$workspace" handoffs)
 
 slug=${1:-handoff}
 slug=$(printf '%s' "$slug" | tr '[:upper:]' '[:lower:]' | tr -cs '[:alnum:]' '-')
 slug=${slug#-}
 slug=${slug%-}
 [[ -n $slug ]] || slug=handoff
-
-if git -C "$ROOT" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
-	if ! tracked_files=$(git -C "$ROOT" ls-files -- "$STORE_RELATIVE"); then
-		printf '%s\n' "prepare-path: could not inspect Git tracking for $STORE_RELATIVE" >&2
-		exit 1
-	fi
-	if [[ -n $tracked_files ]]; then
-		printf '%s\n' "prepare-path: $STORE_RELATIVE must be entirely untracked" >&2
-		exit 1
-	fi
-elif command -v jj >/dev/null 2>&1; then
-	jj -R "$ROOT" status >/dev/null
-	if ! tracked_files=$(jj --ignore-working-copy -R "$ROOT" file list "$STORE_RELATIVE"); then
-		printf '%s\n' "prepare-path: could not inspect jj tracking for $STORE_RELATIVE" >&2
-		exit 1
-	fi
-	if [[ -n $tracked_files ]]; then
-		printf '%s\n' "prepare-path: $STORE_RELATIVE must be entirely untracked" >&2
-		exit 1
-	fi
-fi
-
-mkdir -p "$STORE"
-if [[ -e $IGNORE ]]; then
-	if [[ ! -f $IGNORE ]] || [[ $(<"$IGNORE") != '*' ]]; then
-		printf '%s\n' "prepare-path: $IGNORE must contain exactly '*'" >&2
-		exit 1
-	fi
-else
-	printf '*\n' >"$IGNORE"
-fi
-
-if git -C "$ROOT" rev-parse --is-inside-work-tree >/dev/null 2>&1 &&
-	! git -C "$ROOT" check-ignore -q "$STORE_RELATIVE/.gitignore"; then
-	printf '%s\n' "prepare-path: $STORE_RELATIVE is not ignored" >&2
-	exit 1
-fi
 
 timestamp=${HANDOFF_TIMESTAMP:-$(date '+%Y-%m-%d-%H%M%S')}
 if [[ ! $timestamp =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}-[0-9]{6}$ ]]; then

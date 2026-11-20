@@ -3,7 +3,6 @@
 set -euo pipefail
 
 SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
-RESOLVER="$SCRIPT_DIR/../scripts/resolve-store.sh"
 PREPARE_RUN="$SCRIPT_DIR/../scripts/prepare-run.sh"
 
 fail() {
@@ -49,7 +48,7 @@ assert_lacks() {
 
 # The fixtures exercise real repositories, so a missing tool fails the suite
 # rather than silently skipping the criteria that depend on it.
-for tool in git jj timeout; do
+for tool in agent-store git jj timeout; do
 	command -v "$tool" >/dev/null 2>&1 || fail "$tool is required on PATH"
 done
 
@@ -100,17 +99,6 @@ make_jj_non_colocated() {
 	fi
 }
 
-# Fixture C: a colocated jj repository at <dir>/default with a second colocated
-# workspace at <dir>/second, which is a Git linked worktree.
-make_jj_colocated() {
-	local dir=$1
-
-	mkdir -p "$dir"
-	jj git init --colocate "$dir/default" >/dev/null 2>&1
-	jj -R "$dir/default" workspace add --colocate --name second "$dir/second" >/dev/null 2>&1
-	assert_eq true "$(git -C "$dir/second" rev-parse --is-inside-work-tree)" 'colocated jj second workspace is a Git work tree'
-}
-
 # Fixture G: a plain Git repository at <dir>/main with a linked worktree at
 # <dir>/linked.
 make_git() {
@@ -122,33 +110,8 @@ make_git() {
 	git -C "$dir/main" worktree add -q --detach "$dir/linked"
 }
 
-# Asserts that neither jj workspace reports any .agent/ path as a change.
-assert_jj_untracked() {
-	local name=$1
-	local ws
-
-	for ws in "$2" "$3"; do
-		assert_lacks .agent/ "$(jj -R "$ws" status)" "$name: jj status in $(basename "$ws") lists no .agent/ path"
-		assert_lacks .agent/ "$(jj -R "$ws" diff --summary)" "$name: jj diff in $(basename "$ws") lists no .agent/ path"
-	done
-}
-
-count_operations() {
-	jj --ignore-working-copy -R "$1" op log --no-graph -T 'id ++ "\n"' | wc -l
-}
-
-# Reserving from a non-default workspace must not snapshot the default
-# workspace, whose working copy that workspace owns. This runs first on a fresh
-# fixture so no earlier jj command has snapshotted the untracked file.
-fresh="$TMPDIR_ROOT/fresh jj"
-make_jj_non_colocated "$fresh"
-printf '%s\n' untracked >"$fresh/default/untracked.txt"
-operations_before=$(count_operations "$fresh/default")
-run_prepare --workspace "$fresh/second" snapshot
-assert_status 0 "$prepare_status" 'reservation from a jj workspace succeeds'
-assert_eq "$operations_before" "$(count_operations "$fresh/default")" 'reservation does not snapshot another workspace'
-
-# Fixture N resolves to the default workspace and keeps run files untracked.
+# Fixture N reserves under the default workspace's store, as agent-store
+# resolves it.
 non_colocated="$TMPDIR_ROOT/non colocated"
 make_jj_non_colocated "$non_colocated"
 run_prepare --workspace "$non_colocated/second" 'Fast Run!'
@@ -158,17 +121,6 @@ assert_eq "$non_colocated/default/.agent/implement" "$(dirname "$prepare_out")" 
 [[ -d $prepare_out ]] || fail 'non-colocated jj run directory exists'
 assert_eq '' "$(ls -A "$prepare_out")" 'run directory is created empty'
 assert_eq '*' "$(<"$non_colocated/default/.agent/implement/.gitignore")" 'run store ignores all contents'
-printf '%s\n' run >"$prepare_out/run.md"
-assert_jj_untracked 'non-colocated jj' "$non_colocated/default" "$non_colocated/second"
-
-# Fixture C resolves through Git to the main worktree.
-colocated="$TMPDIR_ROOT/colocated"
-make_jj_colocated "$colocated"
-run_prepare --workspace "$colocated/second" colocated
-assert_status 0 "$prepare_status" 'colocated jj reservation succeeds'
-assert_eq "$colocated/default/.agent/implement" "$(dirname "$prepare_out")" 'colocated jj run directory is under the main worktree'
-printf '%s\n' run >"$prepare_out/run.md"
-assert_jj_untracked 'colocated jj' "$colocated/default" "$colocated/second"
 
 # Fixture G resolves to the main worktree, normalizes slugs, and avoids
 # collisions between reservations with the same name.
@@ -216,9 +168,9 @@ assert_eq "$entries_before" "$(ls -A "$store")" 'unwritable store gains no run d
 # the store.
 cross_out=$(cd "$plain/main" && "$PREPARE_RUN" --workspace "$non_colocated/second" cross)
 assert_eq "$non_colocated/default/.agent/implement" "$(dirname "$cross_out")" 'preparer stores under the --workspace repository, not the caller cwd'
-assert_eq "$plain/main" "$(cd "$non_colocated/default" && "$RESOLVER" --workspace "$plain/linked")" 'resolver targets the --workspace repository, not the caller cwd'
 
-# Fixture A: no workspace is named default, so storage is ambiguous.
+# A store failure from agent-store, here ambiguous storage because no
+# workspace is named default, propagates with its status.
 ambiguous="$TMPDIR_ROOT/ambiguous"
 make_jj_non_colocated "$ambiguous"
 jj -R "$ambiguous/default" workspace rename renamed >/dev/null 2>&1
@@ -228,38 +180,6 @@ assert_eq '' "$prepare_out" 'ambiguous storage prints no path'
 [[ ! -e $ambiguous/default/.agent/implement && ! -e $ambiguous/second/.agent/implement ]] ||
 	fail 'ambiguous storage creates no run store'
 printf '%s\n' 'ok - ambiguous storage creates no run store'
-
-# A store tracked by Git is refused.
-git_tracked="$TMPDIR_ROOT/git tracked"
-make_git "$git_tracked"
-mkdir -p "$git_tracked/main/.agent/implement"
-printf '%s\n' tracked >"$git_tracked/main/.agent/implement/existing.md"
-git -C "$git_tracked/main" add .agent/implement/existing.md
-git_test -C "$git_tracked/main" commit -qm tracked
-run_prepare --workspace "$git_tracked/linked" rejected
-assert_status 1 "$prepare_status" 'Git-tracked run store is rejected'
-assert_contains 'must be entirely untracked' "$prepare_err" 'Git-tracked run store reports the reason'
-
-# A store committed in jj is refused, even when checked from another workspace
-# and from an unrelated cwd, which requires a root-relative fileset.
-jj_tracked="$TMPDIR_ROOT/jj tracked"
-make_jj_non_colocated "$jj_tracked"
-mkdir -p "$jj_tracked/default/.agent/implement"
-printf '%s\n' tracked >"$jj_tracked/default/.agent/implement/existing.md"
-jj -R "$jj_tracked/default" commit -m tracked >/dev/null 2>&1
-run_prepare --workspace "$jj_tracked/second" rejected
-assert_status 1 "$prepare_status" 'jj-tracked run store is rejected'
-assert_contains 'must be entirely untracked' "$prepare_err" 'jj-tracked run store reports the reason'
-
-# A store .gitignore that does not ignore everything is refused.
-partial_ignore="$TMPDIR_ROOT/partial ignore"
-make_git "$partial_ignore"
-mkdir -p "$partial_ignore/main/.agent/implement"
-printf '%s\n' '*' '*.tmp' >"$partial_ignore/main/.agent/implement/.gitignore"
-run_prepare --workspace "$partial_ignore/main" rejected
-assert_status 1 "$prepare_status" 'partial run store ignore file is rejected'
-assert_contains "must ignore everything with '*'" "$prepare_err" 'partial run store ignore file reports the reason'
-assert_eq '.gitignore' "$(ls -A "$partial_ignore/main/.agent/implement")" 'partial run store ignore file gains no run directory'
 
 # CLI validation: usage errors exit 2 with empty stdout before any discovery.
 run_prepare
