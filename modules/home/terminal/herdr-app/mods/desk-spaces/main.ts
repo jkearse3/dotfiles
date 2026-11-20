@@ -56,9 +56,8 @@
 //   never move when it changes: every blocked agent, then every agent that
 //   finished while you weren't looking (`done`, which the app turns `idle`
 //   once you look), newest first. Each row's second line names the agent's
-//   space, followed for an agent on another machine by that machine
-//   ("~ · box"); a row on this computer names its space alone. Click one to
-//   focus it.
+//   space, then its machine as the machine headers name it ("~ · box"),
+//   this computer included. Click one to focus it.
 // - The narrow rail shows each space's most urgent agent status and the `»`
 //   that widens the sidebar again (`desk-chrome` relies on it).
 // The agent next/previous keys walk "Needs you" first, then the tree.
@@ -1201,8 +1200,14 @@ export default class SpacesAndAgents extends View {
             .border_t(1)
             .border_color(t.border)
             .children(
-              needsYouRows(tray, labelOf, waitsForOf, t, now, (a) =>
-                this.history.since(a),
+              needsYouRows(
+                tray,
+                labelOf,
+                waitsForOf,
+                t,
+                now,
+                (a) => this.history.since(a),
+                this.thisComputerName,
               ),
             ),
         ),

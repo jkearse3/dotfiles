@@ -307,8 +307,9 @@ export function jjTail(
 // blocked one waits for (`blockedKind`), null when it does not say. With
 // none, the heading shows "0", all dim, over a dim "Nothing waiting"; the
 // label turns amber when one does. A row's second line names its agent's
-// space, and for an agent on another machine that machine too ("~ · box",
-// `machineOf` its address); a row on this computer names its space alone.
+// space and machine ("~ · box"), for every agent: another machine as
+// `machineOf` its address gives it, this computer as `thisComputerName`, or
+// "This computer" without one, as its machine header does (`machineHeader`).
 export function needsYouRows(
   needsYou: AgentInfo[],
   labelOf: (a: AgentInfo) => string,
@@ -316,18 +317,19 @@ export function needsYouRows(
   t: ThemeColors,
   now: number,
   since: (a: AgentInfo) => number,
+  thisComputerName: string | null,
 ): Element[] {
   // Each row as the tree draws an agent, two lines: what the agent is, then
-  // the space it is in and, when remote, its machine, beside that space's
-  // color in a thin bar. The tray mixes every machine's agents, so the
-  // machine tells apart two spaces of the same name. A blocked agent says
-  // what it waits for ("permission"), else "needs you", in its status color,
-  // a done one has a dot, and both say how long ago. The tree above fills the
-  // focused row; here focus only brightens the text.
+  // the space it is in and its machine, beside that space's color in a thin
+  // bar. The tray mixes every machine's agents, so the machine tells apart
+  // two spaces of the same name. A blocked agent says what it waits for
+  // ("permission"), else "needs you", in its status color, a done one has a
+  // dot, and both say how long ago. The tree above fills the focused row;
+  // here focus only brightens the text.
   const row = (a: AgentInfo) => {
     const pic = programIcon(a.program, 14, t.foreground);
     const when = since(a);
-    const machine = machineOf(a.address);
+    const machine = machineOf(a.address) ?? thisComputerName ?? "This computer";
     return h_flex()
       .id(`needs-${a.address}`)
       .flex_none()
@@ -401,14 +403,12 @@ export function needsYouRows(
               // The machine does not shrink, so a long space name truncates
               // first and the machine stays readable; it is capped at the
               // line's width, so it truncates only when it alone is wider.
-              .when(Boolean(machine), (el) =>
-                el.child(
-                  div()
-                    .flex_shrink_0()
-                    .max_w_full()
-                    .truncate()
-                    .child(`\u00b7 ${machine}`),
-                ),
+              .child(
+                div()
+                  .flex_shrink_0()
+                  .max_w_full()
+                  .truncate()
+                  .child(`\u00b7 ${machine}`),
               ),
           ),
       );
