@@ -108,21 +108,18 @@ let
 
     ${gnuToolList}
 
-    Use GNU flags such as `sed -i`, `stat -c`, and `date -d`. When a flag's
-    availability matters, check `<tool> --version` first.${lib.optionalString isDarwin "\n\n${''
+    Use GNU flags such as `sed -i`, `stat -c`, and `date -d`.${lib.optionalString isDarwin "\n\n${''
       On macOS these shadow the BSD versions in `/usr/bin`, so BSD forms such as
       `sed -i '''`, `stat -f`, and `date -j` fail. `tar` remains BSD tar.''}"}
 
-    It also puts these tools on PATH:
+    The profile also puts these tools on PATH:
 
     ${otherToolList}
 
-    Never use `find`, `grep`, `fd`, `rg`, or an equivalent search tool with
-    `/nix/store` itself as the search root. Any top-level or recursive store scan
-    is extremely CPU-intensive. Resolve the relevant package path first with a
-    known path, Nix metadata, or `nix-locate`, then search only within that
-    package path. Direct access to a known file or a targeted package subtree is
-    allowed.'';
+    Never search `/nix/store` itself with `find`, `grep`, `fd`, `rg`, or a
+    similar tool: a store-wide scan is extremely CPU-intensive. Resolve the
+    package path first, from a known path, Nix metadata, or `nix-locate`, then
+    search or read within it.'';
 in
 {
   imports = [ ./rules.nix ];
