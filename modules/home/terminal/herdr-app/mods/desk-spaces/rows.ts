@@ -14,6 +14,7 @@ import { checkoutText } from "./space-order.js";
 import { hoverFill } from "./row-colors.js";
 import type { Checkout, GitCheckout, JjCheckout } from "./checkouts.js";
 import type { AgentStatus } from "./status.js";
+import { machineOf } from "./terminals.js";
 
 // The theme's colors by name. The app's typings type `theme()` as
 // `Record<string, string>`, though every value is a color.
@@ -305,7 +306,9 @@ export function jjTail(
 // `labelOf` gives what an agent is (`agentLabel`), and `waitsForOf` what a
 // blocked one waits for (`blockedKind`), null when it does not say. With
 // none, the heading shows "0", all dim, over a dim "Nothing waiting"; the
-// label turns amber when one does.
+// label turns amber when one does. A row's second line names its agent's
+// space, and for an agent on another machine that machine too ("~ · box",
+// `machineOf` its address); a row on this computer names its space alone.
 export function needsYouRows(
   needsYou: AgentInfo[],
   labelOf: (a: AgentInfo) => string,
@@ -315,13 +318,16 @@ export function needsYouRows(
   since: (a: AgentInfo) => number,
 ): Element[] {
   // Each row as the tree draws an agent, two lines: what the agent is, then
-  // the space it is in, beside that space's color in a thin bar. A blocked
-  // agent says what it waits for ("permission"), else "needs you", in its
-  // status color, a done one has a dot, and both say how long ago. The tree
-  // above fills the focused row; here focus only brightens the text.
+  // the space it is in and, when remote, its machine, beside that space's
+  // color in a thin bar. The tray mixes every machine's agents, so the
+  // machine tells apart two spaces of the same name. A blocked agent says
+  // what it waits for ("permission"), else "needs you", in its status color,
+  // a done one has a dot, and both say how long ago. The tree above fills the
+  // focused row; here focus only brightens the text.
   const row = (a: AgentInfo) => {
     const pic = programIcon(a.program, 14, t.foreground);
     const when = since(a);
+    const machine = machineOf(a.address);
     return h_flex()
       .id(`needs-${a.address}`)
       .flex_none()
@@ -385,12 +391,25 @@ export function needsYouRows(
               ),
           )
           .child(
-            div()
+            h_flex()
               .min_w(0)
-              .truncate()
+              .gap(4)
+              .items_center()
               .text_size(11)
               .text_color(a.focused ? t.muted : t.dim)
-              .child(a.space_name),
+              .child(div().min_w(0).truncate().child(a.space_name))
+              // The machine does not shrink, so a long space name truncates
+              // first and the machine stays readable; it is capped at the
+              // line's width, so it truncates only when it alone is wider.
+              .when(Boolean(machine), (el) =>
+                el.child(
+                  div()
+                    .flex_shrink_0()
+                    .max_w_full()
+                    .truncate()
+                    .child(`\u00b7 ${machine}`),
+                ),
+              ),
           ),
       );
   };

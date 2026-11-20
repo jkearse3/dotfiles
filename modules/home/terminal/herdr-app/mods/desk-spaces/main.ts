@@ -55,7 +55,10 @@
 // - "Needs you", a tray of fixed height at the bottom, so the spaces above
 //   never move when it changes: every blocked agent, then every agent that
 //   finished while you weren't looking (`done`, which the app turns `idle`
-//   once you look), newest first. Click one to focus it.
+//   once you look), newest first. Each row's second line names the agent's
+//   space, followed for an agent on another machine by that machine
+//   ("~ · box"); a row on this computer names its space alone. Click one to
+//   focus it.
 // - The narrow rail shows each space's most urgent agent status and the `»`
 //   that widens the sidebar again (`desk-chrome` relies on it).
 // The agent next/previous keys walk "Needs you" first, then the tree.
