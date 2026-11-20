@@ -73,10 +73,6 @@ Examples:
    ### Overview
 
    No changes found.
-
-   ### Changes
-
-   None
    ```
 
 4. **Analyze changed files and groups**. Start from the overview to make an
@@ -97,13 +93,27 @@ Examples:
    individually summarized files, run the selected per-file diff command and
    read full file context when needed.
 
-5. **Analyze the overall change**. After reviewing the changed files, write a
+5. **List the visible changes**. List what the diff adds, changes, or removes
+   that a user, an API client, an operator, or the author of another module
+   could notice without reading the code, as the Alignment rule defines it.
+   Group them under Data, API, UI, Config, Side effects, Structure, Rules, and
+   Dependencies, in that order and only the groups the diff touches. Mark each
+   item `+` for added, `~` for changed, or `-` for removed, and give every `~`
+   as before → after. Read the declarations themselves, such as migrations,
+   schema files, route definitions, exported signatures, configuration options,
+   and manifests, rather than inferring them from file names. When the user
+   names a spec, or the summarized revisions came from one, start each item that
+   carries out an acceptance criterion with that criterion's ID, such as `AC3`,
+   list visible changes no criterion requires under `Not in spec`, and list
+   criteria the diff does not carry out under `Not built`.
+
+6. **Analyze the overall change**. After reviewing the changed files, write a
    concise overview of the diff as a whole. The overview should briefly describe
    the technical shape of the change without duplicating the file-by-file
    entries. Do not write commit-message rationale; reserve durable intent,
    motivation, and risk framing for commit messages.
 
-6. **Return result**. Return the structured result exactly:
+7. **Return result**. Return the structured result exactly:
 
    ```markdown
    ## Result: Diff Summary
@@ -123,6 +133,11 @@ Examples:
 
    ### Changes
 
+   <the visible changes from step 5, or one sentence saying the diff changes
+   nothing visible>
+
+   ### Files
+
    - **path/to/file.ext**: What the file does. What changed.
    - **another/file.ext**: File purpose. Specific modifications.
    - **Related files** (`related/files/**/*.ext`): Shared purpose for this
@@ -139,6 +154,8 @@ Guidelines:
   small diffs, say that all changed files were reviewed individually. For larger
   diffs, mention important files reviewed individually and repeated or
   mechanical changes grouped after confirming their pattern.
+- Put `Changes` before `Files`, because what the diff makes visible is what a
+  reader checks first; leave internal changes to `Files`.
 - Include a short `Overview` that summarizes the diff holistically. Keep it
   technical and factual; do not duplicate commit-message rationale.
 - Keep each entry concise, usually 1-2 sentences
