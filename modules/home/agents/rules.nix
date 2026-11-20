@@ -44,6 +44,7 @@ in
         "shared/rex-terminal"
         "shared/communication"
         "shared/reasoning"
+        "shared/alignment"
         "shared/delegation"
         "shared/version-control"
         "shared/build-copies"
