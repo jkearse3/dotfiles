@@ -1,31 +1,28 @@
 ---
 name: domain-model
 description: >-
-  Builds and checks a system's type and relationship model across its typed
-  layers, such as database schema, domain types, API contracts, UI state,
-  configuration, and build or deployment definitions. Use when the user wants to
-  map an existing system's data model, audit it for representable illegal states
-  or misplaced invariants, or design the target model for a proposed change. Not
-  for open questions beyond the model, types local to code being written (use
-  coding-style), a full change spec (use spec), or implementation.
+  Maps an existing system's type and relationship model across its typed layers,
+  such as database schema, domain types, API contracts, UI state, configuration,
+  and build or deployment definitions, and audits it for states the domain
+  forbids and misplaced invariants. Use when the user wants to understand a
+  codebase's domain or data model, or to map or audit it. Not for designing a
+  change (use spec), types local to code being written (use coding-style), or
+  implementation.
 ---
 
 # Domain Model
 
 Make a system's concepts, relationships, invariants, and lifecycles explicit
 across every typed layer, and find where the model admits states the domain
-forbids. In understand mode, map the current model and its findings. In design
-mode, produce the target model for a proposed change as a delta from the current
-one. Modeling is read-only and authorizes no implementation.
+forbids. Modeling is read-only and authorizes no implementation; to design a
+change to the model, use `spec`.
 
 ## Input
 
 Take the input from the user's request and context, in whatever form it arrives:
-a system, area, concept, proposed change, spec draft, or the conversation. Draw
-from it the subject, the layers in scope, and any decisions already made, and
-preserve their wording. Choose understand mode when the request is to map or
-audit what exists, and design mode when it proposes a change. Ask only if the
-subject is absent or the mode could mean materially different results.
+a system, area, concept, or the conversation. Draw from it the subject, the
+layers in scope, and any decisions already made, and preserve their wording. Ask
+only if the subject is absent.
 
 ## Method
 
@@ -44,8 +41,7 @@ issues, not as a taxonomy to fill.
    command. When reconnaissance is broad, dispatch read-only explorers with
    bounded questions, one per layer or subsystem, and keep only their
    conclusions; they make no edits, VCS mutations, or user-owned decisions.
-   Spot-check the claims your findings rest on. In design mode, ground the
-   current model before proposing the target.
+   Spot-check the claims your findings rest on.
 2. **Concept inventory.** List each domain concept and its representation in
    every layer: table, domain type, API shape, UI state, configuration key,
    option, or output. Map each representation to the others explicitly, and note
@@ -75,10 +71,6 @@ issues, not as a taxonomy to fill.
 7. **Signatures and call paths.** For the operations that create, change, or
    read the concepts, state inputs, outputs, error types, and effects; how they
    compose along the main call paths; and which layer handles each error.
-8. **Change impact.** In design mode only, list every persisted type the target
-   changes, the migration each change needs including backfill and rollback, and
-   each consumer the change breaks, such as other services, clients, stored
-   payloads, configuration, and scripts or programs that read generated outputs.
 
 Check every step for these smells:
 
@@ -103,16 +95,12 @@ Check every step for these smells:
 
 Return the model in chat; save it through `notes` or publish it as an artifact
 only when the user asks. Omit an optional section with no material content;
-never write `None` placeholders. Keep detail proportional to the area. In design
-mode, present each section as a delta from the current model: mark what is
-added, changed, and removed, and leave unchanged parts out unless they explain a
-change. Include a Mermaid `erDiagram` or `classDiagram` only where it clarifies
-structure the tables do not.
+never write `None` placeholders. Keep detail proportional to the area. Include a
+Mermaid `erDiagram` or `classDiagram` only where it clarifies structure the
+tables do not.
 
 ```markdown
 # Model: <system or area>
-
-Mode: Understand | Design
 
 Workspace: <repository or system identity and absolute path, when one applies>
 
@@ -158,11 +146,6 @@ concepts.>
 - **<finding>:** <evidence at `<exact locator>`>. Consequence: <what goes
   wrong>. Fix: <recommended change, or the user-owned choice it needs and the
   recommended option>.
-
-## Change Impact
-
-- <Optional, design only: persisted type, migration with backfill and rollback,
-  or broken consumer, with its locator.>
 ```
 
 ## Boundaries
@@ -170,10 +153,8 @@ concepts.>
 - Do not edit files, mutate version control, or change external systems while
   modeling.
 - Answer open questions beyond the model directly or leave them out of it. Route
-  types local to code being written to `coding-style` and a full change spec to
-  `spec`.
+  a change to the model to `spec` and types local to code being written to
+  `coding-style`.
 - Do not decide a user-owned choice the model surfaces, such as delete semantics
-  or a sum type versus a table. Record it as a finding with a recommendation for
-  the caller or user to decide; `spec` asks the user when it invokes
-  `domain-model` in design mode.
+  or a sum type versus a table. Record it as a finding with a recommendation.
 - Ground every claim in inspected evidence; mark inference as inference.

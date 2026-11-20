@@ -5,19 +5,22 @@ contracts. Derive only concerns reachable through those interfaces and carrying
 risk material to the shaped change.
 
 These are prompts, not mandatory requirements or artifact classes. Do not copy
-them into a spec or explain why irrelevant prompts were omitted. A property
-guaranteed by construction is not a completion condition. Material behavior that
-is not guaranteed needs a durable check where practical and otherwise a proof
-method a reviewer can rerun.
+them into a spec or explain why irrelevant prompts were omitted. Beyond what a
+criterion requires, a property guaranteed by construction is not a completion
+condition. Material behavior that is not guaranteed needs a durable check where
+practical and otherwise a proof method a reviewer can rerun.
 
-Place each result once where it belongs:
+Place each result once, in the section that owns it under the skill's What Goes
+Where:
 
-- `Acceptance Criteria`: externally observable behavior and preserved
-  invariants, each with its check.
-- `Decisions`: settled choices and their rationale.
-- `Implementation`: interfaces, data flow, edge and failure handling,
-  compatibility, and migration.
-- `Risks`: residual exposure, rollback, and recovery.
+- `Acceptance criteria`: a visible behavior the work must achieve, such as an
+  error response, a migration of existing rows, or an empty state, with the
+  `Verify:` that proves it.
+- `Boundaries`: behavior that must stay the same, with the `Verify:` that proves
+  it, or a binding requirement every milestone shares that nobody can observe
+  from outside, such as atomic replacement or rollout order. Anything only one
+  milestone needs is a detail of a criterion in that milestone instead.
+- A settled choice goes in the `Why:` line of the criterion it shapes.
 
 ## Inputs And Outputs
 
