@@ -43,8 +43,18 @@ prepares the new workspace the way Git's `post-checkout` hook prepares a new
 worktree, because `jj workspace add` never runs that hook:
 
 ```console
-$ jjx workspace add ../feature --name feature
+$ jjx workspace add --name feature
 ```
+
+Given `--name` without a destination, as above, it creates the workspace at
+`~/.worktrees/<repository>/<name>`, creating missing parent folders, so every
+workspace lives in one place whichever tool made it. `<repository>` is the
+primary checkout's path relative to the home directory, such as `dotfiles` for
+`~/dotfiles`; a primary checkout outside the home directory uses `_/` followed
+by its absolute path without the leading `/`, such as
+`~/.worktrees/_/srv/app/feature`. The location is the same when the command runs
+in one of the repository's other workspaces. A given destination is used as is,
+as `jj workspace add` uses it.
 
 It runs `worktree-include --prepare` to copy the local files the primary
 checkout's `.worktreeinclude` selects, then `direnv-worktree prepare` to

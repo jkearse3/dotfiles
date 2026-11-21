@@ -148,7 +148,7 @@ _jjx() {
         '*'{-r,--revision}'[parent revision]:revision:_jjx_revisions' \
         '(-m --message)'{-m,--message}'[change description]:message:' \
         '--sparse-patterns[sparse pattern handling]:mode:(copy full empty)' \
-        '1:destination:_files -/'
+        '1::destination (default ~/.worktrees/<repository>/<name>):_files -/'
       ;;
     'workspace remove')
       _arguments \

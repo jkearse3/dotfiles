@@ -6,6 +6,9 @@ never happens. This command runs ``jj workspace add`` with the caller's
 arguments plus ``--colocate``, then runs the same preparation steps in the new
 workspace. Only colocated workspaces are supported: ``--no-colocate`` is
 rejected, and a new workspace without its own Git worktree is an error.
+
+When the arguments give ``--name`` but no destination, the workspace is created
+at ``~/.worktrees/<repository>/<name>``; see ``default_destination``.
 """
 
 from __future__ import annotations
@@ -15,6 +18,7 @@ import shlex
 import subprocess
 import sys
 from collections.abc import Sequence
+from dataclasses import dataclass
 from pathlib import Path
 
 from .process import capture_bytes, checked_bytes
@@ -30,8 +34,35 @@ REPOSITORY_OPTIONS = ("-R", "--repository")
 
 NO_COLOCATE_OPTION = "--no-colocate"
 
+NAME_OPTION = "--name"
+
+LONG_OPTIONS_WITH_VALUES = frozenset(
+    {
+        NAME_OPTION,
+        "--revision",
+        "--message",
+        "--sparse-patterns",
+        "--repository",
+        "--at-operation",
+        "--at-op",
+        "--color",
+        "--config",
+        "--config-file",
+    }
+)
+"""Long options of ``jj workspace add``, global ones included, that take a value."""
+
+SHORT_OPTIONS_WITH_VALUES = frozenset("rmR")
+"""Short options of ``jj workspace add``, global ones included, that take a value."""
+
+WORKTREES_DIRECTORY = ".worktrees"
+"""Folder under the home directory that holds default workspace destinations."""
+
+OUTSIDE_HOME_DIRECTORY = "_"
+"""Folder under WORKTREES_DIRECTORY for repositories outside the home directory."""
+
 USAGE = """\
-usage: {prog} [jj workspace add arguments]
+usage: {prog} [jj workspace add options] [DESTINATION]
 
 Run 'jj workspace add --colocate' with the given arguments, then prepare the
 new workspace as Git's post-checkout hook prepares a new worktree:
@@ -47,6 +78,14 @@ printed on stdout and all other output goes to stderr.
 Only colocated workspaces are supported: --no-colocate is rejected, and if the
 new workspace has no Git worktree of its own, the command fails without
 preparing it and names the 'jj workspace remove' command that removes it.
+
+When --name NAME is given without a DESTINATION, the workspace is created at
+~/.worktrees/<repository>/NAME, creating missing parent folders. <repository>
+is the primary checkout's path relative to the home directory, such as
+'dotfiles' for ~/dotfiles, or '_/' followed by its absolute path without the
+leading '/' when it lies outside the home directory, such as _/srv/app. The
+primary checkout is the same from any of its workspaces. With neither --name
+nor DESTINATION, jj reports the missing destination.
 
 Run from inside the repository; -R/--repository is not supported. See
 'jj workspace add --help' for the accepted arguments.
@@ -66,9 +105,22 @@ def add(arguments: Sequence[str]) -> Path:
     the created workspace has no Git worktree of its own (before any
     preparation), or after running every preparation step when any of them
     failed. A created workspace is never removed.
+
+    When ARGUMENTS give ``--name`` but no destination, the destination is
+    ``default_destination``'s, and its missing parent folders are created
+    before ``jj workspace add`` runs.
     """
     _reject_repository_option(arguments)
     _reject_no_colocate(arguments)
+
+    destination_arguments = _parse_destination_arguments(arguments)
+    if not destination_arguments.has_destination and destination_arguments.name is not None:
+        destination = default_destination(destination_arguments.name)
+        try:
+            destination.parent.mkdir(parents=True, exist_ok=True)
+        except OSError as error:
+            raise WorkspaceAddError(f"could not create {destination.parent}: {error}") from error
+        arguments = [*arguments, os.fspath(destination)]
 
     existing = _workspace_names()
     status = _run_to_stderr(["jj", "workspace", "add", "--colocate", *arguments])
@@ -96,6 +148,115 @@ def add(arguments: Sequence[str]) -> Path:
             f"after fixing the cause, rerun: {recovery}"
         )
     return root
+
+
+@dataclass(frozen=True)
+class _DestinationArguments:
+    """What ``jj workspace add`` arguments say about where the workspace goes.
+
+    ``name`` is the last ``--name`` value, or None when none is given;
+    ``has_destination`` is whether any positional argument is given.
+    """
+
+    name: str | None
+    has_destination: bool
+
+
+def _parse_destination_arguments(arguments: Sequence[str]) -> _DestinationArguments:
+    """Parse ARGUMENTS as clap parses ``jj workspace add``'s command line.
+
+    Long options take their value after ``=`` or as the next argument; short
+    options may be bundled, and a value-taking one takes the rest of the
+    argument or the next one. A next argument that looks like an option is not
+    taken as a value, so the option has none, as in jj. A lone ``-`` and
+    everything after ``--`` are positional. Malformed arguments are left for jj
+    to report.
+    """
+    name: str | None = None
+    has_destination = False
+    index = 0
+    while index < len(arguments):
+        argument = arguments[index]
+        index += 1
+        if argument == "--":
+            has_destination = has_destination or index < len(arguments)
+            break
+
+        if argument.startswith("--"):
+            option, separator, value = argument.partition("=")
+            if separator == "" and option in LONG_OPTIONS_WITH_VALUES:
+                value = _next_value(arguments, index)
+                if value is not None:
+                    index += 1
+            if option == NAME_OPTION and value is not None:
+                name = value
+        elif _is_option(argument):
+            for position, letter in enumerate(argument[1:], start=1):
+                if letter in SHORT_OPTIONS_WITH_VALUES:
+                    if position == len(argument) - 1 and _next_value(arguments, index) is not None:
+                        index += 1
+                    break
+        else:
+            has_destination = True
+    return _DestinationArguments(
+        name=name,
+        has_destination=has_destination,
+    )
+
+
+def _next_value(arguments: Sequence[str], index: int) -> str | None:
+    """Return the option value at INDEX, or None when there is none to take."""
+    if index < len(arguments) and not _is_option(arguments[index]):
+        return arguments[index]
+    return None
+
+
+def _is_option(argument: str) -> bool:
+    return argument.startswith("-") and argument != "-"
+
+
+def default_destination(name: str) -> Path:
+    """Return where a workspace named NAME goes when no destination is given.
+
+    The path is ``~/.worktrees/<repository>/<NAME>``, where ``<repository>``
+    is the primary checkout's path relative to the home directory, or ``_/``
+    followed by its absolute path without the leading ``/`` when it lies
+    outside the home directory. Both paths are compared with symlinks
+    resolved; the result keeps the home directory as ``$HOME`` spells it.
+    Raises WorkspaceAddError when NAME is not a single path component, or when
+    the current directory is not inside a jj workspace.
+    """
+    if name in ("", ".", "..") or "/" in name:
+        raise WorkspaceAddError(
+            f"workspace name {name!r} cannot name a folder under ~/{WORKTREES_DIRECTORY}; "
+            "give a destination"
+        )
+
+    home = Path.home()
+    primary = _primary_checkout()
+    try:
+        repository = primary.relative_to(home.resolve())
+    except ValueError:
+        repository = Path(OUTSIDE_HOME_DIRECTORY, *primary.parts[1:])
+    return home / WORKTREES_DIRECTORY / repository / name
+
+
+def _primary_checkout() -> Path:
+    """Return the resolved root of the workspace that owns the current workspace's repository.
+
+    A workspace added by ``jj workspace add`` has a ``.jj/repo`` file holding
+    the path, relative to its ``.jj`` folder, of the owning workspace's
+    ``.jj/repo`` directory; the owning workspace has that directory itself.
+    """
+    workspace = Path(os.fsdecode(_jj("workspace", "root").removesuffix(b"\n")))
+    repository = workspace / ".jj" / "repo"
+    if repository.is_file():
+        try:
+            pointer = repository.read_bytes().removesuffix(b"\n")
+        except OSError as error:
+            raise WorkspaceAddError(f"could not read {repository}: {error}") from error
+        repository = workspace / ".jj" / os.fsdecode(pointer)
+    return repository.resolve().parent.parent
 
 
 def _reject_repository_option(arguments: Sequence[str]) -> None:
