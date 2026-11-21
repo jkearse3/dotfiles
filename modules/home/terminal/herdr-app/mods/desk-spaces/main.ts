@@ -74,10 +74,11 @@
 // and the tray, and `tree-rows.ts` draws the machine headers, tab dividers
 // and terminal rows.
 //
-// `agent-marks.ts`, `finished.ts`, `foreground.ts`, `labels.ts`,
-// `names.ts`, `paths.ts`, `program-icon.ts`, `quiet.ts`, `row-colors.ts`,
-// `space-order.ts`, `status.ts`, `terminals.ts`, `tree-rows.ts` and
-// `tree.ts` beside these files are links to the shared copies in `mod-lib/`.
+// `agent-marks.ts`, `checkout-root.ts`, `finished.ts`, `foreground.ts`,
+// `labels.ts`, `names.ts`, `paths.ts`, `program-icon.ts`, `quiet.ts`,
+// `row-colors.ts`, `space-order.ts`, `status.ts`, `terminals.ts`,
+// `tree-rows.ts` and `tree.ts` beside these files are links to the shared
+// copies in `mod-lib/`.
 
 import { View, div, svg } from "gpui-kit";
 import type {
@@ -421,16 +422,17 @@ export default class SpacesAndAgents extends View {
     const sp = spaces();
     const ready = (w: SpaceInfo) =>
       this.shown.has(w.id) ||
-      where(w) in this.checkouts.git ||
+      this.checkouts.checkoutOf(where(w)) !== undefined ||
       Date.now() - (this.born[w.id] ??= Date.now()) > 1500;
     for (const w of sp)
       if (!this.shown.has(w.id) && ready(w)) this.shown.add(w.id);
     const list = sp
       .map((w, i) => ({ w, i }))
       .filter((r) => this.shown.has(r.w.id));
-    return spaceOrder(list, (r) => this.checkouts.git[where(r.w)] ?? null).map(
-      ({ space, checkout, tree }) => ({ ...space, g: checkout, tree }),
-    );
+    return spaceOrder(
+      list,
+      (r) => this.checkouts.checkoutOf(where(r.w)) ?? null,
+    ).map(({ space, checkout, tree }) => ({ ...space, g: checkout, tree }));
   }
 
   // The rows under a header per machine of `treeMachines` (`buildTree`), in

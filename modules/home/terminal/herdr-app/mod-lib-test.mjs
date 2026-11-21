@@ -6,7 +6,7 @@
 // outcome and label from `finished.ts`, `quietFor` from `quiet.ts`,
 // `runningCommand`, `shellCommandText`, `commandText` and `CommandStarts`
 // from `foreground.ts`, `hoverFill` and `stripeColor` from `row-colors.ts`,
-// and the desk-spaces sidebar's status and activity tracking (`AgentHistory`
+// `innermostRoot` from `checkout-root.ts`, and the desk-spaces sidebar's status and activity tracking (`AgentHistory`
 // from its own `agents.ts`), the trackers over an in-memory `localStorage`,
 // against the terminals(), agents(), panes() and spaces() entry shapes the
 // Herdr app hands mods. It imports the built, type-stripped
@@ -46,6 +46,7 @@ const { hoverFill, stripeColor } = await import(
   `${mods}/desk-spaces/row-colors.js`
 );
 const { AgentHistory } = await import(`${mods}/desk-spaces/agents.js`);
+const { innermostRoot } = await import(`${mods}/desk-spaces/checkout-root.js`);
 const {
   COMMAND_SETTLE_MS,
   CommandStarts,
@@ -1775,4 +1776,23 @@ test("stripeColor falls back to dim for a theme without idle or done", () => {
   assert.equal(stripeColor(theme, { status: "idle", detail: null }), "#000005");
   assert.equal(stripeColor(theme, { status: "done", detail: null }), "#000005");
   assert.equal(stripeColor(theme, { status: null, detail: null }), "#000005");
+});
+
+test("innermostRoot picks jj for a colocated repo, where both roots match", () => {
+  assert.deepEqual(innermostRoot("/r", "/r"), { top: "/r", kind: "jj" });
+});
+
+test("innermostRoot picks the longer root, a checkout nested in another", () => {
+  assert.deepEqual(innermostRoot("/r", "/r/sub"), {
+    top: "/r/sub",
+    kind: "git",
+  });
+  assert.deepEqual(innermostRoot("/r/ws", "/r"), { top: "/r/ws", kind: "jj" });
+});
+
+test("innermostRoot takes the one root found, or null for none", () => {
+  assert.deepEqual(innermostRoot("/r", null), { top: "/r", kind: "jj" });
+  assert.deepEqual(innermostRoot(null, "/r"), { top: "/r", kind: "git" });
+  assert.equal(innermostRoot(null, null), null);
+  assert.equal(innermostRoot("", ""), null);
 });
