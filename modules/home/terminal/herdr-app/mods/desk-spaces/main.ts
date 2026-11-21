@@ -50,14 +50,15 @@
 //   there is no toggle. The space's terminals in
 //   no tab of it follow its tabs, without a divider, marked "no pane". The
 //   chevron on the space's name line, shown only when there is any of
-//   that, folds all of it; folded, it shows how many agents, at any depth,
-//   in the most urgent status's color (finished terminals count for
-//   neither).
+//   that, folds all of it. Before it, open or folded, the line shows how
+//   many agents the space holds at any depth, in the most urgent status's
+//   color, and nothing when it holds none (finished terminals count for
+//   neither). Unlike the rail, a space row shows no number.
 // - Last under each machine, its terminals no space holds
 //   (`TreeMachine.elsewhere`, such as background terminals) under a small
 //   "ELSEWHERE" heading, drawn and clicked like a space's terminal rows,
 //   each without a pane marked "no pane", the section a little dimmed. It
-//   has no fold of its own, and no space's rail status or fold count
+//   has no fold of its own, and no space's rail status or agent count
 //   includes it.
 // - "Needs you", a tray of fixed height at the bottom, so the spaces above
 //   never move when it changes: every blocked agent, then every agent that
@@ -707,16 +708,17 @@ export default class SpacesAndAgents extends View {
   }
 
   // The end of the name line of a space with rows under it (in a tab, or a
-  // loose terminal's; `spaceListing` leaves out tabs without rows): a
-  // chevron that folds them and, folded, adds how many agents they show at
-  // any depth in the most urgent one's color. Pressing it neither selects
-  // nor drags the space.
+  // loose terminal's; `spaceListing` leaves out tabs without rows): how many
+  // agents they show at any depth, in the most urgent one's color, whether
+  // the space is open or folded (none without agents), then a chevron that
+  // folds them. Pressing it neither selects nor drags the space.
   foldToggle(w: SpaceInfo, t: ThemeColors): Element | null {
     const listing = this.listings.get(w.id);
     if (!listing || (!listing.tabs.length && !listing.loose.length))
       return null;
     const keep = (_e: MouseButtonEvent, cx: Context) => cx.stop_propagation();
     const open = !(w.id in this.foldedSpaces);
+    const agentCount = this.agentStatuses(w).length;
     // A null `top` (no status ranks) indexes `t` as "null": no color, so dim.
     const top = this.spaceStatus(w);
     return h_flex()
@@ -728,7 +730,7 @@ export default class SpacesAndAgents extends View {
       .items_center()
       .rounded(4)
       .text_size(11)
-      .text_color(open ? t.dim : (t[top as AgentStatus] ?? t.dim))
+      .text_color(t.dim)
       .cursor_pointer()
       .hover((s) => s.bg(t.hover).text_color(t.foreground))
       .on_mouse_down("left", keep)
@@ -737,7 +739,13 @@ export default class SpacesAndAgents extends View {
         this.setSpaceFolded(w, open);
         cx.notify();
       })
-      .when(!open, (el) => el.child(String(this.agentStatuses(w).length)))
+      .when(agentCount > 0, (el) =>
+        el.child(
+          div()
+            .text_color(t[top as AgentStatus] ?? t.dim)
+            .child(String(agentCount)),
+        ),
+      )
       .child(
         svg(`mods/workspace-chrome/chevron-${open ? "down" : "right"}.svg`)
           .size(11)
@@ -1212,7 +1220,7 @@ interface TerminalListing {
 
 // One finished terminal row: its `walkTree` step, with the depth it is
 // indented by and the live terminal it hangs under. It shows no status: rail
-// status, fold counts and the agent order leave it out.
+// status, agent counts and the agent order leave it out.
 interface FinishedListing {
   kind: "finished";
   step: TreeFinishedStep;
