@@ -1,7 +1,8 @@
 // Tests the mod-lib pure files the desk-spaces sidebar draws its tree with:
 // `buildTree`, `spaceTerminals`, `tabFolded`, `rowStatus` and `walkTree` from
 // `tree.ts`, `agentDoing`, `folderOf` and `terminalRowModel` from `labels.ts`,
-// `machineOf` from `terminals.ts`, `spaceOrder`, `checkoutText` and
+// `machineOf` from `terminals.ts`, `readMachineChoices` and
+// `machineLeftOut` from `machine-choices.ts`, `spaceOrder`, `checkoutText` and
 // `readSpaceCheckouts` from `space-order.ts`, the finished-terminal readers,
 // outcome and label from `finished.ts`, `quietFor` from `quiet.ts`,
 // `runningCommand`, `shellCommandText`, `commandText` and `CommandStarts`
@@ -30,6 +31,9 @@ const { agentDoing, folderOf, terminalRowModel } = await import(
   `${mods}/desk-spaces/labels.js`
 );
 const { machineOf } = await import(`${mods}/desk-spaces/terminals.js`);
+const { machineLeftOut, readMachineChoices } = await import(
+  `${mods}/desk-spaces/machine-choices.js`
+);
 const { checkoutText, readSpaceCheckouts, spaceOrder } = await import(
   `${mods}/desk-spaces/space-order.js`
 );
@@ -148,6 +152,55 @@ function space(id, name, tabIds, machine = null) {
 test("machineOf: the part before the first slash, else null", () => {
   assert.equal(machineOf("box/w1:t1"), "box");
   assert.equal(machineOf("w1:t1"), null);
+});
+
+test("readMachineChoices keeps string names and only a true option", () => {
+  const choices = readMachineChoices(["box", 3, null, "rohan"], true);
+  assert.deepEqual([...choices.hidden], ["box", "rohan"]);
+  assert.equal(choices.hideOffline, true);
+  assert.equal(readMachineChoices(["box"], "yes").hideOffline, false);
+});
+
+test("readMachineChoices treats missing or malformed values as no choice", () => {
+  for (const [hidden, hideOffline] of [
+    [undefined, undefined],
+    [null, null],
+    [{ box: true }, 1],
+    ["box", {}],
+  ]) {
+    const choices = readMachineChoices(hidden, hideOffline);
+    assert.equal(choices.hidden.size, 0);
+    assert.equal(choices.hideOffline, false);
+  }
+});
+
+test("machineLeftOut: unchecked first, then unreachable while hiding offline", () => {
+  const choices = readMachineChoices(["box"], true);
+  assert.equal(
+    machineLeftOut({ name: "box", state: "unreachable" }, choices),
+    "unchecked",
+  );
+  assert.equal(
+    machineLeftOut({ name: "rohan", state: "unreachable" }, choices),
+    "offline",
+  );
+  for (const state of ["connected", "connecting", "needs_login", null])
+    assert.equal(machineLeftOut({ name: "rohan", state }, choices), null);
+  assert.equal(
+    machineLeftOut(
+      { name: "rohan", state: "unreachable" },
+      readMachineChoices(["box"], false),
+    ),
+    null,
+  );
+});
+
+test("machineLeftOut always shows this computer", () => {
+  const choices = readMachineChoices(["null"], true);
+  assert.equal(
+    machineLeftOut({ name: null, state: "unreachable" }, choices),
+    null,
+  );
 });
 
 // A plain fish shell's terminals() entry at `address` in folder `cwd`.

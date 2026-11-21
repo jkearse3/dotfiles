@@ -64,6 +64,18 @@
 //   follow, drawn and clicked like a space's terminal rows, each without a
 //   pane marked "no pane", the section a little dimmed. No space's rail
 //   status or agent count includes them, and the rail shows no Background.
+// - The viewer's machine choices (`readMachineChoices`, saved in `shared`)
+//   leave machines out of the list and the rail: one whose box is
+//   unchecked in the machine picker (`HIDDEN_MACHINES_KEY`, by name), and,
+//   while "Hide offline machines" is on (`HIDE_OFFLINE_MACHINES_KEY`), one
+//   `hc machine ls` reports unreachable. This computer always shows, and a
+//   machine connecting or needing a login shows with its badge. While the
+//   option leaves any out, the list ends with "1 offline machine hidden ·
+//   Show" (`offlineHiddenLine`), whose "Show" turns the option off. A
+//   left-out machine's agents stay in "Needs you" and come after every
+//   shown agent in the next/previous order, focus does not reveal it, and
+//   its repos skip the fallback checkout look. The sidebar shares the
+//   machines it gives a header (`MACHINE_PICKER_KEY`) for the picker.
 // - "Needs you", a tray of fixed height at the bottom, so the spaces above
 //   never move when it changes: every blocked agent, then every agent that
 //   finished while you weren't looking (`done`, which the app turns `idle`
@@ -91,7 +103,8 @@
 // its shipped `agents` mod (herdr-app 0.1.11).
 //
 // This file holds the view and its state, and shares each space's
-// checkout (`publishCheckouts`); `checkouts.ts` looks up the Git or jj
+// checkout (`publishCheckouts`) and the machines it knows
+// (`publishMachinePicker`); `checkouts.ts` looks up the Git or jj
 // checkout of each space's folder and each live terminal's,
 // `finished-loader.ts` reads the finished terminals, `agents.ts` picks the
 // agents that need you and tracks their status and activity changes,
@@ -100,10 +113,10 @@
 // `tree-rows.ts` draws the machine headers, tab dividers and terminal rows.
 //
 // `agent-marks.ts`, `checkout-badge.ts`, `checkout-root.ts`, `finished.ts`,
-// `focus-reveal.ts`, `foreground.ts`, `labels.ts`, `names.ts`, `paths.ts`,
-// `program-icon.ts`, `quiet.ts`, `row-colors.ts`, `space-order.ts`,
-// `status.ts`, `terminals.ts`, `tree-rows.ts` and `tree.ts` beside these files
-// are links to the shared copies in `mod-lib/`.
+// `focus-reveal.ts`, `foreground.ts`, `labels.ts`, `machine-choices.ts`,
+// `names.ts`, `paths.ts`, `program-icon.ts`, `quiet.ts`, `row-colors.ts`,
+// `space-order.ts`, `status.ts`, `terminals.ts`, `tree-rows.ts` and
+// `tree.ts` beside these files are links to the shared copies in `mod-lib/`.
 
 import { View, div, svg } from "gpui-kit";
 import type {
@@ -145,10 +158,19 @@ import type { FinishedTerminal } from "./finished.js";
 import { nextFocusReveal } from "./focus-reveal.js";
 import { CommandStarts } from "./foreground.js";
 import { agentLabel, blockedKind, terminalRowModel } from "./labels.js";
+import {
+  HIDDEN_MACHINES_KEY,
+  HIDE_OFFLINE_MACHINES_KEY,
+  MACHINE_PICKER_KEY,
+  machineLeftOut,
+  readMachineChoices,
+} from "./machine-choices.js";
+import type { MachinePickerEntry } from "./machine-choices.js";
 import { hoverFill } from "./row-colors.js";
 import { SPACE_CHECKOUTS_KEY } from "./space-order.js";
 import { RANK, topStatus } from "./status.js";
 import type { AgentStatus } from "./status.js";
+import { machineOf } from "./terminals.js";
 import type { TerminalEntry } from "./terminals.js";
 import { buildTree, rowStatus, tabFolded, walkTree } from "./tree.js";
 import type {
@@ -161,7 +183,9 @@ import type {
 } from "./tree.js";
 import {
   finishedRow,
+  machineBadge,
   machineHeader,
+  machineLabel,
   tabDivider,
   terminalRow,
 } from "./tree-rows.js";
@@ -249,6 +273,15 @@ function toggleSidebar() {
 
 export default class SpacesAndAgents extends View {
   declare folded: Set<string | null>;
+  // Machines the viewer's machine choices (`readMachineChoices`) left out
+  // at the last render: the sidebar lists none of their rows.
+  declare leftOutMachines: Set<string | null>;
+  // The machines the last render gave a header, for the machine picker
+  // (`publishMachinePicker`); null before the first render.
+  declare pickerMachines: MachinePickerEntry[] | null;
+  // The JSON of the `MACHINE_PICKER_KEY` value last written (see
+  // `publishMachinePicker`).
+  declare publishedPicker: string;
   declare checkouts: Checkouts;
   // The JSON of the `SPACE_CHECKOUTS_KEY` value last written (see
   // `publishCheckouts`).
@@ -296,13 +329,21 @@ export default class SpacesAndAgents extends View {
         | null
       )[],
     );
+    this.leftOutMachines = new Set();
     // Each space's checkout, looked up while this runs (see `Checkouts`).
-    this.checkouts = new Checkouts(this.folded);
+    // Folded and left-out machines skip the fallback look.
+    this.checkouts = new Checkouts(
+      (machine) =>
+        this.folded.has(machine) || this.leftOutMachines.has(machine),
+    );
     // What an earlier run left there (the value persists), so an unchanged
     // value is not written again.
     this.publishedCheckouts = JSON.stringify(
       shared(SPACE_CHECKOUTS_KEY) ?? null,
     );
+    this.pickerMachines = null;
+    // As with `publishedCheckouts`, what an earlier run left there.
+    this.publishedPicker = JSON.stringify(shared(MACHINE_PICKER_KEY) ?? null);
     this.pressed = null;
     this.over = null;
     this.machines = [];
@@ -371,6 +412,7 @@ export default class SpacesAndAgents extends View {
     const due = this.checkouts.due(now, sp, panes(), live);
     if (due.size) this.checkouts.refreshGit(due, cx);
     this.publishCheckouts(sp);
+    this.publishMachinePicker();
     // A command's row line appears once it has run long enough, and goes
     // when it ends.
     if (this.commands.track(entries, now)) cx.notify();
@@ -390,6 +432,20 @@ export default class SpacesAndAgents extends View {
 
     this.publishedCheckouts = json;
     setShared(SPACE_CHECKOUTS_KEY, value);
+  }
+
+  // Shares the machines the last render gave a header (`MACHINE_PICKER_KEY`:
+  // `pickerMachines`) for the machine picker in the top bar. Like
+  // `publishCheckouts`, it writes only when the value differs from the last
+  // one written, from `checkNew`'s timer.
+  publishMachinePicker(): void {
+    if (this.pickerMachines === null) return;
+
+    const json = JSON.stringify(this.pickerMachines);
+    if (json === this.publishedPicker) return;
+
+    this.publishedPicker = json;
+    setShared(MACHINE_PICKER_KEY, this.pickerMachines);
   }
 
   // Shares the finished terminals the tree nests, those whose parent is one
@@ -1257,6 +1313,26 @@ export default class SpacesAndAgents extends View {
       machines: this.machines,
       finished: this.finished.finished,
     });
+    // The machines the viewer's choices leave out list nothing: no header,
+    // space, Background or rail row, no place in the agent order after the
+    // tray, no focus reveal and no fallback checkout look. Their agents
+    // stay in "Needs you".
+    const choices = readMachineChoices(
+      shared(HIDDEN_MACHINES_KEY),
+      shared(HIDE_OFFLINE_MACHINES_KEY),
+    );
+    const leftOut = tree.machines.map((m) => machineLeftOut(m, choices));
+    const shownMachines = tree.machines.filter((_m, k) => leftOut[k] === null);
+    const offlineHidden = leftOut.filter((why) => why === "offline").length;
+    this.leftOutMachines = new Set(
+      tree.machines.filter((_m, k) => leftOut[k] !== null).map((m) => m.name),
+    );
+    this.pickerMachines = tree.machines.map((m) => ({
+      name: m.name,
+      label: machineLabel(m, this.thisComputerName),
+      state: m.state,
+      badge: machineBadge(m, now),
+    }));
     this.listings = new Map(
       tree.machines.flatMap((m) =>
         m.spaces.map((s) => [s.space.id, spaceListing(s)]),
@@ -1265,7 +1341,7 @@ export default class SpacesAndAgents extends View {
     this.backgroundMachines = tree.machines
       .filter((m) => m.elsewhere.length > 0)
       .map((m) => m.name);
-    this.trackFocusReveal(tree.machines);
+    this.trackFocusReveal(shownMachines);
     const tray = needsYou(list, (a) => RANK[a.status] ?? 0);
     const terminalByAddress = new Map(allTerminals.map((k) => [k.address, k]));
     const labelOf = (a: AgentInfo) =>
@@ -1281,12 +1357,12 @@ export default class SpacesAndAgents extends View {
       });
 
     // Next/previous agent: "Needs you", then the tree in the machine order
-    // `grouped` draws, folded machines, spaces and Background rows included:
-    // the agents with a pane among the terminal rows, each machine's
-    // Background rows after its spaces', in row order. The focused agent
-    // keeps its "Needs you" slot here after looking turns it from done to
-    // idle (`orderRank`), so stepping on reaches the one after it, though the
-    // tray itself drops it.
+    // `grouped` draws, folded machines, spaces and Background rows included,
+    // left-out machines not: the agents with a pane among the terminal rows,
+    // each machine's Background rows after its spaces', in row order. The
+    // focused agent keeps its "Needs you" slot here after looking turns it
+    // from done to idle (`orderRank`), so stepping on reaches the one after
+    // it, though the tray itself drops it.
     const rows = this.ordered();
     const agentsWithPane = (listing: TerminalListing[]) =>
       listing
@@ -1294,15 +1370,17 @@ export default class SpacesAndAgents extends View {
           ({ step }) => step.node.pane !== null && step.node.status !== null,
         )
         .map(({ step }) => step.node.terminal.address);
-    const treeOrder = tree.machines.flatMap((m) => [
+    const treeOrder = shownMachines.flatMap((m) => [
       ...rows
         .filter((r) => (r.w.machine ?? null) === m.name)
         .flatMap((r) => agentsWithPane(this.listing(r.w))),
       ...agentsWithPane(terminalRowsOf(listingRows(m.elsewhere))),
     ]);
-    const trayOrder = needsYou(list, (a) => this.history.orderRank(a)).map(
-      (a) => a.address,
-    );
+    // An agent on a left-out machine is left out here too, so the app puts
+    // it after every one given (`setAgentOrder`), though the tray shows it.
+    const trayOrder = needsYou(list, (a) => this.history.orderRank(a))
+      .map((a) => a.address)
+      .filter((address) => !this.leftOutMachines.has(machineOf(address)));
     setAgentOrder([...new Set([...trayOrder, ...treeOrder])]);
 
     return v_flex()
@@ -1348,7 +1426,10 @@ export default class SpacesAndAgents extends View {
             this.pressed = null;
             cx.notify();
           })
-          .children(this.grouped(t, collapsed, tree.machines, rows, now)),
+          .children(this.grouped(t, collapsed, shownMachines, rows, now))
+          .when(!collapsed && offlineHidden > 0, (el) =>
+            el.child(offlineHiddenLine(offlineHidden, t)),
+          ),
       )
       .when(!collapsed, (el) =>
         el.child(
@@ -1393,6 +1474,32 @@ export default class SpacesAndAgents extends View {
         ),
       );
   }
+}
+
+// The line that ends the list while "Hide offline machines" leaves `count`
+// machines out ("1 offline machine hidden · Show"). Its "Show" turns the
+// option off, which brings them back.
+function offlineHiddenLine(count: number, t: ThemeColors): Element {
+  return h_flex()
+    .id("offline-hidden")
+    .h(28)
+    .flex_none()
+    .px(8)
+    .gap(5)
+    .items_center()
+    .text_size(12)
+    .text_color(t.dim)
+    .child(`${count} offline machine${count === 1 ? "" : "s"} hidden ·`)
+    .child(
+      div()
+        .id("offline-hidden-show")
+        .px(4)
+        .rounded(4)
+        .cursor_pointer()
+        .hover((s) => s.bg(t.hover).text_color(t.foreground))
+        .on_click(() => setShared(HIDE_OFFLINE_MACHINES_KEY, false))
+        .child("Show"),
+    );
 }
 
 // A space's rows, grouped as the sidebar draws them: `tabs`, the space's

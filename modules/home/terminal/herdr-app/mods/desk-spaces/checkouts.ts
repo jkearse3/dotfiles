@@ -10,12 +10,13 @@
 // which every folder in that checkout shares. A folder is looked at when a
 // space or live terminal is first in it, when a command or agent turn ends
 // in a pane of a space's tab (that space's folder and the pane's terminal's),
-// when its machine is back, and every minute while the window is in front
-// (`due`); a jj operation or a commit in a local repo looks its roots up
-// again (`watch`). The minute's look comes due for a checkout's folders
-// together, spaces' and terminals' alike, so it too runs the full lookup
-// once. Folders no space and no live terminal is in any more, and roots no
-// such folder is in, are dropped, so later looks skip them.
+// when its machine is back, and every minute while the window is in front,
+// except on a machine the sidebar folds or leaves out (`due`); a jj
+// operation or a commit in a local repo looks its roots up again (`watch`).
+// The minute's look comes due for a checkout's folders together, spaces' and
+// terminals' alike, so it too runs the full lookup once. Folders no space
+// and no live terminal is in any more, and roots no such folder is in, are
+// dropped, so later looks skip them.
 
 import type { AsyncContext } from "gpui-kit";
 import { exec, home, machines, watchFolder, window } from "herdr";
@@ -111,8 +112,8 @@ const resolve = (from: string, path: string): string => {
 const FALLBACK = 60000;
 
 // The checkouts of the places spaces and live terminals are in, and the
-// looks that keep them current. `folded` is the view's set of folded machines
-// (shared, never replaced): a folded machine's repos skip the fallback look.
+// looks that keep them current. `skipsFallback` says which machines' repos
+// skip the fallback look: the view's folded machines and those it leaves out.
 export class Checkouts {
   declare roots: Record<string, string | null>;
   declare git: Record<string, Checkout | null>;
@@ -125,9 +126,9 @@ export class Checkouts {
   declare at: Record<string, string>;
   declare watching: Set<string>;
   declare refreshing: boolean;
-  declare folded: Set<string | null>;
+  declare skipsFallback: (machine: string | null) => boolean;
 
-  constructor(folded: Set<string | null>) {
+  constructor(skipsFallback: (machine: string | null) => boolean) {
     this.roots = {}; // where() -> its innermost checkout's root key, null: in no checkout
     this.git = {}; // root key -> its checkout, null: a lookup that could not answer
     this.checked = {}; // where() -> when a pass last took it up (before `locate` sets `roots`)
@@ -139,7 +140,7 @@ export class Checkouts {
     this.at = {}; // space -> its where() at the last look
     this.watching = new Set(); // local repos' git folders
     this.refreshing = false; // a look is running
-    this.folded = folded;
+    this.skipsFallback = skipsFallback;
   }
 
   // The checkout the place `key` (a `where()`) is in: null when it is in
@@ -226,7 +227,7 @@ export class Checkouts {
         const asks = this.checkoutOf(k) || this.unsureOf(k);
         if (
           asks &&
-          !this.folded.has((JSON.parse(k) as MachinePath)[0]) &&
+          !this.skipsFallback((JSON.parse(k) as MachinePath)[0]) &&
           now - (this.checked[k] ?? 0) > FALLBACK
         ) {
           due.add(k);

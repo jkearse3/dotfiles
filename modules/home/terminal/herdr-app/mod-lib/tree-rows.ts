@@ -1,5 +1,6 @@
 // How a view draws the rows of the shared tree (`tree.ts`): a machine's
-// header (`machineHeader`), a tab's divider (`tabDivider`), a live
+// header (`machineHeader`, with its name and state badge from
+// `machineLabel` and `machineBadge`), a tab's divider (`tabDivider`), a live
 // terminal's row (`terminalRow`, from what `labels.ts` `terminalRowModel`
 // says it shows) and a finished terminal's row (`finishedRow`). The
 // desk-spaces sidebar draws its machines, tabs and terminals with them, and
@@ -33,13 +34,13 @@ import type { TreeMachine } from "./tree.js";
 
 // The start of a machine's header row, in small dim text: a monitor icon
 // for this computer or a server icon for another machine, then its name
-// (`opts.thisComputerName` for this computer, "This computer" without one),
-// then, while `hc machine ls` reports it in a state other than connected, a
-// badge with that state and how long it has been in it ("needs login ·
-// 14m"; the state alone without `sinceMs`). `opts.narrow` draws the icon
-// alone, for the sidebar's rail. The name grows to fill the width, so the
-// caller's controls appended after it sit at the row's end. `now` is the
-// time in ms since the epoch. `t` is the theme's colors by name (`theme()`).
+// (`machineLabel`, with `opts.thisComputerName`), then, while `hc machine
+// ls` reports it in a state other than connected, a badge with that state
+// and how long it has been in it (`machineBadge`: "needs login · 14m").
+// `opts.narrow` draws the icon alone, for the sidebar's rail. The name grows
+// to fill the width, so the caller's controls appended after it sit at the
+// row's end. `now` is the time in ms since the epoch. `t` is the theme's
+// colors by name (`theme()`).
 export function machineHeader(
   t: Record<string, Color>,
   machine: Pick<TreeMachine, "name" | "state" | "sinceMs">,
@@ -53,15 +54,8 @@ export function machineHeader(
     .flex_none();
   if (opts?.narrow) return icon;
 
-  const name = machine.name ?? opts?.thisComputerName ?? "This computer";
-  const state =
-    machine.state !== null && machine.state !== "connected"
-      ? machine.state.replace(/_/g, " ")
-      : null;
-  const badge =
-    state !== null && machine.sinceMs !== null
-      ? `${state} · ${duration(now - machine.sinceMs)}`
-      : state;
+  const name = machineLabel(machine, opts?.thisComputerName ?? null);
+  const badge = machineBadge(machine, now);
   return h_flex()
     .flex_1()
     .min_w(0)
@@ -82,6 +76,32 @@ export function machineHeader(
           .child(badge ?? ""),
       ),
     );
+}
+
+// The name a machine's header shows: its `hc machine ls` name, or for this
+// computer `thisComputerName`, "This computer" while that is null.
+export function machineLabel(
+  machine: Pick<TreeMachine, "name">,
+  thisComputerName: string | null,
+): string {
+  return machine.name ?? thisComputerName ?? "This computer";
+}
+
+// The badge a machine's header shows while `hc machine ls` reports it in a
+// state other than connected: that state and how long it has been in it
+// ("needs login · 14m"), the state alone without `sinceMs`; null while
+// connected or without a state. `now` is the time in ms since the epoch.
+export function machineBadge(
+  machine: Pick<TreeMachine, "state" | "sinceMs">,
+  now: number,
+): string | null {
+  const state =
+    machine.state !== null && machine.state !== "connected"
+      ? machine.state.replace(/_/g, " ")
+      : null;
+  return state !== null && machine.sinceMs !== null
+    ? `${state} · ${duration(now - machine.sinceMs)}`
+    : state;
 }
 
 // A thin line (18px high) that starts a tab's rows: the tab's name in small
