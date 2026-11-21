@@ -50,10 +50,14 @@
 //   there is no toggle. The space's terminals in
 //   no tab of it follow its tabs, without a divider, marked "no pane". The
 //   chevron on the space's name line, shown only when there is any of
-//   that, folds all of it. Before it, open or folded, the line shows how
-//   many agents the space holds at any depth, in the most urgent status's
-//   color, and nothing when it holds none (finished terminals count for
-//   neither). Unlike the rail, a space row shows no number.
+//   that, shows whether it is folded. A click anywhere on the row folds or
+//   opens it when, open, it shows a row in a tab `tabFolded` does not hide
+//   (`showsTabRows`), whose click reaches the space; otherwise, its rows
+//   all hidden or loose (a loose row's click only peeks), the click
+//   switches to the space. Before the chevron, open or folded, the line
+//   shows how many agents the space holds at any depth, in the most urgent
+//   status's color, and nothing when it holds none (finished terminals
+//   count for neither). Unlike the rail, a space row shows no number.
 // - Last under each machine, while it has any, its terminals no space holds
 //   (`TreeMachine.elsewhere`, such as background terminals) under a
 //   "Background" row (`backgroundSection`): a dashed outline where a space
@@ -93,18 +97,21 @@
 //   in `spaces()` and its most urgent agent status, and shows the `»`
 //   that widens the sidebar again (`desk-chrome` relies on it).
 // Folds are saved (`machines.folded`, `spaces.folded`, `background.folded`)
-// only by a click on a chevron, a machine header or a Background row, or by
-// "collapse others". When focus (`focused()`, a terminal peeked at without
-// a pane included) moves into a folded space, Background row or machine
-// from outside it, the sidebar shows that one open without changing its
-// saved fold, and shows its saved fold again once focus leaves it
+// only by a click on a space row that shows a row in a tab when open
+// (`showsTabRows`), a machine header or a Background row, or by "collapse
+// others". When focus (`focused()`, a terminal peeked at without a pane
+// included) moves into a folded space, Background row or machine from
+// outside it, the sidebar shows that one open without changing its saved
+// fold, and shows its saved fold again once focus leaves it
 // (`trackFocusReveal`). A fold saved while focus is inside takes effect at
 // once and holds while focus moves within. A settled tab is not revealed.
 // The agent next/previous keys walk "Needs you" first, then the tree.
 // "Collapse others" (`desk-spaces.collapse-others`, prefix `o`) saves every
 // space and Background row folded except the active space, on every
 // machine, leaving machine folds as they are (`collapseOthers`).
-// Click to switch, right-click for its menu, drag a space to reorder.
+// Click a space to open or fold it (one that shows no row in a tab when
+// open, its rows all settled or loose, switches to it instead); right-click
+// for its menu, drag a space to reorder.
 //
 // Started as a copy of the app's shipped `spaces` mod plus the agent rows of
 // its shipped `agents` mod (herdr-app 0.1.11).
@@ -126,13 +133,7 @@
 // `tree.ts` beside these files are links to the shared copies in `mod-lib/`.
 
 import { View, div, svg } from "gpui-kit";
-import type {
-  AsyncContext,
-  Color,
-  Context,
-  Element,
-  MouseButtonEvent,
-} from "gpui-kit";
+import type { AsyncContext, Color, Context, Element } from "gpui-kit";
 import type { Props } from "gpui-shell";
 import { v_flex, h_flex } from "gpui-base";
 import {
@@ -684,7 +685,9 @@ export default class SpacesAndAgents extends View {
     // terminal of it.
     const on = w.active;
     const holdsFocus = on && !this.terminalRowFocused(w);
-    const foldToggle = this.foldToggle(w, t);
+    const marks = this.foldMarksOf(w, t);
+    const listing = this.listings.get(w.id);
+    const opensToTabRows = listing ? showsTabRows(listing) : false;
     // The row is one line, the name, with even padding. The color tick or
     // rail is the group's (`grouped`).
     return v_flex()
@@ -735,6 +738,13 @@ export default class SpacesAndAgents extends View {
         this.over = null;
         if (from !== null && over === i && from !== i)
           run("space.move", { id: spaces()[from].id, index: i + 1 });
+        // A click opens or folds the space when, open, it shows a row in a
+        // tab (`showsTabRows`), whose click reaches the space. Otherwise,
+        // open, it shows at most dimmed tab dividers and loose rows, whose
+        // click only peeks, so no row goes there and the click switches to
+        // the space instead.
+        else if (from === i && opensToTabRows)
+          this.setSpaceFolded(w, !this.spaceFolded(w));
         else if (from === i) run("space.select", { id: w.id });
         cx.notify();
       })
@@ -754,8 +764,8 @@ export default class SpacesAndAgents extends View {
               .when(on, (el) => el.font_semibold())
               .child(w.name),
           )
-          // `when` runs this only for a space with a fold toggle.
-          .when(Boolean(foldToggle), (el) => el.child(foldToggle!)),
+          // `when` runs this only for a space with rows (`foldMarksOf`).
+          .when(Boolean(marks), (el) => el.child(marks!)),
       );
   }
 
@@ -789,10 +799,9 @@ export default class SpacesAndAgents extends View {
     const listing = this.listings.get(w.id);
     if (!listing || this.spaceFolded(w)) return false;
     const shown = focused()?.terminal;
-    return terminalRowsOf([
-      ...listing.tabs.flatMap((tab) => (tab.folded ? [] : tab.rows)),
-      ...listing.loose,
-    ]).some(({ step }) => step.node.terminal.address === shown);
+    return terminalRowsOf(shownRows(listing)).some(
+      ({ step }) => step.node.terminal.address === shown,
+    );
   }
 
   // Whether machine `machine`'s header shows its spaces folded away: saved
@@ -928,32 +937,24 @@ export default class SpacesAndAgents extends View {
   // loose terminal's; `spaceListing` leaves out tabs without rows): how many
   // agents they show at any depth, in the most urgent one's color, whether
   // the space is open or folded (none without agents), then a chevron that
-  // folds them. Pressing it neither selects nor drags the space.
-  foldToggle(w: SpaceInfo, t: ThemeColors): Element | null {
+  // shows which. It takes no clicks of its own: a click anywhere on the row
+  // opens or folds the space when, open, it shows a row in a tab
+  // (`showsTabRows`). With every tab's rows hidden (`tabFolded`) and only
+  // loose rows, if any, the marks still show and the click switches to the
+  // space. Null for a space with no rows.
+  foldMarksOf(w: SpaceInfo, t: ThemeColors): Element | null {
     const listing = this.listings.get(w.id);
     if (!listing || (!listing.tabs.length && !listing.loose.length))
       return null;
-    const keep = (_e: MouseButtonEvent, cx: Context) => cx.stop_propagation();
-    const open = !this.spaceFolded(w);
     return h_flex()
-      .id(`space-fold-${w.id}`)
       .flex_none()
       .h(18)
       .px(3)
       .gap(3)
       .items_center()
-      .rounded(4)
       .text_size(11)
       .text_color(t.dim)
-      .cursor_pointer()
-      .hover((s) => s.bg(t.hover).text_color(t.foreground))
-      .on_mouse_down("left", keep)
-      .on_click((_e, cx) => {
-        cx.stop_propagation();
-        this.setSpaceFolded(w, open);
-        cx.notify();
-      })
-      .children(foldMarks(this.agentStatuses(w), open, t));
+      .children(foldMarks(this.agentStatuses(w), !this.spaceFolded(w), t));
   }
 
   // The rows under an unfolded space: each tab's divider (only tabs with
@@ -1518,6 +1519,24 @@ interface SpaceListing {
   // the person, so the sidebar draws its divider without its rows.
   tabs: { tab: TabInfo; rows: ListingRow[]; folded: boolean }[];
   loose: ListingRow[];
+}
+
+// The rows an open space draws, in order: each tab's unless the tab is
+// folded (`tabFolded`), then the loose ones. Each can be clicked.
+function shownRows(listing: SpaceListing): ListingRow[] {
+  return [
+    ...listing.tabs.flatMap((tab) => (tab.folded ? [] : tab.rows)),
+    ...listing.loose,
+  ];
+}
+
+// Whether an open space draws a row in a tab, one whose tab is not folded
+// (`tabFolded`). Clicking such a row reaches the space (it focuses a pane in
+// it), unlike a loose row, whose click only peeks at its terminal; so a
+// click on the space row opens or folds the space only when this holds, and
+// otherwise switches to it.
+function showsTabRows(listing: SpaceListing): boolean {
+  return listing.tabs.some((tab) => !tab.folded && tab.rows.length > 0);
 }
 
 function spaceListing(treeSpace: TreeSpace): SpaceListing {
