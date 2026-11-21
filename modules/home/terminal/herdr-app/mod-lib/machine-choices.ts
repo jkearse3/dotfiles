@@ -2,9 +2,9 @@
 // choices (`MachineChoices`: the machines unchecked in the machine picker,
 // and whether to hide offline machines), which machines they leave out
 // (`machineLeftOut`), and the known machines the sidebar shares for the
-// picker (`MachinePickerEntry`). The choices and the known machines go
-// through `shared`, persisted, because the sidebar and the top bar's picker
-// are different mods.
+// picker (`MachinePickerEntry`, read back with `readMachinePicker`). The
+// choices and the known machines go through `shared`, persisted, because
+// the sidebar and the top bar's picker are different mods.
 //
 // Each mod that uses this file links it into its own folder
 // (`mods/<mod>/machine-choices.ts` -> `../../mod-lib/machine-choices.ts`),
@@ -78,4 +78,29 @@ export interface MachinePickerEntry {
   // The state badge its header shows ("needs login · 14m"); null while
   // connected and whenever `state` is null.
   badge: string | null;
+}
+
+// The known machines from the shared value of `MACHINE_PICKER_KEY`, as
+// `shared` returns it: an entry without a string label, or with a name,
+// state or badge that is neither a string nor null, is dropped, and a value
+// that is not an array, such as none yet, gives none.
+export function readMachinePicker(value: unknown): MachinePickerEntry[] {
+  if (!Array.isArray(value)) return [];
+
+  const stringOrNull = (v: unknown): v is string | null =>
+    v === null || typeof v === "string";
+  return value
+    .filter(
+      (e) =>
+        typeof e?.label === "string" &&
+        stringOrNull(e.name) &&
+        stringOrNull(e.state) &&
+        stringOrNull(e.badge),
+    )
+    .map((e) => ({
+      name: e.name,
+      label: e.label,
+      state: e.state,
+      badge: e.badge,
+    }));
 }

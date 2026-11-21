@@ -1,10 +1,11 @@
 // Tests the mod-lib pure files the desk-spaces sidebar draws its tree with:
 // `buildTree`, `spaceTerminals`, `tabFolded`, `rowStatus` and `walkTree` from
 // `tree.ts`, `agentDoing`, `folderOf` and `terminalRowModel` from `labels.ts`,
-// `machineOf` from `terminals.ts`, `readMachineChoices` and
-// `machineLeftOut` from `machine-choices.ts`, `spaceOrder`, `checkoutText` and
-// `readSpaceCheckouts` from `space-order.ts`, the finished-terminal readers,
-// outcome and label from `finished.ts`, `quietFor` from `quiet.ts`,
+// `machineOf` from `terminals.ts`, `readMachineChoices`, `machineLeftOut`
+// and `readMachinePicker` from `machine-choices.ts`, `spaceOrder`,
+// `checkoutText` and `readSpaceCheckouts` from `space-order.ts`, the
+// finished-terminal readers, outcome and label from `finished.ts`,
+// `quietFor` from `quiet.ts`,
 // `runningCommand`, `shellCommandText`, `commandText` and `CommandStarts`
 // from `foreground.ts`, `hoverFill` and `stripeColor` from `row-colors.ts`,
 // `innermostRoot` from `checkout-root.ts`, `terminalCheckoutBadgeKind` from
@@ -31,7 +32,7 @@ const { agentDoing, folderOf, terminalRowModel } = await import(
   `${mods}/desk-spaces/labels.js`
 );
 const { machineOf } = await import(`${mods}/desk-spaces/terminals.js`);
-const { machineLeftOut, readMachineChoices } = await import(
+const { machineLeftOut, readMachineChoices, readMachinePicker } = await import(
   `${mods}/desk-spaces/machine-choices.js`
 );
 const { checkoutText, readSpaceCheckouts, spaceOrder } = await import(
@@ -193,6 +194,30 @@ test("machineLeftOut: unchecked first, then unreachable while hiding offline", (
     ),
     null,
   );
+});
+
+test("readMachinePicker keeps well-formed entries in order and drops junk", () => {
+  const local = { name: null, label: "mac", state: null, badge: null };
+  const box = {
+    name: "box",
+    label: "box",
+    state: "needs_login",
+    badge: "needs login · 14m",
+  };
+  assert.deepEqual(
+    readMachinePicker([
+      local,
+      null,
+      { name: "x", state: null, badge: null },
+      { name: 3, label: "x", state: null, badge: null },
+      { name: "x", label: "x", state: 1, badge: null },
+      { name: "x", label: "x", state: null },
+      { ...box, extra: true },
+    ]),
+    [local, box],
+  );
+  assert.deepEqual(readMachinePicker(null), []);
+  assert.deepEqual(readMachinePicker({ 0: local }), []);
 });
 
 test("machineLeftOut always shows this computer", () => {

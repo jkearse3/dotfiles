@@ -75,7 +75,14 @@
 //   left-out machine's agents stay in "Needs you" and come after every
 //   shown agent in the next/previous order, focus does not reveal it, and
 //   its repos skip the fallback checkout look. The sidebar shares the
-//   machines it gives a header (`MACHINE_PICKER_KEY`) for the picker.
+//   machines it gives a header (`MACHINE_PICKER_KEY`) for the machine
+//   picker, which `desk-chrome` draws in the top bar while a machine other
+//   than this computer is known: a "Choose machines" button left of the
+//   other buttons reading "<shown> of <known>", opening a checkbox per
+//   machine with its header's state badge (this computer's checked and
+//   disabled), "Hide offline machines", and a note that blocked agents on
+//   hidden machines still show in "Needs you". A click outside it or Esc
+//   closes it.
 // - "Needs you", a tray of fixed height at the bottom, so the spaces above
 //   never move when it changes: every blocked agent, then every agent that
 //   finished while you weren't looking (`done`, which the app turns `idle`
