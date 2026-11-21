@@ -146,10 +146,8 @@ in their order; the squash default and these placements set the granularity:
 
 Record why each inserted revision is cleaner than squashing.
 
-Then fix and land the items as `diff-fix`'s Fix, Land, and Resolve conflicts
-steps describe, treating each `fix` item as a confirmed finding, in revision
-order, with each inserted prerequisite landed before the revisions that rely on
-it, and with these differences:
+Then fix the `fix` items as one round of `diff-fix` fixes and checks its
+confirmed findings, with these differences:
 
 - A prerequisite or new-revision change is made in the inserted revision itself
   and described as `finalize-changes` describes. When it lands after the head,
@@ -158,18 +156,20 @@ it, and with these differences:
   express what the revision now does, never that it changed after review.
 - A fixer's `rejected` return with evidence makes the item `decline`, unless the
   user decided the item, in which case it goes back to the user. A
-  `needs-decision` return, and an item that `diff-fix`'s Fix step holds for its
-  step 6, go to the user as under Validate.
-- A conflict resolution that fails stops fixing; ask the user about it before
-  Verify.
-- An item whose fix Land does not land gets one more fresh fixer; if it still
-  does not land, it becomes `unresolved`, gets no draft, and is listed under
-  Open.
-- Land checks an inserted prerequisite for its own concern only: it preserves
-  behavior and changes nothing beyond that concern. When the rest of its item
-  ends `decline`, `unresolved`, or with the user, abandon the prerequisite with
-  `jj abandon <change ID>` and resolve any conflicts this leaves in its
-  descendants, as for a landing.
+  `needs-decision` return, and an item `diff-fix` would set aside or decide
+  itself, go to the user as under Validate.
+- Where `diff-fix` would stop the run after its fixer, or a `fixed` item's diff
+  does not fix it, stop fixing and ask the user before Verify, listing the
+  round's operations as `diff-fix` does and offering to revert them or keep the
+  fixes. An item the user leaves unfixed becomes `unresolved`, gets no draft,
+  and is listed under Open.
+- An inserted prerequisite's diff must preserve behavior and change nothing
+  beyond its concern. When the rest of its item ends `decline`, `unresolved`, or
+  with the user, and no landed fix depends on the prerequisite, such as after a
+  revert or when the item never got a fix, abandon it with
+  `jj abandon <change ID>`, then resolve any conflicts this leaves in its
+  descendants as one round of `diff-fix` fixes and checks findings, with those
+  conflicts as the findings.
 - Run checks on every revision a fix touched, and at the head.
 
 After all fixes, run `jj new <head>`.

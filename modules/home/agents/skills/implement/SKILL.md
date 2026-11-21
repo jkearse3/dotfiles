@@ -84,7 +84,8 @@ Report, continue with that skill's next step. It holds:
 - `Input`: the outcome, criteria, exclusions, settled decisions, and binding
   requirements verbatim, or, for an input file in the run store's `.agent/`
   directory, its path and which sections hold each;
-- `Decisions`: each user answer, dated;
+- `Decisions`: each user answer, dated, and each decision the skill `Then:`
+  names records, prefixed with the name of the skill that took it;
 - `Spec`: the path of the agreed spec with the date the user agreed it or handed
   it over; or, quoting `Input` or with the evidence, that `Input` itself
   specifies every visible change or that the change makes none;
@@ -175,11 +176,15 @@ agreed spec needs the user. Stop goes to Report.
    as `finalize-changes`' Runbook step 3 does, and pass `jj describe` or
    `jj squash --message` only the value that `commit-message format` produced
    and `commit-message validate --require-body` accepted with the options
-   `references/revision-descriptions.md` sets. Resolve conflicts it causes in
-   later revisions as `diff-fix`'s Resolve conflicts step does. A change that
-   does not land gets one more attempt from a fresh implementer briefed with the
-   plan and the failure, which then carries on; a second failure or a `blocked`
-   return needs the user.
+   `references/revision-descriptions.md` sets. While
+   `jj log -r 'descendants(<landed revision>) & conflicts()' --reversed` lists a
+   revision, run `jj new` on the earliest and send a fresh implementer the
+   change of resolving its conflict while keeping that revision's intent and the
+   landed change. Land the resolution as above with
+   `jj squash --from @ --into <conflicted revision>`; one that does not land
+   needs the user. A change that does not land gets one more attempt from a
+   fresh implementer briefed with the plan and the failure, which then carries
+   on; a second failure or a `blocked` return needs the user.
 
 5. **Finish the milestone.** The next milestone starts only once every change
    check of this one passes at the tip: the implementer reruns each one not yet

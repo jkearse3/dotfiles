@@ -2,10 +2,10 @@
 name: iterate
 description: >-
   Implements a requested change in a jj repository with implement, then reviews
-  and fixes what it built with diff-fix until a review confirms no findings. Use
-  when the user asks to iterate on a change, or to implement and review it in
-  one go. For building alone use implement; for reviewing and fixing finalized
-  revisions alone use diff-fix.
+  and fixes what it built with diff-fix until a review confirms no finding left
+  to fix. Use when the user asks to iterate on a change, or to implement and
+  review it in one go. For building alone use implement; for reviewing and
+  fixing finalized revisions alone use diff-fix.
 ---
 
 # Iterate
@@ -29,12 +29,15 @@ through the tip, with:
   the target may make visible, or the visible changes `Spec` records as that
   list in their place;
 - the context: its exclusions;
-- the user decisions: its settled decisions, its `Decisions`, and this one:
-  fixes, conflict resolutions, and reshapes change only revisions `implement`
-  could change; a finding or conflict in any other revision needs the user.
+- the user decisions: its settled decisions, its `Decisions` not prefixed
+  `diff-fix:`, and this one: fixes, conflict resolutions, and reshapes change
+  only revisions `implement` could change; a finding or conflict in any other
+  revision needs the user;
+- the decisions `diff-fix` took earlier: its `Decisions` prefixed `diff-fix:`.
 
-Otherwise skip the review. During the review, record each answer the user gives
-in `run.md` `Decisions`.
+Otherwise skip the review. During the review, record in `run.md` `Decisions`
+each answer the user gives and, prefixed `diff-fix:`, each decision `diff-fix`
+takes, as `diff-fix` records it.
 
 ## Report
 
