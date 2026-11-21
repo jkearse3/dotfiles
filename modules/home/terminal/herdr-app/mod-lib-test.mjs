@@ -6,7 +6,8 @@
 // outcome and label from `finished.ts`, `quietFor` from `quiet.ts`,
 // `runningCommand`, `shellCommandText`, `commandText` and `CommandStarts`
 // from `foreground.ts`, `hoverFill` and `stripeColor` from `row-colors.ts`,
-// `innermostRoot` from `checkout-root.ts`, and the desk-spaces sidebar's status and activity tracking (`AgentHistory`
+// `innermostRoot` from `checkout-root.ts`, `spaceCheckoutBadgeKind` and
+// `terminalCheckoutBadgeKind` from `checkout-badge.ts`, and the desk-spaces sidebar's status and activity tracking (`AgentHistory`
 // from its own `agents.ts`), the trackers over an in-memory `localStorage`,
 // against the terminals(), agents(), panes() and spaces() entry shapes the
 // Herdr app hands mods. It imports the built, type-stripped
@@ -47,6 +48,9 @@ const { hoverFill, stripeColor } = await import(
 );
 const { AgentHistory } = await import(`${mods}/desk-spaces/agents.js`);
 const { innermostRoot } = await import(`${mods}/desk-spaces/checkout-root.js`);
+const { spaceCheckoutBadgeKind, terminalCheckoutBadgeKind } = await import(
+  `${mods}/desk-spaces/checkout-badge.js`
+);
 const {
   COMMAND_SETTLE_MS,
   CommandStarts,
@@ -1795,4 +1799,76 @@ test("innermostRoot takes the one root found, or null for none", () => {
   assert.deepEqual(innermostRoot(null, "/r"), { top: "/r", kind: "git" });
   assert.equal(innermostRoot(null, null), null);
   assert.equal(innermostRoot("", ""), null);
+});
+
+// A jj checkout's badge fields with @ on its bookmark and nothing in it,
+// with `fields` laid over them.
+const jjBadge = (fields) => ({
+  jj: true,
+  conflict: false,
+  modified: false,
+  direction: "↑",
+  distance: 0,
+  ...fields,
+});
+
+test("terminalCheckoutBadgeKind marks a conflict on every row", () => {
+  const g = jjBadge({ conflict: true, modified: true, distance: 3 });
+  assert.equal(terminalCheckoutBadgeKind("working", g), "conflict");
+  assert.equal(terminalCheckoutBadgeKind("blocked", g), "conflict");
+  assert.equal(terminalCheckoutBadgeKind(null, g), "conflict");
+});
+
+test("terminalCheckoutBadgeKind leaves review off a working or blocked agent and a plain terminal", () => {
+  const g = jjBadge({ modified: true });
+  assert.equal(terminalCheckoutBadgeKind("blocked", g), null);
+  assert.equal(terminalCheckoutBadgeKind("working", g), null);
+  assert.equal(terminalCheckoutBadgeKind(null, g), null);
+  assert.equal(terminalCheckoutBadgeKind(null, { ahead: 2 }), null);
+});
+
+test("terminalCheckoutBadgeKind marks unshipped jj work on an agent with nothing to do", () => {
+  assert.equal(
+    terminalCheckoutBadgeKind("idle", jjBadge({ modified: true })),
+    "review",
+  );
+  assert.equal(
+    terminalCheckoutBadgeKind("done", jjBadge({ distance: 2 })),
+    "review",
+  );
+  assert.equal(
+    terminalCheckoutBadgeKind("idle", jjBadge({ distance: 2 })),
+    "review",
+  );
+});
+
+test("terminalCheckoutBadgeKind counts @ itself in the jj distance, and only after the bookmark", () => {
+  assert.equal(
+    terminalCheckoutBadgeKind("idle", jjBadge({ distance: 1 })),
+    null,
+  );
+  assert.equal(
+    terminalCheckoutBadgeKind("idle", jjBadge({ direction: "↓", distance: 3 })),
+    null,
+  );
+  assert.equal(terminalCheckoutBadgeKind("idle", jjBadge({})), null);
+});
+
+test("terminalCheckoutBadgeKind marks Git commits ahead on an agent with nothing to do", () => {
+  assert.equal(terminalCheckoutBadgeKind("idle", { ahead: 1 }), "review");
+  assert.equal(
+    terminalCheckoutBadgeKind("idle", { jj: false, ahead: 0 }),
+    null,
+  );
+});
+
+test("spaceCheckoutBadgeKind badges only a space whose agents are all quiet", () => {
+  const conflict = jjBadge({ conflict: true });
+  assert.equal(spaceCheckoutBadgeKind(["idle", "done"], conflict), "conflict");
+  assert.equal(spaceCheckoutBadgeKind(["idle", "working"], conflict), null);
+  assert.equal(spaceCheckoutBadgeKind(["blocked"], conflict), null);
+  assert.equal(spaceCheckoutBadgeKind([], conflict), null);
+  assert.equal(spaceCheckoutBadgeKind(["idle"], { ahead: 1 }), "review");
+  assert.equal(spaceCheckoutBadgeKind(["idle"], { ahead: 0 }), null);
+  assert.equal(spaceCheckoutBadgeKind(["idle"], null), null);
 });

@@ -25,11 +25,14 @@
 //   ("modules/home"), and after " · " its branch (unless main, master or
 //   the checkout's folder name) and ahead/behind, or its jj bookmark and
 //   distance as the terminal prompt shows them (`terminalCheckoutLine`);
-//   in no checkout, or until its checkout is found, the folder itself. An
-//   agent's adds a third line with why it is blocked, what it is doing
-//   now, or else its status word, and at its end how long it has been in
-//   its status (while it works,
-//   "quiet 12m" in amber once it has shown no new report message, turn or
+//   in no checkout, or until its checkout is found, the folder itself.
+//   That checkout line ends with a "conflict" badge when its jj checkout
+//   has a conflict, whatever the terminal is doing, else, on an agent
+//   neither working nor blocked, a "review" badge for unshipped work
+//   (`terminalCheckoutBadge`). An agent's adds a third line with why it
+//   is blocked, what it is doing now, or else its status word, and at its
+//   end how long it has been in its status (while it works, "quiet 12m" in
+//   amber once it has shown no new report message, turn or
 //   state for 10 minutes). A plain terminal running a command other than
 //   its shell (`make dev`) adds a third line with that command in cyan, in
 //   the terminal's font, and how long it has run, once it has run 2 seconds
@@ -81,11 +84,11 @@
 // and the tray, and `tree-rows.ts` draws the machine headers, tab dividers
 // and terminal rows.
 //
-// `agent-marks.ts`, `checkout-root.ts`, `finished.ts`, `foreground.ts`,
-// `labels.ts`, `names.ts`, `paths.ts`, `program-icon.ts`, `quiet.ts`,
-// `row-colors.ts`, `space-order.ts`, `status.ts`, `terminals.ts`,
-// `tree-rows.ts` and `tree.ts` beside these files are links to the shared
-// copies in `mod-lib/`.
+// `agent-marks.ts`, `checkout-badge.ts`, `checkout-root.ts`, `finished.ts`,
+// `foreground.ts`, `labels.ts`, `names.ts`, `paths.ts`, `program-icon.ts`,
+// `quiet.ts`, `row-colors.ts`, `space-order.ts`, `status.ts`,
+// `terminals.ts`, `tree-rows.ts` and `tree.ts` beside these files are links
+// to the shared copies in `mod-lib/`.
 
 import { View, div, svg } from "gpui-kit";
 import type {
@@ -978,16 +981,18 @@ export default class SpacesAndAgents extends View {
           note: opts?.markPaneless && pane === null ? "no pane" : undefined,
           dimTitle: !isFocused && (status === null || status === "idle"),
           commandFont: typeof font === "string" ? font : undefined,
-          folderLine: this.terminalFolderLine(node.terminal, t),
+          folderLine: this.terminalFolderLine(node.terminal, status, t),
         }),
       );
   }
 
   // The second line of terminal `terminal`'s row when the folder it is in
-  // now is in a checkout `Checkouts` has found (`terminalCheckoutLine`);
-  // undefined otherwise, leaving the folder as the line.
+  // now is in a checkout `Checkouts` has found (`terminalCheckoutLine`, its
+  // badge by the terminal's agent status `status`, null for a plain
+  // terminal); undefined otherwise, leaving the folder as the line.
   terminalFolderLine(
     terminal: TerminalEntry,
+    status: AgentStatus | null,
     t: ThemeColors,
   ): Element | undefined {
     const place = terminalPlace(terminal);
@@ -995,7 +1000,7 @@ export default class SpacesAndAgents extends View {
     if (!place || !g) return undefined;
 
     const [machine, cwd] = place;
-    return terminalCheckoutLine(g, cwd, machine, t);
+    return terminalCheckoutLine(g, cwd, machine, status, t);
   }
 
   // A finished terminal's row in the sidebar, its content `finishedRow`'s,

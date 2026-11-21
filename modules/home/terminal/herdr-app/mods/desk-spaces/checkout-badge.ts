@@ -1,0 +1,1 @@
+../../mod-lib/checkout-badge.ts

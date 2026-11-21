@@ -13,6 +13,11 @@ import { duration, statusMark } from "./agent-marks.js";
 import { base, checkoutText } from "./space-order.js";
 import { hoverFill } from "./row-colors.js";
 import type { Checkout, GitCheckout, JjCheckout } from "./checkouts.js";
+import {
+  spaceCheckoutBadgeKind,
+  terminalCheckoutBadgeKind,
+} from "./checkout-badge.js";
+import type { CheckoutBadgeKind } from "./checkout-badge.js";
 import type { AgentStatus } from "./status.js";
 import { machineOf } from "./terminals.js";
 
@@ -179,27 +184,34 @@ export function checkoutLine(
     .child(text);
 }
 
-// A badge for the checkout line of a quiet space, by the statuses of its
-// agents (`agentStatuses`: some, none working or blocked) and checkout `g`:
-// "conflict" when its jj
-// checkout has one, else "review" when it has unshipped work (jj: edits in @
-// or revisions after the nearest bookmark; git: commits ahead of upstream).
-// Null otherwise.
+// A badge for the checkout line of a space, by the statuses of its agents
+// (`agentStatuses`) and checkout `g`, as `spaceCheckoutBadgeKind` decides
+// it. Null without one.
 export function checkoutBadge(
   agentStatuses: AgentStatus[],
   g: Checkout | null,
   t: ThemeColors,
 ): Element | null {
-  const quiet =
-    agentStatuses.length > 0 &&
-    !agentStatuses.some((s) => s === "working" || s === "blocked");
-  if (!g || !quiet) return null;
-  const conflict = Boolean(g.jj && g.conflict);
-  const unshipped = g.jj
-    ? // The jj distance counts @ itself, whose content `modified` covers.
-      g.modified || (g.direction === "↑" && g.distance > 1)
-    : g.ahead > 0;
-  if (!conflict && !unshipped) return null;
+  const kind = spaceCheckoutBadgeKind(agentStatuses, g);
+  return kind && checkoutBadgeChip(kind, t);
+}
+
+// A badge for a terminal row's checkout line (`terminalCheckoutLine`), by
+// the terminal's agent status (`status`, null for a plain terminal) and
+// checkout `g`, as `terminalCheckoutBadgeKind` decides it. Null without one.
+export function terminalCheckoutBadge(
+  status: AgentStatus | null,
+  g: Checkout,
+  t: ThemeColors,
+): Element | null {
+  const kind = terminalCheckoutBadgeKind(status, g);
+  return kind && checkoutBadgeChip(kind, t);
+}
+
+// A checkout badge drawn as a small chip: "conflict" in red, "review" in
+// the accent color, fainter.
+function checkoutBadgeChip(kind: CheckoutBadgeKind, t: ThemeColors): Element {
+  const conflict = kind === "conflict";
   const color = conflict ? t.ansi1 : t.accent;
   return div()
     .flex_none()
@@ -213,7 +225,7 @@ export function checkoutBadge(
     .font_semibold()
     .text_color(color)
     .when(!conflict, (el) => el.opacity(0.75))
-    .child(conflict ? "conflict" : "review");
+    .child(kind);
 }
 
 // The repo status line under the name, only what's unusual:
@@ -310,12 +322,15 @@ export function jjTail(
 // then, dimmer, the path from the checkout's root down to `cwd` when it is
 // below the root ("modules/home"), then " · " and the checkout's tail
 // (`gitTail`, `jjTail`) when it has one, the repo left out because the
-// checkout already names it. Too wide, the path and the tail shrink; the
-// checkout's name stays whole.
+// checkout already names it, and last its badge (`terminalCheckoutBadge`,
+// by the terminal's agent status `status`, null for a plain terminal). Too
+// wide, the path and the tail shrink; the checkout's name and the badge stay
+// whole.
 export function terminalCheckoutLine(
   g: Checkout,
   cwd: string,
   machine: string | null,
+  status: AgentStatus | null,
   t: ThemeColors,
 ): Element {
   const size = 11;
@@ -327,6 +342,7 @@ export function terminalCheckoutLine(
   const tail = g.jj
     ? jjTail(g, true, rootName, t, size)
     : gitTail(g, true, rootName, t, size);
+  const badge = terminalCheckoutBadge(status, g, t);
   return h_flex()
     .min_w(0)
     .overflow_hidden()
@@ -352,7 +368,8 @@ export function terminalCheckoutLine(
     )
     .when(tail !== null, (el) =>
       el.child(div().flex_none().child("\u00b7")).child(tail!),
-    );
+    )
+    .when(badge !== null, (el) => el.child(badge!));
 }
 
 // The "Needs you" section: a heading with how many, then blocked agents and
