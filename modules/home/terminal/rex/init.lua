@@ -3,6 +3,8 @@
 -- (../herdr-app/keys.nix). Every prefix binding is a ctrl+b sequence.
 -- Where tmux and Herdr disagree: shift+h/j/k/l resize as in tmux, x and
 -- shift+x close the pane and tab as in Herdr, and s picks a session as in tmux.
+-- shift with a thing's letter renames it: shift+s the session, as shift+t the
+-- tab, where the Herdr app renames a space with shift+w.
 
 -- Pressing the prefix twice sends ctrl+b to the program in the pane.
 rex.bind("ctrl+b>ctrl+b", "pane.send_key", { key = "ctrl+b" })
@@ -56,7 +58,7 @@ rex.bind("ctrl+b>s", "session.switch")
 rex.bind("ctrl+b>shift+9", "session.previous")
 rex.bind("ctrl+b>shift+0", "session.next")
 rex.bind("ctrl+b>shift+n", "session.new")
-rex.bind("ctrl+b>shift+w", "session.rename")
+rex.bind("ctrl+b>shift+s", "session.rename")
 rex.bind("ctrl+b>shift+4", "session.rename")
 rex.bind("ctrl+b>shift+d", "session.close")
 
