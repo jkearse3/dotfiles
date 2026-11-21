@@ -77,6 +77,10 @@
       # workspace-picker (`w`) and go-to (`g`) keys stay unbound because the
       # hub covers both.
       "f" = "mod.open:find";
+      # Folds every sidebar space and Background row except the active space
+      # (the `desk-spaces` sidebar). With no such sidebar on screen, as in
+      # another layout, the app answers with an "unknown command" toast.
+      "o" = "desk-spaces.collapse-others";
       # The TUI's detach: closing the window leaves its terminals running.
       "q" = "window.close";
 
@@ -141,6 +145,10 @@
       {
         action = "mod.open:find";
         label = "find";
+      }
+      {
+        action = "desk-spaces.collapse-others";
+        label = "collapse others";
       }
       {
         action = "pane.zoom";

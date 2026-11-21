@@ -74,6 +74,9 @@
 //   in `spaces()` and its most urgent agent status, and shows the `»`
 //   that widens the sidebar again (`desk-chrome` relies on it).
 // The agent next/previous keys walk "Needs you" first, then the tree.
+// "Collapse others" (`desk-spaces.collapse-others`, prefix `o`) saves every
+// space and Background row folded except the active space, on every
+// machine, leaving machine folds as they are (`collapseOthers`).
 // Click to switch, right-click for its menu, drag a space to reorder.
 //
 // Started as a copy of the app's shipped `spaces` mod plus the agent rows of
@@ -116,6 +119,7 @@ import {
   openOverlay,
   hc,
   home,
+  nextCommand,
   notify,
   settings,
   theme,
@@ -211,6 +215,10 @@ const newSpace = (machine: string | null) =>
     ? run("space.new", { machine })
     : run("mod.open", { name: "space-new" });
 
+// The command keys.json sends as `desk-spaces.collapse-others` (prefix `o`),
+// which `collapseOthers` carries out.
+const COLLAPSE_OTHERS_COMMAND = "collapse-others";
+
 // `toggleSidebar` is copied from the shipped `agents` mod.
 
 // To the rail (on macOS wide enough for the traffic lights), or back to the
@@ -246,6 +254,9 @@ export default class SpacesAndAgents extends View {
   declare foldedSpaces: Record<string, string | null>;
   // Machines (null: this computer) whose Background row is folded.
   declare foldedBackgrounds: Set<string | null>;
+  // Machines (null: this computer) with a Background row, as of the last
+  // render.
+  declare backgroundMachines: (string | null)[];
   declare history: AgentHistory;
   declare listings: Map<string, SpaceListing>;
   declare finished: FinishedLoader;
@@ -299,6 +310,7 @@ export default class SpacesAndAgents extends View {
     // Space id -> its tabs' and loose terminal rows this render (see
     // `spaceListing`).
     this.listings = new Map();
+    this.backgroundMachines = [];
     // The finished terminals, read when the live ones change, on the
     // machines tick, after a removal, and when another view changes the
     // shared ones.
@@ -318,6 +330,17 @@ export default class SpacesAndAgents extends View {
     // `git status` walks the whole tree, on another machine a process there:
     // only when its answer could have changed (see `Checkouts.due`).
     cx.timer.every(250, (cx) => this.checkNew(cx));
+    // The key commands keys.json sends this mod (`desk-spaces.<command>`).
+    // nextCommand() rejects only when the app quits.
+    cx.spawn(async (cx) => {
+      try {
+        for (;;) {
+          const command = await nextCommand();
+          if (command === COLLAPSE_OTHERS_COMMAND) this.collapseOthers();
+          cx.notify();
+        }
+      } catch {}
+    });
   }
 
   checkNew(cx: AsyncContext): void {
@@ -701,6 +724,21 @@ export default class SpacesAndAgents extends View {
     if (folded) this.foldedSpaces[w.id] = w.machine ?? null;
     else delete this.foldedSpaces[w.id];
     localStorage.setItem("spaces.folded", JSON.stringify(this.foldedSpaces));
+  }
+
+  // Saves every space folded except the active one, and every Background
+  // row the last render drew (`backgroundMachines`) folded. The active
+  // space keeps its fold, and machine folds are left alone.
+  collapseOthers(): void {
+    for (const w of spaces())
+      if (!w.active) this.foldedSpaces[w.id] = w.machine ?? null;
+    localStorage.setItem("spaces.folded", JSON.stringify(this.foldedSpaces));
+    for (const machine of this.backgroundMachines)
+      this.foldedBackgrounds.add(machine);
+    localStorage.setItem(
+      "background.folded",
+      JSON.stringify([...this.foldedBackgrounds]),
+    );
   }
 
   // Forgets folds of spaces that are gone. Only on machines whose layout is
@@ -1120,6 +1158,9 @@ export default class SpacesAndAgents extends View {
         m.spaces.map((s) => [s.space.id, spaceListing(s)]),
       ),
     );
+    this.backgroundMachines = tree.machines
+      .filter((m) => m.elsewhere.length > 0)
+      .map((m) => m.name);
     const tray = needsYou(list, (a) => RANK[a.status] ?? 0);
     const terminalByAddress = new Map(allTerminals.map((k) => [k.address, k]));
     const labelOf = (a: AgentInfo) =>
