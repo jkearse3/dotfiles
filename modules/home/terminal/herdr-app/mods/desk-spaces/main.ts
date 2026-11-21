@@ -54,12 +54,16 @@
 //   many agents the space holds at any depth, in the most urgent status's
 //   color, and nothing when it holds none (finished terminals count for
 //   neither). Unlike the rail, a space row shows no number.
-// - Last under each machine, its terminals no space holds
-//   (`TreeMachine.elsewhere`, such as background terminals) under a small
-//   "ELSEWHERE" heading, drawn and clicked like a space's terminal rows,
-//   each without a pane marked "no pane", the section a little dimmed. It
-//   has no fold of its own, and no space's rail status or agent count
-//   includes it.
+// - Last under each machine, while it has any, its terminals no space holds
+//   (`TreeMachine.elsewhere`, such as background terminals) under a
+//   "Background" row (`backgroundSection`): a dashed outline where a space
+//   has its color tick, then its name, its agent count as a space shows
+//   one, and a chevron. Clicking anywhere on the row folds or opens it; it
+//   has no menu, cannot be dragged and takes no drop. Its fold is saved per
+//   machine, and it shows open until first folded. Open, its terminals
+//   follow, drawn and clicked like a space's terminal rows, each without a
+//   pane marked "no pane", the section a little dimmed. No space's rail
+//   status or agent count includes them, and the rail shows no Background.
 // - "Needs you", a tray of fixed height at the bottom, so the spaces above
 //   never move when it changes: every blocked agent, then every agent that
 //   finished while you weren't looking (`done`, which the app turns `idle`
@@ -240,6 +244,8 @@ export default class SpacesAndAgents extends View {
   // What `hc server status` names this computer; null until it answers.
   declare thisComputerName: string | null;
   declare foldedSpaces: Record<string, string | null>;
+  // Machines (null: this computer) whose Background row is folded.
+  declare foldedBackgrounds: Set<string | null>;
   declare history: AgentHistory;
   declare listings: Map<string, SpaceListing>;
   declare finished: FinishedLoader;
@@ -281,6 +287,12 @@ export default class SpacesAndAgents extends View {
     this.foldedSpaces = JSON.parse(
       localStorage.getItem("spaces.folded") ?? "{}",
     ) as Record<string, string | null>;
+    this.foldedBackgrounds = new Set(
+      JSON.parse(localStorage.getItem("background.folded") ?? "[]") as (
+        | string
+        | null
+      )[],
+    );
     // Each agent's last status change and last activity (both kept across
     // restarts) and the focused agent's held next/previous rank.
     this.history = new AgentHistory();
@@ -420,10 +432,11 @@ export default class SpacesAndAgents extends View {
   // The rows under a header per machine of `treeMachines` (`buildTree`), in
   // its order, even when this computer is the only one: each machine's space
   // rows from `rows` in their order, or, without any, a loading row or a
-  // "New space there" row, then its Elsewhere section (`elsewhereSection`,
-  // none on the rail); none of these while the machine is folded. Each space
-  // row comes with its terminal rows (none on the rail). The spaces of a
-  // machine `hc machine ls` reports as other than connected are dimmed.
+  // "New space there" row, then its Background row with its terminal rows
+  // (`backgroundSection`, none on the rail); none of these while the machine
+  // is folded. Each space row comes with its terminal rows (none on the
+  // rail). The spaces of a machine `hc machine ls` reports as other than
+  // connected are dimmed.
   grouped(
     t: ThemeColors,
     collapsed: boolean,
@@ -559,10 +572,10 @@ export default class SpacesAndAgents extends View {
         ? mine.flatMap(draw).map((el) => (isAway ? el.opacity(0.5) : el))
         : [loading(machine) ? loadingRow(m) : empty];
       if (folded) return [head];
-      const elsewhere = collapsed
+      const background = collapsed
         ? null
-        : this.elsewhereSection(machine, isAway, t, now);
-      return [head, ...spaceRows, ...(elsewhere ? [elsewhere] : [])];
+        : this.backgroundSection(machine, isAway, t, now);
+      return [head, ...spaceRows, ...(background ? [background] : [])];
     });
   }
 
@@ -718,9 +731,6 @@ export default class SpacesAndAgents extends View {
       return null;
     const keep = (_e: MouseButtonEvent, cx: Context) => cx.stop_propagation();
     const open = !(w.id in this.foldedSpaces);
-    const agentCount = this.agentStatuses(w).length;
-    // A null `top` (no status ranks) indexes `t` as "null": no color, so dim.
-    const top = this.spaceStatus(w);
     return h_flex()
       .id(`space-fold-${w.id}`)
       .flex_none()
@@ -739,18 +749,7 @@ export default class SpacesAndAgents extends View {
         this.setSpaceFolded(w, open);
         cx.notify();
       })
-      .when(agentCount > 0, (el) =>
-        el.child(
-          div()
-            .text_color(t[top as AgentStatus] ?? t.dim)
-            .child(String(agentCount)),
-        ),
-      )
-      .child(
-        svg(`mods/workspace-chrome/chevron-${open ? "down" : "right"}.svg`)
-          .size(11)
-          .flex_none(),
-      );
+      .children(foldMarks(this.agentStatuses(w), open, t));
   }
 
   // The rows under an unfolded space: each tab's divider (only tabs with
@@ -789,15 +788,18 @@ export default class SpacesAndAgents extends View {
     ];
   }
 
-  // A machine's Elsewhere section, for its terminals no space holds
-  // (`TreeMachine.elsewhere`): a small "ELSEWHERE" heading, then a row for
-  // each, with the terminals each started nested under it, live then
-  // finished, every live one
-  // without a pane marked "no pane". The section is a little dimmed, as
-  // terminals outside the spaces you work in, or as dim as the machine's
-  // spaces while the machine is away (`isAway`). It has no fold of its own.
-  // Null when the machine has no such terminals.
-  elsewhereSection(
+  // A machine's Background row, for its terminals no space holds
+  // (`TreeMachine.elsewhere`), with their rows under it while it is open:
+  // a row for each, with the terminals each started nested under it, live
+  // then finished, every live one without a pane marked "no pane". The row
+  // has a dashed outline where a space has its color tick, then its name,
+  // and at its end how many agents its rows show and a chevron
+  // (`foldMarks`). Clicking anywhere on it folds or opens it
+  // (`setBackgroundFolded`); it has no menu and takes no drag or drop. The
+  // section is a little dimmed, as terminals outside the spaces you work
+  // in, or as dim as the machine's spaces while the machine is away
+  // (`isAway`). Null when the machine has no such terminals.
+  backgroundSection(
     machine: TreeMachine,
     isAway: boolean,
     t: ThemeColors,
@@ -805,8 +807,68 @@ export default class SpacesAndAgents extends View {
   ): Element | null {
     const rows = listingRows(machine.elsewhere);
     if (!rows.length) return null;
+
+    const m = machine.name;
+    const open = !this.foldedBackgrounds.has(m);
+    const statuses = terminalRowsOf(rows)
+      .map((row) => row.status)
+      .filter((status): status is AgentStatus => status !== null);
+    const head = h_flex()
+      .id(`background-${m ?? "local"}`)
+      .flex_none()
+      .pl(TEXT_X - ROW_X)
+      .pr(8)
+      .py(6)
+      .gap(6)
+      .items_center()
+      .line_height(1.3)
+      .rounded(6)
+      .cursor_pointer()
+      .hover((s) => s.bg(hoverFill(t, t.chrome)))
+      // A space dragged over this row has nowhere to drop.
+      .on_mouse_move((_e, cx) => {
+        if (this.pressed === null || this.over === null) return;
+
+        this.over = null;
+        cx.notify();
+      })
+      .on_click((_e, cx) => {
+        this.setBackgroundFolded(m, open);
+        cx.notify();
+      })
+      .child(
+        div()
+          .flex_1()
+          .min_w(0)
+          .truncate()
+          .text_color(t.muted)
+          .child("Background"),
+      )
+      .child(
+        h_flex()
+          .flex_none()
+          .h(18)
+          .px(3)
+          .gap(3)
+          .items_center()
+          .text_size(11)
+          .text_color(t.dim)
+          .children(foldMarks(statuses, open, t)),
+      );
+    // The dashed outline in the gutter, where a space has its color tick.
+    const outline = div()
+      .absolute()
+      .left(TICK_X - 1)
+      .top(11)
+      .w(5)
+      .h(16)
+      .rounded(2)
+      .border_1()
+      .border_dashed()
+      .border_color(t.dim);
     return v_flex()
-      .id(`machine-elsewhere-${machine.name ?? "local"}`)
+      .id(`machine-background-${m ?? "local"}`)
+      .relative()
       .flex_none()
       .pl(ROW_X)
       .pt(4)
@@ -815,24 +877,28 @@ export default class SpacesAndAgents extends View {
       .border_t(1)
       .border_color(t.border)
       .opacity(isAway ? 0.5 : 0.8)
-      .child(
-        div()
-          .pl(TEXT_X - ROW_X)
-          .pt(2)
-          .text_size(10.5)
-          .font_semibold()
-          .text_color(t.dim)
-          .child("ELSEWHERE"),
-      )
+      .child(head)
       .children(
-        terminalRun(
-          rows.map((row) =>
-            this.listingRowElement(row, t, now, {
-              markPaneless: true,
-            }),
-          ),
-        ),
-      );
+        open
+          ? terminalRun(
+              rows.map((row) =>
+                this.listingRowElement(row, t, now, {
+                  markPaneless: true,
+                }),
+              ),
+            )
+          : [],
+      )
+      .child(outline);
+  }
+
+  setBackgroundFolded(machine: string | null, folded: boolean): void {
+    if (folded) this.foldedBackgrounds.add(machine);
+    else this.foldedBackgrounds.delete(machine);
+    localStorage.setItem(
+      "background.folded",
+      JSON.stringify([...this.foldedBackgrounds]),
+    );
   }
 
   // A listing row in the sidebar: a live terminal's (`terminalRowElement`,
@@ -1069,9 +1135,9 @@ export default class SpacesAndAgents extends View {
       });
 
     // Next/previous agent: "Needs you", then the tree in the machine order
-    // `grouped` draws, folded machines and spaces included: the agents with a
-    // pane among the terminal rows, each machine's Elsewhere rows after its
-    // spaces', in row order. The focused agent
+    // `grouped` draws, folded machines, spaces and Background rows included:
+    // the agents with a pane among the terminal rows, each machine's
+    // Background rows after its spaces', in row order. The focused agent
     // keeps its "Needs you" slot here after looking turns it from done to
     // idle (`orderRank`), so stepping on reaches the one after it, though the
     // tray itself drops it.
@@ -1206,8 +1272,9 @@ function spaceListing(treeSpace: TreeSpace): SpaceListing {
   };
 }
 
-// One row the sidebar lists under a space or Elsewhere: a live terminal's
-// (`TerminalListing`) or a finished terminal's (`FinishedListing`).
+// One row the sidebar lists under a space or a Background row: a live
+// terminal's (`TerminalListing`) or a finished terminal's
+// (`FinishedListing`).
 type ListingRow = TerminalListing | FinishedListing;
 
 // One live terminal row: its `walkTree` step, with the depth it is indented
@@ -1251,6 +1318,31 @@ function listingRows(nodes: TreeTerminal[]): ListingRow[] {
 // The live terminal rows of `rows`, in their order.
 function terminalRowsOf(rows: ListingRow[]): TerminalListing[] {
   return rows.filter((row): row is TerminalListing => row.kind === "terminal");
+}
+
+// The end of a foldable row's name line: how many agents of `statuses`
+// there are, in the most urgent one's color (nothing when there are none),
+// then a chevron pointing down while the row is `open`, else right.
+function foldMarks(
+  statuses: AgentStatus[],
+  open: boolean,
+  t: ThemeColors,
+): Element[] {
+  // A null `top` (no status ranks) indexes `t` as "null": no color, so dim.
+  const top = topStatus(statuses);
+  const chevron = svg(
+    `mods/workspace-chrome/chevron-${open ? "down" : "right"}.svg`,
+  )
+    .size(11)
+    .flex_none();
+  return statuses.length
+    ? [
+        div()
+          .text_color(t[top as AgentStatus] ?? t.dim)
+          .child(String(statuses.length)),
+        chevron,
+      ]
+    : [chevron];
 }
 
 // The first line of `text`, without surrounding whitespace.

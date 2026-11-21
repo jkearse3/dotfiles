@@ -101,7 +101,7 @@ export const TERMINAL_ROW_PAD_X = 2;
 // focused) read as two rounded shapes rather than one block.
 export const ROW_GAP = 5;
 // The space between stacked terminal rows (a tab's, the loose ones, or
-// Elsewhere's), wider than `ROW_GAP` so each terminal, with its stripe,
+// a Background row's), wider than `ROW_GAP` so each terminal, with its stripe,
 // reads as a unit of its own.
 export const TERMINAL_ROW_GAP = 7;
 // The "Needs you" rows' height: three two-line rows and the gaps between.
