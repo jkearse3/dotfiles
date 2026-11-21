@@ -73,6 +73,14 @@
 // - The narrow rail lists the spaces in the same order, each by its number
 //   in `spaces()` and its most urgent agent status, and shows the `»`
 //   that widens the sidebar again (`desk-chrome` relies on it).
+// Folds are saved (`machines.folded`, `spaces.folded`, `background.folded`)
+// only by a click on a chevron, a machine header or a Background row, or by
+// "collapse others". When focus (`focused()`, a terminal peeked at without
+// a pane included) moves into a folded space, Background row or machine
+// from outside it, the sidebar shows that one open without changing its
+// saved fold, and shows its saved fold again once focus leaves it
+// (`trackFocusReveal`). A fold saved while focus is inside takes effect at
+// once and holds while focus moves within. A settled tab is not revealed.
 // The agent next/previous keys walk "Needs you" first, then the tree.
 // "Collapse others" (`desk-spaces.collapse-others`, prefix `o`) saves every
 // space and Background row folded except the active space, on every
@@ -92,10 +100,10 @@
 // `tree-rows.ts` draws the machine headers, tab dividers and terminal rows.
 //
 // `agent-marks.ts`, `checkout-badge.ts`, `checkout-root.ts`, `finished.ts`,
-// `foreground.ts`, `labels.ts`, `names.ts`, `paths.ts`, `program-icon.ts`,
-// `quiet.ts`, `row-colors.ts`, `space-order.ts`, `status.ts`,
-// `terminals.ts`, `tree-rows.ts` and `tree.ts` beside these files are links
-// to the shared copies in `mod-lib/`.
+// `focus-reveal.ts`, `foreground.ts`, `labels.ts`, `names.ts`, `paths.ts`,
+// `program-icon.ts`, `quiet.ts`, `row-colors.ts`, `space-order.ts`,
+// `status.ts`, `terminals.ts`, `tree-rows.ts` and `tree.ts` beside these files
+// are links to the shared copies in `mod-lib/`.
 
 import { View, div, svg } from "gpui-kit";
 import type {
@@ -134,6 +142,7 @@ import { AgentHistory, needsYou } from "./agents.js";
 import { FinishedLoader } from "./finished-loader.js";
 import { FINISHED_TERMINALS_KEY, finishedLabel } from "./finished.js";
 import type { FinishedTerminal } from "./finished.js";
+import { nextFocusReveal } from "./focus-reveal.js";
 import { CommandStarts } from "./foreground.js";
 import { agentLabel, blockedKind, terminalRowModel } from "./labels.js";
 import { hoverFill } from "./row-colors.js";
@@ -254,6 +263,11 @@ export default class SpacesAndAgents extends View {
   declare foldedSpaces: Record<string, string | null>;
   // Machines (null: this computer) whose Background row is folded.
   declare foldedBackgrounds: Set<string | null>;
+  // The folds (`foldKey`) shown open for now because focus moved into them
+  // while they were saved folded (`trackFocusReveal`).
+  declare revealed: Set<string>;
+  // The folds (`foldKey`) focus was inside at the last render.
+  declare focusFolds: Set<string>;
   // Machines (null: this computer) with a Background row, as of the last
   // render.
   declare backgroundMachines: (string | null)[];
@@ -311,6 +325,8 @@ export default class SpacesAndAgents extends View {
     // `spaceListing`).
     this.listings = new Map();
     this.backgroundMachines = [];
+    this.revealed = new Set();
+    this.focusFolds = new Set();
     // The finished terminals, read when the live ones change, on the
     // machines tick, after a removal, and when another view changes the
     // shared ones.
@@ -519,7 +535,7 @@ export default class SpacesAndAgents extends View {
       const connected = m === null || machine.state === "connected";
       // `hc machine ls` reports it, in a state other than connected.
       const isAway = machine.state !== null && !connected;
-      const folded = this.folded.has(m);
+      const folded = this.machineFolded(m);
       const head = h_flex()
         .id(`machine-${m ?? "local"}`)
         .h(26)
@@ -532,11 +548,7 @@ export default class SpacesAndAgents extends View {
         .cursor_pointer()
         .hover((s) => s.bg(hoverFill(t, t.chrome)))
         .on_click((_e, cx) => {
-          folded ? this.folded.delete(m) : this.folded.add(m);
-          localStorage.setItem(
-            "machines.folded",
-            JSON.stringify([...this.folded]),
-          );
+          this.setMachineFolded(m, !folded);
           cx.notify();
         })
         .child(
@@ -709,10 +721,10 @@ export default class SpacesAndAgents extends View {
   }
 
   // Whether focus sits on one of the space's terminal rows: never when the
-  // space is folded or the row's tab is (`tabFolded`).
+  // space shows folded (`spaceFolded`) or the row's tab is (`tabFolded`).
   terminalRowFocused(w: SpaceInfo): boolean {
     const listing = this.listings.get(w.id);
-    if (!listing || w.id in this.foldedSpaces) return false;
+    if (!listing || this.spaceFolded(w)) return false;
     const shown = focused()?.terminal;
     return terminalRowsOf([
       ...listing.tabs.flatMap((tab) => (tab.folded ? [] : tab.rows)),
@@ -720,10 +732,96 @@ export default class SpacesAndAgents extends View {
     ]).some(({ step }) => step.node.terminal.address === shown);
   }
 
+  // Whether machine `machine`'s header shows its spaces folded away: saved
+  // folded and not revealed (`trackFocusReveal`).
+  machineFolded(machine: string | null): boolean {
+    return (
+      this.folded.has(machine) &&
+      !this.revealed.has(foldKey("machine", machine))
+    );
+  }
+
+  // Whether space `w` shows its rows folded away: saved folded and not
+  // revealed (`trackFocusReveal`).
+  spaceFolded(w: SpaceInfo): boolean {
+    return (
+      w.id in this.foldedSpaces && !this.revealed.has(foldKey("space", w.id))
+    );
+  }
+
+  // Whether machine `machine`'s Background row shows folded: saved folded
+  // and not revealed (`trackFocusReveal`).
+  backgroundFolded(machine: string | null): boolean {
+    return (
+      this.foldedBackgrounds.has(machine) &&
+      !this.revealed.has(foldKey("background", machine))
+    );
+  }
+
+  // Saves machine `machine`'s fold. Like `setSpaceFolded` and
+  // `setBackgroundFolded`, it ends any reveal of that fold, so the saved
+  // fold shows at once, even with focus inside.
+  setMachineFolded(machine: string | null, folded: boolean): void {
+    if (folded) this.folded.add(machine);
+    else this.folded.delete(machine);
+    this.revealed.delete(foldKey("machine", machine));
+    localStorage.setItem("machines.folded", JSON.stringify([...this.folded]));
+  }
+
   setSpaceFolded(w: SpaceInfo, folded: boolean): void {
     if (folded) this.foldedSpaces[w.id] = w.machine ?? null;
     else delete this.foldedSpaces[w.id];
+    this.revealed.delete(foldKey("space", w.id));
     localStorage.setItem("spaces.folded", JSON.stringify(this.foldedSpaces));
+  }
+
+  // Shows open, without saving it, each fold focus has just moved into from
+  // outside while it is saved folded, and ends the reveal of each fold focus
+  // has left (`nextFocusReveal`). `focusFolds` (the folds holding the focused
+  // terminal) is remembered, so a fold focus stays inside is not revealed
+  // again after a `set…Folded` ends its reveal. Runs each render, after
+  // `listings`.
+  trackFocusReveal(machines: TreeMachine[]): void {
+    const inside = this.foldsHolding(machines, focused()?.terminal ?? null);
+    const next = nextFocusReveal(this.revealed, this.focusFolds, inside);
+    this.revealed = next.revealed;
+    this.focusFolds = next.focusFolds;
+  }
+
+  // The folds holding the terminal at `address` (its space or its machine's
+  // Background row, and its machine), each mapped to whether it is saved
+  // folded; none when no row of the tree shows it, or `address` is null.
+  foldsHolding(
+    machines: TreeMachine[],
+    address: string | null,
+  ): Map<string, boolean> {
+    const holds = (rows: ListingRow[]) =>
+      terminalRowsOf(rows).some(
+        ({ step }) => step.node.terminal.address === address,
+      );
+    for (const m of machines) {
+      const machine: [string, boolean] = [
+        foldKey("machine", m.name),
+        this.folded.has(m.name),
+      ];
+      for (const { space } of m.spaces) {
+        const listing = this.listings.get(space.id);
+        if (
+          listing &&
+          holds([...listing.tabs.flatMap((tab) => tab.rows), ...listing.loose])
+        )
+          return new Map([
+            [foldKey("space", space.id), space.id in this.foldedSpaces],
+            machine,
+          ]);
+      }
+      if (holds(listingRows(m.elsewhere)))
+        return new Map([
+          [foldKey("background", m.name), this.foldedBackgrounds.has(m.name)],
+          machine,
+        ]);
+    }
+    return new Map();
   }
 
   // Saves every space folded except the active one, and every Background
@@ -731,10 +829,15 @@ export default class SpacesAndAgents extends View {
   // space keeps its fold, and machine folds are left alone.
   collapseOthers(): void {
     for (const w of spaces())
-      if (!w.active) this.foldedSpaces[w.id] = w.machine ?? null;
+      if (!w.active) {
+        this.foldedSpaces[w.id] = w.machine ?? null;
+        this.revealed.delete(foldKey("space", w.id));
+      }
     localStorage.setItem("spaces.folded", JSON.stringify(this.foldedSpaces));
-    for (const machine of this.backgroundMachines)
+    for (const machine of this.backgroundMachines) {
       this.foldedBackgrounds.add(machine);
+      this.revealed.delete(foldKey("background", machine));
+    }
     localStorage.setItem(
       "background.folded",
       JSON.stringify([...this.foldedBackgrounds]),
@@ -768,7 +871,7 @@ export default class SpacesAndAgents extends View {
     if (!listing || (!listing.tabs.length && !listing.loose.length))
       return null;
     const keep = (_e: MouseButtonEvent, cx: Context) => cx.stop_propagation();
-    const open = !(w.id in this.foldedSpaces);
+    const open = !this.spaceFolded(w);
     return h_flex()
       .id(`space-fold-${w.id}`)
       .flex_none()
@@ -801,7 +904,7 @@ export default class SpacesAndAgents extends View {
   // ones) is spaced by `TERMINAL_ROW_GAP`.
   terminalRows({ w }: SpaceRow, t: ThemeColors, now: number): Element[] {
     const listing = this.listings.get(w.id);
-    if (!listing || w.id in this.foldedSpaces) return [];
+    if (!listing || this.spaceFolded(w)) return [];
 
     // A row's terminal is loose when no tab of the space shows it; one
     // without a pane at all says so.
@@ -847,7 +950,7 @@ export default class SpacesAndAgents extends View {
     if (!rows.length) return null;
 
     const m = machine.name;
-    const open = !this.foldedBackgrounds.has(m);
+    const open = !this.backgroundFolded(m);
     const statuses = terminalRowsOf(rows)
       .map((row) => row.status)
       .filter((status): status is AgentStatus => status !== null);
@@ -933,6 +1036,7 @@ export default class SpacesAndAgents extends View {
   setBackgroundFolded(machine: string | null, folded: boolean): void {
     if (folded) this.foldedBackgrounds.add(machine);
     else this.foldedBackgrounds.delete(machine);
+    this.revealed.delete(foldKey("background", machine));
     localStorage.setItem(
       "background.folded",
       JSON.stringify([...this.foldedBackgrounds]),
@@ -1161,6 +1265,7 @@ export default class SpacesAndAgents extends View {
     this.backgroundMachines = tree.machines
       .filter((m) => m.elsewhere.length > 0)
       .map((m) => m.name);
+    this.trackFocusReveal(tree.machines);
     const tray = needsYou(list, (a) => RANK[a.status] ?? 0);
     const terminalByAddress = new Map(allTerminals.map((k) => [k.address, k]));
     const labelOf = (a: AgentInfo) =>
@@ -1384,6 +1489,16 @@ function foldMarks(
         chevron,
       ]
     : [chevron];
+}
+
+// What a fold is of: a machine's spaces (by machine name, null for this
+// computer), a space's rows (by space id), or a machine's Background row.
+type FoldKind = "machine" | "space" | "background";
+
+// The key of the fold of `kind` for `id`, as `revealed` and `focusFolds`
+// hold it.
+function foldKey(kind: FoldKind, id: string | null): string {
+  return `${kind}:${JSON.stringify(id)}`;
 }
 
 // The first line of `text`, without surrounding whitespace.

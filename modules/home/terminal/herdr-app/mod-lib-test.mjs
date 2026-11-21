@@ -7,7 +7,7 @@
 // `runningCommand`, `shellCommandText`, `commandText` and `CommandStarts`
 // from `foreground.ts`, `hoverFill` and `stripeColor` from `row-colors.ts`,
 // `innermostRoot` from `checkout-root.ts`, `terminalCheckoutBadgeKind` from
-// `checkout-badge.ts`, and the desk-spaces sidebar's status and activity
+// `checkout-badge.ts`, `nextFocusReveal` from `focus-reveal.ts`, and the desk-spaces sidebar's status and activity
 // tracking (`AgentHistory` from its own `agents.ts`), the trackers over an
 // in-memory `localStorage`, against the terminals(), agents(), panes() and
 // spaces() entry shapes the Herdr app hands mods. It imports the built,
@@ -51,6 +51,7 @@ const { innermostRoot } = await import(`${mods}/desk-spaces/checkout-root.js`);
 const { terminalCheckoutBadgeKind } = await import(
   `${mods}/desk-spaces/checkout-badge.js`
 );
+const { nextFocusReveal } = await import(`${mods}/desk-spaces/focus-reveal.js`);
 const {
   COMMAND_SETTLE_MS,
   CommandStarts,
@@ -1860,4 +1861,114 @@ test("terminalCheckoutBadgeKind marks Git commits ahead on an agent with nothing
     terminalCheckoutBadgeKind("idle", { jj: false, ahead: 0 }),
     null,
   );
+});
+
+// The focus-reveal state of a sidebar no render has updated yet.
+const NO_REVEAL = { revealed: new Set(), focusFolds: new Set() };
+
+// The focus-reveal state after a render with focus inside the folds
+// `inside`, given as [key, saved folded] pairs, from `state`.
+function revealStep(state, inside) {
+  return nextFocusReveal(state.revealed, state.focusFolds, new Map(inside));
+}
+
+test("nextFocusReveal reveals a folded space focus enters from outside", () => {
+  const state = revealStep(NO_REVEAL, [
+    ["space:w1", true],
+    ["machine:null", false],
+  ]);
+  assert.deepEqual([...state.revealed], ["space:w1"]);
+  assert.deepEqual([...state.focusFolds].sort(), ["machine:null", "space:w1"]);
+});
+
+test("nextFocusReveal reveals nothing when focus enters open folds", () => {
+  const state = revealStep(NO_REVEAL, [
+    ["background:null", false],
+    ["machine:null", false],
+  ]);
+  assert.deepEqual([...state.revealed], []);
+});
+
+test("nextFocusReveal keeps a reveal while focus moves within the fold and ends it once focus leaves", () => {
+  const inW1 = [
+    ["space:w1", true],
+    ["machine:null", false],
+  ];
+  const entered = revealStep(NO_REVEAL, inW1);
+  const within = revealStep(entered, inW1);
+  assert.deepEqual([...within.revealed], ["space:w1"]);
+
+  const left = revealStep(within, [
+    ["space:w2", false],
+    ["machine:null", false],
+  ]);
+  assert.deepEqual([...left.revealed], []);
+  const nowhere = revealStep(within, []);
+  assert.deepEqual([...nowhere.revealed], []);
+  assert.deepEqual([...nowhere.focusFolds], []);
+});
+
+test("nextFocusReveal holds a fold saved while focus is inside", () => {
+  // Focus sits in open space w1, then the space is saved folded.
+  const open = revealStep(NO_REVEAL, [["space:w1", false]]);
+  const savedFolded = revealStep(open, [["space:w1", true]]);
+  assert.deepEqual([...savedFolded.revealed], []);
+  const within = revealStep(savedFolded, [["space:w1", true]]);
+  assert.deepEqual([...within.revealed], []);
+
+  // Saving a revealed space folded again ends its reveal (the caller drops
+  // it from `revealed`), and focus moving within does not bring it back.
+  const revealed = revealStep(NO_REVEAL, [["space:w2", true]]);
+  revealed.revealed.delete("space:w2");
+  const afterSave = revealStep(revealed, [["space:w2", true]]);
+  assert.deepEqual([...afterSave.revealed], []);
+});
+
+test("nextFocusReveal reveals a fold again when focus leaves and re-enters it", () => {
+  const inW1 = [["space:w1", true]];
+  const entered = revealStep(NO_REVEAL, inW1);
+  const left = revealStep(entered, [["space:w2", false]]);
+  const reentered = revealStep(left, inW1);
+  assert.deepEqual([...reentered.revealed], ["space:w1"]);
+
+  // A fold saved while focus was inside is revealed on the next entry.
+  const held = revealStep(revealStep(NO_REVEAL, [["space:w3", false]]), [
+    ["space:w3", true],
+  ]);
+  const away = revealStep(held, []);
+  const back = revealStep(away, [["space:w3", true]]);
+  assert.deepEqual([...back.revealed], ["space:w3"]);
+});
+
+test("nextFocusReveal handles a folded machine and the folded space inside it apart", () => {
+  const inBoxW1 = [
+    ["space:w1", true],
+    ["machine:box", true],
+  ];
+  const entered = revealStep(NO_REVEAL, inBoxW1);
+  assert.deepEqual([...entered.revealed].sort(), ["machine:box", "space:w1"]);
+
+  // Moving to another folded space on the same machine ends w1's reveal
+  // and reveals w2, which focus entered from outside; the machine, which
+  // focus stayed inside, stays revealed.
+  const moved = revealStep(entered, [
+    ["space:w2", true],
+    ["machine:box", true],
+  ]);
+  assert.deepEqual([...moved.revealed].sort(), ["machine:box", "space:w2"]);
+
+  // Leaving the machine ends both reveals.
+  const left = revealStep(moved, [
+    ["background:null", true],
+    ["machine:null", false],
+  ]);
+  assert.deepEqual([...left.revealed], ["background:null"]);
+});
+
+test("nextFocusReveal leaves its arguments unchanged", () => {
+  const revealed = new Set(["space:w1"]);
+  const focusFolds = new Set(["space:w1"]);
+  nextFocusReveal(revealed, focusFolds, new Map([["space:w2", true]]));
+  assert.deepEqual([...revealed], ["space:w1"]);
+  assert.deepEqual([...focusFolds], ["space:w1"]);
 });
