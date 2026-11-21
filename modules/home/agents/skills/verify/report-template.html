@@ -1,0 +1,241 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{{report_title}} · Verification</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        --canvas: #11151c;
+        --surface: #1a202a;
+        --ink: #f0f3f8;
+        --muted: #b0bbcd;
+        --line: #343f50;
+        --link: #a6c5ff;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        background: var(--canvas);
+        color: var(--ink);
+        font:
+          1rem/1.55 system-ui,
+          sans-serif;
+        overflow-wrap: anywhere;
+      }
+      main {
+        max-width: 65rem;
+        margin: auto;
+        padding: 3.5rem 1.5rem;
+      }
+      h1,
+      h2,
+      h3,
+      p {
+        margin: 0;
+      }
+      h1 {
+        font-size: clamp(2.1rem, 6vw, 3.25rem);
+        line-height: 1.1;
+        letter-spacing: -0.045em;
+      }
+      h2 {
+        font-size: 1.125rem;
+        letter-spacing: -0.015em;
+      }
+      h3 {
+        font-size: 1rem;
+        line-height: 1.4;
+      }
+      a {
+        color: var(--link);
+        text-underline-offset: 0.2em;
+      }
+      .eyebrow {
+        color: var(--muted);
+        font-size: 0.75rem;
+        font-weight: 750;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+      }
+      .report-header {
+        display: grid;
+        gap: 0.55rem;
+      }
+      .report-context {
+        color: var(--muted);
+      }
+      .results-bar {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem 1.15rem;
+        align-items: center;
+        margin: 1.7rem 0 1.4rem;
+        padding: 0.8rem 1rem;
+        background: var(--surface);
+        border: 1px solid var(--line);
+        border-radius: 0.75rem;
+      }
+      .badge {
+        display: inline-block;
+        padding: 0.16rem 0.6rem;
+        border-radius: 1rem;
+        font-size: 0.8rem;
+        font-weight: 750;
+        white-space: nowrap;
+      }
+      .passed {
+        color: #9ae3b8;
+        background: #203b31;
+      }
+      .failed {
+        color: #ffc0bd;
+        background: #482c34;
+      }
+      .not-checked {
+        color: #f3d89d;
+        background: #443821;
+      }
+      .report-grid {
+        display: grid;
+        grid-template-columns: 1.22fr 1fr;
+        gap: 1rem;
+        align-items: start;
+      }
+      .panel {
+        padding: 1.2rem;
+        background: var(--surface);
+        border: 1px solid var(--line);
+        border-radius: 0.85rem;
+      }
+      .check {
+        display: grid;
+        gap: 0.7rem;
+        border-top: 1px solid var(--line);
+        margin-top: 0.8rem;
+        padding-top: 0.9rem;
+      }
+      .check-heading {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: start;
+        justify-content: space-between;
+        gap: 0.6rem;
+      }
+      .check p,
+      .evidence-note,
+      figcaption,
+      details {
+        color: var(--muted);
+        font-size: 0.9rem;
+      }
+      .check p strong,
+      code {
+        color: var(--ink);
+      }
+      figure,
+      .evidence-note {
+        margin: 0.8rem 0 0;
+      }
+      .screenshot {
+        display: block;
+        width: 100%;
+        height: auto;
+        border: 1px solid var(--line);
+        border-radius: 0.5rem;
+      }
+      figcaption {
+        margin-top: 0.6rem;
+      }
+      details {
+        margin-top: 1.15rem;
+        padding-top: 1rem;
+        border-top: 1px solid var(--line);
+      }
+      summary {
+        width: fit-content;
+        cursor: pointer;
+        color: var(--ink);
+        font-weight: 650;
+      }
+      details ol {
+        margin: 0.75rem 0 0;
+        padding-left: 1.3rem;
+      }
+      @media (max-width: 45rem) {
+        main {
+          padding: 2rem 1rem;
+        }
+        .report-grid {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <header class="report-header">
+        <p class="eyebrow">Verification</p>
+        <h1>{{report_title}}</h1>
+        <p class="report-context">{{scope}}</p>
+        <p class="report-context">{{environment_and_starting_state}}</p>
+      </header>
+
+      <p class="results-bar" aria-label="Run results">
+        <span class="badge passed">{{passed_count}} passed</span>
+        <span class="badge failed">{{failed_count}} failed</span>
+        <span class="badge not-checked">{{not_checked_count}} not checked</span>
+      </p>
+
+      <div class="report-grid">
+        <section class="panel" aria-labelledby="checks">
+          <h2 id="checks">Check results</h2>
+          <!-- Repeat the article for each check, keeping only its matching badge. -->
+          <article class="check">
+            <div class="check-heading">
+              <h3>{{check_title}}</h3>
+              <span class="badge passed">Passed</span>
+              <span class="badge failed">Failed</span>
+              <span class="badge not-checked">Not checked</span>
+            </div>
+            <p><strong>Expected:</strong> {{expectation}}</p>
+            <p>
+              <strong>Observed or blocked by:</strong>
+              {{observation_or_blocker}}
+            </p>
+          </article>
+        </section>
+
+        <section class="panel" aria-labelledby="evidence">
+          <h2 id="evidence">Supporting evidence</h2>
+          <!-- Keep only the applicable blocks. Repeat the figure or file link as needed. -->
+          <figure>
+            <a href="{{relative_screenshot_path}}">
+              <img
+                class="screenshot"
+                src="{{relative_screenshot_path}}"
+                alt="{{screenshot_description}}"
+              />
+            </a>
+            <figcaption>{{screenshot_caption}}</figcaption>
+          </figure>
+          <p class="evidence-note">
+            <a href="{{relative_evidence_path}}">{{evidence_label}}</a> ·
+            {{evidence_context}}
+          </p>
+          <p class="evidence-note">No supporting files were included.</p>
+        </section>
+      </div>
+
+      <details>
+        <summary>What ran and how to repeat it</summary>
+        <ol>
+          <li>{{setup_action_command_or_blocker}}</li>
+        </ol>
+      </details>
+    </main>
+  </body>
+</html>
