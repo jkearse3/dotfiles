@@ -10,7 +10,7 @@ import { run, shared, setShared, home } from "herdr";
 import type { AgentInfo, SpaceInfo } from "herdr";
 import { programIcon } from "./program-icon.js";
 import { duration, statusMark } from "./agent-marks.js";
-import { checkoutText } from "./space-order.js";
+import { base, checkoutText } from "./space-order.js";
 import { hoverFill } from "./row-colors.js";
 import type { Checkout, GitCheckout, JjCheckout } from "./checkouts.js";
 import type { AgentStatus } from "./status.js";
@@ -222,12 +222,13 @@ export function checkoutBadge(
 // when the name already says it; the branch goes when the name says it (a
 // worktree is named after its branch), and master/main go: nearly every
 // space is on one. Null when nothing is left to show, which keeps the row
-// shorter.
+// shorter. `size` is the text size, in px, of the line it joins.
 export function gitTail(
   g: GitCheckout,
   quietRepo: boolean,
   name: string,
   t: ThemeColors,
+  size: number,
 ): Element | null {
   const raw = g.branch ?? "detached";
   const same = (a: string) => a.toLowerCase() === name.toLowerCase();
@@ -239,7 +240,7 @@ export function gitTail(
     .min_w(0)
     .gap(5)
     .items_center()
-    .text_size(11.5)
+    .text_size(size)
     .text_color(t.dim)
     .when(Boolean(where), (el) =>
       el.child(div().min_w(0).truncate().child(where)),
@@ -259,12 +260,14 @@ export function gitTail(
 // when more share it), how far @ is from it (cyan \u2191 after it, \u2193
 // before it), a conflict (red \u26a0) and edits in @ (yellow \u25cf). The
 // change ID shows only without a bookmark, where nothing else says where @
-// is. The repo shows as for git.
+// is. The repo shows as for git. `size` is the text size, in px, of the line
+// it joins.
 export function jjTail(
   g: JjCheckout,
   quietRepo: boolean,
   name: string,
   t: ThemeColors,
+  size: number,
 ): Element {
   const same = (a: string) => a.toLowerCase() === name.toLowerCase();
   const repo = quietRepo || same(g.name) ? "" : g.name;
@@ -272,7 +275,7 @@ export function jjTail(
     .min_w(0)
     .gap(5)
     .items_center()
-    .text_size(11.5)
+    .text_size(size)
     .text_color(t.dim)
     .when(Boolean(repo), (el) => el.child(div().flex_none().child(repo)))
     .child(
@@ -298,6 +301,57 @@ export function jjTail(
     )
     .when(g.modified, (el) =>
       el.child(div().flex_none().text_color(t.ansi3).child("\u25cf")),
+    );
+}
+
+// A terminal row's second line for a folder `cwd` in checkout `g` on
+// `machine` (null for this computer), in place of the folder: the checkout
+// as a space's checkout line names it (`checkoutText`: "dotfiles / ws3"),
+// then, dimmer, the path from the checkout's root down to `cwd` when it is
+// below the root ("modules/home"), then " · " and the checkout's tail
+// (`gitTail`, `jjTail`) when it has one, the repo left out because the
+// checkout already names it. Too wide, the path and the tail shrink; the
+// checkout's name stays whole.
+export function terminalCheckoutLine(
+  g: Checkout,
+  cwd: string,
+  machine: string | null,
+  t: ThemeColors,
+): Element {
+  const size = 11;
+  const name = checkoutText({ folder: g.top, machine }, g, home());
+  const below = cwd.startsWith(`${g.top}/`)
+    ? cwd.slice(g.top.length + 1)
+    : null;
+  const rootName = base(g.top);
+  const tail = g.jj
+    ? jjTail(g, true, rootName, t, size)
+    : gitTail(g, true, rootName, t, size);
+  return h_flex()
+    .min_w(0)
+    .overflow_hidden()
+    .gap(5)
+    .items_center()
+    .whitespace_nowrap()
+    .text_size(size)
+    .text_color(t.dim)
+    .child(
+      div()
+        .flex_none()
+        .child(name ?? rootName),
+    )
+    .when(below !== null, (el) =>
+      el.child(
+        div()
+          .min_w(0)
+          .overflow_hidden()
+          .text_ellipsis_start()
+          .opacity(0.7)
+          .child(below ?? ""),
+      ),
+    )
+    .when(tail !== null, (el) =>
+      el.child(div().flex_none().child("\u00b7")).child(tail!),
     );
 }
 

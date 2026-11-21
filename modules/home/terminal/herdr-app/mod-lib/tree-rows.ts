@@ -125,7 +125,8 @@ export function tabDivider(
 //   then its `title` when it has one, `opts.parentHint` ("↳ lead"),
 //   `opts.hint`, `opts.note`, and for an agent its status mark;
 // - a second line, always, with the folder it is in now (`folder`) dim, cut
-//   from the left so the folder's last segments stay;
+//   from the left so the folder's last segments stay, or `opts.folderLine`
+//   in its place;
 // - for an agent, a third line with what it is doing (`detail`: what a
 //   blocked agent waits for in the blocked color, its activity muted, its
 //   status word dim), and at its end "quiet 12m" in amber (the theme's
@@ -188,14 +189,16 @@ export function terminalRow(
       el.child(div().flex_none().child(statusMark(t, model.status))),
     );
 
-  const secondLine = div()
-    .min_w(0)
-    .overflow_hidden()
-    .whitespace_nowrap()
-    .text_ellipsis_start()
-    .text_size(11)
-    .text_color(t.dim)
-    .child(model.folder ?? "");
+  const secondLine =
+    opts.folderLine ??
+    div()
+      .min_w(0)
+      .overflow_hidden()
+      .whitespace_nowrap()
+      .text_ellipsis_start()
+      .text_size(11)
+      .text_color(t.dim)
+      .child(model.folder ?? "");
   const thirdLine =
     model.detail === null
       ? null
@@ -315,6 +318,9 @@ export interface TerminalRowOptions {
   // The font family a plain terminal's command (its third line) is drawn
   // in, such as the terminal's own font; absent, the row's font.
   commandFont?: string;
+  // What the second line shows in place of the folder, such as the
+  // checkout the folder is in; absent, the folder (`model.folder`).
+  folderLine?: Element;
 }
 
 // A finished terminal's row content, one line: an empty column where a live

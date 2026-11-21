@@ -1,16 +1,21 @@
-// Each space's checkout as the desk-spaces sidebar shows it: which Git or jj
-// checkout the space's own folder is in, with branch or bookmark,
-// ahead/behind and its repo, looked up again only when the answer could have
-// changed.
+// The checkouts the desk-spaces sidebar shows: which Git or jj checkout each
+// space's own folder is in, and each live terminal's current folder, with
+// branch or bookmark, ahead/behind and its repo, looked up again only when
+// the answer could have changed.
 //
 // A look at a folder first finds the root of the innermost checkout holding
 // it with the cheap root queries (`locate`: `jj root` and `git rev-parse
 // --show-toplevel`, `innermostRoot` picking between them), then runs the
 // full lookup (`check`: several jj or git processes) once for that root,
-// which every folder in that checkout shares. The fallback look comes due
-// for a checkout's folders together, so it too runs the full lookup once.
-// Folders no space is in any more, and roots no such folder is in, are
-// dropped, so later looks skip them.
+// which every folder in that checkout shares. A folder is looked at when a
+// space or live terminal is first in it, when a command or agent turn ends
+// in a pane of a space's tab (that space's folder and the pane's terminal's),
+// when its machine is back, and every minute while the window is in front
+// (`due`); a jj operation or a commit in a local repo looks its roots up
+// again (`watch`). The minute's look comes due for a checkout's folders
+// together, spaces' and terminals' alike, so it too runs the full lookup
+// once. Folders no space and no live terminal is in any more, and roots no
+// such folder is in, are dropped, so later looks skip them.
 
 import type { AsyncContext } from "gpui-kit";
 import { exec, home, machines, watchFolder, window } from "herdr";
@@ -19,10 +24,12 @@ import { innermostRoot } from "./checkout-root.js";
 import { cliPath } from "./paths.js";
 import { base } from "./space-order.js";
 import type { SpaceCheckout } from "./space-order.js";
+import { machineOf } from "./terminals.js";
+import type { TerminalEntry } from "./terminals.js";
 
 // A space's or repo's location: its machine (null for this computer) and a
 // folder there. `where()` keys and checkouts' `repo` are these as JSON.
-type MachinePath = [machine: string | null, path: string];
+export type MachinePath = [machine: string | null, path: string];
 
 // A checkout's root as `locate` finds it: its machine (null for this
 // computer), its root folder, and which tool's checkout it is, which picks
@@ -76,6 +83,18 @@ export type Checkout = GitCheckout | JjCheckout;
 // `Checkouts.due` never looks at.
 export const where = (s: SpaceInfo): string =>
   JSON.stringify([s.machine ?? null, s.folder || (s.machine ? "" : home())]);
+// A terminal's place: its machine and the folder it is in now
+// (`foreground.cwd`, else the `cwd` it started in, as `folderOf` reads it).
+// Null without either folder.
+export const terminalPlace = (t: TerminalEntry): MachinePath | null => {
+  const cwd = t.foreground?.cwd || t.cwd;
+  return cwd ? [machineOf(t.address), cwd] : null;
+};
+// `terminalPlace` as a key, as `where` keys a space's place.
+export const terminalWhere = (t: TerminalEntry): string | null => {
+  const place = terminalPlace(t);
+  return place && JSON.stringify(place);
+};
 // `path` made absolute against `from`, without "." or ".." segments.
 const resolve = (from: string, path: string): string => {
   const out: string[] = [];
@@ -91,9 +110,9 @@ const resolve = (from: string, path: string): string => {
 // looked for this often, in repos the list shows, while the window is in front.
 const FALLBACK = 60000;
 
-// The checkouts of the places spaces are in, and the looks that keep them
-// current. `folded` is the view's set of folded machines (shared, never
-// replaced): a folded machine's repos skip the fallback look.
+// The checkouts of the places spaces and live terminals are in, and the
+// looks that keep them current. `folded` is the view's set of folded machines
+// (shared, never replaced): a folded machine's repos skip the fallback look.
 export class Checkouts {
   declare roots: Record<string, string | null>;
   declare git: Record<string, Checkout | null>;
@@ -140,19 +159,34 @@ export class Checkouts {
   }
 
   // Places whose git could have changed: new ones (a new space, a space whose
-  // folder changed; a shell that cds elsewhere no longer moves it) no pass has
-  // taken up yet, where a command or an agent's turn just ended (a checkout,
-  // a commit, edits), those on a machine that is back, and repos in view
-  // whose fallback is due. A new place counts as taken up once a pass stamps
-  // it in `checked`, before `locate` records its root, so its first look is
-  // not asked for again while it runs.
-  // Drops what it knew of places no space is in any more (`prune`).
-  due(now: number, sp: SpaceInfo[], ps: PaneInfo[]): Set<string> {
+  // folder changed, a folder a live terminal in `live` is in for the first
+  // time; a shell that cds elsewhere does not move its space) no pass has
+  // taken up yet, where a command or an agent's turn just ended in a pane of
+  // a space's tab (that space's place and the terminal's own, a checkout, a
+  // commit, edits), those on a machine that is back, and repos in view whose
+  // fallback is due. A new place counts as taken up once a pass stamps it in
+  // `checked`, before `locate` records its root, so its first look is not
+  // asked for again while it runs.
+  // Drops what it knew of places no space and no terminal in `live` is in
+  // any more (`prune`).
+  due(
+    now: number,
+    sp: SpaceInfo[],
+    ps: PaneInfo[],
+    live: TerminalEntry[],
+  ): Set<string> {
     // Moved there: what it knew of that place may be old.
     const at: Record<string, string> = {};
     for (const s of sp) at[s.id] = where(s);
+    const terminalAt: Record<string, string> = {};
+    for (const t of live) {
+      const key = terminalWhere(t);
+      if (key) terminalAt[t.address] = key;
+    }
     const keys = new Set(
-      Object.values(at).filter((k) => (JSON.parse(k) as MachinePath)[1]),
+      [...Object.values(at), ...Object.values(terminalAt)].filter(
+        (k) => (JSON.parse(k) as MachinePath)[1],
+      ),
     );
     this.prune(keys);
     const due = new Set(
@@ -168,8 +202,11 @@ export class Checkouts {
       if (!p.terminal || !spaceOf[p.tab]) continue;
       busy[p.pane] =
         p.status === "working" || !(p.program?.shell || p.program?.agent);
-      if (this.busy[p.pane] && !busy[p.pane])
+      if (this.busy[p.pane] && !busy[p.pane]) {
         this.sameRepo(at[spaceOf[p.tab].id], keys).forEach((k) => due.add(k));
+        const own = terminalAt[p.terminal];
+        if (own) this.sameRepo(own, keys).forEach((k) => due.add(k));
+      }
     }
     this.busy = busy;
     for (const m of machines()) {

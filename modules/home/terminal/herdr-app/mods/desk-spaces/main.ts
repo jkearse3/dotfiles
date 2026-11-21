@@ -20,9 +20,15 @@
 //   a 3px stripe down its left edge in the color of its state
 //   (`stripeColor`: an agent's status color, cyan for a plain terminal
 //   running a command, else grey), then its program and title, then on a
-//   dim second line the folder it is in now; an agent's adds a third line
-//   with why it is blocked, what it is doing now, or else its status word,
-//   and at its end how long it has been in its status (while it works,
+//   dim second line where it is now: in a Git or jj checkout, that checkout
+//   ("dotfiles", "dotfiles / ws3"), the path below its root, dimmer
+//   ("modules/home"), and after " · " its branch (unless main, master or
+//   the checkout's folder name) and ahead/behind, or its jj bookmark and
+//   distance as the terminal prompt shows them (`terminalCheckoutLine`);
+//   in no checkout, or until its checkout is found, the folder itself. An
+//   agent's adds a third line with why it is blocked, what it is doing
+//   now, or else its status word, and at its end how long it has been in
+//   its status (while it works,
 //   "quiet 12m" in amber once it has shown no new report message, turn or
 //   state for 10 minutes). A plain terminal running a command other than
 //   its shell (`make dev`) adds a third line with that command in cyan, in
@@ -67,10 +73,11 @@
 // its shipped `agents` mod (herdr-app 0.1.11).
 //
 // This file holds the view and its state, and shares each space's
-// checkout (`publishCheckouts`); `checkouts.ts` looks up each space's Git or
-// jj checkout, `finished-loader.ts` reads the finished terminals,
-// `agents.ts` picks the agents that need you and
-// tracks their status and activity changes, `rows.ts` draws the space rows
+// checkout (`publishCheckouts`); `checkouts.ts` looks up the Git or jj
+// checkout of each space's folder and each live terminal's,
+// `finished-loader.ts` reads the finished terminals, `agents.ts` picks the
+// agents that need you and tracks their status and activity changes,
+// `rows.ts` draws the space rows
 // and the tray, and `tree-rows.ts` draws the machine headers, tab dividers
 // and terminal rows.
 //
@@ -111,7 +118,7 @@ import {
   layout,
 } from "herdr";
 import type { AgentInfo, SpaceInfo, TabInfo } from "herdr";
-import { Checkouts, where } from "./checkouts.js";
+import { Checkouts, terminalPlace, where } from "./checkouts.js";
 import { AgentHistory, needsYou } from "./agents.js";
 import { FinishedLoader } from "./finished-loader.js";
 import { FINISHED_TERMINALS_KEY, finishedLabel } from "./finished.js";
@@ -156,6 +163,7 @@ import {
   gitTail,
   jjTail,
   needsYouRows,
+  terminalCheckoutLine,
 } from "./rows.js";
 import type { SpaceRow, ThemeColors } from "./rows.js";
 
@@ -312,14 +320,13 @@ export default class SpacesAndAgents extends View {
     const now = Date.now();
     const sp = spaces();
     const entries = terminals() as unknown as TerminalEntry[];
-    const liveAddresses = entries
-      .filter((k) => k.state === "live")
-      .map((k) => k.address);
+    const live = entries.filter((k) => k.state === "live");
+    const liveAddresses = live.map((k) => k.address);
     this.finished.checkLive(liveAddresses, cx);
     this.publishFinished(liveAddresses);
     this.followFinished(cx);
     for (const s of sp) if (!this.shown.has(s.id)) this.born[s.id] ??= now;
-    const due = this.checkouts.due(now, sp, panes());
+    const due = this.checkouts.due(now, sp, panes(), live);
     if (due.size) this.checkouts.refreshGit(due, cx);
     this.publishCheckouts(sp);
     if (sp.some((s) => !this.shown.has(s.id))) cx.notify();
@@ -602,8 +609,8 @@ export default class SpacesAndAgents extends View {
     const quietRepo = Boolean(tree) || Boolean(checkout);
     const tail = g
       ? g.jj
-        ? jjTail(g, quietRepo, w.name, t)
-        : gitTail(g, quietRepo, w.name, t)
+        ? jjTail(g, quietRepo, w.name, t, 11.5)
+        : gitTail(g, quietRepo, w.name, t, 11.5)
       : null;
     const foldToggle = this.foldToggle(w, t);
     // The row is as tall as its lines of text (the name, then the checkout
@@ -919,9 +926,11 @@ export default class SpacesAndAgents extends View {
 
   // A terminal's row in the sidebar, its content `terminalRow`'s, placed by
   // `terminalRowX` from `indent`, where its space's name starts (`TEXT_X`,
-  // or further in for a worktree), and its depth. Clicking it focuses its
-  // pane, or peeks at a terminal without one; the focused terminal's row is
-  // filled. `opts.markPaneless` notes "no pane" on a row without a pane.
+  // or further in for a worktree), and its depth. Its second line names the
+  // checkout its folder is in once that is known (`terminalFolderLine`).
+  // Clicking it focuses its pane, or peeks at a terminal without one; the
+  // focused terminal's row is filled. `opts.markPaneless` notes "no pane" on
+  // a row without a pane.
   terminalRowElement(
     { step, status }: TerminalListing,
     indent: number,
@@ -969,8 +978,24 @@ export default class SpacesAndAgents extends View {
           note: opts?.markPaneless && pane === null ? "no pane" : undefined,
           dimTitle: !isFocused && (status === null || status === "idle"),
           commandFont: typeof font === "string" ? font : undefined,
+          folderLine: this.terminalFolderLine(node.terminal, t),
         }),
       );
+  }
+
+  // The second line of terminal `terminal`'s row when the folder it is in
+  // now is in a checkout `Checkouts` has found (`terminalCheckoutLine`);
+  // undefined otherwise, leaving the folder as the line.
+  terminalFolderLine(
+    terminal: TerminalEntry,
+    t: ThemeColors,
+  ): Element | undefined {
+    const place = terminalPlace(terminal);
+    const g = place && this.checkouts.checkoutOf(JSON.stringify(place));
+    if (!place || !g) return undefined;
+
+    const [machine, cwd] = place;
+    return terminalCheckoutLine(g, cwd, machine, t);
   }
 
   // A finished terminal's row in the sidebar, its content `finishedRow`'s,
