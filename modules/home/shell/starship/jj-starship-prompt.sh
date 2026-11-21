@@ -3,8 +3,8 @@
 # Build a jj status line for the starship prompt.
 # Outputs ANSI-colored segments: bookmark, distance arrow, change ID, conflict, modification.
 # `checkJj` in the desk-spaces Herdr app mod
-# (modules/home/terminal/herdr-app/mods/desk-spaces/checkouts.js) mirrors this
-# script's bookmark and distance rule for the sidebar's list of spaces; change
+# (modules/home/terminal/herdr-app/mods/desk-spaces/checkouts.ts) mirrors this
+# script's bookmark and distance rule for the sidebar's terminal rows; change
 # both together.
 
 # ANSI color codes.

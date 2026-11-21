@@ -1,7 +1,7 @@
 // What the desk-spaces sidebar draws in its rows: the space colors, a space's
-// rail entry and checkout lines, and the "Needs you" tray. The terminal rows
-// themselves are `tree-rows.ts` `terminalRow`'s. Plain functions; the view (`main.ts`)
-// passes in what each needs from its state.
+// rail entry, a terminal row's checkout line, and the "Needs you" tray. The
+// terminal rows themselves are `tree-rows.ts` `terminalRow`'s. Plain
+// functions; the view (`main.ts`) passes in what each needs from its state.
 
 import { div } from "gpui-kit";
 import type { Color, Element } from "gpui-kit";
@@ -13,10 +13,7 @@ import { duration, statusMark } from "./agent-marks.js";
 import { base, checkoutText } from "./space-order.js";
 import { hoverFill } from "./row-colors.js";
 import type { Checkout, GitCheckout, JjCheckout } from "./checkouts.js";
-import {
-  spaceCheckoutBadgeKind,
-  terminalCheckoutBadgeKind,
-} from "./checkout-badge.js";
+import { terminalCheckoutBadgeKind } from "./checkout-badge.js";
 import type { CheckoutBadgeKind } from "./checkout-badge.js";
 import type { AgentStatus } from "./status.js";
 import { machineOf } from "./terminals.js";
@@ -25,15 +22,11 @@ import { machineOf } from "./terminals.js";
 // `Record<string, string>`, though every value is a color.
 export type ThemeColors = Record<string, Color>;
 
-// One space in the sidebar's list, in the order `ordered` gives: the space,
-// its index in `spaces()`, its checkout (null when not a repo or not known
-// yet), and, for a worktree listed under its repo's main checkout, its branch
-// mark ("├─", "└─" for the last), else null.
+// One space in the sidebar's list, in the order `ordered` gives: the space
+// and its index in `spaces()`.
 export interface SpaceRow {
   w: SpaceInfo;
   i: number;
-  g: Checkout | null;
-  tree: "├─" | "└─" | null;
 }
 
 // Space colors by space id, as shared "space.colors" keeps them: a theme
@@ -164,38 +157,6 @@ function tone(t: ThemeColors, status: AgentStatus | null): Color {
   return t[status as AgentStatus] ?? t.unknown;
 }
 
-// The checkout line under every space's name, shown whether or not the
-// space was renamed so rows read alike: `checkoutText` of space `w` and its
-// checkout `g` ("dotfiles / ws3"), null when that is. The `space-rename-all`
-// mod's rows say the same (its `checkoutLabel` and `checkout`); change them
-// together.
-export function checkoutLine(
-  w: SpaceInfo,
-  g: Checkout | null,
-  t: ThemeColors,
-): Element | null {
-  const text = checkoutText(w, g, home());
-  if (!text) return null;
-  return div()
-    .min_w(0)
-    .truncate()
-    .text_size(11.5)
-    .text_color(t.dim)
-    .child(text);
-}
-
-// A badge for the checkout line of a space, by the statuses of its agents
-// (`agentStatuses`) and checkout `g`, as `spaceCheckoutBadgeKind` decides
-// it. Null without one.
-export function checkoutBadge(
-  agentStatuses: AgentStatus[],
-  g: Checkout | null,
-  t: ThemeColors,
-): Element | null {
-  const kind = spaceCheckoutBadgeKind(agentStatuses, g);
-  return kind && checkoutBadgeChip(kind, t);
-}
-
 // A badge for a terminal row's checkout line (`terminalCheckoutLine`), by
 // the terminal's agent status (`status`, null for a plain terminal) and
 // checkout `g`, as `terminalCheckoutBadgeKind` decides it. Null without one.
@@ -228,13 +189,13 @@ function checkoutBadgeChip(kind: CheckoutBadgeKind, t: ThemeColors): Element {
     .child(kind);
 }
 
-// The repo status line under the name, only what's unusual:
-// "herdr \u00b7 spike \u21912 \u21931". The repo goes when `quietRepo` (a
-// worktree row under its repo, or a checkout line above that names it) or
-// when the name already says it; the branch goes when the name says it (a
-// worktree is named after its branch), and master/main go: nearly every
-// space is on one. Null when nothing is left to show, which keeps the row
-// shorter. `size` is the text size, in px, of the line it joins.
+// A Git checkout's status, only what's unusual:
+// "herdr \u00b7 spike \u21912 \u21931". The repo goes when `quietRepo`
+// (text beside it already names the repo, as a terminal row's checkout line
+// does) or when `name` already says it; the branch goes when `name` says it
+// (a worktree's folder is named after its branch), and master/main go:
+// nearly every checkout is on one. Null when nothing is left to show.
+// `size` is the text size, in px, of the line it joins.
 export function gitTail(
   g: GitCheckout,
   quietRepo: boolean,
@@ -267,13 +228,12 @@ export function gitTail(
     );
 }
 
-// The second line under the name for a jj checkout, never empty, in the
-// terminal prompt's words and colors: the nearest bookmark (purple, "(+1b)"
-// when more share it), how far @ is from it (cyan \u2191 after it, \u2193
-// before it), a conflict (red \u26a0) and edits in @ (yellow \u25cf). The
-// change ID shows only without a bookmark, where nothing else says where @
-// is. The repo shows as for git. `size` is the text size, in px, of the line
-// it joins.
+// A jj checkout's status, never empty, in the terminal prompt's words and
+// colors: the nearest bookmark (purple, "(+1b)" when more share it), how far
+// @ is from it (cyan \u2191 after it, \u2193 before it), a conflict (red
+// \u26a0) and edits in @ (yellow \u25cf). The change ID shows only without
+// a bookmark, where nothing else says where @ is. The repo shows as for git.
+// `size` is the text size, in px, of the line it joins.
 export function jjTail(
   g: JjCheckout,
   quietRepo: boolean,
@@ -318,7 +278,7 @@ export function jjTail(
 
 // A terminal row's second line for a folder `cwd` in checkout `g` on
 // `machine` (null for this computer), in place of the folder: the checkout
-// as a space's checkout line names it (`checkoutText`: "dotfiles / ws3"),
+// by its repo and root folder (`checkoutText`: "dotfiles / ws3"),
 // then, dimmer, the path from the checkout's root down to `cwd` when it is
 // below the root ("modules/home"), then " · " and the checkout's tail
 // (`gitTail`, `jjTail`) when it has one, the repo left out because the

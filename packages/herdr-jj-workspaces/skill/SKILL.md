@@ -35,8 +35,10 @@ herdr-jj-workspace add NAME
 - In the TUI, the repository is the one shown by the calling pane's Herdr
   workspace; in the app, it is the one your working directory is in. Either may
   be the primary checkout or any of its jj workspaces. Pass `--workspace ID` to
-  use another workspace's or space's repository. The new workspace is grouped
-  under the primary checkout's.
+  use another workspace's or space's repository. In the TUI, the new workspace
+  is grouped under the primary checkout's. In the app, the find hub nests the
+  new space under its repository's space, and the desk sidebar lists it beside
+  the other spaces.
 - The workspace starts from `trunk()` in `~/.worktrees/REPO/NAME`, where REPO is
   the primary checkout's path from the home directory. Pass `--revision REV` to
   start it on top of another revision instead, such as a bookmark the user wants

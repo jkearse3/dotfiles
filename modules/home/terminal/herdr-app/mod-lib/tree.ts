@@ -10,7 +10,7 @@
 //
 // The tree is data only, in the app's layout order. It draws nothing,
 // ranks nothing by urgency and does not nest a worktree's space under its
-// repository's; each view that shows the tree does those itself. The find
+// repository's; a view that wants those does them itself. The find
 // hub (`rows.ts` `findRows`) and the desk-spaces sidebar list it.
 //
 // Each mod that uses this file links it into its own folder

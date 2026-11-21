@@ -6,12 +6,12 @@
 // outcome and label from `finished.ts`, `quietFor` from `quiet.ts`,
 // `runningCommand`, `shellCommandText`, `commandText` and `CommandStarts`
 // from `foreground.ts`, `hoverFill` and `stripeColor` from `row-colors.ts`,
-// `innermostRoot` from `checkout-root.ts`, `spaceCheckoutBadgeKind` and
-// `terminalCheckoutBadgeKind` from `checkout-badge.ts`, and the desk-spaces sidebar's status and activity tracking (`AgentHistory`
-// from its own `agents.ts`), the trackers over an in-memory `localStorage`,
-// against the terminals(), agents(), panes() and spaces() entry shapes the
-// Herdr app hands mods. It imports the built, type-stripped
-// `desk-spaces/*.js` from the herdr-app-mods output named by
+// `innermostRoot` from `checkout-root.ts`, `terminalCheckoutBadgeKind` from
+// `checkout-badge.ts`, and the desk-spaces sidebar's status and activity
+// tracking (`AgentHistory` from its own `agents.ts`), the trackers over an
+// in-memory `localStorage`, against the terminals(), agents(), panes() and
+// spaces() entry shapes the Herdr app hands mods. It imports the built,
+// type-stripped `desk-spaces/*.js` from the herdr-app-mods output named by
 // `HERDR_APP_MODS`, where the mod's links to `mod-lib` have been copied in.
 // Run with
 // `HERDR_APP_MODS=$(nix build --no-link --print-out-paths .#herdr-app-mods) node --test`;
@@ -48,7 +48,7 @@ const { hoverFill, stripeColor } = await import(
 );
 const { AgentHistory } = await import(`${mods}/desk-spaces/agents.js`);
 const { innermostRoot } = await import(`${mods}/desk-spaces/checkout-root.js`);
-const { spaceCheckoutBadgeKind, terminalCheckoutBadgeKind } = await import(
+const { terminalCheckoutBadgeKind } = await import(
   `${mods}/desk-spaces/checkout-badge.js`
 );
 const {
@@ -1860,15 +1860,4 @@ test("terminalCheckoutBadgeKind marks Git commits ahead on an agent with nothing
     terminalCheckoutBadgeKind("idle", { jj: false, ahead: 0 }),
     null,
   );
-});
-
-test("spaceCheckoutBadgeKind badges only a space whose agents are all quiet", () => {
-  const conflict = jjBadge({ conflict: true });
-  assert.equal(spaceCheckoutBadgeKind(["idle", "done"], conflict), "conflict");
-  assert.equal(spaceCheckoutBadgeKind(["idle", "working"], conflict), null);
-  assert.equal(spaceCheckoutBadgeKind(["blocked"], conflict), null);
-  assert.equal(spaceCheckoutBadgeKind([], conflict), null);
-  assert.equal(spaceCheckoutBadgeKind(["idle"], { ahead: 1 }), "review");
-  assert.equal(spaceCheckoutBadgeKind(["idle"], { ahead: 0 }), null);
-  assert.equal(spaceCheckoutBadgeKind(["idle"], null), null);
 });

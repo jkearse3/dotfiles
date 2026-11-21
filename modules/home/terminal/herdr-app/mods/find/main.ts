@@ -9,7 +9,7 @@
 // are indented under their space and sub-terminals under their parents, and
 // a terminal without a pane follows its space's tabs, without a divider,
 // noted "no pane". Each Git worktree's or jj workspace's space is listed
-// under its repo's main checkout with the sidebar's branch mark, and each
+// under its repo's main checkout with a branch mark, and each
 // space row has a second line naming its checkout ("dotfiles / ws3"), which
 // a query matches too, both
 // from the checkouts the desk-spaces sidebar shares (`SPACE_CHECKOUTS_KEY`
@@ -818,8 +818,8 @@ export default class Find extends View {
               .child("ELSEWHERE"),
           );
         case "space": {
-          // A worktree's space nested under its repo's has the sidebar's
-          // branch mark in front; a flat list of matches has no nesting.
+          // A worktree's space nested under its repo's has a branch mark in
+          // front; a flat list of matches has no nesting.
           const space = r.space;
           return base
             .when(isNested && r.tree !== null, (el) =>

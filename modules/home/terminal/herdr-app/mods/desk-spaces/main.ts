@@ -5,11 +5,10 @@
 //   header shows that state and how long it has lasted ("needs login ·
 //   14m"), and its spaces are dimmed. A header folds its machine's spaces
 //   away; its "+" makes a space there.
-// - The spaces under their machine: a stable color tick each, Git worktrees
-//   and jj workspaces under their repo's main checkout. Under each space's
-//   name, the checkout its folder is in
-//   ("dotfiles / ws3"), then, only where unusual, its branch and
-//   ahead/behind (a jj checkout shows what the terminal prompt shows).
+// - The spaces under their machine, in the app's order (`spaces()`), each
+//   one line: a stable color tick and its name. A space appears as soon as
+//   the app lists it; a Git worktree's or jj workspace's space is a row like
+//   any other, and the checkouts show on the terminal rows instead.
 //   Beneath it, each of the space's tabs in order starts with a divider
 //   (`tabDivider`: its name and a rule), empty tabs included, followed by a
 //   row for every live terminal the shared tree (`buildTree`) places in that
@@ -51,10 +50,7 @@
 //   no tab of it follow its tabs, without a divider, marked "no pane". The
 //   chevron on the space's name line folds all of that; folded, it shows how
 //   many agents, at any depth, in the most urgent status's color (finished
-//   terminals count for neither). A space
-//   whose agents are all quiet (none working or blocked) gets a "conflict"
-//   badge on its checkout line for a jj conflict, else "review" for
-//   unshipped work.
+//   terminals count for neither).
 // - Last under each machine, its terminals no space holds
 //   (`TreeMachine.elsewhere`, such as background terminals) under a small
 //   "ELSEWHERE" heading, drawn and clicked like a space's terminal rows,
@@ -67,7 +63,8 @@
 //   once you look), newest first. Each row's second line names the agent's
 //   space, then its machine as the machine headers name it ("~ · box"),
 //   this computer included. Click one to focus it.
-// - The narrow rail shows each space's most urgent agent status and the `»`
+// - The narrow rail lists the spaces in the same order, each by its number
+//   in `spaces()` and its most urgent agent status, and shows the `»`
 //   that widens the sidebar again (`desk-chrome` relies on it).
 // The agent next/previous keys walk "Needs you" first, then the tree.
 // Click to switch, right-click for its menu, drag a space to reorder.
@@ -80,9 +77,9 @@
 // checkout of each space's folder and each live terminal's,
 // `finished-loader.ts` reads the finished terminals, `agents.ts` picks the
 // agents that need you and tracks their status and activity changes,
-// `rows.ts` draws the space rows
-// and the tray, and `tree-rows.ts` draws the machine headers, tab dividers
-// and terminal rows.
+// `rows.ts` draws the rail
+// entries, the terminal rows' checkout lines and the tray, and
+// `tree-rows.ts` draws the machine headers, tab dividers and terminal rows.
 //
 // `agent-marks.ts`, `checkout-badge.ts`, `checkout-root.ts`, `finished.ts`,
 // `foreground.ts`, `labels.ts`, `names.ts`, `paths.ts`, `program-icon.ts`,
@@ -121,7 +118,7 @@ import {
   layout,
 } from "herdr";
 import type { AgentInfo, SpaceInfo, TabInfo } from "herdr";
-import { Checkouts, terminalPlace, where } from "./checkouts.js";
+import { Checkouts, terminalPlace } from "./checkouts.js";
 import { AgentHistory, needsYou } from "./agents.js";
 import { FinishedLoader } from "./finished-loader.js";
 import { FINISHED_TERMINALS_KEY, finishedLabel } from "./finished.js";
@@ -129,7 +126,7 @@ import type { FinishedTerminal } from "./finished.js";
 import { CommandStarts } from "./foreground.js";
 import { agentLabel, blockedKind, terminalRowModel } from "./labels.js";
 import { hoverFill } from "./row-colors.js";
-import { SPACE_CHECKOUTS_KEY, spaceOrder } from "./space-order.js";
+import { SPACE_CHECKOUTS_KEY } from "./space-order.js";
 import { RANK, topStatus } from "./status.js";
 import type { AgentStatus } from "./status.js";
 import type { TerminalEntry } from "./terminals.js";
@@ -159,12 +156,8 @@ import {
   TICK_X,
   assignSpaceColors,
   avatarFill,
-  checkoutBadge,
-  checkoutLine,
   compact,
   focusBar,
-  gitTail,
-  jjTail,
   needsYouRows,
   terminalCheckoutLine,
 } from "./rows.js";
@@ -236,9 +229,6 @@ export default class SpacesAndAgents extends View {
   // The JSON of the `SPACE_CHECKOUTS_KEY` value last written (see
   // `publishCheckouts`).
   declare publishedCheckouts: string;
-  declare shown: Set<string>;
-  // Space id -> when the space was first seen while this runs (ms).
-  declare born: Record<string, number>;
   // The index in `spaces()` of the space row a drag started on, and of the
   // row it is over (null: no drag, or over a row it can't drop on).
   declare pressed: number | null;
@@ -279,10 +269,6 @@ export default class SpacesAndAgents extends View {
     this.publishedCheckouts = JSON.stringify(
       shared(SPACE_CHECKOUTS_KEY) ?? null,
     );
-    // Spaces made while this runs wait (at most a moment) for their git, so a
-    // worktree appears under its repo instead of jumping there.
-    this.shown = new Set(spaces().map((s) => s.id));
-    this.born = {};
     this.pressed = null;
     this.over = null;
     this.machines = [];
@@ -328,11 +314,9 @@ export default class SpacesAndAgents extends View {
     this.finished.checkLive(liveAddresses, cx);
     this.publishFinished(liveAddresses);
     this.followFinished(cx);
-    for (const s of sp) if (!this.shown.has(s.id)) this.born[s.id] ??= now;
     const due = this.checkouts.due(now, sp, panes(), live);
     if (due.size) this.checkouts.refreshGit(due, cx);
     this.publishCheckouts(sp);
-    if (sp.some((s) => !this.shown.has(s.id))) cx.notify();
     // A command's row line appears once it has run long enough, and goes
     // when it ends.
     if (this.commands.track(entries, now)) cx.notify();
@@ -425,24 +409,9 @@ export default class SpacesAndAgents extends View {
     });
   }
 
-  // Spaces in order (`spaceOrder`), each worktree space moved under its main
-  // checkout's. A space new since the sidebar opened is left out until its
-  // checkout is known or 1.5s have passed.
+  // Every space, in the app's order (`spaces()`).
   ordered(): SpaceRow[] {
-    const sp = spaces();
-    const ready = (w: SpaceInfo) =>
-      this.shown.has(w.id) ||
-      this.checkouts.checkoutOf(where(w)) !== undefined ||
-      Date.now() - (this.born[w.id] ??= Date.now()) > 1500;
-    for (const w of sp)
-      if (!this.shown.has(w.id) && ready(w)) this.shown.add(w.id);
-    const list = sp
-      .map((w, i) => ({ w, i }))
-      .filter((r) => this.shown.has(r.w.id));
-    return spaceOrder(
-      list,
-      (r) => this.checkouts.checkoutOf(where(r.w)) ?? null,
-    ).map(({ space, checkout, tree }) => ({ ...space, g: checkout, tree }));
+    return spaces().map((w, i) => ({ w, i }));
   }
 
   // The rows under a header per machine of `treeMachines` (`buildTree`), in
@@ -460,21 +429,19 @@ export default class SpacesAndAgents extends View {
     now: number,
   ): Element[] {
     // Each space with its terminal rows is one group. A hairline above each
-    // space that isn't a worktree sets it apart from the one before; a
-    // worktree stays under its repo's. Every group keeps 4px below its last
-    // row, so a focused row's fill clears the next hairline. The active
-    // space's color tick grows into a rail down its whole group: the space
-    // you are in, apart from the fill on the one row holding focus.
+    // space sets it apart from the one before. Every group keeps 4px below
+    // its last row, so a focused row's fill clears the next hairline. The
+    // active space's color tick grows into a rail down its whole group: the
+    // space you are in, apart from the fill on the one row holding focus.
     const draw = (r: SpaceRow) => {
       if (collapsed) return [compact(r, t, this.spaceStatus(r.w))];
       const rows = [this.row(r, t), ...this.terminalRows(r, t, now)];
       // A space's color in the gutter left of its rows: a tick beside its
-      // name, or, for the active space, the rail. A worktree has its branch
-      // mark instead of a tick.
+      // name, or, for the active space, the rail.
       const mark = div()
         .absolute()
         .left(TICK_X)
-        .top(r.tree ? 6 : 11)
+        .top(11)
         .w(3)
         .rounded(2)
         .bg(avatarFill(r.w.id, t));
@@ -486,21 +453,17 @@ export default class SpacesAndAgents extends View {
           .pl(ROW_X)
           .pb(4)
           .gap(ROW_GAP)
-          .when(!r.tree, (el) => el.pt(4).border_t(1).border_color(t.border))
+          .pt(4)
+          .border_t(1)
+          .border_color(t.border)
           .children(rows)
           .when(r.w.active, (el) => el.child(mark.bottom(10)))
-          .when(!r.w.active && !r.tree, (el) => el.child(mark.h(16))),
+          .when(!r.w.active, (el) => el.child(mark.h(16))),
       ];
     };
     const loading = (m: TreeMachine) => {
       const layout = machines().find((k) => k.name === m.name)?.layout;
-      return (
-        layout === "loading" ||
-        (!layout && m.state === "connected") ||
-        spaces().some(
-          (s) => (s.machine ?? null) === m.name && !this.shown.has(s.id),
-        )
-      );
+      return layout === "loading" || (!layout && m.state === "connected");
     };
     const loadingRow = (m: string | null) =>
       div()
@@ -600,32 +563,22 @@ export default class SpacesAndAgents extends View {
     });
   }
 
-  row({ w, i, g, tree }: SpaceRow, t: ThemeColors): Element {
+  row({ w, i }: SpaceRow, t: ThemeColors): Element {
     // The active space says so by its name, bold and bright, and by its rail
     // (`grouped`). Its row holds focus (filled, with the accent bar) when no
     // terminal row of it does: its rows are folded away, or focus is on no
     // terminal of it.
     const on = w.active;
     const holdsFocus = on && !this.terminalRowFocused(w);
-    const checkout = checkoutLine(w, g, t);
-    const badge = checkoutBadge(this.agentStatuses(w), g, t);
-    const quietRepo = Boolean(tree) || Boolean(checkout);
-    const tail = g
-      ? g.jj
-        ? jjTail(g, quietRepo, w.name, t, 11.5)
-        : gitTail(g, quietRepo, w.name, t, 11.5)
-      : null;
     const foldToggle = this.foldToggle(w, t);
-    // The row is as tall as its lines of text (the name, then the checkout
-    // line and the repo status when shown, set close together) with even
-    // padding, a worktree's a little tighter; a worktree's branch mark lines
-    // up with its name. The color tick or rail is the group's (`grouped`).
+    // The row is one line, the name, with even padding. The color tick or
+    // rail is the group's (`grouped`).
     return v_flex()
       .relative()
       .id(`space-${w.id}`)
-      .pl(tree ? 0 : TEXT_X - ROW_X)
+      .pl(TEXT_X - ROW_X)
       .pr(8)
-      .py(tree ? 5 : 6)
+      .py(6)
       .flex_none()
       .justify_center()
       .rounded(6)
@@ -674,61 +627,21 @@ export default class SpacesAndAgents extends View {
       .on_mouse_down("right", () => this.menu(w))
       .child(
         h_flex()
-          .gap(9)
-          .items_start()
-          .when(Boolean(tree), (el) =>
-            el
-              .pl(16)
-              .child(
-                svg("mods/workspace-chrome/branch.svg")
-                  .mt(2)
-                  .size(13)
-                  .flex_none()
-                  .text_color(t.dim),
-              ),
-          )
+          .min_w(0)
+          .gap(6)
+          .items_center()
+          .line_height(1.3)
           .child(
-            v_flex()
+            div()
               .flex_1()
               .min_w(0)
-              .line_height(1.3)
-              .child(
-                h_flex()
-                  .min_w(0)
-                  .gap(6)
-                  .items_center()
-                  .child(
-                    div()
-                      .flex_1()
-                      .min_w(0)
-                      .truncate()
-                      .text_color(on ? t.foreground : t.muted)
-                      .when(on, (el) => el.font_semibold())
-                      .child(w.name),
-                  )
-                  // `when` runs this only for a space with a fold toggle.
-                  .when(Boolean(foldToggle), (el) => el.child(foldToggle!)),
-              )
-              .when(Boolean(checkout) || Boolean(badge), (el) =>
-                el.child(
-                  h_flex()
-                    .min_w(0)
-                    .gap(6)
-                    .items_center()
-                    .child(
-                      div()
-                        .flex_1()
-                        .min_w(0)
-                        // `when` runs this only for a space with a checkout line.
-                        .when(Boolean(checkout), (el) => el.child(checkout!)),
-                    )
-                    // `when` runs this only for a space with a badge.
-                    .when(Boolean(badge), (el) => el.child(badge!)),
-                ),
-              )
-              // `when` runs this only for a space with a repo status.
-              .when(Boolean(tail), (el) => el.child(tail!)),
-          ),
+              .truncate()
+              .text_color(on ? t.foreground : t.muted)
+              .when(on, (el) => el.font_semibold())
+              .child(w.name),
+          )
+          // `when` runs this only for a space with a fold toggle.
+          .when(Boolean(foldToggle), (el) => el.child(foldToggle!)),
       );
   }
 
@@ -834,13 +747,12 @@ export default class SpacesAndAgents extends View {
   // while it is folded, `tabFolded`), then the loose terminal rows, each
   // terminal followed by the rows nested under it and then its finished
   // terminals' rows. Dividers start under the start of the space's name
-  // (past its color tick, or a worktree's branch mark), and terminal rows
-  // are placed from there (`terminalRowElement`). Each run of terminal rows
-  // (a tab's, or the loose ones) is spaced by `TERMINAL_ROW_GAP`.
-  terminalRows({ w, tree }: SpaceRow, t: ThemeColors, now: number): Element[] {
+  // (`TEXT_X`), and terminal rows are placed from there
+  // (`terminalRowElement`). Each run of terminal rows (a tab's, or the loose
+  // ones) is spaced by `TERMINAL_ROW_GAP`.
+  terminalRows({ w }: SpaceRow, t: ThemeColors, now: number): Element[] {
     const listing = this.listings.get(w.id);
     if (!listing || w.id in this.foldedSpaces) return [];
-    const indent = tree ? 52 : TEXT_X;
 
     // A row's terminal is loose when no tab of the space shows it; one
     // without a pane at all says so.
@@ -848,18 +760,16 @@ export default class SpacesAndAgents extends View {
       ...listing.tabs.flatMap(({ tab, rows, folded }) => [
         div()
           .id(`tab-divider-${tab.id}`)
-          .pl(indent - ROW_X)
+          .pl(TEXT_X - ROW_X)
           .pr(8)
           .child(tabDivider(t, tab, { dim: tab.settled })),
         ...terminalRun(
-          folded
-            ? []
-            : rows.map((row) => this.listingRowElement(row, indent, t, now)),
+          folded ? [] : rows.map((row) => this.listingRowElement(row, t, now)),
         ),
       ]),
       ...terminalRun(
         listing.loose.map((row) =>
-          this.listingRowElement(row, indent, t, now, {
+          this.listingRowElement(row, t, now, {
             markPaneless: true,
           }),
         ),
@@ -905,7 +815,7 @@ export default class SpacesAndAgents extends View {
       .children(
         terminalRun(
           rows.map((row) =>
-            this.listingRowElement(row, TEXT_X, t, now, {
+            this.listingRowElement(row, t, now, {
               markPaneless: true,
             }),
           ),
@@ -917,26 +827,23 @@ export default class SpacesAndAgents extends View {
   // given `opts`) or a finished one's (`finishedRowElement`).
   listingRowElement(
     row: ListingRow,
-    indent: number,
     t: ThemeColors,
     now: number,
     opts?: { markPaneless?: boolean },
   ): Element {
     return row.kind === "terminal"
-      ? this.terminalRowElement(row, indent, t, now, opts)
-      : this.finishedRowElement(row.step, indent, t, now);
+      ? this.terminalRowElement(row, t, now, opts)
+      : this.finishedRowElement(row.step, t, now);
   }
 
   // A terminal's row in the sidebar, its content `terminalRow`'s, placed by
-  // `terminalRowX` from `indent`, where its space's name starts (`TEXT_X`,
-  // or further in for a worktree), and its depth. Its second line names the
-  // checkout its folder is in once that is known (`terminalFolderLine`).
+  // its depth (`terminalRowX`). Its second line names the checkout its
+  // folder is in once that is known (`terminalFolderLine`).
   // Clicking it focuses its pane, or peeks at a terminal without one; the
   // focused terminal's row is filled. `opts.markPaneless` notes "no pane" on
   // a row without a pane.
   terminalRowElement(
     { step, status }: TerminalListing,
-    indent: number,
     t: ThemeColors,
     now: number,
     opts?: { markPaneless?: boolean },
@@ -962,7 +869,7 @@ export default class SpacesAndAgents extends View {
     return h_flex()
       .id(`terminal-${address}`)
       .flex_none()
-      .ml(terminalRowX(indent, depth))
+      .ml(terminalRowX(depth))
       .pl(TERMINAL_ROW_PAD_X)
       .pr(8)
       .rounded(6)
@@ -1012,7 +919,6 @@ export default class SpacesAndAgents extends View {
   // removes the finished terminal (`removeFinished`).
   finishedRowElement(
     { finished, parent, depth }: TreeFinishedStep,
-    indent: number,
     t: ThemeColors,
     now: number,
   ): Element {
@@ -1021,7 +927,7 @@ export default class SpacesAndAgents extends View {
     return h_flex()
       .id(`finished-${finished.address}`)
       .flex_none()
-      .ml(terminalRowX(indent, depth))
+      .ml(terminalRowX(depth))
       .pl(TERMINAL_ROW_PAD_X)
       .pr(8)
       .relative()
@@ -1046,9 +952,10 @@ export default class SpacesAndAgents extends View {
   }
 
   // The "Remove" chip at the end of a finished terminal's row, a badge in
-  // the blocked color like the "conflict" one (`checkoutBadge`): removing
-  // is the one action in the sidebar that deletes something. Clicking it
-  // removes `finished` (`removeFinished`) without going to its parent.
+  // the blocked color like the "conflict" one (`terminalCheckoutBadge`):
+  // removing is the one action in the sidebar that deletes something.
+  // Clicking it removes `finished` (`removeFinished`) without going to its
+  // parent.
   removeChip(finished: FinishedTerminal, t: ThemeColors): Element {
     return div()
       .id(`finished-remove-${finished.address}`)
@@ -1155,8 +1062,7 @@ export default class SpacesAndAgents extends View {
     // spaces', in row order. The focused agent
     // keeps its "Needs you" slot here after looking turns it from done to
     // idle (`orderRank`), so stepping on reaches the one after it, though the
-    // tray itself drops it. An agent whose space isn't shown yet is left out
-    // here; the app appends it.
+    // tray itself drops it.
     const rows = this.ordered();
     const agentsWithPane = (listing: TerminalListing[]) =>
       listing
@@ -1339,15 +1245,13 @@ function firstLine(text: string): string {
   return text.trim().split("\n", 1)[0];
 }
 
-// How far right of `ROW_X` a terminal row's fill starts, in px, under a
-// space whose name starts `indent` px from the left of its group and
-// nested `depth` levels: `TERMINAL_ROW_INSET`, plus however far the name
-// sits right of `TEXT_X` (a worktree's, past its branch mark), plus
-// `DEPTH_INDENT` per level. A top-level row under a space's name at
-// `TEXT_X` (26) fills from x 18, after `TERMINAL_ROW_PAD_X` its stripe
-// starts at x 20, and past the stripe's 10px column its icon at x 30.
-function terminalRowX(indent: number, depth: number): number {
-  return indent - TEXT_X + TERMINAL_ROW_INSET + depth * DEPTH_INDENT;
+// How far right of `ROW_X` a terminal row's fill starts, in px, nested
+// `depth` levels: `TERMINAL_ROW_INSET`, plus `DEPTH_INDENT` per level. A
+// top-level row, under a space's name at `TEXT_X` (26), fills from x 18,
+// after `TERMINAL_ROW_PAD_X` its stripe starts at x 20, and past the
+// stripe's 10px column its icon at x 30.
+function terminalRowX(depth: number): number {
+  return TERMINAL_ROW_INSET + depth * DEPTH_INDENT;
 }
 
 // A run of terminal rows (`rows`, live and finished) stacked

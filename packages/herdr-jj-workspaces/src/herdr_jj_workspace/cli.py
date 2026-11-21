@@ -3,12 +3,13 @@
 Herdr's own worktree commands manage only Git worktrees. ``add`` creates a jj
 workspace with ``jjx workspace add`` in the folder jjx chooses,
 ``~/.worktrees/<repository>/<name>``, starting from ``trunk()`` unless
-``--revision`` names another revision, and opens it in Herdr, grouped under
-the repository's primary checkout even when started from another of its
-workspaces; ``remove`` removes one with ``jjx workspace remove`` and closes
-its Herdr workspace. Both target the calling pane's Herdr workspace unless
-``--workspace`` names another, and neither moves the user's focus unless
-``--focus`` is given.
+``--revision`` names another revision, and opens it in Herdr. The TUI groups
+it under the repository's primary checkout even when started from another of
+its workspaces; in the app, the find hub nests it under its repository's space
+while the desk sidebar lists it beside the other spaces. ``remove`` removes
+one with ``jjx workspace remove`` and closes its Herdr workspace. Both target
+the calling pane's Herdr workspace unless ``--workspace`` names another, and
+neither moves the user's focus unless ``--focus`` is given.
 
 The ``prompt-add`` and ``prompt-remove`` commands are the dotfiles.jj-workspaces
 plugin's popups, and ``open-popup`` is its action command. ``prompt-add`` asks
@@ -756,8 +757,9 @@ def app_create(source: JjCheckout, name: str, *, revision: str, focus: bool) -> 
     primary_root = source.primary_root
     root = _add_jj_workspace(primary_root, name, revision)
 
-    # An unnamed space is named after its folder, and the app nests it under
-    # its repository's space by the checkout's Git common directory.
+    # An unnamed space is named after its folder. The app's find hub nests it
+    # under its repository's space by the checkout's Git common directory; the
+    # desk sidebar lists it beside the other spaces.
     try:
         opened = _app_json("herdr-app", "do", "space.new", json.dumps({"folder": root}))
     except WorkspaceError as error:
@@ -1113,9 +1115,11 @@ def _parser() -> argparse.ArgumentParser:
             "Create jj workspace NAME from --revision REV, trunk() by default, in "
             "~/.worktrees/REPO/NAME, where REPO is the primary checkout's path from the home directory, "
             "for the repository of a Herdr workspace, which may show any of its "
-            "checkouts, and open it in Herdr grouped under the primary checkout's "
-            "workspace. In the app, the repository is the working directory's "
-            "unless --workspace names a space, and NAME opens as a new space. "
+            "checkouts, and open it in Herdr, which in the TUI groups it under the "
+            "primary checkout's workspace. In the app, the repository is the working directory's "
+            "unless --workspace names a space, and NAME opens as a new space, "
+            "nested under the repository's space in the find hub and listed beside "
+            "the other spaces in the desk sidebar. "
             "Prints the new checkout's path and the Herdr workspace_id and "
             "pane_id showing it as JSON; in the app they are the space ID and its "
             "terminal's address."

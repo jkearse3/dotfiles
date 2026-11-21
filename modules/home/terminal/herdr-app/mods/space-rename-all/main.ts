@@ -75,8 +75,8 @@ export default class SpaceRenameAll extends View {
     // empty field saves to, shown greyed in it (a renamed space's is worked
     // out, so null until known, see `automaticName`); `path` where its first
     // terminal is, which the automatic name follows; `folder` the space's own
-    // folder (empty: its machine's home), which desk-spaces' checkout line
-    // follows; `checkout` that folder's checkout once known (see `checkout`);
+    // folder (empty: its machine's home), which the row's checkout label
+    // names; `checkout` that folder's checkout once known (see `checkout`);
     // and `focused` whether its field holds the keyboard now. `this.current`
     // stays on the last focused row after the keyboard leaves it, so Tab
     // still moves from there.
@@ -425,7 +425,7 @@ const ROW_PITCH = ROW_H + ROW_GAP;
 const rowsHeight = (count: number): number =>
   Math.max(0, count * ROW_PITCH - ROW_GAP);
 
-// What desk-spaces' checkout line says for SPACE, on every row here:
+// The checkout SPACE's row names, shown on every row:
 // "dotfiles / ws3" for a checkout whose folder differs from its repo's name,
 // "dotfiles" when they match, and the folder alone outside a repo ("~" at
 // its machine's home). Another machine's space starts with that machine's

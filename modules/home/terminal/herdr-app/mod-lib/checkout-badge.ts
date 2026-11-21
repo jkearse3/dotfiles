@@ -1,8 +1,7 @@
-// Which badge the desk-spaces sidebar puts on a checkout line: "conflict"
-// for a jj checkout with a conflict, "review" for unshipped work beside an
-// agent with nothing left to do. `spaceCheckoutBadgeKind` decides it for a
-// space's checkout line, `terminalCheckoutBadgeKind` for a terminal row's;
-// `rows.ts` draws the chip.
+// Which badge the desk-spaces sidebar puts on a terminal row's checkout
+// line: "conflict" for a jj checkout with a conflict, "review" for unshipped
+// work beside an agent with nothing left to do. `terminalCheckoutBadgeKind`
+// decides it; `rows.ts` draws the chip.
 //
 // Each mod that uses this file links it into its own folder
 // (`mods/<mod>/checkout-badge.ts` -> `../../mod-lib/checkout-badge.ts`), and
@@ -34,21 +33,6 @@ export type BadgeCheckout =
       jj?: false;
       ahead: number;
     };
-
-// The badge for a space's checkout line, by the statuses of the space's
-// agents (`agentStatuses`) and its checkout `g` (null when not a repo or not
-// known yet): only for a quiet space, one with agents and none working or
-// blocked, "conflict" when its jj checkout has one, else "review" for
-// unshipped work. Null otherwise, and always for a space without agents.
-export function spaceCheckoutBadgeKind(
-  agentStatuses: AgentStatus[],
-  g: BadgeCheckout | null,
-): CheckoutBadgeKind | null {
-  const quiet =
-    agentStatuses.length > 0 &&
-    !agentStatuses.some((s) => s === "working" || s === "blocked");
-  return g && quiet ? checkoutBadgeKind(g, true) : null;
-}
 
 // The badge for a terminal row's checkout line, by the terminal's agent
 // status (`status`, null for a plain terminal) and checkout `g`: "conflict"

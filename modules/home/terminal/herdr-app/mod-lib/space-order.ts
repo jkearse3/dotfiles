@@ -1,10 +1,11 @@
-// The order views list spaces in (`spaceOrder`): the app's order, with each
-// Git worktree's or jj workspace's space moved under the first space of its
-// repo's main checkout. Also the checkout line under a space's name
-// (`checkoutText`: "dotfiles / ws3") and the shared `space.checkouts` value
-// (`SPACE_CHECKOUTS_KEY`, `readSpaceCheckouts`) through which the
-// desk-spaces sidebar hands the checkouts it looks up to views that run no
-// jj or git of their own.
+// The order the find hub lists spaces in (`spaceOrder`): the app's order,
+// with each Git worktree's or jj workspace's space moved under the first
+// space of its repo's main checkout. Also how a checkout is named
+// (`checkoutText`: "dotfiles / ws3"), on the find hub's line under a space's
+// name and the desk-spaces sidebar's terminal rows, and the shared
+// `space.checkouts` value (`SPACE_CHECKOUTS_KEY`, `readSpaceCheckouts`)
+// through which the desk-spaces sidebar hands the checkouts it looks up to
+// views that run no jj or git of their own.
 //
 // Each mod that uses this file links it into its own folder
 // (`mods/<mod>/space-order.ts` -> `../../mod-lib/space-order.ts`), and the
@@ -75,12 +76,13 @@ export function spaceOrder<S, C extends SpaceCheckout>(
   return out;
 }
 
-// The text of the checkout line under space `space`'s name: the folder that
-// `checkout` (or, outside a repo, the space's own folder) is named after,
-// after its repo ("dotfiles / ws3", just "dotfiles" when they match,
-// ignoring case); "~" at its machine's home, which an empty folder means,
-// with `home` this computer's home folder. Null only when there is no folder
-// to name (the filesystem root).
+// The text naming where space `space` is, as the find hub's line under a
+// space's name and the desk-spaces sidebar's terminal rows show it: the
+// folder that `checkout` (or, outside a repo, the space's own folder) is
+// named after, after its repo ("dotfiles / ws3", just "dotfiles" when they
+// match, ignoring case); "~" at its machine's home, which an empty folder
+// means, with `home` this computer's home folder. Null only when there is no
+// folder to name (the filesystem root).
 export function checkoutText(
   space: Pick<SpaceInfo, "folder" | "machine">,
   checkout: SpaceCheckout | null,
