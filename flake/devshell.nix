@@ -32,7 +32,7 @@
 
         # Editors resolve pi's modules through this link, which the extensions'
         # `tsconfig.json` extends. It is per-checkout: work happens in worktrees
-        # under ~/.herdr/worktrees, so a `home.file` entry would serve the main
+        # under ~/.worktrees, so a `home.file` entry would serve the main
         # checkout alone. Runtime npm dependencies remain an ordinary, gitignored
         # `node_modules`; this separate link cannot be confused with packages npm
         # owns. The link is replaced whenever the shell starts so a Pi version

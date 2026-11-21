@@ -50,7 +50,8 @@ exit "${FAKE_FZF_BASE_STATUS:-0}"
 class HerdrJjWorkspaceTests(unittest.TestCase):
     @override
     def setUp(self) -> None:
-        self.root = Path(tempfile.mkdtemp())
+        # Resolved, so the root jjx prints compares equal on macOS's /var -> /private/var.
+        self.root = Path(tempfile.mkdtemp()).resolve()
         self.addCleanup(shutil.rmtree, self.root)
         home = self.root / "home"
         home.mkdir()
@@ -65,7 +66,8 @@ class HerdrJjWorkspaceTests(unittest.TestCase):
         self.log = self.root / "herdr.log"
         self.log.touch()
         self.repo = self.root / "repo"
-        self.workspace = home / ".herdr" / "worktrees" / "repo" / "feature"
+        # jjx puts a repository outside the home directory under ~/.worktrees/_.
+        self.workspace = home / ".worktrees" / "_" / self.repo.relative_to("/") / "feature"
         gitconfig = self.root / "gitconfig"
         gitconfig.touch()
         self.env = {

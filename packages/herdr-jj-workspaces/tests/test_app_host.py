@@ -176,7 +176,8 @@ class AppHostTests(unittest.TestCase):
         self.fzf_base_input = self.root / "fzf-base.input"
         self.fzf_base_arguments = self.root / "fzf-base.arguments"
         self.repo = self.root / "repo"
-        self.workspace = home / ".herdr" / "worktrees" / "repo" / "feature"
+        # jjx puts a repository outside the home directory under ~/.worktrees/_.
+        self.workspace = home / ".worktrees" / "_" / self.repo.relative_to("/") / "feature"
         gitconfig = self.root / "gitconfig"
         gitconfig.touch()
 
