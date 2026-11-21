@@ -9,13 +9,14 @@
 //   one line: a stable color tick and its name. A space appears as soon as
 //   the app lists it; a Git worktree's or jj workspace's space is a row like
 //   any other, and the checkouts show on the terminal rows instead.
-//   Beneath it, each of the space's tabs in order starts with a divider
-//   (`tabDivider`: its name and a rule), empty tabs included, followed by a
-//   row for every live terminal the shared tree (`buildTree`) places in that
-//   tab, agents and plain shells alike, with the terminals each started
-//   nested under it, a step further in per level (`DEPTH_INDENT`), even
-//   when they show in another tab, the rows spaced a little wider apart
-//   than the space rows (`TERMINAL_ROW_GAP`). Every row is `terminalRow`'s:
+//   Beneath it, each of the space's tabs in order that has rows starts
+//   with a divider (`tabDivider`: its name and a rule; a tab without rows
+//   has none), followed by a row for every live terminal the shared tree
+//   (`buildTree`) places in that tab, agents and plain shells alike, with
+//   the terminals each started nested under it, a step further in per
+//   level (`DEPTH_INDENT`), even when they show in another tab, the rows
+//   spaced a little wider apart than the space rows (`TERMINAL_ROW_GAP`).
+//   Every row is `terminalRow`'s:
 //   a 3px stripe down its left edge in the color of its state
 //   (`stripeColor`: an agent's status color, cyan for a plain terminal
 //   running a command, else grey), then its program and title, then on a
@@ -48,9 +49,10 @@
 //   agent in it is blocked or done or a finished terminal in it failed;
 //   there is no toggle. The space's terminals in
 //   no tab of it follow its tabs, without a divider, marked "no pane". The
-//   chevron on the space's name line folds all of that; folded, it shows how
-//   many agents, at any depth, in the most urgent status's color (finished
-//   terminals count for neither).
+//   chevron on the space's name line, shown only when there is any of
+//   that, folds all of it; folded, it shows how many agents, at any depth,
+//   in the most urgent status's color (finished terminals count for
+//   neither).
 // - Last under each machine, its terminals no space holds
 //   (`TreeMachine.elsewhere`, such as background terminals) under a small
 //   "ELSEWHERE" heading, drawn and clicked like a space's terminal rows,
@@ -704,10 +706,11 @@ export default class SpacesAndAgents extends View {
     localStorage.setItem("spaces.folded", JSON.stringify(this.foldedSpaces));
   }
 
-  // The end of the name line of a space with rows under it (a tab, or a
-  // loose terminal): a chevron that folds them and, folded, adds how many
-  // agents they show at any depth in the most urgent one's color. Pressing
-  // it neither selects nor drags the space.
+  // The end of the name line of a space with rows under it (in a tab, or a
+  // loose terminal's; `spaceListing` leaves out tabs without rows): a
+  // chevron that folds them and, folded, adds how many agents they show at
+  // any depth in the most urgent one's color. Pressing it neither selects
+  // nor drags the space.
   foldToggle(w: SpaceInfo, t: ThemeColors): Element | null {
     const listing = this.listings.get(w.id);
     if (!listing || (!listing.tabs.length && !listing.loose.length))
@@ -742,9 +745,10 @@ export default class SpacesAndAgents extends View {
       );
   }
 
-  // The rows under an unfolded space: each tab's divider followed by its
-  // terminal rows (a settled tab's divider dimmed, and its rows left out
-  // while it is folded, `tabFolded`), then the loose terminal rows, each
+  // The rows under an unfolded space: each tab's divider (only tabs with
+  // rows are listed, `spaceListing`) followed by its terminal rows (a
+  // settled tab's divider dimmed, and its rows left out while it is folded,
+  // `tabFolded`), then the loose terminal rows, each
   // terminal followed by the rows nested under it and then its finished
   // terminals' rows. Dividers start under the start of the space's name
   // (`TEXT_X`), and terminal rows are placed from there
@@ -1171,10 +1175,10 @@ export default class SpacesAndAgents extends View {
   }
 }
 
-// A space's rows, grouped as the sidebar draws them: `tabs`, every tab of
-// the space in order (empty ones included) with the rows of the terminals
-// the tree places in it, then `loose`, the rows of the space's terminals in
-// none of its tabs.
+// A space's rows, grouped as the sidebar draws them: `tabs`, the space's
+// tabs in order with the rows of the terminals the tree places in each,
+// leaving out a tab without rows so it gets no divider, then `loose`, the
+// rows of the space's terminals in none of its tabs.
 interface SpaceListing {
   // `folded` (`tabFolded`): the tab is settled with nothing in it needing
   // the person, so the sidebar draws its divider without its rows.
@@ -1183,12 +1187,13 @@ interface SpaceListing {
 }
 
 function spaceListing(treeSpace: TreeSpace): SpaceListing {
+  const tabs = treeSpace.tabs.map((treeTab) => ({
+    tab: treeTab.tab,
+    rows: listingRows(treeTab.terminals),
+    folded: tabFolded(treeTab),
+  }));
   return {
-    tabs: treeSpace.tabs.map((treeTab) => ({
-      tab: treeTab.tab,
-      rows: listingRows(treeTab.terminals),
-      folded: tabFolded(treeTab),
-    })),
+    tabs: tabs.filter((tab) => tab.rows.length > 0),
     loose: listingRows(treeSpace.loose),
   };
 }
