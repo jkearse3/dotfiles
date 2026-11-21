@@ -11,7 +11,7 @@ dotfiles.
 | `change`      | Interactively select a change.                               |
 | `description` | Format a revision description.                               |
 | `workspace`   | Create prepared jj workspaces and remove them.               |
-| `worktree`    | Create or interactively select a Git worktree.               |
+| `worktree`    | Interactively select a Git worktree.                         |
 | `ensure`      | Initialize or validate jj state in an existing Git checkout. |
 
 Explore the command tree and preview description formatting:
@@ -72,7 +72,5 @@ removes it.
 `jj workspace remove`, which snapshots its working copy into a commit and then
 deletes its Git worktree and directory, including ignored files. It refuses
 anything `jjx ensure` does not recognize as a workspace created by
-`jj workspace add`, such as the primary checkout or a `jjx worktree add`
-worktree. `--dry-run` reports what would be removed.
-
-`jjx worktree add` still creates worktrees with independent jj state.
+`jj workspace add`, such as the primary checkout or a Git worktree with
+independent jj state. `--dry-run` reports what would be removed.

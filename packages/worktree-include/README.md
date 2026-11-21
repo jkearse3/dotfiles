@@ -48,13 +48,13 @@ repository.
 ## Running automatically on `git worktree add`
 
 Home Manager registers `worktree-include --post-checkout` as a global Git
-`post-checkout` hook, so every `git worktree add`, including one run by a tool
-such as `jjx worktree add`, populates the new worktree from the primary one. The
-hook acts only on a branch checkout from the null commit into a linked worktree;
-clones, ordinary checkouts, bare repositories, and repositories without a
-`.worktreeinclude` are left alone silently. A copy failure makes
-`git worktree add` exit nonzero after Git has already created the worktree; fix
-the cause and rerun `worktree-include` inside it.
+`post-checkout` hook, so every `git worktree add`, including one run by another
+tool, populates the new worktree from the primary one. The hook acts only on a
+branch checkout from the null commit into a linked worktree; clones, ordinary
+checkouts, bare repositories, and repositories without a `.worktreeinclude` are
+left alone silently. A copy failure makes `git worktree add` exit nonzero after
+Git has already created the worktree; fix the cause and rerun `worktree-include`
+inside it.
 
 The hook runs before `direnv-worktree`, so a new worktree's `.envrc` can rely on
 the copied files.

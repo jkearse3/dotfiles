@@ -77,7 +77,6 @@ _jjx() {
         ;;
       worktree)
         _values 'worktree command' \
-          'add[Create a detached Git worktree with independent jj state]' \
           'select[Interactively select a Git worktree]'
         ;;
     esac
@@ -155,12 +154,6 @@ _jjx() {
         '(-h --help)'{-h,--help}'[show help]' \
         '--dry-run[validate the workspace and report what would be removed]' \
         '1:path:_files -/'
-      ;;
-    'worktree add')
-      _arguments \
-        '(-h --help)'{-h,--help}'[show help]' \
-        '-r[revision revset]:revision:_jjx_revisions' \
-        '1:worktree name:'
       ;;
     *)
       _arguments '(-h --help)'{-h,--help}'[show help]' '*:argument:_files'

@@ -89,10 +89,10 @@ class InteractiveCommandTests(unittest.TestCase):
             [],
             0,
             "worktree /repo\0HEAD abc\0branch refs/heads/main\0\0"
-            "worktree /repo/.jj-worktrees/with space\0HEAD def\0detached\0\0",
+            "worktree /repo-linked/with space\0HEAD def\0detached\0\0",
             "",
         )
-        picked = subprocess.CompletedProcess([], 0, "/repo/.jj-worktrees/with space\n", "")
+        picked = subprocess.CompletedProcess([], 0, "/repo-linked/with space\n", "")
         output = io.StringIO()
         with (
             patch.object(interactive, "_run", side_effect=[listed, picked]) as run,
@@ -102,10 +102,10 @@ class InteractiveCommandTests(unittest.TestCase):
 
         self.assertEqual(0, status)
         self.assertEqual(
-            "/repo\0/repo/.jj-worktrees/with space\0",
+            "/repo\0/repo-linked/with space\0",
             run.call_args_list[1].kwargs["stdin"],
         )
-        self.assertEqual("/repo/.jj-worktrees/with space\n", output.getvalue())
+        self.assertEqual("/repo-linked/with space\n", output.getvalue())
 
     def test_worktree_select_reports_listing_failure(self) -> None:
         failed = subprocess.CompletedProcess([], 128, "", "")

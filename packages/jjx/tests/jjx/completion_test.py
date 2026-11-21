@@ -121,7 +121,6 @@ class CompletionTests(unittest.TestCase):
                 "--help", "--message", "--name", "--revision", "--sparse-patterns",
             },
             "workspace remove": {"--dry-run", "--help"},
-            "worktree add": {"--help"},
             "worktree select": {"--help"},
         }
         for leaf, expected in expected_options.items():

@@ -9,7 +9,7 @@ from typing import Protocol, TextIO
 
 from .commands import bookmark_backup, bookmark_land, bookmark_queries
 from .commands import description_format, ensure, interactive, workspace_add
-from .commands import workspace_remove, worktree_add
+from .commands import workspace_remove
 
 
 class CommandHandler(Protocol):
@@ -123,11 +123,6 @@ COMMANDS = (
         "workspace remove",
         "Remove a jj workspace created by jj workspace add",
         workspace_remove.main,
-    ),
-    Command.define(
-        "worktree add",
-        "Create a detached Git worktree with independent jj state",
-        worktree_add.main,
     ),
     Command.define(
         "worktree select",
