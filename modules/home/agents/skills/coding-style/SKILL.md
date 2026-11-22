@@ -129,6 +129,9 @@ default behavior, concurrency, and security boundaries. Follow the language's
 documentation conventions, describe behavior rather than implementation steps,
 and do not merely restate the name or signature.
 
+Write any other comment only for a why, a constraint, or context that names and
+structure cannot show; never restate what the code does.
+
 ## Enforce Correctness
 
 ### Make Invalid States Unrepresentable
