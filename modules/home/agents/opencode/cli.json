@@ -1,0 +1,4 @@
+{
+  "$schema": "https://opencode.ai/cli.json",
+  "theme": { "name": "tokyonight" }
+}

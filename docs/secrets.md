@@ -111,11 +111,12 @@ secretspec delete --file secretspec.toml \
 
 `EXA_API_KEY` is `required = false`, so it is not needed to commission a
 machine. With no stored value, both clients still start on Exa's free tier:
-`OPENCODE_ENABLE_EXA=1` remains unconditional, and Pi sends an empty `x-api-key`
-header that Exa treats as anonymous access. The key raises quota; it does not
-gate search. A stored provider value wins over an ambient `EXA_API_KEY`; with no
-stored value, an ambient one survives into either client. Unset it in your shell
-to force free-tier behavior despite a stale ambient value.
+OpenCode calls Exa's hosted endpoint and adds the key only when one is set, and
+Pi sends an empty `x-api-key` header that Exa treats as anonymous access. The
+key raises quota; it does not gate search. A stored provider value wins over an
+ambient `EXA_API_KEY`; with no stored value, an ambient one survives into either
+client. Unset it in your shell to force free-tier behavior despite a stale
+ambient value.
 
 Nix owns the declared `exa` entry in `~/.pi/agent/mcp.json`. Every Home Manager
 switch restores its declared values from `modules/home/agents/pi/mcp.json`,

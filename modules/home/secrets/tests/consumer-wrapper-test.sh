@@ -36,8 +36,11 @@ for wrapper in "${wrappers[@]}"; do
 	grep -qxF TEST_INTERACTIVE_POLICY=applied "$TEST_ROOT/environment"
 	if grep -q '^EXCLUDED=' "$TEST_ROOT/environment"; then fail 'excluded inherited secret'; fi
 	if [[ ${wrapper##*/} == *opencode ]]; then
-		grep -qxF OPENCODE_ENABLE_EXA=1 "$TEST_ROOT/environment"
+		grep -qxF OPENCODE_DISABLE_CLAUDE_CODE_SKILLS=1 "$TEST_ROOT/environment"
 		grep -qxF OPENCODE_DISABLE_AUTOUPDATE=1 "$TEST_ROOT/environment"
+		if grep -qE '^OPENCODE_(ENABLE_EXA|DISABLE_EXTERNAL_SKILLS|DISABLE_LSP_DOWNLOAD)=' "$TEST_ROOT/environment"; then
+			fail 'OpenCode wrapper sets a dropped variable'
+		fi
 	fi
 	printf '%s\0' '' 'two words' '--flag' >"$TEST_ROOT/expected-argv"
 	cmp "$TEST_ROOT/expected-argv" "$TEST_ROOT/argv"

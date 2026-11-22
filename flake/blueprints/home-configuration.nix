@@ -23,6 +23,26 @@ withSystem blueprint.system (
     unstablePkgs,
     ...
   }:
+  let
+    llmAgents = inputs.llm-agents.packages.${system};
+
+    # OpenCode 2 installed as `bin/opencode` wrapping `bin/.opencode-wrapped`,
+    # the layout of the OpenCode 1 package, so the program and its process keep
+    # the names tools already know. Upstream installs it as `opencode2` to
+    # coexist with v1. Upstream's install check runs `meta.mainProgram`, so a
+    # rename that misses fails the build.
+    opencode = llmAgents.opencode2.overrideAttrs (old: {
+      installPhase =
+        builtins.replaceStrings [ "$out/bin/opencode2" ] [ "$out/bin/opencode" ]
+          old.installPhase;
+      postFixup =
+        builtins.replaceStrings [ "/bin/.opencode2-wrapped" ] [ "/bin/.opencode-wrapped" ]
+          old.postFixup;
+      meta = old.meta // {
+        mainProgram = "opencode";
+      };
+    });
+  in
   home-manager.lib.homeManagerConfiguration {
     pkgs = unstablePkgs;
     modules = [
@@ -31,14 +51,14 @@ withSystem blueprint.system (
     ];
     extraSpecialArgs = {
       dotfilesPackages = config.packages // {
-        inherit (inputs.llm-agents.packages.${system})
+        inherit (llmAgents)
           ccusage
           claude-code
           herdr
           hunk
-          opencode
           pi
           ;
+        inherit opencode;
       };
       dotfilesUser = blueprint.user;
       # The binary cache settings that `flake.nix` declares, so the home
