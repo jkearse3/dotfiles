@@ -16,7 +16,7 @@
 # paths.
 (pkgs.formats.json { }).generate "herdr-app-dotfiles-paths.json" {
   fzf = "${pkgs.fzf}/bin/fzf";
-  herdr-jj-workspace = "${dotfilesPackages.herdr-jj-workspaces.cli}/bin/herdr-jj-workspace";
+  herdr-jj-workspace = "${dotfilesPackages.herdr-jj-workspaces}/bin/herdr-jj-workspace";
   herdr-space-new = "${spaceNew}";
   jj = "${jujutsu}/bin/jj";
 }

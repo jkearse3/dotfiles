@@ -1,33 +1,28 @@
-"""Create and remove jj workspaces as Herdr worktree workspaces.
+"""Create and remove jj workspaces as Herdr app spaces.
 
-Herdr's own worktree commands manage only Git worktrees. ``add`` creates a jj
-workspace with ``jjx workspace add`` in the folder jjx chooses,
+The Herdr app's own worktree commands manage only Git worktrees. ``add``
+creates a jj workspace with ``jjx workspace add`` in the folder jjx chooses,
 ``~/.worktrees/<repository>/<name>``, starting from ``trunk()`` unless
-``--revision`` names another revision, and opens it in Herdr. The TUI groups
-it under the repository's primary checkout even when started from another of
-its workspaces; in the app, the find hub nests it under its repository's space
-while the desk sidebar lists it beside the other spaces. ``remove`` removes
-one with ``jjx workspace remove`` and closes its Herdr workspace. Both target
-the calling pane's Herdr workspace unless ``--workspace`` names another, and
-neither moves the user's focus unless ``--focus`` is given.
+``--revision`` names another revision, and opens it as a new space of the
+Herdr desktop app, driven through ``herdr-app`` and herdr-core's ``hc``. The
+app's find hub nests the space under its repository's space, while the desk
+sidebar lists it beside the other spaces. The repository is the one the
+process's working directory is in, unless ``--workspace`` names a space whose
+repository to use. ``remove`` removes a jj workspace with ``jjx workspace
+remove`` and closes its space; it targets the space of the calling app
+terminal unless ``--workspace`` names another. Neither moves the user's focus
+unless ``--focus`` is given.
 
-The ``prompt-add`` and ``prompt-remove`` commands are the dotfiles.jj-workspaces
-plugin's popups, and ``open-popup`` is its action command. ``prompt-add`` asks
-in fzf for the base revision first: ``trunk()`` or one of the repository's
-local bookmarks not already contained in trunk, for stacking on unfinished
-work; ``trunk()`` covers the bookmarks it contains. It then asks for the name,
-showing the repository and base chosen.
-
-``--host`` names which Herdr ``add``, ``remove``, ``prompt-add`` and
-``prompt-remove`` drive: ``tui``, the Herdr terminal UI through its ``herdr``
-CLI, or ``app``, the Herdr desktop app through ``herdr-app`` and herdr-core's
-``hc``. Under ``app``, a workspace is an app space and ``--workspace`` takes a
-space ID; a new jj workspace comes from the repository of the process's working
-directory unless ``--workspace`` names a space, and opens as a new space.
-``prompt-add --pick`` instead asks in one fzf search for the repository and
-base together: each row pairs one of the jj repositories of the app's spaces on
-this machine with one of its bases, the rows of the repository of the folder
-``--first`` names first.
+The ``prompt-add`` and ``prompt-remove`` commands are the popups the app's
+``jj-workspace-pick`` and ``jj-workspace-remove`` mods open. ``prompt-add``
+asks in fzf for the base revision first: ``trunk()`` or one of the
+repository's local bookmarks not already contained in trunk, for stacking on
+unfinished work; ``trunk()`` covers the bookmarks it contains. It then asks for
+the name, showing the repository and base chosen. ``prompt-add --pick``
+instead asks in one fzf search for the repository and base together: each row
+pairs one of the jj repositories of the app's spaces on this machine with one
+of its bases, the rows of the repository of the folder ``--first`` names
+first.
 """
 
 from __future__ import annotations
@@ -43,7 +38,7 @@ import threading
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from pathlib import Path
-from typing import IO, Literal, cast
+from typing import IO, cast
 
 PROGRAM = "herdr-jj-workspace"
 
@@ -57,107 +52,10 @@ class WorkspaceError(Exception):
     """A concise, user-facing failure."""
 
 
-# Which Herdr a command drives: the terminal UI or the desktop app.
-Host = Literal["tui", "app"]
-HOSTS: tuple[Host, ...] = ("tui", "app")
-
-
-def default_host() -> Host:
-    """Return the Herdr this process runs in, for when --host is omitted.
-
-    A terminal of the desktop app's core has $HC_TERMINAL_ID; the TUI sets
-    HERDR_ENV=1 in its panes and plugin popups, including a TUI running inside
-    an app terminal. Anything else, such as a plain shell, counts as the TUI.
-    """
-    in_core_terminal = os.environ.get("HC_TERMINAL_ID", "") != ""
-    return "app" if in_core_terminal and os.environ.get("HERDR_ENV") != "1" else "tui"
-
-
-@dataclass(frozen=True)
-class Source:
-    """The repository of the Herdr workspace a new jj workspace is created from.
-
-    PARENT_WORKSPACE_ID is the Herdr workspace showing the repository's primary
-    checkout, which Herdr requires new worktree workspaces to be opened from.
-    """
-
-    parent_workspace_id: str
-    repo_root: Path
-    repo_name: str
-
-
-@dataclass(frozen=True)
-class Target:
-    """A Herdr workspace showing a checkout that may be a removable jj workspace."""
-
-    workspace_id: str
-    checkout: Path
-    repo_root: str
-
-
-def resolve_source(workspace_id: str) -> Source:
-    """Return the repository Herdr places WORKSPACE_ID in.
-
-    Herdr resolves it from the workspace's checkout or pane directory, including
-    workspaces it has not yet marked as Git workspaces, and resolves a linked
-    worktree such as another jj workspace to its primary checkout.
-    """
-    try:
-        response = _herdr_json("worktree", "list", "--workspace", workspace_id)
-    except WorkspaceError as error:
-        raise WorkspaceError(
-            f"Herdr workspace {workspace_id} is not in a Git repository"
-        ) from error
-    source = _object(_object(response.get("result")).get("source"))
-    repo_root = _string(source.get("repo_root"))
-    repo_name = _string(source.get("repo_name"))
-    # Herdr names the parent even for a linked worktree, and refuses to close
-    # the parent while linked ones are open; the fallback covers older reports.
-    parent_workspace_id = _string(source.get("source_workspace_id"))
-    if parent_workspace_id == "":
-        parent_workspace_id = workspace_id
-    if repo_root == "" or repo_name == "":
-        raise WorkspaceError(f"Herdr reported no repository for workspace {workspace_id}")
-    if not (Path(repo_root) / ".jj").is_dir():
-        raise WorkspaceError(f"{repo_root} has no jj repository; run jjx ensure there first")
-    return Source(parent_workspace_id, Path(repo_root), repo_name)
-
-
 def validate_name(name: str) -> None:
     """Require NAME to be one path component usable as a jj workspace name."""
     if name in ("", ".", "..") or name.startswith("-") or "/" in name:
         raise WorkspaceError("the name must be one path component that does not start with -")
-
-
-def create(source: Source, name: str, *, revision: str, focus: bool) -> dict[str, str]:
-    """Create jj workspace NAME of SOURCE's repository on REVISION and open it in Herdr.
-
-    REVISION is a jj revset naming the commit the workspace's @ starts on top
-    of. Returns the new checkout's path and the Herdr workspace and root pane that
-    show it.
-    """
-    root = _add_jj_workspace(source.repo_root, name, revision)
-
-    # Opening from the parent workspace groups the new one under it, as Herdr's
-    # own new_worktree does; Herdr refuses to open from a linked worktree.
-    try:
-        response = _herdr_json(
-            "worktree",
-            "open",
-            "--workspace",
-            source.parent_workspace_id,
-            "--path",
-            root,
-            "--focus" if focus else "--no-focus",
-        )
-    except WorkspaceError as error:
-        raise WorkspaceError(f"created {root}, but Herdr could not open it: {error}") from error
-    opened = _object(response.get("result"))
-    return {
-        "path": root,
-        "workspace_id": _string(_object(opened.get("workspace")).get("workspace_id")),
-        "pane_id": _string(_object(opened.get("root_pane")).get("pane_id")),
-    }
 
 
 def _add_jj_workspace(repo_root: Path, name: str, revision: str) -> str:
@@ -185,53 +83,17 @@ def _add_jj_workspace(repo_root: Path, name: str, revision: str) -> str:
     return root
 
 
-def resolve_target(workspace_id: str) -> Target:
-    """Return the checkout Herdr workspace WORKSPACE_ID shows."""
-    for workspace in _workspaces():
-        if workspace.get("workspace_id") != workspace_id:
-            continue
-        worktree = _object(workspace.get("worktree"))
-        checkout = _string(worktree.get("checkout_path"))
-        if checkout == "":
-            break
-        return Target(workspace_id, Path(checkout), _string(worktree.get("repo_root")))
-    raise WorkspaceError(f"Herdr workspace {workspace_id} is not a Git worktree")
-
-
 def describe_removal(checkout: Path) -> str:
     """Return jjx's description of removing the jj workspace at CHECKOUT, or fail if it is not removable.
 
     jjx refuses anything jj workspace add did not create, such as Git
-    worktrees, which Herdr's remove_worktree handles instead, and primary
-    checkouts.
+    worktrees, which the app's Remove worktree menu item handles instead, and
+    primary checkouts.
     """
     result = _run(["jjx", "workspace", "remove", "--dry-run", str(checkout)], stderr=None)
     if result.returncode != 0:
         raise WorkspaceError(f"{checkout} is not a removable jj workspace; see the output above")
     return result.stdout.removesuffix("\n")
-
-
-def remove(target: Target, *, focus: bool) -> str:
-    """Remove TARGET's jj workspace and close its Herdr workspace.
-
-    With FOCUS, focuses the Herdr workspace showing the repository's primary
-    checkout afterwards. Returns jjx's report.
-    """
-    primary_workspace_id = _primary_workspace_id(target.repo_root) if focus else None
-    report = _remove_jj_workspace(target.checkout)
-    try:
-        _ = _herdr_json("workspace", "close", target.workspace_id)
-    except WorkspaceError as error:
-        raise WorkspaceError(
-            f"removed the jj workspace, but Herdr could not close workspace {target.workspace_id}: {error}"
-        ) from error
-    # Focusing is a convenience; Herdr already moved focus somewhere usable.
-    if primary_workspace_id is not None:
-        try:
-            _ = _herdr_json("workspace", "focus", primary_workspace_id)
-        except WorkspaceError:
-            pass
-    return report
 
 
 def _remove_jj_workspace(checkout: Path) -> str:
@@ -243,40 +105,6 @@ def _remove_jj_workspace(checkout: Path) -> str:
     if result.returncode != 0:
         raise WorkspaceError("jjx workspace remove failed; see its output above")
     return result.stdout.removesuffix("\n")
-
-
-def _primary_workspace_id(repo_root: str) -> str | None:
-    for workspace in _workspaces():
-        worktree = _object(workspace.get("worktree"))
-        if worktree.get("repo_root") == repo_root and worktree.get("is_linked_worktree") is False:
-            workspace_id = _string(workspace.get("workspace_id"))
-            if workspace_id != "":
-                return workspace_id
-    return None
-
-
-def _workspaces() -> list[dict[str, object]]:
-    workspaces = _object(_herdr_json("workspace", "list").get("result")).get("workspaces")
-    if not isinstance(workspaces, list):
-        raise WorkspaceError("Herdr returned no workspace list")
-    return [_object(workspace) for workspace in cast(list[object], workspaces)]
-
-
-def _herdr_json(*arguments: str) -> dict[str, object]:
-    command = [_herdr(), *arguments]
-    result = _run(command)
-    if result.returncode != 0:
-        detail = result.stderr.strip()
-        raise WorkspaceError(f"{shlex.join(command)} failed" + (f": {detail}" if detail != "" else ""))
-    try:
-        return _object(cast(object, json.loads(result.stdout)))
-    except json.JSONDecodeError as error:
-        raise WorkspaceError(f"{shlex.join(command)} returned malformed JSON") from error
-
-
-def _herdr() -> str:
-    herdr = os.environ.get("HERDR_BIN_PATH", "")
-    return herdr if herdr != "" else "herdr"
 
 
 def _run(
@@ -308,26 +136,8 @@ def _string(value: object) -> str:
     return value if isinstance(value, str) else ""
 
 
-def _caller_workspace(workspace_id: str | None) -> str:
-    resolved = workspace_id if workspace_id is not None else os.environ.get("HERDR_WORKSPACE_ID", "")
-    if resolved == "":
-        raise WorkspaceError("not running in a Herdr pane; pass --workspace")
-    return resolved
-
-
-def _plugin_workspace() -> str:
-    context = os.environ.get("HERDR_PLUGIN_CONTEXT_JSON", "")
-    try:
-        workspace_id = _string(_object(cast(object, json.loads(context))).get("workspace_id"))
-    except json.JSONDecodeError:
-        workspace_id = ""
-    if workspace_id == "":
-        raise WorkspaceError("Herdr reported no current workspace")
-    return workspace_id
-
-
-# The desktop app host. The app window owns spaces, tabs and panes
-# (``herdr-app ls``); its core owns terminals and where they are now (``hc``).
+# The Herdr app. Its window owns spaces, tabs and panes (``herdr-app ls``); its
+# core owns terminals and where they are now (``hc``).
 # Spaces on other machines are left out: this CLI acts on this machine only.
 
 
@@ -989,13 +799,8 @@ def _command_add(arguments: argparse.Namespace) -> int:
     workspace_id = cast(str | None, arguments.workspace)
     revision = cast(str, arguments.revision)
     focus = cast(bool, arguments.focus)
-    if _host(arguments) == "app":
-        folder = app_space_folder(workspace_id) if workspace_id is not None else Path.cwd()
-        print(json.dumps(app_create(resolve_app_source(folder), name, revision=revision, focus=focus)))
-        return 0
-
-    source = resolve_source(_caller_workspace(workspace_id))
-    print(json.dumps(create(source, name, revision=revision, focus=focus)))
+    folder = app_space_folder(workspace_id) if workspace_id is not None else Path.cwd()
+    print(json.dumps(app_create(resolve_app_source(folder), name, revision=revision, focus=focus)))
     return 0
 
 
@@ -1003,18 +808,9 @@ def _command_remove(arguments: argparse.Namespace) -> int:
     workspace_id = cast(str | None, arguments.workspace)
     dry_run = cast(bool, arguments.dry_run)
     focus = cast(bool, arguments.focus)
-    if _host(arguments) == "app":
-        app_target = resolve_app_target(workspace_id if workspace_id is not None else app_caller_space())
-        summary = describe_removal(app_target.checkout)
-        print(summary if dry_run else app_remove(app_target, focus=focus))
-        return 0
-
-    target = resolve_target(_caller_workspace(workspace_id))
+    target = resolve_app_target(workspace_id if workspace_id is not None else app_caller_space())
     summary = describe_removal(target.checkout)
-    if dry_run:
-        print(summary)
-        return 0
-    print(remove(target, focus=focus))
+    print(summary if dry_run else app_remove(target, focus=focus))
     return 0
 
 
@@ -1023,29 +819,18 @@ def _command_prompt_add(arguments: argparse.Namespace) -> int:
     first = cast(Path | None, arguments.first)
     if first is not None and not pick:
         raise WorkspaceError("--first needs --pick")
-    if _host(arguments) == "app":
-        if pick:
-            picked = pick_app_source_and_base(first)
-            if picked is None:
-                return 0
-            app_source, base = picked
-        else:
-            app_source = resolve_app_source(Path.cwd())
-            base = pick_base(app_source.primary_root)
-            if base is None:
-                return 0
-        name = _ask_name(app_source.primary_root.name, base)
-        _ = app_create(app_source, name, revision=base.revset, focus=True)
-        return 0
-
     if pick:
-        raise WorkspaceError("--pick needs the app host")
-    source = resolve_source(_plugin_workspace())
-    base = pick_base(source.repo_root)
-    if base is None:
-        return 0
-    name = _ask_name(source.repo_name, base)
-    _ = create(source, name, revision=base.revset, focus=True)
+        picked = pick_app_source_and_base(first)
+        if picked is None:
+            return 0
+        source, base = picked
+    else:
+        source = resolve_app_source(Path.cwd())
+        base = pick_base(source.primary_root)
+        if base is None:
+            return 0
+    name = _ask_name(source.primary_root.name, base)
+    _ = app_create(source, name, revision=base.revset, focus=True)
     return 0
 
 
@@ -1062,67 +847,39 @@ def _ask_name(repo_name: str, base: Base) -> str:
 
 def _command_prompt_remove(arguments: argparse.Namespace) -> int:
     workspace_id = cast(str | None, arguments.workspace)
-    if _host(arguments) == "app":
-        app_target = resolve_app_target(workspace_id if workspace_id is not None else app_caller_space())
-        if _confirm_removal(app_target.checkout, "app space"):
-            _ = app_remove(app_target, focus=True)
-        return 0
-
-    target = resolve_target(workspace_id if workspace_id is not None else _plugin_workspace())
-    if _confirm_removal(target.checkout, "workspace"):
-        _ = remove(target, focus=True)
+    target = resolve_app_target(workspace_id if workspace_id is not None else app_caller_space())
+    if _confirm_removal(target.checkout):
+        _ = app_remove(target, focus=True)
     return 0
 
 
-def _confirm_removal(checkout: Path, closed: str) -> bool:
-    """Show jjx's description of removing CHECKOUT and ask whether to go ahead.
-
-    CLOSED names what removal closes in Herdr: a workspace, or an app space.
-    """
+def _confirm_removal(checkout: Path) -> bool:
+    """Show jjx's description of removing CHECKOUT and ask whether to go ahead."""
     print(describe_removal(checkout) + "\n")
-    print(f"This deletes the directory and closes its Herdr {closed}.")
+    print("This deletes the directory and closes its Herdr app space.")
     print("jj snapshots its working copy into a commit first; ignored files are lost.\n")
     return input("Remove? [y/N] ") in ("y", "Y")
-
-
-def _host(arguments: argparse.Namespace) -> Host:
-    chosen = cast(Host | None, arguments.host)
-    return chosen if chosen is not None else default_host()
-
-
-def _command_open_popup(arguments: argparse.Namespace) -> int:
-    # Keys can bind only plugin actions, and an action runs without a terminal,
-    # so each action opens its popup.
-    plugin_id = os.environ.get("HERDR_PLUGIN_ID", "")
-    if plugin_id == "":
-        raise WorkspaceError("HERDR_PLUGIN_ID is not set; run this as a Herdr plugin action")
-    command = [_herdr(), "plugin", "pane", "open", "--plugin", plugin_id]
-    command += ["--entrypoint", cast(str, arguments.entrypoint), "--focus"]
-    return _run(command, stderr=None).returncode
 
 
 def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog=PROGRAM,
-        description="Create and remove jj workspaces as Herdr worktree workspaces.",
+        description="Create and remove jj workspaces as Herdr app spaces.",
     )
     commands = parser.add_subparsers(dest="command", required=True, metavar="COMMAND")
 
     add = commands.add_parser(
         "add",
-        help="create a jj workspace from trunk or another revision and open it in Herdr",
+        help="create a jj workspace from trunk or another revision and open it as an app space",
         description=(
             "Create jj workspace NAME from --revision REV, trunk() by default, in "
             "~/.worktrees/REPO/NAME, where REPO is the primary checkout's path from the home directory, "
-            "for the repository of a Herdr workspace, which may show any of its "
-            "checkouts, and open it in Herdr, which in the TUI groups it under the "
-            "primary checkout's workspace. In the app, the repository is the working directory's "
-            "unless --workspace names a space, and NAME opens as a new space, "
+            "for the repository of the working directory, or of the space --workspace names, "
+            "which may be any of its checkouts, and open it as a new Herdr app space, "
             "nested under the repository's space in the find hub and listed beside "
             "the other spaces in the desk sidebar. "
-            "Prints the new checkout's path and the Herdr workspace_id and "
-            "pane_id showing it as JSON; in the app they are the space ID and its "
-            "terminal's address."
+            "Prints the new checkout's path, the space's ID as workspace_id and its "
+            "terminal's address as pane_id as JSON."
         ),
     )
     _ = add.add_argument("name", metavar="NAME", help="workspace and directory name")
@@ -1132,29 +889,22 @@ def _parser() -> argparse.ArgumentParser:
         default=DEFAULT_REVISION,
         help=f"jj revision the workspace starts on top of, such as a bookmark (default: {DEFAULT_REVISION})",
     )
-    _add_workspace_option(
-        add,
-        "workspace whose repository to use",
-        "the calling pane's: $HERDR_WORKSPACE_ID, or in the app the working directory",
-    )
+    _add_workspace_option(add, "space whose repository to use", "the working directory's repository")
     _add_focus_option(add)
-    _add_host_option(add)
     add.set_defaults(handler=_command_add)
 
     remove_parser = commands.add_parser(
         "remove",
-        help="remove a Herdr workspace's jj workspace and close it",
+        help="remove an app space's jj workspace and close the space",
         description=(
-            "Remove the jj workspace a Herdr workspace shows with jjx workspace "
-            "remove, which snapshots its working copy into a commit and deletes "
-            "the directory, then close the Herdr workspace. Primary checkouts and "
-            "Git worktrees are refused. In the app, the checkout is where the "
-            "space's first terminal is now."
+            "Remove the jj workspace a Herdr app space shows, where the space's "
+            "first terminal is now, with jjx workspace remove, which snapshots its "
+            "working copy into a commit and deletes the directory, then close the "
+            "space. Primary checkouts and Git worktrees are refused."
         ),
     )
-    _add_workspace_option(remove_parser, "workspace to remove", _CALLER_WORKSPACE)
+    _add_workspace_option(remove_parser, "space to remove", _CALLER_SPACE)
     _add_focus_option(remove_parser)
-    _add_host_option(remove_parser)
     _ = remove_parser.add_argument(
         "--dry-run", action="store_true", help="report what would be removed and change nothing"
     )
@@ -1162,7 +912,7 @@ def _parser() -> argparse.ArgumentParser:
 
     prompt_add = commands.add_parser(
         "prompt-add",
-        help="popup for add that asks for the base revision, from the working directory in the app",
+        help="popup for add that asks for the base revision, from the working directory's repository",
         description=(
             "Ask in fzf for the new jj workspace's base: trunk(), listed first "
             "so Enter keeps it, or a local bookmark not already contained in "
@@ -1173,14 +923,13 @@ def _parser() -> argparse.ArgumentParser:
             "Then ask for its name, showing the repository and base chosen."
         ),
     )
-    _add_host_option(prompt_add)
     _ = prompt_add.add_argument(
         "--pick",
         action="store_true",
         help=(
-            "in the app, choose the repository and base in one fzf search, among "
-            "the repositories of the spaces on this machine, instead of using the "
-            "working directory's repository"
+            "choose the repository and base in one fzf search, among the "
+            "repositories of the app's spaces on this machine, instead of using "
+            "the working directory's repository"
         ),
     )
     _ = prompt_add.add_argument(
@@ -1192,46 +941,25 @@ def _parser() -> argparse.ArgumentParser:
     prompt_add.set_defaults(handler=_command_prompt_add, popup=True)
 
     prompt_remove = commands.add_parser("prompt-remove", help="popup for remove")
-    _add_workspace_option(
-        prompt_remove,
-        "workspace to remove",
-        "the plugin's current workspace, or in the app the calling pane's space",
-    )
-    _add_host_option(prompt_remove)
+    _add_workspace_option(prompt_remove, "space to remove", _CALLER_SPACE)
     prompt_remove.set_defaults(handler=_command_prompt_remove, popup=True)
-
-    popup = commands.add_parser("open-popup", help="plugin action that opens a popup pane")
-    _ = popup.add_argument("entrypoint", metavar="ENTRYPOINT")
-    popup.set_defaults(handler=_command_open_popup)
     return parser
 
 
-_CALLER_WORKSPACE = "the calling pane's: $HERDR_WORKSPACE_ID, or in the app the space of terminal $HC_TERMINAL_ID"
+_CALLER_SPACE = "the space of the calling app terminal, $HC_TERMINAL_ID"
 
 
-def _add_workspace_option(parser: argparse.ArgumentParser, workspace_help: str, default_help: str) -> None:
+def _add_workspace_option(parser: argparse.ArgumentParser, space_help: str, default_help: str) -> None:
     _ = parser.add_argument(
         "--workspace",
         metavar="ID",
-        help=f"Herdr {workspace_help}; in the app, a space ID (default: {default_help})",
+        help=f"ID of the Herdr app {space_help} (default: {default_help})",
     )
 
 
 def _add_focus_option(parser: argparse.ArgumentParser) -> None:
     _ = parser.add_argument(
         "--focus", action="store_true", help="move the user's Herdr focus to the result"
-    )
-
-
-def _add_host_option(parser: argparse.ArgumentParser) -> None:
-    _ = parser.add_argument(
-        "--host",
-        choices=HOSTS,
-        help=(
-            "the Herdr to drive: tui, the terminal UI, or app, the desktop app "
-            "(default: app in an app terminal, where $HC_TERMINAL_ID is set and "
-            "$HERDR_ENV is not 1; else tui)"
-        ),
     )
 
 

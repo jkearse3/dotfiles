@@ -58,7 +58,6 @@
           upstream = inputs.llm-agents.packages.${system}.herdr-core;
         };
         herdr-jj-workspaces = pkgs.callPackage ../packages/herdr-jj-workspaces/package.nix {
-          inherit (inputs.llm-agents.packages.${system}) herdr;
           inherit herdr-app herdr-core jjx;
           inherit (unstablePkgs) jujutsu;
         };

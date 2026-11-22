@@ -1,4 +1,4 @@
-"""herdr-jj-workspace driving the Herdr desktop app (--host app) through fake herdr-app and hc executables."""
+"""herdr-jj-workspace driving the Herdr desktop app through fake herdr-app and hc executables."""
 
 from __future__ import annotations
 
@@ -62,13 +62,6 @@ case "$1" in
     fi ;;
   *) exit 2 ;;
 esac
-"""
-
-# The TUI's herdr, named by $HERDR_BIN_PATH, which an app-host command must never call.
-FAKE_HERDR = """\
-#!/bin/sh
-printf 'herdr %s\\n' "$*" >> "$STUB_LOG"
-exit 1
 """
 
 # fzf, named by $HERDR_JJ_WORKSPACE_FZF_PATH. Picking the repository and base
@@ -163,7 +156,7 @@ class AppHostTests(unittest.TestCase):
         home.mkdir()
         stubs = self.root / "stubs"
         stubs.mkdir()
-        fakes = (("herdr-app", FAKE_HERDR_APP), ("hc", FAKE_HC), ("herdr", FAKE_HERDR), ("fzf", FAKE_FZF))
+        fakes = (("herdr-app", FAKE_HERDR_APP), ("hc", FAKE_HC), ("fzf", FAKE_FZF))
         for name, script in fakes:
             stub = stubs / name
             _ = stub.write_text(script)
@@ -195,7 +188,6 @@ class AppHostTests(unittest.TestCase):
             "GIT_CONFIG_NOSYSTEM": "1",
             "JJ_USER": "Test User",
             "JJ_EMAIL": "test@example.com",
-            "HERDR_BIN_PATH": str(stubs / "herdr"),
             "STUB_LOG": str(self.log),
             "HC_STUB_RECORDS": str(self.records),
             "HC_TERMINAL_ID": "t1",
@@ -289,30 +281,13 @@ class AppHostTests(unittest.TestCase):
         _ = self.jj("git", "push", "--bookmark", "main")
 
     def add_feature(self) -> None:
-        result = self.run_cli("add", "feature", "--host", "app", "--focus")
+        result = self.run_cli("add", "feature", "--focus")
         self.assertEqual(result.returncode, 0, result.stderr)
-
-    # Host detection
-
-    def test_app_terminal_defaults_to_app_host(self) -> None:
-        result = self.run_cli("add", "feature")
-        self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertEqual(self.calls()[0], "herdr-app ls")
-
-    def test_tui_pane_inside_app_terminal_defaults_to_tui_host(self) -> None:
-        result = self.run_cli("add", "feature", HERDR_ENV="1", HERDR_WORKSPACE_ID="w1")
-        self.assertEqual(result.returncode, 1)
-        self.assertEqual(self.calls(), ["herdr worktree list --workspace w1"])
-
-    def test_host_option_overrides_detection(self) -> None:
-        result = self.run_cli("add", "feature", "--host", "tui", HERDR_WORKSPACE_ID="w1")
-        self.assertEqual(result.returncode, 1)
-        self.assertEqual(self.calls(), ["herdr worktree list --workspace w1"])
 
     # add
 
     def test_add_creates_workspace_from_trunk_and_keeps_the_shown_space(self) -> None:
-        result = self.run_cli("add", "feature", "--host", "app")
+        result = self.run_cli("add", "feature")
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(
             json.loads(result.stdout),
@@ -330,17 +305,35 @@ class AppHostTests(unittest.TestCase):
             ],
         )
 
+    def test_add_outside_app_terminal_uses_working_directory_repository(self) -> None:
+        del self.env["HC_TERMINAL_ID"]
+        result = self.run_cli("add", "feature")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(
+            json.loads(result.stdout),
+            {"path": str(self.workspace), "workspace_id": "sp9", "pane_id": "t9"},
+        )
+        self.assertEqual(self.workspace_names(), ["default", "feature"])
+        self.assertEqual(
+            self.calls(),
+            [
+                "herdr-app ls",
+                f'herdr-app do space.new {{"folder": "{self.workspace}"}}',
+                'herdr-app do space.select {"id": "sp1"}',
+            ],
+        )
+
     def test_add_with_revision_starts_on_that_revision(self) -> None:
         # trunk() is root() here, so a workspace on trunk() would not start on base.
         _ = self.jj("bookmark", "create", "base", "-r", "@-")
 
-        result = self.run_cli("add", "feature", "--host", "app", "--revision", "base")
+        result = self.run_cli("add", "feature", "--revision", "base")
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(self.commit("feature@-"), self.commit("base"))
         self.assertNotEqual(self.commit("feature@-"), self.commit("trunk()"))
 
     def test_add_with_focus_shows_the_new_space(self) -> None:
-        result = self.run_cli("add", "feature", "--host", "app", "--focus")
+        result = self.run_cli("add", "feature", "--focus")
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(
             self.calls(), ["herdr-app ls", f'herdr-app do space.new {{"folder": "{self.workspace}"}}']
@@ -348,7 +341,7 @@ class AppHostTests(unittest.TestCase):
 
     def test_add_from_jj_workspace_uses_primary_checkout_repository(self) -> None:
         self.add_feature()
-        result = self.run_cli("add", "second", "--host", "app", "--focus", cwd=self.workspace)
+        result = self.run_cli("add", "second", "--focus", cwd=self.workspace)
         self.assertEqual(result.returncode, 0, result.stderr)
         second = self.workspace.parent / "second"
         self.assertEqual(self.output(result)["path"], str(second))
@@ -356,27 +349,27 @@ class AppHostTests(unittest.TestCase):
 
     def test_add_with_workspace_uses_that_space_terminal_folder(self) -> None:
         self.add_feature()
-        result = self.run_cli("add", "second", "--host", "app", "--workspace", "sp2", cwd=self.root)
+        result = self.run_cli("add", "second", "--workspace", "sp2", cwd=self.root)
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(self.calls()[:3], ["herdr-app ls", "hc get t2 --json", "herdr-app ls"])
         self.assertEqual(self.workspace_names(), ["default", "feature", "second"])
 
     def test_add_falls_back_to_terminal_start_folder(self) -> None:
         self.set_record(terminal_record("t1", self.repo, None, "sp1"))
-        result = self.run_cli("add", "feature", "--host", "app", "--workspace", "sp1", cwd=self.root)
+        result = self.run_cli("add", "feature", "--workspace", "sp1", cwd=self.root)
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(self.workspace_names(), ["default", "feature"])
 
-    def test_add_outside_jj_fails_before_calling_herdr(self) -> None:
+    def test_add_outside_jj_fails_before_calling_herdr_app(self) -> None:
         plain = self.root / "plain"
         plain.mkdir()
-        result = self.run_cli("add", "feature", "--host", "app", cwd=plain)
+        result = self.run_cli("add", "feature", cwd=plain)
         self.assertEqual(result.returncode, 1)
         self.assertIn("is not in a jj repository; run jjx ensure", result.stderr)
         self.assertEqual(self.calls(), [])
 
     def test_add_without_window_fails_before_creating_workspace(self) -> None:
-        result = self.run_cli("add", "feature", "--host", "app", APP_STUB_NO_WINDOW="1")
+        result = self.run_cli("add", "feature", APP_STUB_NO_WINDOW="1")
         self.assertEqual(result.returncode, 1)
         self.assertIn("herdr-app ls failed: herdr-app: no Herdr window", result.stderr)
         self.assertEqual(self.workspace_names(), ["default"])
@@ -384,7 +377,7 @@ class AppHostTests(unittest.TestCase):
 
     def test_add_reports_created_workspace_the_app_could_not_open(self) -> None:
         result = self.run_cli(
-            "add", "feature", "--host", "app", APP_STUB_FAIL_DO="space.new", APP_STUB_ERROR="no folder"
+            "add", "feature", APP_STUB_FAIL_DO="space.new", APP_STUB_ERROR="no folder"
         )
         self.assertEqual(result.returncode, 1)
         self.assertIn(f"created {self.workspace}, but the Herdr app could not open it", result.stderr)
@@ -393,24 +386,34 @@ class AppHostTests(unittest.TestCase):
 
     def test_add_warns_when_the_shown_space_cannot_be_shown_again(self) -> None:
         result = self.run_cli(
-            "add", "feature", "--host", "app", APP_STUB_FAIL_DO="space.select", APP_STUB_ERROR="no such space"
+            "add", "feature", APP_STUB_FAIL_DO="space.select", APP_STUB_ERROR="no such space"
         )
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(self.output(result)["workspace_id"], "sp9")
         self.assertIn("warning:", result.stderr)
         self.assertIn("no such space", result.stderr)
 
-    def test_add_rejects_invalid_name_without_calling_herdr(self) -> None:
-        result = self.run_cli("add", "--host", "app", "--", "../escape")
+    def test_add_rejects_invalid_name_without_calling_herdr_app(self) -> None:
+        for name in ("../escape", "-x", ".."):
+            with self.subTest(name=name):
+                result = self.run_cli("add", "--", name)
+                self.assertEqual(result.returncode, 1)
+                self.assertIn("one path component", result.stderr)
+                self.assertEqual(self.calls(), [])
+
+    def test_add_rejects_existing_name_without_opening_a_space(self) -> None:
+        self.add_feature()
+        result = self.run_cli("add", "feature")
         self.assertEqual(result.returncode, 1)
-        self.assertIn("one path component", result.stderr)
-        self.assertEqual(self.calls(), [])
+        self.assertIn("already exists", result.stderr)
+        self.assertEqual(self.calls(), ["herdr-app ls"])
+        self.assertEqual(self.workspace_names(), ["default", "feature"])
 
     # remove
 
     def test_remove_dry_run_changes_nothing(self) -> None:
         self.add_feature()
-        result = self.run_cli("remove", "--host", "app", "--workspace", "sp2", "--dry-run")
+        result = self.run_cli("remove", "--workspace", "sp2", "--dry-run")
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertIn("would remove jj workspace feature", result.stdout)
         self.assertTrue(self.workspace.is_dir())
@@ -418,7 +421,7 @@ class AppHostTests(unittest.TestCase):
 
     def test_remove_deletes_workspace_and_closes_its_space(self) -> None:
         self.add_feature()
-        result = self.run_cli("remove", "--host", "app", "--workspace", "sp2")
+        result = self.run_cli("remove", "--workspace", "sp2")
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertIn("removed jj workspace feature", result.stdout)
         self.assertFalse(self.workspace.exists())
@@ -430,13 +433,13 @@ class AppHostTests(unittest.TestCase):
 
     def test_remove_defaults_to_the_calling_terminal_space(self) -> None:
         self.add_feature()
-        result = self.run_cli("remove", "--host", "app", "--dry-run", HC_TERMINAL_ID="t2")
+        result = self.run_cli("remove", "--dry-run", HC_TERMINAL_ID="t2")
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(self.calls(), ["hc get t2 --json", "herdr-app ls", "hc get t2 --json"])
 
     def test_remove_with_focus_shows_primary_checkout_space(self) -> None:
         self.add_feature()
-        result = self.run_cli("remove", "--host", "app", "--workspace", "sp2", "--focus")
+        result = self.run_cli("remove", "--workspace", "sp2", "--focus")
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(
             self.calls(),
@@ -464,7 +467,7 @@ class AppHostTests(unittest.TestCase):
         self.set_record(terminal_record("t3", self.repo, plain, "sp3"))
         self.set_record(terminal_record("t4", plain, self.repo / "src", "sp4"))
 
-        result = self.run_cli("remove", "--host", "app", "--workspace", "sp2", "--focus")
+        result = self.run_cli("remove", "--workspace", "sp2", "--focus")
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(
             self.calls()[2:],
@@ -479,7 +482,7 @@ class AppHostTests(unittest.TestCase):
         )
 
     def test_remove_refuses_primary_checkout(self) -> None:
-        result = self.run_cli("remove", "--host", "app", "--workspace", "sp1")
+        result = self.run_cli("remove", "--workspace", "sp1")
         self.assertEqual(result.returncode, 1)
         self.assertIn(f"{self.repo} is not a removable jj workspace", result.stderr)
         self.assertTrue((self.repo / ".jj").is_dir())
@@ -494,26 +497,29 @@ class AppHostTests(unittest.TestCase):
             capture_output=True,
         )
         self.set_record(terminal_record("t2", worktree, worktree, "sp2"))
-        result = self.run_cli("remove", "--host", "app", "--workspace", "sp2")
+        result = self.run_cli("remove", "--workspace", "sp2")
         self.assertEqual(result.returncode, 1)
         self.assertIn(f"{worktree} is not a removable jj workspace", result.stderr)
         self.assertTrue(worktree.is_dir())
 
     def test_remove_refuses_unknown_space(self) -> None:
-        result = self.run_cli("remove", "--host", "app", "--workspace", "sp5")
+        result = self.run_cli("remove", "--workspace", "sp5")
         self.assertEqual(result.returncode, 1)
         self.assertIn("the Herdr app has no space sp5", result.stderr)
 
     def test_remove_outside_app_pane_needs_workspace(self) -> None:
-        result = self.run_cli("remove", "--host", "app", HC_TERMINAL_ID="")
-        self.assertEqual(result.returncode, 1)
-        self.assertIn("pass --workspace", result.stderr)
-        self.assertEqual(self.calls(), [])
+        del self.env["HC_TERMINAL_ID"]
+        for command in ("remove", "prompt-remove"):
+            with self.subTest(command=command):
+                result = self.run_cli(command, stdin="\n")
+                self.assertEqual(result.returncode, 1)
+                self.assertIn("not running in a Herdr app pane; pass --workspace", result.stderr)
+                self.assertEqual(self.calls(), [])
 
     def test_remove_reports_space_the_app_could_not_close(self) -> None:
         self.add_feature()
         result = self.run_cli(
-            "remove", "--host", "app", "--workspace", "sp2", APP_STUB_FAIL_DO="space.close", APP_STUB_ERROR="busy"
+            "remove", "--workspace", "sp2", APP_STUB_FAIL_DO="space.close", APP_STUB_ERROR="busy"
         )
         self.assertEqual(result.returncode, 1)
         self.assertIn("removed the jj workspace, but the Herdr app could not close space sp2", result.stderr)
@@ -522,14 +528,14 @@ class AppHostTests(unittest.TestCase):
 
     def test_remove_reports_hc_failure(self) -> None:
         (self.records / "t2.json").unlink()
-        result = self.run_cli("remove", "--host", "app", "--workspace", "sp2")
+        result = self.run_cli("remove", "--workspace", "sp2")
         self.assertEqual(result.returncode, 1)
         self.assertIn("hc get t2 --json failed: no terminal t2", result.stderr)
 
     # Popups
 
     def test_prompt_add_creates_and_shows_new_space(self) -> None:
-        result = self.run_cli("prompt-add", "--host", "app", stdin="feature\n")
+        result = self.run_cli("prompt-add", stdin="feature\n")
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertIn("New jj workspace for repo", result.stdout)
         self.assertLess(result.stdout.index("Base: trunk()"), result.stdout.index("Name: "))
@@ -543,7 +549,7 @@ class AppHostTests(unittest.TestCase):
 
     def test_prompt_add_invalid_name_after_base_creates_nothing(self) -> None:
         self.create_bookmarks_to_stack_on()
-        result = self.run_cli("prompt-add", "--host", "app", stdin="../escape\n\n")
+        result = self.run_cli("prompt-add", stdin="../escape\n\n")
         self.assertEqual(result.returncode, 1)
         self.assertIn("one path component", result.stderr)
         self.assertIn("Press enter to close.", result.stderr)
@@ -553,7 +559,7 @@ class AppHostTests(unittest.TestCase):
 
     def test_prompt_add_base_enter_keeps_trunk(self) -> None:
         self.create_bookmarks_to_stack_on()
-        result = self.run_cli("prompt-add", "--host", "app", stdin="feature\n")
+        result = self.run_cli("prompt-add", stdin="feature\n")
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertLess(result.stdout.index("Base: trunk()"), result.stdout.index("Name: "))
         self.assertEqual(
@@ -574,7 +580,7 @@ class AppHostTests(unittest.TestCase):
 
     def test_prompt_add_base_bookmark_starts_on_it(self) -> None:
         self.create_bookmarks_to_stack_on()
-        result = self.run_cli("prompt-add", "--host", "app", stdin="feature\n", FAKE_FZF_BASE_CHOICE="3")
+        result = self.run_cli("prompt-add", stdin="feature\n", FAKE_FZF_BASE_CHOICE="3")
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertIn(f"Base: base  {self.change_id('base')}  initial\n", result.stdout)
         self.assertEqual(self.commit("feature@-"), self.commit("base"))
@@ -584,7 +590,7 @@ class AppHostTests(unittest.TestCase):
         self.create_bookmarks_to_stack_on()
         for status in ("1", "130"):
             with self.subTest(status=status):
-                result = self.run_cli("prompt-add", "--host", "app", stdin="", FAKE_FZF_BASE_STATUS=status)
+                result = self.run_cli("prompt-add", stdin="", FAKE_FZF_BASE_STATUS=status)
                 self.assertEqual(result.returncode, 0, result.stderr)
                 self.assertNotIn("Name: ", result.stdout)
                 self.assertEqual(self.workspace_names(), ["default"])
@@ -593,7 +599,7 @@ class AppHostTests(unittest.TestCase):
 
     def test_prompt_add_base_fzf_failure_waits_for_enter(self) -> None:
         self.create_bookmarks_to_stack_on()
-        result = self.run_cli("prompt-add", "--host", "app", stdin="\n", FAKE_FZF_BASE_STATUS="2")
+        result = self.run_cli("prompt-add", stdin="\n", FAKE_FZF_BASE_STATUS="2")
         self.assertEqual(result.returncode, 1)
         self.assertIn("fzf exited with status 2", result.stderr)
         self.assertIn("Press enter to close.", result.stderr)
@@ -608,7 +614,7 @@ class AppHostTests(unittest.TestCase):
         _ = self.jj("git", "push", "--bookmark", "gone")
         _ = self.jj("bookmark", "delete", "gone")
 
-        result = self.run_cli("prompt-add", "--host", "app", stdin="feature\n")
+        result = self.run_cli("prompt-add", stdin="feature\n")
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(
             self.fzf_base_input.read_text().splitlines(),
@@ -619,7 +625,7 @@ class AppHostTests(unittest.TestCase):
         self.push_main_as_trunk()
         self.create_bookmarks_to_stack_on()
 
-        result = self.run_cli("prompt-add", "--host", "app", stdin="feature\n")
+        result = self.run_cli("prompt-add", stdin="feature\n")
         self.assertEqual(result.returncode, 0, result.stderr)
         # trunk() covers main and base, which share its commit, so only newer is listed after it.
         self.assertEqual(
@@ -629,7 +635,7 @@ class AppHostTests(unittest.TestCase):
 
     def test_prompt_add_base_lists_description_holding_line_separator(self) -> None:
         self.create_bookmark_described("odd", "fix\u2028thing")
-        result = self.run_cli("prompt-add", "--host", "app", stdin="feature\n", FAKE_FZF_BASE_CHOICE="2")
+        result = self.run_cli("prompt-add", stdin="feature\n", FAKE_FZF_BASE_CHOICE="2")
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(self.base_rows(), ["trunk()", f"odd \t{self.change_id('odd')} \tfix\u2028thing"])
         self.assertIn(f"Base: odd  {self.change_id('odd')}  fix\u2028thing\n", result.stdout)
@@ -640,7 +646,7 @@ class AppHostTests(unittest.TestCase):
         # text decoding turns it into a newline that splits the bookmark's row,
         # leaving "thing" a row of its own.
         self.create_bookmark_described("odd", "fix\rthing")
-        result = self.run_cli("prompt-add", "--host", "app", stdin="\n")
+        result = self.run_cli("prompt-add", stdin="\n")
         self.assertEqual(result.returncode, 1)
         self.assertIn("jj bookmark list printed malformed row 'thing'", result.stderr)
         self.assertNotIn("Traceback", result.stderr)
@@ -652,7 +658,7 @@ class AppHostTests(unittest.TestCase):
         self.push_main_as_trunk()
         _ = self.jj("bookmark", "create", "old", "-r", "@-")
 
-        result = self.run_cli("prompt-add", "--host", "app", stdin="feature\n")
+        result = self.run_cli("prompt-add", stdin="feature\n")
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertIn("Base: trunk()", result.stdout)
         self.assertFalse(self.fzf_base_input.exists())
@@ -693,7 +699,7 @@ class AppHostTests(unittest.TestCase):
 
     def test_prompt_add_pick_enter_picks_first_repository_on_trunk(self) -> None:
         self.create_bookmarks_to_stack_on()
-        result = self.run_cli("prompt-add", "--host", "app", "--pick", stdin="feature\n", FAKE_FZF_CHOICE="1")
+        result = self.run_cli("prompt-add", "--pick", stdin="feature\n", FAKE_FZF_CHOICE="1")
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(
             self.picked_rows(),
@@ -715,7 +721,7 @@ class AppHostTests(unittest.TestCase):
 
     def test_prompt_add_pick_bookmark_starts_on_it_without_a_base_picker(self) -> None:
         self.create_bookmarks_to_stack_on()
-        result = self.run_cli("prompt-add", "--host", "app", "--pick", stdin="feature\n", FAKE_FZF_CHOICE="2")
+        result = self.run_cli("prompt-add", "--pick", stdin="feature\n", FAKE_FZF_CHOICE="2")
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertIn("New jj workspace for repo", result.stdout)
         self.assertIn(f"Base: newer  {self.change_id('newer')}  later\n", result.stdout)
@@ -726,7 +732,7 @@ class AppHostTests(unittest.TestCase):
     def test_prompt_add_pick_leaves_out_bookmarks_in_trunk(self) -> None:
         self.push_main_as_trunk()
         self.create_bookmarks_to_stack_on()
-        result = self.run_cli("prompt-add", "--host", "app", "--pick")
+        result = self.run_cli("prompt-add", "--pick")
         self.assertEqual(result.returncode, 0, result.stderr)
         # trunk() covers main and base, which share its commit.
         self.assertEqual(
@@ -756,7 +762,7 @@ class AppHostTests(unittest.TestCase):
         self.set_record(terminal_record("t3", plain, plain, "sp3"))
         self.set_record(terminal_record("t4", other, other, "sp4"))
 
-        result = self.run_cli("prompt-add", "--host", "app", "--pick", stdin="second\n", FAKE_FZF_CHOICE="1")
+        result = self.run_cli("prompt-add", "--pick", stdin="second\n", FAKE_FZF_CHOICE="1")
         self.assertEqual(result.returncode, 0, result.stderr)
         rows = self.picked_rows()
         self.assertEqual(len(rows), 2)
@@ -791,7 +797,7 @@ class AppHostTests(unittest.TestCase):
         self.set_record(terminal_record("t3", plain, other, "sp3"))
         self.set_record(terminal_record("t1", self.repo, plain, "sp1"))
 
-        result = self.run_cli("prompt-add", "--host", "app", "--pick")
+        result = self.run_cli("prompt-add", "--pick")
         self.assertEqual(result.returncode, 0, result.stderr)
         rows = self.picked_rows()
         self.assertEqual(len(rows), 1)
@@ -802,7 +808,7 @@ class AppHostTests(unittest.TestCase):
         self.set_world(app_space("sp4", other, "t4", shown=True))
         self.set_record(terminal_record("t4", other, other, "sp4"))
 
-        result = self.run_cli("prompt-add", "--host", "app", "--pick", stdin="second\n\n", FAKE_FZF_CHOICE="1")
+        result = self.run_cli("prompt-add", "--pick", stdin="second\n\n", FAKE_FZF_CHOICE="1")
         # The stand-in repository has no store, so creating the workspace fails
         # after the pick, which the name prompt shows went through.
         self.assertIn("New jj workspace for other\nBase: trunk()\n", result.stdout)
@@ -817,7 +823,7 @@ class AppHostTests(unittest.TestCase):
         )
         self.set_record(terminal_record("t4", second, second, "sp4"))
 
-        result = self.run_cli("prompt-add", "--host", "app", "--pick", stdin="feature\n", FAKE_FZF_CHOICE="2")
+        result = self.run_cli("prompt-add", "--pick", stdin="feature\n", FAKE_FZF_CHOICE="2")
         self.assertEqual(result.returncode, 0, result.stderr)
         second_label = f"{'~/second':<{len(str(self.repo))}}"
         elsewhere = subprocess.run(
@@ -851,7 +857,7 @@ class AppHostTests(unittest.TestCase):
         )
         self.set_record(terminal_record("t4", second, second, "sp4"))
 
-        result = self.run_cli("prompt-add", "--host", "app", "--pick")
+        result = self.run_cli("prompt-add", "--pick")
         self.assertEqual(result.returncode, 0, result.stderr)
         rows = self.picked_rows()
         self.assertEqual(len(rows), 3)
@@ -864,7 +870,7 @@ class AppHostTests(unittest.TestCase):
     def test_prompt_add_pick_closed_without_choosing_creates_nothing(self) -> None:
         for status in ("1", "130"):
             with self.subTest(status=status):
-                result = self.run_cli("prompt-add", "--host", "app", "--pick", FAKE_FZF_STATUS=status)
+                result = self.run_cli("prompt-add", "--pick", FAKE_FZF_STATUS=status)
                 self.assertEqual(result.returncode, 0, result.stderr)
                 self.assertEqual(self.picked_rows(), [f"{self.repo} \ttrunk()"])
                 self.assertNotIn("Name: ", result.stdout)
@@ -883,7 +889,7 @@ class AppHostTests(unittest.TestCase):
         self.set_record(terminal_record("t4", other, other, "sp4"))
         self.set_record(terminal_record("t5", third, third, "sp5"))
 
-        result = self.run_cli("prompt-add", "--host", "app", "--pick", stdin="feature\n", FAKE_FZF_EARLY_EXIT="1")
+        result = self.run_cli("prompt-add", "--pick", stdin="feature\n", FAKE_FZF_EARLY_EXIT="1")
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertIn("New jj workspace for repo\nBase: trunk()\n", result.stdout)
         self.assertEqual(self.commit("feature@-"), self.commit("trunk()"))
@@ -899,7 +905,7 @@ class AppHostTests(unittest.TestCase):
         self.hold_back_jj(self.repo, events)
 
         result = self.run_cli(
-            "prompt-add", "--host", "app", "--pick", stdin="feature\n", FAKE_FZF_EARLY_EXIT="1", EVENT_LOG=str(events)
+            "prompt-add", "--pick", stdin="feature\n", FAKE_FZF_EARLY_EXIT="1", EVENT_LOG=str(events)
         )
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(events.read_text().splitlines(), ["jj listing", "jj released", "fzf started"])
@@ -917,7 +923,7 @@ class AppHostTests(unittest.TestCase):
         self.hold_back_jj(self.repo, events, release_after="second jj listing")
 
         result = self.run_cli(
-            "prompt-add", "--host", "app", "--pick", stdin="feature\n", FAKE_FZF_EARLY_EXIT="1", EVENT_LOG=str(events)
+            "prompt-add", "--pick", stdin="feature\n", FAKE_FZF_EARLY_EXIT="1", EVENT_LOG=str(events)
         )
         self.assertEqual(result.returncode, 0, result.stderr)
         # Both listings start at once, so either may log "listing" first, and
@@ -995,7 +1001,7 @@ class AppHostTests(unittest.TestCase):
         threading.Thread(target=release, daemon=True).start()
 
     def test_prompt_add_pick_fzf_failure_waits_for_enter(self) -> None:
-        result = self.run_cli("prompt-add", "--host", "app", "--pick", stdin="\n", FAKE_FZF_STATUS="2")
+        result = self.run_cli("prompt-add", "--pick", stdin="\n", FAKE_FZF_STATUS="2")
         self.assertEqual(result.returncode, 1)
         self.assertIn("fzf exited with status 2", result.stderr)
         self.assertIn("Press enter to close.", result.stderr)
@@ -1006,19 +1012,10 @@ class AppHostTests(unittest.TestCase):
         plain.mkdir()
         self.set_world(app_space("sp3", plain, "t3", shown=True))
         self.set_record(terminal_record("t3", plain, plain, "sp3"))
-        result = self.run_cli("prompt-add", "--host", "app", "--pick", stdin="\n", FAKE_FZF_CHOICE="1")
+        result = self.run_cli("prompt-add", "--pick", stdin="\n", FAKE_FZF_CHOICE="1")
         self.assertEqual(result.returncode, 1)
         self.assertIn("no space on this machine is in a jj repository; run jjx ensure", result.stderr)
         self.assertIn("Press enter to close.", result.stderr)
-        self.assertFalse(self.fzf_arguments.exists())
-
-    def test_prompt_add_pick_needs_app_host(self) -> None:
-        result = self.run_cli(
-            "prompt-add", "--host", "tui", "--pick", stdin="\n", HERDR_PLUGIN_CONTEXT_JSON='{"workspace_id": "w1"}'
-        )
-        self.assertEqual(result.returncode, 1)
-        self.assertIn("--pick needs the app host", result.stderr)
-        self.assertEqual(self.calls(), [])
         self.assertFalse(self.fzf_arguments.exists())
 
     def test_prompt_add_pick_lists_first_folders_repository_first(self) -> None:
@@ -1031,11 +1028,11 @@ class AppHostTests(unittest.TestCase):
             app_space("sp4", other, "t4"),
         )
         self.set_record(terminal_record("t4", other, other, "sp4"))
-        without_first = self.run_cli("prompt-add", "--host", "app", "--pick")
+        without_first = self.run_cli("prompt-add", "--pick")
         self.assertEqual(without_first.returncode, 0, without_first.stderr)
         calls_without_first = self.calls()
 
-        result = self.run_cli("prompt-add", "--host", "app", "--pick", "--first", str(third / "sub"))
+        result = self.run_cli("prompt-add", "--pick", "--first", str(third / "sub"))
         self.assertEqual(result.returncode, 0, result.stderr)
         # Each repository's rows are contiguous: ~/third's, then the sidebar's in order.
         rows = self.picked_rows()
@@ -1064,8 +1061,6 @@ class AppHostTests(unittest.TestCase):
 
         result = self.run_cli(
             "prompt-add",
-            "--host",
-            "app",
             "--pick",
             "--first",
             str(self.workspace),
@@ -1084,13 +1079,13 @@ class AppHostTests(unittest.TestCase):
     def test_prompt_add_pick_first_outside_repository_lists_as_before(self) -> None:
         plain = self.root / "plain"
         plain.mkdir()
-        without_first = self.run_cli("prompt-add", "--host", "app", "--pick")
+        without_first = self.run_cli("prompt-add", "--pick")
         self.assertEqual(without_first.returncode, 0, without_first.stderr)
         listed_without_first = self.picked_rows()
 
         for first in (plain, plain / "gone"):
             with self.subTest(first=first.name):
-                result = self.run_cli("prompt-add", "--host", "app", "--pick", "--first", str(first))
+                result = self.run_cli("prompt-add", "--pick", "--first", str(first))
                 self.assertEqual(result.returncode, 0, result.stderr)
                 self.assertEqual(self.picked_rows(), listed_without_first)
 
@@ -1100,12 +1095,12 @@ class AppHostTests(unittest.TestCase):
         self.set_world(app_space("sp3", plain, "t3", shown=True))
         self.set_record(terminal_record("t3", plain, plain, "sp3"))
 
-        result = self.run_cli("prompt-add", "--host", "app", "--pick", "--first", str(self.repo / "src"))
+        result = self.run_cli("prompt-add", "--pick", "--first", str(self.repo / "src"))
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(self.picked_rows(), [f"{self.repo} \ttrunk()"])
 
     def test_prompt_add_first_needs_pick(self) -> None:
-        result = self.run_cli("prompt-add", "--host", "app", "--first", str(self.repo), stdin="\n")
+        result = self.run_cli("prompt-add", "--first", str(self.repo), stdin="\n")
         self.assertEqual(result.returncode, 1)
         self.assertIn("--first needs --pick", result.stderr)
         self.assertEqual(self.calls(), [])
@@ -1113,7 +1108,7 @@ class AppHostTests(unittest.TestCase):
 
     def test_prompt_remove_declined_changes_nothing(self) -> None:
         self.add_feature()
-        result = self.run_cli("prompt-remove", "--host", "app", "--workspace", "sp2", stdin="n\n", HC_TERMINAL_ID="")
+        result = self.run_cli("prompt-remove", "--workspace", "sp2", stdin="n\n", HC_TERMINAL_ID="")
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertIn("closes its Herdr app space", result.stdout)
         self.assertTrue(self.workspace.is_dir())
@@ -1121,7 +1116,7 @@ class AppHostTests(unittest.TestCase):
 
     def test_prompt_remove_confirmed_removes_and_shows_primary_space(self) -> None:
         self.add_feature()
-        result = self.run_cli("prompt-remove", "--host", "app", "--workspace", "sp2", stdin="y\n", HC_TERMINAL_ID="")
+        result = self.run_cli("prompt-remove", "--workspace", "sp2", stdin="y\n", HC_TERMINAL_ID="")
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertFalse(self.workspace.exists())
         self.assertEqual(
@@ -1130,7 +1125,7 @@ class AppHostTests(unittest.TestCase):
         )
 
     def test_prompt_remove_refusal_waits_for_enter(self) -> None:
-        result = self.run_cli("prompt-remove", "--host", "app", "--workspace", "sp1", stdin="\n", HC_TERMINAL_ID="")
+        result = self.run_cli("prompt-remove", "--workspace", "sp1", stdin="\n", HC_TERMINAL_ID="")
         self.assertEqual(result.returncode, 1)
         self.assertIn("not a removable jj workspace", result.stderr)
         self.assertIn("Press enter to close.", result.stderr)

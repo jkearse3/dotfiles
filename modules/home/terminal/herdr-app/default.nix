@@ -77,7 +77,7 @@ in
     packages = [
       dotfilesPackages.herdr-app
       dotfilesPackages.herdr-core
-      dotfilesPackages.herdr-jj-workspaces.cli
+      dotfilesPackages.herdr-jj-workspaces
     ];
     file = {
       ".config/herdr-core/config.toml".source = coreConfig;

@@ -1,9 +1,9 @@
-// Opens `herdr-jj-workspace prompt-remove --host app` in a popup terminal, so
-// a key binding (`ctrl-b shift-q`) can remove the jj workspace the shown space
-// holds: `mod.open` takes only a mod name. The prompt shows `jjx`'s dry-run
-// report, and on confirmation removes the workspace and closes the space; it
-// refuses primary checkouts and plain Git worktrees. The popup terminal has
-// no space label, so the launcher names the space with `--workspace`.
+// Opens `herdr-jj-workspace prompt-remove` in a popup terminal, so a key
+// binding (`ctrl-b shift-q`) can remove the jj workspace the shown space holds:
+// `mod.open` takes only a mod name. The prompt shows `jjx`'s dry-run report,
+// and on confirmation removes the workspace and closes the space; it refuses
+// primary checkouts and plain Git worktrees. The popup terminal has no space
+// label, so the launcher names the space with `--workspace`.
 //
 // Remove jj workspaces this way rather than with the app's Remove worktree
 // menu item: that item runs `git worktree remove` and leaves jj's record of
@@ -36,7 +36,7 @@ export default class JjWorkspaceRemove extends View {
         return {
           cli: "herdr-jj-workspace",
           folder: home(),
-          args: ["prompt-remove", "--host", "app", "--workspace", space.id],
+          args: ["prompt-remove", "--workspace", space.id],
         };
       },
     });
