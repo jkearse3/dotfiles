@@ -1,1 +1,0 @@
-../../../../../../.nix-profile/share/herdr/integrations/pi/herdr-agent-state.ts

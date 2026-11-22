@@ -263,21 +263,6 @@ interrupt remain changed. The same behavior is available explicitly through
 Idle double-Escape behavior remains owned by Pi's `doubleEscapeAction` setting,
 and a non-empty draft is never overwritten.
 
-## Herdr lifecycle integration
-
-`herdr-agent-state.ts` is intentionally a relative symlink to the official Pi
-integration in the active Nix profile. This gives Herdr its canonical installed
-filename, so `herdr integration status` verifies the same artifact shipped by
-the installed Herdr package instead of a copied extension.
-
-The installed tree, the `pi-extension-root` package, replaces that
-profile-relative link with a direct link to the selected
-`dotfilesPackages.herdr` artifact. The `pi-extensions-checked` package
-(`nix build --no-link .#pi-extensions-checked`) checks the integration identity,
-version marker, and source link target, and the Home Manager build fails through
-that package when any of them is wrong. Do not run
-`herdr integration install pi`; Home Manager owns the canonical path.
-
 ## Types for Pi's modules
 
 Pi supplies its own modules to extensions at load, so they are not npm

@@ -10,13 +10,12 @@
   pkgs,
 }:
 pkgs.runCommandLocal "pi-extension-root" { } ''
-  # Depending on the check keeps a failing extension or Herdr integration
-  # from producing an extension root.
+  # Depending on the check keeps a failing extension from producing an
+  # extension root.
   test -e ${pi-extensions-checked}
 
   mkdir -p $out
   cp -R ${extensions}/. $out/
-  rm -rf $out/node_modules $out/.pi-types $out/herdr-agent-state.ts
+  rm -rf $out/node_modules $out/.pi-types
   ln -s ${pi-extension-deps}/node_modules $out/node_modules
-  ln -s ${pi-extensions-checked.herdrPiIntegration} $out/herdr-agent-state.ts
 ''

@@ -74,7 +74,7 @@
           inherit (unstablePkgs) nodejs;
         };
         pi-extensions-checked = pkgs.callPackage ../packages/pi-extensions-checked/package.nix {
-          inherit (inputs.llm-agents.packages.${system}) herdr pi;
+          inherit (inputs.llm-agents.packages.${system}) pi;
           inherit pi-extension-deps pi-extension-types;
           inherit (unstablePkgs) nodejs typescript;
           extensions = piExtensions;
