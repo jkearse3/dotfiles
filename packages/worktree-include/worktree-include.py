@@ -1,15 +1,15 @@
 #!/usr/bin/env python3
-"""Copy the gitignored files a `.worktreeinclude` selects into another worktree.
+"""Copy the gitignored files a `.worktreeinclude` selects into a linked worktree.
 
-A file is copied only when it matches a pattern in the source checkout's
-`.worktreeinclude` (gitignore syntax) and the source checkout's own ignore rules
-also ignore it. Tracked and merely untracked files are never copied, and existing
-destination files are never overwritten.
+A file is copied from the repository's primary worktree only when it matches a
+pattern in that worktree's `.worktreeinclude` (gitignore syntax) and its own
+ignore rules also ignore it. Tracked and merely untracked files are never copied,
+and existing destination files are never overwritten.
 
-With `--post-checkout`, the command runs as Git's post-checkout hook and
-populates a newly added linked worktree from the primary worktree, staying
-silent wherever there is nothing to do. `--prepare` does the same for a given
-worktree, for tools that create worktrees without running Git's hooks.
+In a primary checkout, a repository whose primary worktree is bare, or a
+repository without `.worktreeinclude`, the command silently does nothing. With
+`--post-checkout`, it runs as Git's post-checkout hook and populates the linked
+worktree `git worktree add` just created.
 """
 
 from __future__ import annotations
@@ -22,7 +22,6 @@ import subprocess
 import sys
 import tempfile
 from collections.abc import Sequence
-from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
 
@@ -45,59 +44,36 @@ class CopyOutcome(Enum):
     KEPT_EXISTING = "kept existing"
 
 
-@dataclass(frozen=True)
-class Checkouts:
-    """Two distinct worktrees of the same Git repository."""
-
-    source: Path
-    destination: Path
-
-
 def main() -> int:
     arguments = parse_arguments(sys.argv[1:])
     clear_git_environment()
     try:
         if arguments.post_checkout is not None:
             post_checkout(*arguments.post_checkout)
-        elif arguments.prepare:
-            prepare(arguments.destination or Path.cwd())
         else:
-            copy_into(arguments.source, arguments.destination or Path.cwd(), dry_run=arguments.dry_run)
+            populate(arguments.destination or Path.cwd(), dry_run=arguments.dry_run)
     except IncludeError as error:
         print(f"worktree-include: {error}", file=sys.stderr)
         return 1
     return 0
 
 
-def copy_into(source: Path | None, destination: Path, *, dry_run: bool) -> None:
-    """Copy into DESTINATION from SOURCE, or from the primary worktree when
-    SOURCE is None, noting on stderr when there is no include file."""
-    checkouts = resolve_checkouts(source, destination)
-    if not (checkouts.source / INCLUDE_FILE).is_file():
-        print(
-            f"worktree-include: no {INCLUDE_FILE} in {checkouts.source}; nothing to copy",
-            file=sys.stderr,
-        )
-        return
-    copy_included_files(checkouts, dry_run=dry_run)
-
-
 def post_checkout(previous_head: str, new_head: str, checkout_kind: str) -> None:
     """Handle Git's post-checkout hook, which runs in the checked-out worktree.
 
     Only a branch checkout from the null commit, which is what `git worktree
-    add` performs, is prepared; clones and ordinary checkouts are silently
-    ignored. See `prepare` for what preparing the worktree means.
+    add` performs, is populated; clones and ordinary checkouts are silently
+    ignored.
     """
     del new_head
     if checkout_kind != "1" or previous_head.strip("0") != "":
         return
-    prepare(Path.cwd())
+    populate(Path.cwd(), dry_run=False)
 
 
-def prepare(destination: Path) -> None:
-    """Populate the newly added linked worktree containing DESTINATION from the
-    primary worktree, as the post-checkout hook does after `git worktree add`.
+def populate(destination: Path, *, dry_run: bool) -> None:
+    """Copy into the linked worktree containing DESTINATION from the primary
+    worktree.
 
     A primary checkout, a repository whose primary worktree is bare, and a
     repository without an include file are silently left alone. Raises
@@ -105,21 +81,16 @@ def prepare(destination: Path) -> None:
     file cannot be copied.
     """
     destination_root = worktree_root(destination)
-    if absolute_git_dir(destination_root).samefile(common_dir(destination_root)):
+    if is_primary_checkout(destination_root):
         return
-    source = primary_worktree(destination_root)
-    if source is None:
+    source_root = primary_worktree(destination_root)
+    if source_root is None:
         return
-
-    checkouts = resolve_checkouts(source, destination_root)
-    if (checkouts.source / INCLUDE_FILE).is_file():
-        copy_included_files(checkouts, dry_run=False)
-
-
-def copy_included_files(checkouts: Checkouts, *, dry_run: bool) -> None:
-    include_patterns = checkouts.source / INCLUDE_FILE
-    for relative_path in included_ignored_files(checkouts.source, include_patterns):
-        outcome = copy_included_file(checkouts, relative_path, dry_run=dry_run)
+    include_patterns = source_root / INCLUDE_FILE
+    if not include_patterns.is_file():
+        return
+    for relative_path in included_ignored_files(source_root, include_patterns):
+        outcome = copy_included_file(source_root, destination_root, relative_path, dry_run=dry_run)
         report(outcome, relative_path)
 
 
@@ -127,20 +98,15 @@ def parse_arguments(argv: Sequence[str]) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         prog="worktree-include",
         description=(
-            f"Copy gitignored files selected by the source checkout's {INCLUDE_FILE} "
-            "into another worktree of the same repository."
+            f"Copy gitignored files selected by the primary worktree's {INCLUDE_FILE} "
+            "into a linked worktree of the same repository."
         ),
     )
     _ = parser.add_argument(
         "destination",
         nargs="?",
         type=Path,
-        help="worktree to populate (default: the current directory's worktree)",
-    )
-    _ = parser.add_argument(
-        "--source",
-        type=Path,
-        help="worktree to copy from (default: the repository's primary worktree)",
+        help="linked worktree to populate (default: the current directory's worktree)",
     )
     _ = parser.add_argument(
         "--dry-run",
@@ -153,45 +119,10 @@ def parse_arguments(argv: Sequence[str]) -> argparse.Namespace:
         metavar=("PREVIOUS_HEAD", "NEW_HEAD", "CHECKOUT_KIND"),
         help="run as Git's post-checkout hook, populating newly added linked worktrees",
     )
-    _ = parser.add_argument(
-        "--prepare",
-        action="store_true",
-        help=(
-            "populate DESTINATION as a newly added linked worktree, as the post-checkout "
-            "hook does, silently skipping primary checkouts, bare primary worktrees, "
-            f"and repositories without {INCLUDE_FILE}"
-        ),
-    )
     arguments = parser.parse_args(argv)
-    if arguments.post_checkout is not None and (
-        arguments.destination is not None
-        or arguments.source is not None
-        or arguments.dry_run
-        or arguments.prepare
-    ):
+    if arguments.post_checkout is not None and (arguments.destination is not None or arguments.dry_run):
         parser.error("--post-checkout cannot be combined with other arguments")
-    if arguments.prepare and (arguments.source is not None or arguments.dry_run):
-        parser.error("--prepare cannot be combined with --source or --dry-run")
     return arguments
-
-
-def resolve_checkouts(source: Path | None, destination: Path) -> Checkouts:
-    """Resolve both paths to worktree roots and require them to be distinct
-    worktrees sharing one repository."""
-    destination_root = worktree_root(destination)
-    if source is not None:
-        source_root = worktree_root(source)
-    else:
-        primary = primary_worktree(destination_root)
-        if primary is None:
-            raise IncludeError("the primary worktree is bare; pass --source")
-        source_root = primary
-
-    if not common_dir(source_root).samefile(common_dir(destination_root)):
-        raise IncludeError(f"{source_root} and {destination_root} are different repositories")
-    if source_root.samefile(destination_root):
-        raise IncludeError(f"source and destination are the same worktree: {source_root}")
-    return Checkouts(source=source_root, destination=destination_root)
 
 
 def worktree_root(start: Path) -> Path:
@@ -200,12 +131,20 @@ def worktree_root(start: Path) -> Path:
     return Path(git_line("rev-parse", "--show-toplevel", cwd=start, failure=f"not inside a Git worktree: {start}"))
 
 
-def common_dir(checkout: Path) -> Path:
-    return Path(git_line("rev-parse", "--path-format=absolute", "--git-common-dir", cwd=checkout))
-
-
-def absolute_git_dir(checkout: Path) -> Path:
-    return Path(git_line("rev-parse", "--path-format=absolute", "--absolute-git-dir", cwd=checkout))
+def is_primary_checkout(checkout: Path) -> bool:
+    """Tell whether CHECKOUT is the repository's primary checkout rather than a
+    linked worktree, by whether its Git directory is the common one. Unlike the
+    path `git worktree list` reports, this also holds for a checkout whose Git
+    directory was moved with `--separate-git-dir`."""
+    output = git_line(
+        "rev-parse",
+        "--path-format=absolute",
+        "--absolute-git-dir",
+        "--git-common-dir",
+        cwd=checkout,
+    )
+    git_dir, common_dir = output.split("\n", 1)
+    return Path(git_dir).samefile(common_dir)
 
 
 def primary_worktree(checkout: Path) -> Path | None:
@@ -244,12 +183,12 @@ def included_ignored_files(source: Path, include_patterns: Path) -> list[str]:
     ]
 
 
-def copy_included_file(checkouts: Checkouts, relative_path: str, *, dry_run: bool) -> CopyOutcome:
+def copy_included_file(source_root: Path, destination_root: Path, relative_path: str, *, dry_run: bool) -> CopyOutcome:
     """Copy one selected file, preserving symlinks as symlinks and never
     replacing an existing destination path. Any filesystem failure, including
     one while comparing with an existing destination, raises IncludeError."""
-    source_path = checkouts.source / relative_path
-    destination_path = checkouts.destination / relative_path
+    source_path = source_root / relative_path
+    destination_path = destination_root / relative_path
 
     try:
         if os.path.lexists(destination_path):
@@ -257,7 +196,7 @@ def copy_included_file(checkouts: Checkouts, relative_path: str, *, dry_run: boo
                 return CopyOutcome.UNCHANGED
             return CopyOutcome.KEPT_EXISTING
 
-        require_creatable_directory(checkouts.destination, destination_path.parent)
+        require_creatable_directory(destination_root, destination_path.parent)
         if dry_run:
             return CopyOutcome.WOULD_COPY
 

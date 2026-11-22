@@ -106,13 +106,12 @@ class WorktreeIncludeTests(unittest.TestCase):
         self.assertEqual(0o600, (self.linked / ".env").stat().st_mode & 0o777)
         self.assertEqual(".env", os.readlink(self.linked / ".env.link"))
 
-    def test_missing_include_file_copies_nothing(self) -> None:
+    def test_is_silent_without_an_include_file(self) -> None:
         _ = self.write(".env", "SECRET=1\n")
 
         result = self.worktree_include()
 
-        self.assertEqual("", result.stdout)
-        self.assertIn("no .worktreeinclude", result.stderr)
+        self.assertEqual("", result.stdout + result.stderr)
         self.assertFalse((self.linked / ".env").exists())
 
     def test_never_overwrites_existing_destination_files(self) -> None:
@@ -137,31 +136,50 @@ class WorktreeIncludeTests(unittest.TestCase):
         self.assertEqual("would copy .env\n", result.stdout)
         self.assertFalse((self.linked / ".env").exists())
 
-    def test_explicit_source_and_destination(self) -> None:
+    def test_populates_a_given_destination(self) -> None:
         self.include(".env")
         _ = self.write(".env", "SECRET=1\n")
 
-        _ = self.worktree_include("--source", str(self.primary), str(self.linked), cwd=self.root)
+        result = self.worktree_include(str(self.linked), cwd=self.root)
 
-        self.assertTrue((self.linked / ".env").exists())
+        self.assertEqual("copied .env\n", result.stdout)
+        self.assertEqual("SECRET=1\n", (self.linked / ".env").read_text())
 
-    def test_refuses_the_source_worktree_as_destination(self) -> None:
+    def test_skips_the_primary_checkout_silently(self) -> None:
         self.include(".env")
+        _ = self.write(".env", "SECRET=1\n")
 
-        result = self.worktree_include(cwd=self.primary, check=False)
+        result = self.worktree_include(cwd=self.primary)
 
-        self.assertEqual(1, result.returncode)
-        self.assertIn("same worktree", result.stderr)
+        self.assertEqual("", result.stdout + result.stderr)
 
-    def test_refuses_worktrees_of_different_repositories(self) -> None:
-        other = self.root / "other"
-        other.mkdir()
-        self.git("init", "-q", cwd=other)
+    def test_skips_a_primary_checkout_with_a_separate_git_dir_silently(self) -> None:
+        checkout = self.root / "separate"
+        self.git(
+            "clone",
+            "-q",
+            "--separate-git-dir",
+            str(self.root / "separate.git"),
+            str(self.primary),
+            str(checkout),
+            cwd=self.root,
+        )
+        _ = self.write(".env", "SECRET=1\n", root=checkout)
+        _ = self.write(".worktreeinclude", ".env\n", root=checkout)
 
-        result = self.worktree_include("--source", str(self.primary), str(other), check=False)
+        result = self.worktree_include(cwd=checkout)
 
-        self.assertEqual(1, result.returncode)
-        self.assertIn("different repositories", result.stderr)
+        self.assertEqual("", result.stdout + result.stderr)
+
+    def test_skips_a_bare_primary_worktree_silently(self) -> None:
+        bare = self.root / "bare.git"
+        bare_linked = self.root / "bare-linked"
+        self.git("clone", "-q", "--bare", str(self.primary), str(bare), cwd=self.root)
+        self.git("worktree", "add", "-q", "--detach", str(bare_linked), cwd=bare)
+
+        result = self.worktree_include(str(bare_linked), cwd=self.root)
+
+        self.assertEqual("", result.stdout + result.stderr)
 
     def test_refuses_to_write_through_a_symlinked_destination_directory(self) -> None:
         self.include("local/")
@@ -253,62 +271,6 @@ class WorktreeIncludeTests(unittest.TestCase):
         self.assertNotIn("Traceback", result.stderr)
         self.assertEqual("SECRET=2\n", (self.linked / ".env").read_text())
 
-    def test_prepare_populates_a_linked_worktree(self) -> None:
-        self.include(".env")
-        _ = self.write(".env", "SECRET=1\n")
-
-        result = self.worktree_include("--prepare", str(self.linked), cwd=self.root)
-
-        self.assertEqual("copied .env\n", result.stdout)
-        self.assertEqual("SECRET=1\n", (self.linked / ".env").read_text())
-
-    def test_prepare_skips_the_primary_checkout_silently(self) -> None:
-        self.include(".env")
-        _ = self.write(".env", "SECRET=1\n")
-
-        result = self.worktree_include("--prepare", cwd=self.primary)
-
-        self.assertEqual("", result.stdout + result.stderr)
-
-    def test_prepare_is_silent_without_an_include_file(self) -> None:
-        _ = self.write(".env", "SECRET=1\n")
-
-        result = self.worktree_include("--prepare")
-
-        self.assertEqual("", result.stdout + result.stderr)
-        self.assertFalse((self.linked / ".env").exists())
-
-    def test_prepare_skips_a_bare_primary_worktree_silently(self) -> None:
-        bare = self.root / "bare.git"
-        bare_linked = self.root / "bare-linked"
-        self.git("clone", "-q", "--bare", str(self.primary), str(bare), cwd=self.root)
-        self.git("worktree", "add", "-q", "--detach", str(bare_linked), cwd=bare)
-
-        result = self.worktree_include("--prepare", str(bare_linked), cwd=self.root)
-
-        self.assertEqual("", result.stdout + result.stderr)
-
-    def test_prepare_fails_on_copy_errors(self) -> None:
-        self.include(".env.d/")
-        _ = self.write(".env.d/settings", "SECRET=1\n")
-        (self.linked / ".env.d").symlink_to("missing")
-
-        result = self.worktree_include("--prepare", check=False)
-
-        self.assertEqual(1, result.returncode)
-        self.assertIn("is not a directory", result.stderr)
-
-    def test_prepare_rejects_source_dry_run_and_post_checkout(self) -> None:
-        for arguments in (
-            ("--prepare", "--source", str(self.primary)),
-            ("--prepare", "--dry-run"),
-            ("--prepare", "--post-checkout", "0" * 40, "0" * 40, "1"),
-        ):
-            with self.subTest(arguments=arguments):
-                result = self.worktree_include(*arguments, check=False)
-
-                self.assertEqual(2, result.returncode)
-                self.assertIn("cannot be combined", result.stderr)
 
 
 @final
@@ -395,6 +357,25 @@ class PostCheckoutHookTests(unittest.TestCase):
         clone = self.root / "clone"
 
         result = self.git("clone", "-q", str(self.primary), str(clone), cwd=self.root)
+
+        self.assertEqual("", result.stdout + result.stderr)
+        self.assertFalse((clone / ".env").exists())
+
+    def test_ignores_clones_with_a_separate_git_dir(self) -> None:
+        self.include()
+        _ = self.git("add", "-f", ".worktreeinclude")
+        _ = self.git("commit", "-qm", "include")
+        clone = self.root / "clone"
+
+        result = self.git(
+            "clone",
+            "-q",
+            "--separate-git-dir",
+            str(self.root / "clone.git"),
+            str(self.primary),
+            str(clone),
+            cwd=self.root,
+        )
 
         self.assertEqual("", result.stdout + result.stderr)
         self.assertFalse((clone / ".env").exists())

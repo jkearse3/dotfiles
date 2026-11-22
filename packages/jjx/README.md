@@ -56,11 +56,11 @@ by its absolute path without the leading `/`, such as
 in one of the repository's other workspaces. A given destination is used as is,
 as `jj workspace add` uses it.
 
-It runs `worktree-include --prepare` to copy the local files the primary
-checkout's `.worktreeinclude` selects, then `direnv-worktree prepare` to
-authorize the workspace's `.envrc` when the repository has enabled it. It prints
-the workspace root on stdout. If a step fails, the workspace is kept and the
-error names the commands to rerun.
+It runs `worktree-include` to copy the local files the primary checkout's
+`.worktreeinclude` selects, then `direnv-worktree prepare` to authorize the
+workspace's `.envrc` when the repository has enabled it. It prints the workspace
+root on stdout. If a step fails, the workspace is kept and the error names the
+commands to rerun.
 
 `jjx workspace add` creates only colocated workspaces: it always passes
 `--colocate` to `jj workspace add` and rejects `--no-colocate`. If the new

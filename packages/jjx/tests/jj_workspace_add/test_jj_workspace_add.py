@@ -127,7 +127,7 @@ class WorkspaceAddTests(unittest.TestCase):
         self.assertEqual(result.stdout, os.fsencode(workspace) + b"\n")
         self.assertEqual(
             self.follow_ups(),
-            [f"worktree-include --prepare {workspace}", f"direnv-worktree prepare {workspace}"],
+            [f"worktree-include {workspace}", f"direnv-worktree prepare {workspace}"],
         )
         self.assertIn(b"stdout from worktree-include", result.stderr)
         top_level = run("git", "-C", str(workspace), "rev-parse", "--show-toplevel", env=self.env)
@@ -152,7 +152,7 @@ class WorkspaceAddTests(unittest.TestCase):
         self.assertEqual(result.stdout, b"")
         self.assertEqual(len(self.follow_ups()), 2)
         self.assertIn(b"failure from worktree-include", result.stderr)
-        self.assertIn(f"rerun: worktree-include --prepare {workspace}\n".encode(), result.stderr)
+        self.assertIn(f"rerun: worktree-include {workspace}\n".encode(), result.stderr)
         self.assertNotIn(b"rerun: direnv-worktree", result.stderr)
         self.assertEqual(self.workspace_names(), ["default", "feature"])
 

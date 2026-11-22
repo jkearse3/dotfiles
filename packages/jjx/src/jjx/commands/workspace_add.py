@@ -25,7 +25,7 @@ from .process import capture_bytes, checked_bytes
 
 
 FOLLOW_UPS: tuple[tuple[str, ...], ...] = (
-    ("worktree-include", "--prepare"),
+    ("worktree-include",),
     ("direnv-worktree", "prepare"),
 )
 """Commands run in order in every new workspace, each given its root as the last argument."""
@@ -67,8 +67,8 @@ usage: {prog} [jj workspace add options] [DESTINATION]
 Run 'jj workspace add --colocate' with the given arguments, then prepare the
 new workspace as Git's post-checkout hook prepares a new worktree:
 
-  1. worktree-include --prepare copies the local files the primary
-     checkout's .worktreeinclude selects.
+  1. worktree-include copies the local files the primary checkout's
+     .worktreeinclude selects.
   2. direnv-worktree prepare authorizes the workspace's .envrc when the
      repository has enabled it.
 

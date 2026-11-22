@@ -1,22 +1,21 @@
 # worktree-include
 
 `worktree-include` copies local, gitignored files such as `.env` or
-`.claude/settings.local.json` from one worktree of a repository into another, so
-a new Git worktree or colocated jj workspace starts with them.
+`.claude/settings.local.json` from a repository's primary worktree into a linked
+one, so a new Git worktree or colocated jj workspace starts with them.
 
 ```console
-$ worktree-include [--source PATH] [--dry-run] [DESTINATION]
-$ worktree-include --prepare [DESTINATION]
+$ worktree-include [--dry-run] [DESTINATION]
 ```
 
-`DESTINATION` defaults to the current directory's worktree and `--source` to the
-repository's primary worktree. Both must be distinct worktrees of the same
-repository.
+`DESTINATION` defaults to the current directory's worktree. In a primary
+checkout, a repository whose primary worktree is bare, or a repository without a
+`.worktreeinclude`, the command does nothing and prints nothing.
 
 ## Selecting files
 
-The source worktree's `.worktreeinclude` lists patterns in `.gitignore` syntax.
-A file is copied only when it matches one of those patterns **and** the source
+The primary worktree's `.worktreeinclude` lists patterns in `.gitignore` syntax.
+A file is copied only when it matches one of those patterns **and** the primary
 worktree's own ignore rules ignore it, so tracked and merely untracked files are
 never copied. Paths under `.jj/` are never selected: jj ignores its own
 metadata, but that metadata belongs to each workspace. This is the convention
@@ -29,9 +28,7 @@ Gitignore semantics apply, including two common surprises:
 - A file cannot be re-included or excluded with `!` once its parent directory is
   matched. Write `local/**` with `!local/skip.json`, not `local/`.
 
-Without a `.worktreeinclude`, the command reports that there is nothing to copy
-and succeeds. Whether the file is committed or kept local is up to each
-repository.
+Whether `.worktreeinclude` is committed or kept local is up to each repository.
 
 ## Copy behavior
 
@@ -59,12 +56,9 @@ inside it.
 The hook runs before `direnv-worktree`, so a new worktree's `.envrc` can rely on
 the copied files.
 
-Tools that create linked worktrees without running Git's hooks can run the same
-preparation afterwards with `worktree-include --prepare [DESTINATION]`. Like the
-hook, it does nothing for a primary checkout, a bare primary worktree, or a
-repository without a `.worktreeinclude`, and it fails on copy errors.
-`jj workspace add` never runs this hook, so create jj workspaces with
-`jjx workspace add`, which runs `worktree-include --prepare` afterwards.
+Tools that create linked worktrees without running Git's hooks can run
+`worktree-include DESTINATION` afterwards. `jj workspace add` never runs this
+hook, so create jj workspaces with `jjx workspace add`, which does.
 
 ## Development
 
