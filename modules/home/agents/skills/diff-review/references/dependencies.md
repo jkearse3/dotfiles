@@ -21,6 +21,5 @@ concern about this repository:
    signal needs code to judge, read the upstream source diff for only that area.
 
 Report a reachable advisory, a concerning signal, or an untested breaking change
-that affects the repository as a finding, and one that stays unresolved as a
-`question`. List dependencies left unscreened in Coverage rather than widening
-the search.
+that affects the repository as a finding. List dependencies left unscreened in
+Coverage rather than widening the search.

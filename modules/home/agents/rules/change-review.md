@@ -1,8 +1,8 @@
 # Change Review
 
 Before finalizing task-owned changes, review the complete task diff for defects:
-trace it as steps 2 to 5 of `diff-review`'s `references/reviewer.md` do, and
-judge it by `references/findings.md`. Fix what you find, and report the
+trace it as the Trace section of `diff-review`'s `references/reviewer.md` does,
+and judge it by `references/findings.md`. Fix what you find, and report the
 suspected defects you could not settle. Then confirm declared criteria and run
 the checks Running Checks calls for. When delegates built the task's diffs and
 each reviewed its own this way, the session that lands them relies on those

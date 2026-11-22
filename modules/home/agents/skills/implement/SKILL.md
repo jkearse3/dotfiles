@@ -160,15 +160,15 @@ agreed spec needs the user. Stop goes to Report.
    makes it return `blocked` with the deviation and its evidence instead of
    working around it. It edits only the working copy, performs no VCS mutation
    or delegation, and runs the change's checks on its final edits. Before
-   returning, it reviews its diff for defects as steps 2 to 5 of `diff-review`'s
-   `references/reviewer.md` do, judged by `references/findings.md`, and fixes
-   what it finds. It writes no description text and instead returns facts when
-   the revision's description no longer fits. It returns `done` with each
-   check's command, result, and commit and the suspected defects it could not
-   settle, or `blocked` with evidence or a question. When the host cannot
-   continue an agent, or this session has lost it, such as after compaction,
-   give each remaining change to a fresh implementer with the path of `run.md`
-   and the change.
+   returning, it reviews its diff for defects as the Trace section of
+   `diff-review`'s `references/reviewer.md` does, judged by
+   `references/findings.md`, and fixes what it finds. It writes no description
+   text and instead returns facts when the revision's description no longer
+   fits. It returns `done` with each check's command, result, and commit and the
+   suspected defects it could not settle, or `blocked` with evidence or a
+   question. When the host cannot continue an agent, or this session has lost
+   it, such as after compaction, give each remaining change to a fresh
+   implementer with the path of `run.md` and the change.
 
    Land a change when its diff does what the plan says, changes nothing else,
    makes visible nothing that no criterion requires, and passed its checks on

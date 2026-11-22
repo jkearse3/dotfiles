@@ -1,11 +1,12 @@
 ---
 name: diff-review
 description: >-
-  Independently reviews stable finalized revisions, ranges, or branches already
-  available in the local repository for actionable defects and declared
-  criteria. Use when a described local target is ready for read-only review; not
-  for working changes, remote-only targets, implementation, fixes, or history
-  mutation.
+  Reviews finalized revisions, ranges, or branches in a local jj or Git
+  repository, read-only, for defects that should block merging and for declared
+  criteria, through a fresh reviewer and verifier. Use when the user asks to
+  review a local revision, commit, stack, bookmark, or branch. Not for working
+  changes (finalize them with finalize-changes first), pull requests not yet
+  fetched (use pr-review), or fixing findings (use diff-fix).
 ---
 
 # Diff Review
@@ -25,22 +26,17 @@ Take from the request and context:
 - **Granularity:** per revision, the default, or as a whole when the request
   says so or says the history will be squashed.
 - **Criteria:** only outcomes the request, a referenced artifact, or a revision
-  description explicitly declares, kept verbatim with their proof methods. A
-  spec the target builds, in the shape `spec` defines, declares each acceptance
-  criterion and each `Boundaries` line as a criterion, and its acceptance
-  criteria together as the complete list of what the target may make visible. A
-  spec with a `Changes` section predates that shape and is read by its own
-  sections: its `Changes` are the complete list of what the target may make
-  visible, and its `Acceptance Criteria` are criteria.
+  description explicitly declares, kept verbatim with their proof methods,
+  including any complete list of what the target may make visible. A spec the
+  target builds, in the shape `spec` defines, declares each acceptance criterion
+  and each `Boundaries` line as a criterion, and its acceptance criteria
+  together as that list.
 - **Context:** focus areas, non-goals, known issues, user decisions, and quoted
   evidence. Focus never narrows review; a non-goal excuses an absence, not a
   defect in changed behavior.
-- **Optional caller inputs:**
-  - _Check evidence:_ entries of command, commit it ran on, and result.
-  - _Earlier findings:_ findings from earlier reviews of this target.
-  - _Declined candidates:_ candidates an earlier review declined, with the
-    disproving evidence.
-  - _Tip checks:_ a request to run the repository's checks at the target's tip.
+- **Optional:** check evidence (command, commit it ran on, and result), earlier
+  findings on this target, declined candidates with their disproving evidence,
+  and a tip checks request to run the repository's checks at the target's tip.
 
 Resolve the target once to commit IDs without moving refs. Block when it is
 missing, ambiguous, undiffable, has no revision with a non-empty diff, has an
@@ -65,8 +61,7 @@ When the reviewer returns candidates, dispatch one fresh verifier with the path
 of `references/verifier.md`, the commit IDs, the inputs, and the candidates
 verbatim. Give returns without evidence to one fresh verifier, and treat a
 candidate still unresolved as `references/findings.md` treats a suspected
-blocker the evidence cannot settle. Report only confirmed findings, and list
-declined candidates under Coverage with their evidence.
+blocker the evidence cannot settle.
 
 When this session is a delegate without explicit human authorization to
 delegate, or the host cannot start fresh agents, it follows `reviewer.md`
@@ -79,18 +74,16 @@ instead.
 
 Lead with **Status**:
 
-- `pass`: the target was covered, every applicable description is accurate and
-  conforms, every criterion is satisfied, and there are no findings.
+- `pass`: the target was covered, every criterion is satisfied, and there are no
+  findings.
 - `blocked`: preflight or Delegate prevented review.
 - `non-pass`: anything else.
 
 Then, as applicable:
 
-- **Coverage:** whole-target or per-revision review, the behaviors traced,
-  unreached areas with the missing evidence, references loaded, admitted and
-  ignored check evidence, known issues the target neither introduces nor
-  worsens, and declined candidates with the disproving evidence.
+- **Coverage:** the reviewer's Coverage, plus declined candidates with their
+  disproving evidence.
 - **Criteria:** each `satisfied`, `not satisfied`, or `blocked`, citing decisive
   evidence or the precise blocker.
-- **Findings:** most harmful first, as
-  `- location (category): trigger; mechanism; path set; root cause; owning revision; correction; evidence`.
+- **Findings:** confirmed findings only, most harmful first, in the
+  `findings.md` shape.

@@ -89,12 +89,13 @@ keep, and `evidence` otherwise.
    `jj describe <owner> --message "$desc"`. It runs no other VCS mutation, such
    as a reorder, split, or push, touches no revision outside the target, and
    ends with `jj new <tip>`. Before returning, it reviews its fixes for defects
-   they add as steps 2 to 5 of `diff-review`'s `references/reviewer.md` do,
-   judged by `references/findings.md`, and fixes what it finds. Per finding it
-   returns `fixed` with the revision it changed and each check it ran and the
-   result, only once those checks pass at the owner, `rejected` with evidence,
-   or `needs-decision` with the question, and it names any conflict it could not
-   resolve. Decide each `needs-decision` and `rejected` return for later rounds.
+   they add as the Trace section of `diff-review`'s `references/reviewer.md`
+   does, judged by `references/findings.md`, and fixes what it finds. Per
+   finding it returns `fixed` with the revision it changed and each check it ran
+   and the result, only once those checks pass at the owner, `rejected` with
+   evidence, or `needs-decision` with the question, and it names any conflict it
+   could not resolve. Decide each `needs-decision` and `rejected` return for
+   later rounds.
 
 4. **Check** what the fixer changed against the recorded commits. No revision
    but `@` may have joined or left `descendants(<target's first revision>)`,

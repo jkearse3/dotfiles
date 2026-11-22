@@ -9,13 +9,12 @@ need not be perfect.
 ## Blocker Types
 
 - `landing`: a build, test, lint, or `commit-message validate` check fails; a
-  declared criterion is missed or only partly met; when the criteria come from a
-  spec, the target makes visible, as the Alignment rule defines it, something
-  the spec's acceptance criteria, or for a spec with a `Changes` section its
-  `Changes`, do not call for; when reviewed per revision, a revision relies on a
-  later one to build, pass its checks, or keep working, unless a decision
-  accepts a breaking change the revision declares; when reviewed as a whole, a
-  material mismatch with the stated intent.
+  declared criterion is missed or only partly met; the target makes visible, as
+  the Alignment rule defines it, something a declared complete list of what it
+  may make visible does not call for; when reviewed per revision, a revision
+  relies on a later one to build, pass its checks, or keep working, unless a
+  decision accepts a breaking change the revision declares; when reviewed as a
+  whole, a material mismatch with the stated intent.
 - `behavior`: a wrong result, lost or corrupted data, a crash or hang, a failure
   hidden or reported as success, or something that worked before breaking, such
   as a caller, configuration key, or stored data.
@@ -65,25 +64,23 @@ loop path either makes progress or asks", not just the path that broke. Check
 every path in the target that guarantee should cover; each one that fails joins
 the finding's **path set**. Defects that share a missing guarantee are one
 finding. When earlier findings keep recurring in one component, several defects
-stem from its structure, or new defects arise in what corrections of earlier
-findings added, so that a simpler structure would remove them, report one
-finding proposing that structure, which may drop the added mechanism when the
-earlier findings it fixed no longer count or the structure resolves them, with
-those defects as its path set.
+stem from its structure, or defects arise in what corrections of earlier
+findings added, and a simpler structure would remove them, report one finding
+proposing that structure, with those defects as its path set; it may drop
+mechanism added for earlier findings that no longer count or that it resolves.
 
 ## Correction
 
 Give the smallest change that fixes the root cause, never a workaround that
 hides the symptom, including a check downstream of where the bad state arises.
 When text claims more than the code enforces and nothing relies on the broader
-claim, narrowing the text is the fix. A text correction uses the simplest
-language that works and replaces or shortens text rather than appending, keeping
-each rule in one place. The correction stays within the code the target changes
-or made inconsistent, plus checks for its behavior. When the root fix needs
-more, such as code outside the target or a changed external contract, the
-finding is `design`: state the real fix and what it touches, the contained
-workaround and the risk it leaves, and whether the approach itself needs
-rethinking.
+claim, narrowing the text is the fix. A text correction replaces or shortens
+text rather than appending, and one to agent text follows `skill-style`. The
+correction stays within the code the target changes or made inconsistent, plus
+checks for its behavior. When the root fix needs more, such as code outside the
+target or a changed external contract, the finding is `design`: state the real
+fix and what it touches, the contained workaround and the risk it leaves, and
+whether the approach itself needs rethinking.
 
 ## Shape
 
