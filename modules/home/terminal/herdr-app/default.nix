@@ -69,8 +69,6 @@ in
   ];
 
   home = {
-    # The wrapped `hc` drops the Herdr TUI's pane variables, so a core first
-    # started from a TUI pane does not pass them to app terminals.
     # A switch leaves a running core on its old version; `hc server restart`
     # moves it. Nothing restarts it automatically because a core's saved
     # state only moves forward.
@@ -143,6 +141,6 @@ in
   # How agents inside herdr-core run background jobs, as a shared rule in the
   # agent instruction files this repo renders. The upstream skill loads only
   # on demand and misses or contradicts some of the `hc` behavior this works
-  # around, which `packages/herdr-core/README.md` records with reproductions.
+  # around, which `hc-behavior.md` records with reproductions.
   agents.sharedRules.herdr-core = ./agent-rule.md;
 }

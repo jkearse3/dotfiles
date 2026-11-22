@@ -29,7 +29,7 @@ let
       NSHighResolutionCapable = true;
       # Finder and Dock launches do not get the login shell's PATH. The app
       # looks for `hc` on PATH, and the profile's comes first so that it
-      # finds the wrapped one, which drops the TUI's pane variables. On those
+      # finds the one Home Manager pins. On those
       # launches the app also puts the login shell's PATH in front
       # (herdr-app `src/core_bin.rs` `fill_path`).
       LSEnvironment.PATH = lib.concatStringsSep ":" [

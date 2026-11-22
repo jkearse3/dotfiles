@@ -54,9 +54,7 @@
           nodejs = unstablePkgs.nodejs_24;
           modSources = herdrAppModSources;
         };
-        herdr-core = pkgs.callPackage ../packages/herdr-core/package.nix {
-          upstream = inputs.llm-agents.packages.${system}.herdr-core;
-        };
+        herdr-core = inputs.llm-agents.packages.${system}.herdr-core;
         herdr-jj-workspaces = pkgs.callPackage ../packages/herdr-jj-workspaces/package.nix {
           inherit herdr-app herdr-core jjx;
           inherit (unstablePkgs) jujutsu;
