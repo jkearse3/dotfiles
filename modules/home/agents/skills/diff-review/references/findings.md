@@ -45,8 +45,9 @@ notice and could undo, and advice to "consider".
 Judge each artifact the way its consumer uses it: code by what it does when it
 runs, and text by what a reasonable reader does after reading it in context. A
 `text` finding quotes the text and names the wrong action or belief a reader
-following it would take; a reading the surrounding text resolves, or a gap a
-competent agent would fill sensibly, is not a finding.
+following it would take; an ambiguity the surrounding text resolves, or a gap a
+competent agent would fill sensibly, is not a finding, but a false claim or a
+description that breaks its rules is, however inconsequential it seems.
 
 A decision settles what it decides, not consequences it shows no sign of having
 weighed. Declaring a lost guarantee or breaking change discloses it; only a
