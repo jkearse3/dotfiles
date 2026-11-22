@@ -5,7 +5,6 @@ project-includes = [
   "packages/commit-message",
   "packages/direnv-worktree",
   "packages/herdr-jj-workspaces",
-  "packages/nix-cleanup",
   "packages/scratch-sweep",
   "packages/jjx",
   "packages/token-count",
@@ -15,7 +14,6 @@ search-path = [
   "packages/commit-message/src",
   "packages/herdr-jj-workspaces/src",
   "packages/jjx/src",
-  "packages/nix-cleanup",
   "packages/scratch-sweep",
 ]
 
