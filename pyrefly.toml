@@ -4,7 +4,6 @@ project-includes = [
   "modules/home/vcs/jj/migrate-jj-sign-on-push",
   "packages/commit-message",
   "packages/direnv-worktree",
-  "packages/herdr-find",
   "packages/herdr-jj-workspaces",
   "packages/nix-cleanup",
   "packages/scratch-sweep",
@@ -14,7 +13,6 @@ project-includes = [
 ]
 search-path = [
   "packages/commit-message/src",
-  "packages/herdr-find/src",
   "packages/herdr-jj-workspaces/src",
   "packages/jjx/src",
   "packages/nix-cleanup",

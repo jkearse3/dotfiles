@@ -54,7 +54,6 @@ withSystem blueprint.system (
         inherit (llmAgents)
           ccusage
           claude-code
-          herdr
           hunk
           pi
           ;

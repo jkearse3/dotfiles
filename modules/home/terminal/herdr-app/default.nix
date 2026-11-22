@@ -77,6 +77,7 @@ in
     packages = [
       dotfilesPackages.herdr-app
       dotfilesPackages.herdr-core
+      dotfilesPackages.herdr-jj-workspaces.cli
     ];
     file = {
       ".config/herdr-core/config.toml".source = coreConfig;
@@ -136,6 +137,7 @@ in
   agents.extraSkills = {
     herdr-app = appSkill;
     herdr-core = "${dotfilesPackages.herdr-core}/share/skills/herdr-core/herdr-core";
+    herdr-jj-workspace = dotfilesPackages.herdr-jj-workspaces.skill;
   };
 
   # How agents inside herdr-core run background jobs, as a shared rule in the

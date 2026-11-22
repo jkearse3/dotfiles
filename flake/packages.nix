@@ -57,17 +57,10 @@
         herdr-core = pkgs.callPackage ../packages/herdr-core/package.nix {
           upstream = inputs.llm-agents.packages.${system}.herdr-core;
         };
-        herdr-find = pkgs.callPackage ../packages/herdr-find/package.nix {
-          inherit (inputs.llm-agents.packages.${system}) herdr;
-        };
         herdr-jj-workspaces = pkgs.callPackage ../packages/herdr-jj-workspaces/package.nix {
           inherit (inputs.llm-agents.packages.${system}) herdr;
           inherit herdr-app herdr-core jjx;
           inherit (unstablePkgs) jujutsu;
-        };
-        herdr-worktree-bootstrap = pkgs.callPackage ../packages/herdr-worktree-bootstrap/package.nix {
-          inherit (inputs.llm-agents.packages.${system}) herdr;
-          inherit jjx;
         };
         nix-cleanup = pkgs.callPackage ../packages/nix-cleanup/package.nix { };
         nix-jj-snapshot = pkgs.callPackage ../packages/nix-jj-snapshot/package.nix { };

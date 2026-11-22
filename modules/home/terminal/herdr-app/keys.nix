@@ -1,5 +1,5 @@
-# The Herdr TUI's `ctrl-b` prefix keymap (its 0.9.5 defaults and the user
-# bindings in `../herdr/config.toml`) for the Herdr app, as two attributes:
+# The Herdr TUI's `ctrl-b` prefix keymap (its 0.9.5 defaults and the user's
+# former TUI bindings) for the Herdr app, as two attributes:
 #
 # - `sections`: keys.json sections (`global`, `terminal`, ...) mapping a key
 #   or chord to an action. `global` binds `ctrl-b` alone to
@@ -69,7 +69,7 @@
       # workspace there on trunk(). It takes
       # the jj path, never the app's own Git worktree commands, which would
       # bypass jj: every checkout here is a jj workspace. `shift-q` removes
-      # one. The TUI binds the same keys to the jj workspace plugin actions.
+      # one.
       "shift-g" = "mod.open:jj-workspace-pick";
       "shift-q" = "mod.open:jj-workspace-remove";
       # The TUI user binding for finding agents and workspaces: the native find

@@ -28,7 +28,7 @@ let
   # Each shell sets the variable itself rather than through Home Manager's
   # session variables, whose guard is skipped when a parent process exported
   # `__HM_SESS_VARS_SOURCED` before the variable existed (e.g. a long-running
-  # herdr server). An inherited non-empty value is left alone.
+  # herdr-core server). An inherited non-empty value is left alone.
   posixRuntimeDirectoryFallback = ''
     if [ -z "''${XDG_RUNTIME_DIR-}" ]; then
       xdg_runtime_dir="${posixRuntimeDirectory}"
