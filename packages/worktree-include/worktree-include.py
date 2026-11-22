@@ -296,22 +296,18 @@ def require_creatable_directory(root: Path, directory: Path) -> None:
 
 
 def copy_atomically(source_path: Path, destination_path: Path) -> None:
-    staged_path: Path | None = None
+    """Copy into a staged sibling, symlinks as symlinks, and rename it into
+    place, so a failed copy never leaves a partial file behind."""
+    descriptor, staged = tempfile.mkstemp(prefix=f".{destination_path.name}.", dir=destination_path.parent)
+    os.close(descriptor)
+    staged_path = Path(staged)
     try:
-        descriptor, staged = tempfile.mkstemp(prefix=f".{destination_path.name}.", dir=destination_path.parent)
-        staged_path = Path(staged)
-        os.close(descriptor)
-
         staged_path.unlink()
-        if source_path.is_symlink():
-            staged_path.symlink_to(os.readlink(source_path))
-        else:
-            _ = shutil.copy2(source_path, staged_path)
+        _ = shutil.copy2(source_path, staged_path, follow_symlinks=False)
         os.replace(staged_path, destination_path)
-    except OSError as error:
-        if staged_path is not None:
-            staged_path.unlink(missing_ok=True)
-        raise IncludeError(f"could not copy {source_path} to {destination_path}: {error}") from None
+    except OSError:
+        staged_path.unlink(missing_ok=True)
+        raise
 
 
 def report(outcome: CopyOutcome, relative_path: str) -> None:
