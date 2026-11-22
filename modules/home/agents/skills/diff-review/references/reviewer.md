@@ -22,20 +22,21 @@ file first; it defines what to report and how.
    removes: callers, bindings, hooks, config, environment, and prose. Also
    consider the privileges and platform it runs under and the other parts of the
    change it interacts with.
-4. **Ask each `findings.md` question of each behavior.** Defects commonly hide
-   here:
-   - Question 2: a guarantee the replaced mechanism gave that the new one drops;
+4. **Ask each `findings.md` blocker type of each behavior.** Defects commonly
+   hide here:
+   - `behavior`: a guarantee the replaced mechanism gave that the new one drops;
      a result, such as a return value, error, or exit status, that no reader
      handles, or a failure that looks like the success or absence it resembles;
      a loop, retry, or long-running process with a path that never ends or makes
-     no progress; a guard sibling code has that the changed code lacks; behavior
-     that must keep working with no check that fails when it breaks.
-   - Question 3: an allowlist, access rule, or privilege judged by the use it
-     was written for rather than the widest input it admits; credentials,
-     personal data, or license-restricted material in the diff.
-   - Question 4: docs, comments, help text, and skills outside the diff that the
+     no progress; a guard sibling code has that the changed code lacks.
+   - `coverage`: behavior that must keep working with no check that fails when
+     it breaks.
+   - `safety`: an allowlist, access rule, or privilege judged by the use it was
+     written for rather than the widest input it admits; credentials, personal
+     data, or license-restricted material in the diff.
+   - `text`: docs, comments, help text, and skills outside the diff that the
      target makes false.
-   - Question 5: run
+   - `landing` and `text`: run
      `printf '%s\n' "$desc" | commit-message validate --require-body --conventional`
      on each description, dropping `--conventional` when repository docs define
      their own format, and judge the rules it cannot check by reading.
@@ -43,8 +44,11 @@ file first; it defines what to report and how.
    code, `dependencies.md` when it changes a dependency version, lockfile, or
    package source.
 
-Cover every behavior even after finding a defect, and report every candidate,
-including ones you are unsure of; the verifier filters false positives.
+Cover every behavior even after finding a defect. Report a candidate only when
+your evidence shows it is a blocker the verifier will confirm, and drop one you
+expect it to decline; the verifier's time goes to real defects. A suspected
+blocker you cannot settle is a candidate only when `findings.md` would make it a
+`question`.
 
 ## Evidence and Checks
 

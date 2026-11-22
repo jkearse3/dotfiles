@@ -1,64 +1,62 @@
 # Findings
 
-Review exists to stop a change from hurting someone after it merges. A finding
-names who gets hurt, how, and the real path that gets there: normal use,
-real-world input, a real failure, or an attacker at a trust boundary. A
-contrived input or a hypothetical future edit is not a real path, except that a
-future edit breaking unprotected behavior counts under question 2's rule on
-checks. A real path that is rare across the workload it serves and whose harm
-the user would notice and could undo is not a finding either; a rare path that
-loses data, gives a silently wrong result, or causes harm question 3 names still
-is. Report only defects that answer one of these questions:
+Review exists to stop a change from becoming a liability once it merges. Report
+only blockers: defects that hurt someone on a real path, meaning normal use,
+real-world input, a real failure, or an attacker at a trust boundary, never a
+contrived input. A finding names who gets hurt, how, and that path. The diff
+need not be perfect.
 
-1. **Does it do what was asked?** A criterion the target misses or only partly
-   meets, and, when the criteria come from a spec, anything the target makes
-   visible, as the Alignment rule defines it, that the spec's acceptance
-   criteria do not require, or, for a spec with a `Changes` section, that its
-   `Changes` do not list.
-2. **Does it work, and does everything else still work?**
-   - The new behavior gives the right result on every real path, reports its
-     failures rather than hiding them or passing them off as success, and is
-     fast enough for its real workload. Work that grows with real data on a
-     frequent or large-scale path counts; a path that could merely be faster
-     does not.
-   - Callers, configuration, keys, and stored data that worked before keep
-     working, and no setting silently stops doing anything.
-   - Behavior that criteria, other code, users, or stored data depend on, and
-     failure paths that would lose data or give silently wrong results, have a
-     check that fails when they break. Checks need not catch every possible
-     edit.
-3. **Is it safe?** A security hole, leaked secrets or personal data, a
-   destructive or surprising side effect, including an action nobody approved
-   that a user, system, or agent following instructions takes, or permissions
-   wider than needed.
-4. **Does its text hold up for a reader who has only the codebase?** Comments,
-   docs, help text, names, prompts, skills, and descriptions, in the diff or
-   elsewhere in the repository, that state something false, and text that only
-   makes sense with context outside the repository, such as planning labels or
-   references to the session that produced it. Tracker references, such as
-   ticket IDs, are fine.
-5. **Can it land?** A failing build or check; when reviewed per revision, a
-   revision that relies on a descendant to build, pass its checks, or keep its
-   parent's interfaces and persisted state usable, unless a decision accepts a
-   breaking change it declares; a description that does not account for its diff
-   or breaks `finalize-changes`' `references/revision-descriptions.md`; when
-   reviewed as a whole, a material mismatch with the stated intent.
+## Blocker Types
+
+- `landing`: a build, test, lint, or `commit-message validate` check fails; a
+  declared criterion is missed or only partly met; when the criteria come from a
+  spec, the target makes visible, as the Alignment rule defines it, something
+  the spec's acceptance criteria, or for a spec with a `Changes` section its
+  `Changes`, do not call for; when reviewed per revision, a revision relies on a
+  later one to build, pass its checks, or keep working, unless a decision
+  accepts a breaking change the revision declares; when reviewed as a whole, a
+  material mismatch with the stated intent.
+- `behavior`: a wrong result, lost or corrupted data, a crash or hang, a failure
+  hidden or reported as success, or something that worked before breaking, such
+  as a caller, configuration key, or stored data.
+- `performance`: on work that grows with real data, an obvious avoidable fault,
+  such as unbatched calls, avoidable quadratic or worse time or space, repeated
+  work that could be done once, or loading everything where streaming or paging
+  fits; not micro-optimizations or speedups the workload does not need.
+- `coverage`: behavior that criteria, callers, users, or stored data rely on, or
+  a failure path that would lose data or give a silently wrong result, has no
+  check that fails when it breaks. Checks need not catch every possible edit.
+- `safety`: a security hole, leaked secrets or personal data, permissions wider
+  than needed, or a destructive, surprising, or unapproved side effect,
+  including one a user, system, or agent takes by following the target's text.
+- `text`: a false statement in a description, doc, comment, help text, skill, or
+  prompt, in the diff or elsewhere that the diff made false; a description that
+  does not account for its diff or breaks `finalize-changes`'
+  `references/revision-descriptions.md`; a name whose plain reading misstates
+  its meaning, omits a unit its type lacks, leaves a boolean's true case
+  unclear, or no longer matches behavior; text that only makes sense with
+  context outside the repository, such as planning labels or references to the
+  session that produced it. Tracker references, such as ticket IDs, are fine.
 
 Nothing else is a finding: style the repository's tooling does not enforce,
-refactoring and reuse ideas, duplication, dead code for its own sake,
-optimizations the workload does not need, and advice to "consider".
+preferring another accurate name, refactoring and reuse ideas, duplication, dead
+code for its own sake, a path rare across its workload whose harm the user would
+notice and could undo, and advice to "consider".
 
 Judge each artifact the way its consumer uses it: code by what it does when it
 runs, and text by what a reasonable reader does after reading it in context. A
-finding about text quotes it and names the wrong action or belief it causes; a
-reading the surrounding text resolves is not a finding.
+`text` finding quotes the text and names the wrong action or belief a reader
+following it would take; a reading the surrounding text resolves, or a gap a
+competent agent would fill sensibly, is not a finding.
 
 A decision settles what it decides, not consequences it shows no sign of having
 weighed. Declaring a lost guarantee or breaking change discloses it; only a
 decision accepts it. Report harm no decision accepts, and any correction that
 would override a decision or undo declared intent, as a `question` asking for
-that decision. A suspected defect the evidence cannot settle is a `question`
-naming the evidence that would settle it.
+that decision. Report a suspected blocker the evidence cannot settle as a
+`question` naming the evidence that would settle it only when its harm would be
+irreversible, such as lost data, a security hole, or broken history; otherwise
+drop it.
 
 ## Root Cause
 
@@ -89,8 +87,7 @@ rethinking.
 
 ## Shape
 
-Categorize each finding by the question it answers: `requirement` (1), `bug`,
-`regression`, or `coverage` (2), `safety` (3), `text` (4), or `landing` (5); or
-`design` or `question` as above. Give its location, category, trigger,
-mechanism, path set, root cause, owning revision (the earliest target revision
-whose diff introduces it), correction, and decisive evidence.
+Categorize each finding by its blocker type, or as `design` or `question` as
+above. Give its location, category, trigger, mechanism, path set, root cause,
+owning revision (the earliest target revision whose diff introduces it),
+correction, and decisive evidence.

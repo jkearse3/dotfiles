@@ -63,9 +63,10 @@ evidence with one fresh reviewer.
 
 When the reviewer returns candidates, dispatch one fresh verifier with the path
 of `references/verifier.md`, the commit IDs, the inputs, and the candidates
-verbatim. Give returns without evidence to one fresh verifier, and report a
-candidate still unresolved as a `question`. Report only confirmed findings, and
-list declined candidates under Coverage with their evidence.
+verbatim. Give returns without evidence to one fresh verifier, and treat a
+candidate still unresolved as `references/findings.md` treats a suspected
+blocker the evidence cannot settle. Report only confirmed findings, and list
+declined candidates under Coverage with their evidence.
 
 When this session is a delegate without explicit human authorization to
 delegate, or the host cannot start fresh agents, it follows `reviewer.md`
