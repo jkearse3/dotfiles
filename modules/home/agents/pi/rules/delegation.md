@@ -1,8 +1,8 @@
 # Pi Delegation
 
-For a Pi session not itself delegated by another Pi session, standing delegation
-authorization includes the `subagent` tool. Use it for all Pi delegation, not
-raw Herdr, ad hoc shell launches, an in-process agent, or a legacy teammate
+For a Pi session not itself started by another agent, standing delegation
+authorization includes the `subagent` tool. Use it for Pi's built-in delegation,
+not shell launches outside `hc`, an in-process agent, or a legacy teammate
 manager. If the tool is unavailable or fails, stop rather than replaying work or
 silently switching mechanisms.
 

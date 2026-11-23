@@ -57,6 +57,11 @@ let
 
   spaceNew = import ./space-new.nix { inherit herdrApp pkgs; };
 
+  childWatch = import ./child-watch.nix {
+    herdrCore = dotfilesPackages.herdr-core;
+    inherit pkgs;
+  };
+
   dotfilesPaths = import ./dotfiles-paths.nix {
     inherit dotfilesPackages pkgs spaceNew;
     # The user's interactive jj, so the sidebar reads repositories with it.
@@ -76,6 +81,7 @@ in
       dotfilesPackages.herdr-app
       dotfilesPackages.herdr-core
       dotfilesPackages.herdr-jj-workspaces
+      childWatch
     ];
     file = {
       ".config/herdr-core/config.toml".source = coreConfig;
@@ -138,9 +144,12 @@ in
     herdr-jj-workspace = dotfilesPackages.herdr-jj-workspaces.skill;
   };
 
-  # How agents inside herdr-core run background jobs, as a shared rule in the
-  # agent instruction files this repo renders. The upstream skill loads only
-  # on demand and misses or contradicts some of the `hc` behavior this works
-  # around, which `hc-behavior.md` records with reproductions.
+  # How agents inside herdr-core run jobs, servers, and other agents in `hc`
+  # terminals, as a shared rule in the agent instruction files this repo
+  # renders. Agent children report by writing a result file, and parents learn
+  # of them through `hc-child-watch` or `hc wait`, so nothing is typed into an
+  # input box. The upstream skill loads only on demand and misses or
+  # contradicts some of the `hc` behavior this works around, which
+  # `hc-behavior.md` records with reproductions.
   agents.sharedRules.herdr-core = ./agent-rule.md;
 }

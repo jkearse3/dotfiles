@@ -30,7 +30,7 @@ copy of an installed extension can clash with the installed one.
 
 ## Subagents
 
-The `subagent` tool is the sole Pi delegation mechanism. Each call runs a
+The `subagent` tool is Pi's built-in delegation mechanism. Each call runs a
 short-lived Pi process in the foreground, streams live activity, waits for
 completion, and returns the final assistant response with model usage. Omit
 `conversationId` to create a durable conversation; pass a returned ID to spawn a
