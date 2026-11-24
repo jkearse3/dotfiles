@@ -26,14 +26,13 @@
 //   the checkout's folder name) and ahead/behind, or its jj bookmark and
 //   distance as the terminal prompt shows them (`terminalCheckoutLine`);
 //   in no checkout, or until its checkout is found, the folder itself.
-//   That checkout line ends with a "conflict" badge when its jj checkout
-//   has a conflict, whatever the terminal is doing, else, on an agent
-//   neither working nor blocked, a "review" badge for unshipped work
-//   (`terminalCheckoutBadge`). An agent's adds a third line with why it
-//   is blocked, what it is doing now, or else its status word, and at its
-//   end how long it has been in its status (while it works, "quiet 12m" in
-//   amber once it has shown no new report message, turn or
-//   state for 10 minutes). A plain terminal running a command other than
+//   That checkout line ends, on an agent neither working nor blocked, with
+//   a "review" badge for unshipped work, unless its jj checkout has a
+//   conflict (`terminalCheckoutBadge`). An agent's adds a third line with
+//   why it is blocked, what it is doing now, or else its status word, and
+//   at its end how long it has been in its status (while it works, "quiet
+//   12m" in amber once it has shown no new report message, turn or state
+//   for 10 minutes). A plain terminal running a command other than
 //   its shell (`make dev`) adds a third line with that command in cyan, in
 //   the terminal's font, and how long it has run, once it has run 2 seconds
 //   (`CommandStarts`), so quick commands do not make rows jump. Clicking a
@@ -1235,8 +1234,8 @@ export default class SpacesAndAgents extends View {
       );
   }
 
-  // The "Remove" chip at the end of a finished terminal's row, a badge in
-  // the blocked color like the "conflict" one (`terminalCheckoutBadge`):
+  // The "Remove" chip at the end of a finished terminal's row, shaped like
+  // the "review" badge (`terminalCheckoutBadge`) in the blocked color:
   // removing is the one action in the sidebar that deletes something.
   // Clicking it removes `finished` (`removeFinished`) without going to its
   // parent.

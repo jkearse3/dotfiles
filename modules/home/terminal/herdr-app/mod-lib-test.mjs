@@ -8,7 +8,7 @@
 // `quietFor` from `quiet.ts`,
 // `runningCommand`, `shellCommandText`, `commandText` and `CommandStarts`
 // from `foreground.ts`, `hoverFill` and `stripeColor` from `row-colors.ts`,
-// `innermostRoot` from `checkout-root.ts`, `terminalCheckoutBadgeKind` from
+// `innermostRoot` from `checkout-root.ts`, `terminalCheckoutNeedsReview` from
 // `checkout-badge.ts`, `nextFocusReveal` from `focus-reveal.ts`, and the desk-spaces sidebar's status and activity
 // tracking (`AgentHistory` from its own `agents.ts`), the trackers over an
 // in-memory `localStorage`, against the terminals(), agents(), panes() and
@@ -53,7 +53,7 @@ const { hoverFill, stripeColor } = await import(
 );
 const { AgentHistory } = await import(`${mods}/desk-spaces/agents.js`);
 const { innermostRoot } = await import(`${mods}/desk-spaces/checkout-root.js`);
-const { terminalCheckoutBadgeKind } = await import(
+const { terminalCheckoutNeedsReview } = await import(
   `${mods}/desk-spaces/checkout-badge.js`
 );
 const { nextFocusReveal } = await import(`${mods}/desk-spaces/focus-reveal.js`);
@@ -1891,53 +1891,55 @@ const jjBadge = (fields) => ({
   ...fields,
 });
 
-test("terminalCheckoutBadgeKind marks a conflict on every row", () => {
+test("terminalCheckoutNeedsReview leaves review off a jj checkout with a conflict", () => {
   const g = jjBadge({ conflict: true, modified: true, distance: 3 });
-  assert.equal(terminalCheckoutBadgeKind("working", g), "conflict");
-  assert.equal(terminalCheckoutBadgeKind("blocked", g), "conflict");
-  assert.equal(terminalCheckoutBadgeKind(null, g), "conflict");
+  assert.equal(terminalCheckoutNeedsReview("idle", g), false);
+  assert.equal(terminalCheckoutNeedsReview("done", g), false);
 });
 
-test("terminalCheckoutBadgeKind leaves review off a working or blocked agent and a plain terminal", () => {
+test("terminalCheckoutNeedsReview leaves review off a working or blocked agent and a plain terminal", () => {
   const g = jjBadge({ modified: true });
-  assert.equal(terminalCheckoutBadgeKind("blocked", g), null);
-  assert.equal(terminalCheckoutBadgeKind("working", g), null);
-  assert.equal(terminalCheckoutBadgeKind(null, g), null);
-  assert.equal(terminalCheckoutBadgeKind(null, { ahead: 2 }), null);
+  assert.equal(terminalCheckoutNeedsReview("blocked", g), false);
+  assert.equal(terminalCheckoutNeedsReview("working", g), false);
+  assert.equal(terminalCheckoutNeedsReview(null, g), false);
+  assert.equal(terminalCheckoutNeedsReview(null, { ahead: 2 }), false);
 });
 
-test("terminalCheckoutBadgeKind marks unshipped jj work on an agent with nothing to do", () => {
+test("terminalCheckoutNeedsReview marks unshipped jj work on an agent with nothing to do", () => {
   assert.equal(
-    terminalCheckoutBadgeKind("idle", jjBadge({ modified: true })),
-    "review",
+    terminalCheckoutNeedsReview("idle", jjBadge({ modified: true })),
+    true,
   );
   assert.equal(
-    terminalCheckoutBadgeKind("done", jjBadge({ distance: 2 })),
-    "review",
+    terminalCheckoutNeedsReview("done", jjBadge({ distance: 2 })),
+    true,
   );
   assert.equal(
-    terminalCheckoutBadgeKind("idle", jjBadge({ distance: 2 })),
-    "review",
+    terminalCheckoutNeedsReview("idle", jjBadge({ distance: 2 })),
+    true,
   );
 });
 
-test("terminalCheckoutBadgeKind counts @ itself in the jj distance, and only after the bookmark", () => {
+test("terminalCheckoutNeedsReview counts @ itself in the jj distance, and only after the bookmark", () => {
   assert.equal(
-    terminalCheckoutBadgeKind("idle", jjBadge({ distance: 1 })),
-    null,
+    terminalCheckoutNeedsReview("idle", jjBadge({ distance: 1 })),
+    false,
   );
   assert.equal(
-    terminalCheckoutBadgeKind("idle", jjBadge({ direction: "↓", distance: 3 })),
-    null,
+    terminalCheckoutNeedsReview(
+      "idle",
+      jjBadge({ direction: "↓", distance: 3 }),
+    ),
+    false,
   );
-  assert.equal(terminalCheckoutBadgeKind("idle", jjBadge({})), null);
+  assert.equal(terminalCheckoutNeedsReview("idle", jjBadge({})), false);
 });
 
-test("terminalCheckoutBadgeKind marks Git commits ahead on an agent with nothing to do", () => {
-  assert.equal(terminalCheckoutBadgeKind("idle", { ahead: 1 }), "review");
+test("terminalCheckoutNeedsReview marks Git commits ahead on an agent with nothing to do", () => {
+  assert.equal(terminalCheckoutNeedsReview("idle", { ahead: 1 }), true);
   assert.equal(
-    terminalCheckoutBadgeKind("idle", { jj: false, ahead: 0 }),
-    null,
+    terminalCheckoutNeedsReview("idle", { jj: false, ahead: 0 }),
+    false,
   );
 });
 

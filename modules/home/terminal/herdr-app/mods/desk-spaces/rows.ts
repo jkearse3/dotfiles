@@ -13,8 +13,7 @@ import { duration, statusMark } from "./agent-marks.js";
 import { base, checkoutText } from "./space-order.js";
 import { hoverFill } from "./row-colors.js";
 import type { Checkout, GitCheckout, JjCheckout } from "./checkouts.js";
-import { terminalCheckoutBadgeKind } from "./checkout-badge.js";
-import type { CheckoutBadgeKind } from "./checkout-badge.js";
+import { terminalCheckoutNeedsReview } from "./checkout-badge.js";
 import type { AgentStatus } from "./status.js";
 import { machineOf } from "./terminals.js";
 
@@ -157,23 +156,17 @@ function tone(t: ThemeColors, status: AgentStatus | null): Color {
   return t[status as AgentStatus] ?? t.unknown;
 }
 
-// A badge for a terminal row's checkout line (`terminalCheckoutLine`), by
-// the terminal's agent status (`status`, null for a plain terminal) and
-// checkout `g`, as `terminalCheckoutBadgeKind` decides it. Null without one.
+// The "review" badge for a terminal row's checkout line
+// (`terminalCheckoutLine`), by the terminal's agent status (`status`, null
+// for a plain terminal) and checkout `g`, as `terminalCheckoutNeedsReview`
+// decides it: a small chip in the accent color, faint. Null without one.
 export function terminalCheckoutBadge(
   status: AgentStatus | null,
   g: Checkout,
   t: ThemeColors,
 ): Element | null {
-  const kind = terminalCheckoutBadgeKind(status, g);
-  return kind && checkoutBadgeChip(kind, t);
-}
-
-// A checkout badge drawn as a small chip: "conflict" in red, "review" in
-// the accent color, fainter.
-function checkoutBadgeChip(kind: CheckoutBadgeKind, t: ThemeColors): Element {
-  const conflict = kind === "conflict";
-  const color = conflict ? t.ansi1 : t.accent;
+  if (!terminalCheckoutNeedsReview(status, g)) return null;
+  const color = t.accent;
   return div()
     .flex_none()
     .h(16)
@@ -185,8 +178,8 @@ function checkoutBadgeChip(kind: CheckoutBadgeKind, t: ThemeColors): Element {
     .text_size(10.5)
     .font_semibold()
     .text_color(color)
-    .when(!conflict, (el) => el.opacity(0.75))
-    .child(kind);
+    .opacity(0.75)
+    .child("review");
 }
 
 // A Git checkout's status, only what's unusual:
@@ -230,9 +223,10 @@ export function gitTail(
 
 // A jj checkout's status, never empty, in the terminal prompt's words and
 // colors: the nearest bookmark (purple, "(+1b)" when more share it), how far
-// @ is from it (cyan \u2191 after it, \u2193 before it), a conflict (red
-// \u26a0) and edits in @ (yellow \u25cf). The change ID shows only without
-// a bookmark, where nothing else says where @ is. The repo shows as for git.
+// @ is from it (cyan \u2191 after it, \u2193 before it), a conflict (bold
+// red \u00d7, as `jj log` marks a conflicted revision) and edits in @
+// (yellow \u25cf). The change ID shows only without a bookmark, where
+// nothing else says where @ is. The repo shows as for git.
 // `size` is the text size, in px, of the line it joins.
 export function jjTail(
   g: JjCheckout,
@@ -269,7 +263,9 @@ export function jjTail(
       ),
     )
     .when(g.conflict, (el) =>
-      el.child(div().flex_none().text_color(t.ansi1).child("\u26a0")),
+      el.child(
+        div().flex_none().font_semibold().text_color(t.ansi1).child("\u00d7"),
+      ),
     )
     .when(g.modified, (el) =>
       el.child(div().flex_none().text_color(t.ansi3).child("\u25cf")),

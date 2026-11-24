@@ -94,7 +94,7 @@ build_prompt() {
 	read -r change_id has_conflict is_empty < <(query_status)
 	segments+=("$change_id")
 	if [[ $has_conflict == "1" ]]; then
-		segments+=("${COLOR_BOLD_RED}⚠️${COLOR_RESET}")
+		segments+=("${COLOR_BOLD_RED}×${COLOR_RESET}")
 	fi
 	if [[ $is_empty == "0" ]]; then
 		segments+=("${COLOR_BOLD_YELLOW}●${COLOR_RESET}")
