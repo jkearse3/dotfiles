@@ -5,7 +5,7 @@ description: >-
   architecture docs, decision rationale, findings, and other parked knowledge.
   Use when the user asks to leave or jot a note, drop a doc in the notebook, or
   come back to a prior note. Not for capturing something the user did not ask to
-  keep.
+  keep, or for saving session state before compaction (use checkpoint).
 ---
 
 # Notes

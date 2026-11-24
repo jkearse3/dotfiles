@@ -260,6 +260,24 @@ in
             inherit (config.packages) jjx;
           };
 
+          checkpoint-skill-scripts = mkScriptCheck {
+            name = "checkpoint-skill-scripts";
+            src = lib.fileset.toSource {
+              root = ../modules/home/agents/skills/checkpoint;
+              fileset = lib.fileset.unions [
+                ../modules/home/agents/skills/checkpoint/scripts
+                ../modules/home/agents/skills/checkpoint/tests
+              ];
+            };
+            script = "tests/checkpoint-scripts.sh";
+            tools = [
+              config.packages.agent-store
+              unstablePkgs.git
+              unstablePkgs.jujutsu
+              unstablePkgs.coreutils
+            ];
+          };
+
           handoff-skill-scripts = mkScriptCheck {
             name = "handoff-skill-scripts";
             src = lib.fileset.toSource {
