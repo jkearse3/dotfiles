@@ -15,6 +15,7 @@ _: {
       "font-jetbrains-mono-nerd-font"
       "ghostty"
       "google-chrome"
+      "anomalyco/tap/hex"
       "notion"
       "slack"
       "spotify"
