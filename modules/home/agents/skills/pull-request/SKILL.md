@@ -59,8 +59,14 @@ ambiguous.
      and remote head. Unpushed local commits are not represented by the PR.
 5. Block on unrelated, unexpected, uncertain-ownership, or unfinalized work in
    the represented change set.
-6. Compose presentation according to the sections below.
-7. Read and follow exactly one procedure:
+6. In jj, look for runs under `<root>/.agent/implement/`, where `<root>` is what
+   `agent-store root --workspace <workspace-root>` prints. When the head
+   bookmark has a deferred run there, as `implement`'s Review Mode defines one,
+   warn the user in the result that the draft was never reviewed and offer to
+   review it with `implement`. Never block or pause on it, or start the review
+   unasked.
+7. Compose presentation according to the sections below.
+8. Read and follow exactly one procedure:
    - `procedures/draft.md` to preview presentation without remote mutation.
    - `procedures/create.md` to push a finalized head and create a PR.
    - `procedures/update.md` to change title, body, or both on an existing PR.
