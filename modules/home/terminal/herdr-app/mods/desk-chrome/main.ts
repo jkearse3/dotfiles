@@ -38,12 +38,16 @@ import {
   readMachinePicker,
 } from "./machine-choices.js";
 
-// The theme's colors by name. The app's typings type `theme()` as
-// `Record<string, string>`, though every value is a color.
+/**
+ * The theme's colors by name. The app's typings type `theme()` as
+ * `Record<string, string>`, though every value is a color.
+ */
 type ThemeColors = Record<string, Color>;
 
-// The fields of a `layout()` block this mod reads. The app's typings type
-// `layout()` as `unknown`.
+/**
+ * The fields of a `layout()` block this mod reads. The app's typings type
+ * `layout()` as `unknown`.
+ */
 interface LayoutNode {
   id?: string;
   size?: { px?: number };
@@ -62,11 +66,15 @@ function find(
   return null;
 }
 
-// The sidebar's rail goes by its width, not a flag: dragging its edge narrows it too.
+/**
+ * The sidebar's rail goes by its width, not a flag: dragging its edge narrows it too.
+ */
 const narrow = () =>
   (find(layout() as LayoutNode, "sidebar")?.size?.px ?? Infinity) < 160;
 
-// To the rail (on macOS wide enough for the traffic lights), or back to the width it had.
+/**
+ * To the rail (on macOS wide enough for the traffic lights), or back to the width it had.
+ */
 function toggleSidebar() {
   const width = find(layout() as LayoutNode, "sidebar")?.size?.px;
   if (!narrow()) setShared("sidebar.width", width);
@@ -83,7 +91,7 @@ function toggleSidebar() {
 }
 
 export default class WorkspaceChrome extends View {
-  // Whether the machine picker is open.
+  /** Whether the machine picker is open. */
   declare pickerOpen: boolean;
 
   init(_props: Props | undefined): void {
@@ -111,8 +119,10 @@ export default class WorkspaceChrome extends View {
       .child(label);
   }
 
-  // The "Choose machines" button and its picker, as the header comment
-  // describes; none while the sidebar knows no machine but this computer.
+  /**
+   * The "Choose machines" button and its picker, as the header comment
+   * describes; none while the sidebar knows no machine but this computer.
+   */
   machinePicker(t: ThemeColors): Element[] {
     const known = readMachinePicker(shared(MACHINE_PICKER_KEY));
     if (!known.some((m) => m.name !== null)) {
@@ -310,9 +320,11 @@ export default class WorkspaceChrome extends View {
   }
 }
 
-// One checkbox line of the machine picker: a box, checked or not, then
-// `label`, then `badge` when there is one. A `disabled` line shows dimmed and
-// ignores presses; any other calls `onToggle` with the new checked state.
+/**
+ * One checkbox line of the machine picker: a box, checked or not, then
+ * `label`, then `badge` when there is one. A `disabled` line shows dimmed and
+ * ignores presses; any other calls `onToggle` with the new checked state.
+ */
 function checkRow(
   id: string,
   label: string,

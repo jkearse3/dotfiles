@@ -9,25 +9,31 @@
 // the herdr-app-mods build copies the file in place of the link and strips
 // its types to `focus-reveal.js`.
 
-// The focus-reveal state after a render. A fold is a container that can be
-// saved folded (a machine's spaces, a space's rows, a machine's Background
-// row), named by an opaque key the caller chooses.
+/**
+ * The focus-reveal state after a render. A fold is a container that can be
+ * saved folded (a machine's spaces, a space's rows, a machine's Background
+ * row), named by an opaque key the caller chooses.
+ */
 export interface FocusReveal {
-  // The folds shown open, without changing their saved fold, because focus
-  // moved into them from outside while they were saved folded.
+  /**
+   * The folds shown open, without changing their saved fold, because focus
+   * moved into them from outside while they were saved folded.
+   */
   revealed: Set<string>;
-  // The folds focus is inside.
+  /** The folds focus is inside. */
   focusFolds: Set<string>;
 }
 
-// The focus-reveal state once focus is inside the folds `inside` (each
-// mapped to whether it is saved folded; empty when focus is in none), given
-// the state of the previous render (`revealed`, `focusFolds`). A reveal
-// ends once focus leaves its fold. A fold focus has just entered from
-// outside is revealed when saved folded; one focus was already inside is
-// not newly revealed, so a fold saved while focus is inside, whose reveal
-// the caller ends on saving, holds while focus moves within it. Reads its
-// arguments without changing them.
+/**
+ * The focus-reveal state once focus is inside the folds `inside` (each
+ * mapped to whether it is saved folded; empty when focus is in none), given
+ * the state of the previous render (`revealed`, `focusFolds`). A reveal
+ * ends once focus leaves its fold. A fold focus has just entered from
+ * outside is revealed when saved folded; one focus was already inside is
+ * not newly revealed, so a fold saved while focus is inside, whose reveal
+ * the caller ends on saving, holds while focus moves within it. Reads its
+ * arguments without changing them.
+ */
 export function nextFocusReveal(
   revealed: ReadonlySet<string>,
   focusFolds: ReadonlySet<string>,

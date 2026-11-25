@@ -10,21 +10,27 @@
 
 import type { Status } from "herdr";
 
-// An agent status as the sidebar ranks it: an agent's `Status`, or a
-// sub-agent's raw word (`kidStatus`), which ranks below every status.
+/**
+ * An agent status as the sidebar ranks it: an agent's `Status`, or a
+ * sub-agent's raw word (`kidStatus`), which ranks below every status.
+ */
 export type AgentStatus = Status | string;
 
-// `RANK` and `kidStatus` are copied from the shipped `agents` mod.
-// Statuses without an entry rank 0.
+/**
+ * `RANK` and `kidStatus` are copied from the shipped `agents` mod.
+ * Statuses without an entry rank 0.
+ */
 export const RANK: Record<AgentStatus, number> = {
   blocked: 4,
   done: 3,
   working: 2,
   idle: 1,
 };
-// A sub-agent without a pane isn't in agents(): its raw word, error counting as
-// blocked. It's never done: it reports to its parent, and the parent's done is
-// the news.
+/**
+ * A sub-agent without a pane isn't in agents(): its raw word, error counting as
+ * blocked. It's never done: it reports to its parent, and the parent's done is
+ * the news.
+ */
 export const kidStatus = (
   k: { address: string; status: string },
   listed: Map<string, Status>,
@@ -33,8 +39,10 @@ export const kidStatus = (
   return s === "error" ? "blocked" : s === "done" ? "idle" : s;
 };
 
-// The most urgent of `statuses` (blocked > done > working > idle), or null
-// when none ranks. A null status ranks as none.
+/**
+ * The most urgent of `statuses` (blocked > done > working > idle), or null
+ * when none ranks. A null status ranks as none.
+ */
 export const topStatus = (
   statuses: (AgentStatus | null)[],
 ): AgentStatus | null =>

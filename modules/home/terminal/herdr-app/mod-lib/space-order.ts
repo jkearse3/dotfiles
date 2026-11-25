@@ -16,12 +16,14 @@
 
 import type { SpaceInfo } from "herdr";
 
-// What ordering a space and naming its checkout need to know about the Git
-// or jj checkout the space's folder is in: the repo's name, the checkout's
-// root folder (`top`), its repo (an id equal for every checkout of one
-// repo), and whether it is a linked worktree or secondary jj workspace
-// rather than the repo's main checkout. The desk-spaces sidebar's
-// `Checkout` holds these fields.
+/**
+ * What ordering a space and naming its checkout need to know about the Git
+ * or jj checkout the space's folder is in: the repo's name, the checkout's
+ * root folder (`top`), its repo (an id equal for every checkout of one
+ * repo), and whether it is a linked worktree or secondary jj workspace
+ * rather than the repo's main checkout. The desk-spaces sidebar's
+ * `Checkout` holds these fields.
+ */
 export interface SpaceCheckout {
   name: string;
   top: string;
@@ -29,20 +31,24 @@ export interface SpaceCheckout {
   linked: boolean;
 }
 
-// One space in `spaceOrder`'s order: the space, its checkout (null when not
-// a repo or not known yet), and, for a linked checkout listed under its
-// repo's main checkout, its branch mark ("├─", "└─" for the last), else null.
+/**
+ * One space in `spaceOrder`'s order: the space, its checkout (null when not
+ * a repo or not known yet), and, for a linked checkout listed under its
+ * repo's main checkout, its branch mark ("├─", "└─" for the last), else null.
+ */
 export interface OrderedSpace<S, C extends SpaceCheckout> {
   space: S;
   checkout: C | null;
   tree: "├─" | "└─" | null;
 }
 
-// `spaces` in their order, except that each space whose checkout
-// (`checkoutOf`) is linked follows, marked, the first space of its repo
-// whose checkout is the main one, with that repo's other linked spaces in
-// their order. A linked space whose repo's main checkout has no space in
-// `spaces` keeps its place, unmarked. Every space appears exactly once.
+/**
+ * `spaces` in their order, except that each space whose checkout
+ * (`checkoutOf`) is linked follows, marked, the first space of its repo
+ * whose checkout is the main one, with that repo's other linked spaces in
+ * their order. A linked space whose repo's main checkout has no space in
+ * `spaces` keeps its place, unmarked. Every space appears exactly once.
+ */
 export function spaceOrder<S, C extends SpaceCheckout>(
   spaces: readonly S[],
   checkoutOf: (space: S) => C | null,
@@ -76,13 +82,15 @@ export function spaceOrder<S, C extends SpaceCheckout>(
   return out;
 }
 
-// The text naming where space `space` is, as the find hub's line under a
-// space's name and the desk-spaces sidebar's terminal rows show it: the
-// folder that `checkout` (or, outside a repo, the space's own folder) is
-// named after, after its repo ("dotfiles / ws3", just "dotfiles" when they
-// match, ignoring case); "~" at its machine's home, which an empty folder
-// means, with `home` this computer's home folder. Null only when there is no
-// folder to name (the filesystem root).
+/**
+ * The text naming where space `space` is, as the find hub's line under a
+ * space's name and the desk-spaces sidebar's terminal rows show it: the
+ * folder that `checkout` (or, outside a repo, the space's own folder) is
+ * named after, after its repo ("dotfiles / ws3", just "dotfiles" when they
+ * match, ignoring case); "~" at its machine's home, which an empty folder
+ * means, with `home` this computer's home folder. Null only when there is no
+ * folder to name (the filesystem root).
+ */
 export function checkoutText(
   space: Pick<SpaceInfo, "folder" | "machine">,
   checkout: SpaceCheckout | null,
@@ -97,22 +105,28 @@ export function checkoutText(
     : `${checkout.name} / ${folder}`;
 }
 
-// The last segment of `path`, ignoring trailing slashes; empty for the
-// filesystem root. (`split` always returns at least one element, so `pop`
-// finds one.)
+/**
+ * The last segment of `path`, ignoring trailing slashes; empty for the
+ * filesystem root. (`split` always returns at least one element, so `pop`
+ * finds one.)
+ */
 export const base = (path: string): string =>
   path.replace(/\/+$/, "").split("/").pop()!;
 
-// The `shared()` key of each space's checkout by space id, null for a space
-// whose folder is in no repo; a space whose checkout is not known yet is
-// left out. The desk-spaces sidebar writes it (`publishCheckouts` in its
-// `main.ts`) whenever a look finishes or a space goes; the value persists,
-// so while no sidebar runs it holds what the last one wrote.
+/**
+ * The `shared()` key of each space's checkout by space id, null for a space
+ * whose folder is in no repo; a space whose checkout is not known yet is
+ * left out. The desk-spaces sidebar writes it (`publishCheckouts` in its
+ * `main.ts`) whenever a look finishes or a space goes; the value persists,
+ * so while no sidebar runs it holds what the last one wrote.
+ */
 export const SPACE_CHECKOUTS_KEY = "space.checkouts";
 
-// `value`, as `shared(SPACE_CHECKOUTS_KEY)` returns it, as checkouts by space
-// id with only `SpaceCheckout`'s fields. Null when `value` is not an object
-// of space ids; an entry that is neither null nor a checkout is left out.
+/**
+ * `value`, as `shared(SPACE_CHECKOUTS_KEY)` returns it, as checkouts by space
+ * id with only `SpaceCheckout`'s fields. Null when `value` is not an object
+ * of space ids; an entry that is neither null nor a checkout is left out.
+ */
 export function readSpaceCheckouts(
   value: unknown,
 ): Record<string, SpaceCheckout | null> | null {

@@ -161,40 +161,54 @@ import {
 
 const TITLE = "Find";
 
-// The hub's height as a share of the window's, matching `overlay.height` in
-// `mod.json`. That popup height is only a cap: a popup is as tall as its
-// content, and the list and preview take their height from the popup, so the
-// hub sets its own.
+/**
+ * The hub's height as a share of the window's, matching `overlay.height` in
+ * `mod.json`. That popup height is only a cap: a popup is as tall as its
+ * content, and the list and preview take their height from the popup, so the
+ * hub sets its own.
+ */
 const WINDOW_HEIGHT_SHARE = 0.8;
 
-// Every preview line's height, in logical px. List rows take theirs from
-// `rowHeight`.
+/**
+ * Every preview line's height, in logical px. List rows take theirs from
+ * `rowHeight`.
+ */
 const LINE_H = 16;
-// How far each nesting level indents a row with an empty query, in logical
-// px: a space's members sit one level in, and sub-terminals one more per
-// depth.
+/**
+ * How far each nesting level indents a row with an empty query, in logical
+ * px: a space's members sit one level in, and sub-terminals one more per
+ * depth.
+ */
 const DEPTH_INDENT = 16;
-// How long the cursor rests on an agent before its screen is read, in ms, so
-// moving through the list does not read every screen on the way.
+/**
+ * How long the cursor rests on an agent before its screen is read, in ms, so
+ * moving through the list does not read every screen on the way.
+ */
 const PREVIEW_DELAY_MS = 150;
 
-// The theme's colors by name. The app's typings type `theme()` as
-// `Record<string, string>`, though every value is a color.
+/**
+ * The theme's colors by name. The app's typings type `theme()` as
+ * `Record<string, string>`, though every value is a color.
+ */
 type ThemeColors = Record<string, Color>;
 
-// The fields of `hc machine ls --json` this mod reads.
+/** The fields of `hc machine ls --json` this mod reads. */
 interface MachineList {
   machines?: MachineEntry[];
 }
 
-// The fields of `hc server status --json` this mod reads: the name of this
-// computer's herdr-core.
+/**
+ * The fields of `hc server status --json` this mod reads: the name of this
+ * computer's herdr-core.
+ */
 interface ServerStatus {
   core?: { name?: string };
 }
 
-// The latest fzf result: the rows of `input` matching `query`, by key, best
-// first, or every row with `error` saying why matching failed.
+/**
+ * The latest fzf result: the rows of `input` matching `query`, by key, best
+ * first, or every row with `error` saying why matching failed.
+ */
 interface MatchResult {
   query: string;
   input: Matchable[];
@@ -202,9 +216,11 @@ interface MatchResult {
   error: string | null;
 }
 
-// An agent's screen as `hc read` last returned it, for the agent at
-// `address` while it had the status in `key`; `lines` is null when the read
-// failed with `error`.
+/**
+ * An agent's screen as `hc read` last returned it, for the agent at
+ * `address` while it had the status in `key`; `lines` is null when the read
+ * failed with `error`.
+ */
 interface AgentPreview {
   key: string;
   address: string;
@@ -212,8 +228,10 @@ interface AgentPreview {
   error: string | null;
 }
 
-// The `y/n` question `ctrl-x` asked about the row with `key`: its `text`,
-// and the `action` that `y` runs.
+/**
+ * The `y/n` question `ctrl-x` asked about the row with `key`: its `text`,
+ * and the `action` that `y` runs.
+ */
 interface CloseQuestion {
   key: string;
   text: string;
@@ -229,12 +247,24 @@ const MARK: Record<string, Color> = {
   ansi1: "#d9649a",
 };
 
-// Space colors, kept by space id in shared "space.colors": a theme
-// color name ("ansi6") or a picked #rrggbb. A space seen without one gets
-// the theme color fewest spaces use, once; every mod does the same in the
-// same order, so they agree, and adding or renaming spaces moves nothing.
+/**
+ * Space colors, kept by space id in shared "space.colors": a theme
+ * color name ("ansi6") or a picked #rrggbb.
+ */
 type SpaceColorChoices = Record<string, string>;
+/**
+ * The theme colors `spaceColors` gives spaces, the earliest first when
+ * several are used equally often.
+ */
 const PROJECT_COLORS = ["ansi6", "ansi3", "ansi4", "ansi5", "ansi2", "ansi1"];
+/**
+ * The current spaces' colors from shared "space.colors". A space seen
+ * without one, other than the home space "~", gets the theme color fewest
+ * spaces use, once; every mod does the same in the same order, so they
+ * agree, and adding or renaming spaces moves nothing. Entries of spaces that
+ * are gone are dropped, and "space.colors" is written only when that changes
+ * it.
+ */
 function spaceColors(): SpaceColorChoices {
   const ids = new Set(spaces().map((p) => p.id));
   const kept = Object.fromEntries(
@@ -257,13 +287,18 @@ function spaceColors(): SpaceColorChoices {
   if (changed) setShared("space.colors", kept);
   return kept;
 }
+/**
+ * The color of space `p`'s avatar: `t.dim` for the home space "~", else its
+ * `spaceColors` choice, a picked #rrggbb as is and a theme color name in its
+ * `MARK` color, or the theme's own color when `MARK` lacks it.
+ */
 function spaceColor(t: ThemeColors, p: SpaceInfo): Color {
   if (p.name === "~") return t.dim;
   const c = spaceColors()[p.id] ?? PROJECT_COLORS[0];
   return c.startsWith("#") ? (c as Color) : (MARK[c] ?? t[c]);
 }
 
-// The four statuses the theme has a color for.
+/** The four statuses the theme has a color for. */
 const STATUS_WORDS: ReadonlySet<string> = new Set<Status>([
   "working",
   "blocked",
@@ -271,18 +306,20 @@ const STATUS_WORDS: ReadonlySet<string> = new Set<Status>([
   "idle",
 ]);
 
-// The first line of `error`'s message.
+/** The first line of `error`'s message. */
 function firstLine(error: unknown): string {
   const message = error instanceof Error ? error.message : String(error);
   return message.split("\n", 1)[0];
 }
 
-// Takes the finished terminal at `address`, just removed with `hc rm`, out of
-// the shared finished terminals (`FINISHED_TERMINALS_KEY`), so views reading
-// them stop listing it before the sidebar next reads the CLI; the sidebar
-// notices the change and reads again (`followFinished` in
-// `mods/desk-spaces/main.ts`). Writes only when the value held it, since
-// `setShared` re-renders every mod.
+/**
+ * Takes the finished terminal at `address`, just removed with `hc rm`, out of
+ * the shared finished terminals (`FINISHED_TERMINALS_KEY`), so views reading
+ * them stop listing it before the sidebar next reads the CLI; the sidebar
+ * notices the change and reads again (`followFinished` in
+ * `mods/desk-spaces/main.ts`). Writes only when the value held it, since
+ * `setShared` re-renders every mod.
+ */
 function unshareFinished(address: string): void {
   const finished = readFinishedTerminals(shared(FINISHED_TERMINALS_KEY));
   const kept = finished.filter((f) => f.address !== address);
@@ -293,69 +330,90 @@ export default class Find extends View {
   declare input: InputState;
   declare query: string;
   declare handle: FocusHandle;
-  // Whether this copy is an open overlay. `herdr-app check` renders the mod
-  // without one, and then it must not run `hc` or `exec`.
+  /**
+   * Whether this copy is an open overlay. `herdr-app check` renders the mod
+   * without one, and then it must not run `hc` or `exec`.
+   */
   declare live: boolean;
-  // The machines `hc machine ls` lists, read once when the hub opens.
+  /** The machines `hc machine ls` lists, read once when the hub opens. */
   declare machines: MachineEntry[];
-  // What `hc server status` names this computer, read once when the hub
-  // opens; null until it answers or when it fails.
+  /**
+   * What `hc server status` names this computer, read once when the hub
+   * opens; null until it answers or when it fails.
+   */
   declare thisComputerName: string | null;
-  // The terminal focused when the hub opened.
+  /** The terminal focused when the hub opened. */
   declare focusedAtOpen: string | null;
-  // fzf's store path, read on the first filtered query.
+  /** fzf's store path, read on the first filtered query. */
   declare fzfPath: string | null;
 
   declare matcher: LatestRequest;
   declare matched: MatchResult | null;
-  // The match the list on screen answers or awaits, so a render does not
-  // schedule it again.
+  /**
+   * The match the list on screen answers or awaits, so a render does not
+   * schedule it again.
+   */
   declare requested: { query: string; input: Matchable[] } | null;
-  // The query whose list is on screen; while a newer query's match runs,
-  // the older list stays.
+  /**
+   * The query whose list is on screen; while a newer query's match runs,
+   * the older list stays.
+   */
   declare shownQuery: string;
-  // Whether the needs-you filter is on (ctrl-n): the list holds only
-  // `needsYouRows`.
+  /**
+   * Whether the needs-you filter is on (ctrl-n): the list holds only
+   * `needsYouRows`.
+   */
   declare isNeedsYouOn: boolean;
 
-  // The cursor: its index in `list`, the key of its row, and the query and
-  // needs-you filter of the list it was placed in.
+  /** The cursor's index in `list`. */
   declare at: number;
+  /** The key of the cursor's row. */
   declare selectedKey: string | null;
+  /** The query of the list the cursor was placed in. */
   declare cursorQuery: string;
+  /**
+   * Whether the needs-you filter was on in the list the cursor was placed
+   * in.
+   */
   declare cursorNeedsYouOn: boolean;
-  // The list the latest render drew, for the key and click handlers.
+  /** The list the latest render drew, for the key and click handlers. */
   declare list: FindRow[];
-  // How far the row strip is scrolled, and the list's laid-out height, in
-  // logical px.
+  /** How far the row strip is scrolled, in logical px. */
   declare scroll: number;
+  /** The list's laid-out height, in logical px. */
   declare listHeight: number | undefined;
 
-  // The app's data the latest render built its rows from.
+  /** The app's data the latest render built its rows from. */
   declare world: FindWorld;
-  // The addresses of the finished terminals this hub removed or is removing
-  // with `hc rm` (`removeFinished`), left out of the shared ones while
-  // `hc rm` runs; once it succeeds the shared value drops them too
-  // (`unshareFinished`). One whose removal fails is taken out again.
+  /**
+   * The addresses of the finished terminals this hub removed or is removing
+   * with `hc rm` (`removeFinished`), left out of the shared ones while
+   * `hc rm` runs; once it succeeds the shared value drops them too
+   * (`unshareFinished`). One whose removal fails is taken out again.
+   */
   declare removed: Set<string>;
-  // The `y/n` question showing, if any. While it shows, every key answers it
-  // instead of reaching the query.
+  /**
+   * The `y/n` question showing, if any. While it shows, every key answers it
+   * instead of reaching the query.
+   */
   declare prompt: CloseQuestion | null;
 
   declare previewer: LatestRequest;
   declare preview: AgentPreview | null;
-  // The agent preview key the latest scheduled read is for.
+  /** The agent preview key the latest scheduled read is for. */
   declare previewWanted: string | null;
-  // The key of the preview drawn last, so a new one starts unscrolled.
+  /** The key of the preview drawn last, so a new one starts unscrolled. */
   declare previewShown: string | null;
-  // How many lines the preview is scrolled away from its anchor end, and
-  // which end that is.
+  /** How many lines the preview is scrolled away from `previewAnchor`. */
   declare previewOffset: number;
+  /** Which end of the preview `previewOffset` counts from. */
   declare previewAnchor: "bottom" | "top";
-  // Whether the preview drawn last holds more lines than fit, so
-  // ctrl-u/ctrl-d scroll it.
+  /**
+   * Whether the preview drawn last holds more lines than fit, so
+   * ctrl-u/ctrl-d scroll it.
+   */
   declare previewScrollable: boolean;
-  // The preview's laid-out height in logical px.
+  /** The preview's laid-out height in logical px. */
   declare previewHeight: number;
 
   init(_props: Props | undefined, cx: AsyncContext): void {
@@ -430,10 +488,12 @@ export default class Find extends View {
     closeOverlay(props().overlay);
   }
 
-  // Closes the hub and acts on `row`: shows its terminal or space, or makes
-  // the new terminal or space. A finished row shows the live terminal that
-  // started it: its pane, or a peek at it without one. A machine header, a
-  // tab divider or an elsewhere label does nothing and leaves the hub open.
+  /**
+   * Closes the hub and acts on `row`: shows its terminal or space, or makes
+   * the new terminal or space. A finished row shows the live terminal that
+   * started it: its pane, or a peek at it without one. A machine header, a
+   * tab divider or an elsewhere label does nothing and leaves the hub open.
+   */
   go(row: FindRow | undefined): void {
     if (!row || !isSelectable(row)) return;
     this.dismiss();
@@ -472,9 +532,11 @@ export default class Find extends View {
     }
   }
 
-  // Runs `prompt`'s action when its row is still among the rows; a row that
-  // vanished while the prompt showed is left alone. The hub stays open, and
-  // the next render drops the closed row.
+  /**
+   * Runs `prompt`'s action when its row is still among the rows; a row that
+   * vanished while the prompt showed is left alone. The hub stays open, and
+   * the next render drops the closed row.
+   */
   answerYes(prompt: CloseQuestion, cx: Context): void {
     if (!findRows(this.world).some((r) => r.key === prompt.key)) return;
 
@@ -484,11 +546,13 @@ export default class Find extends View {
     else run(action.command, action.args);
   }
 
-  // Removes the finished terminal at `address` with `hc rm`, hiding its row
-  // at once (`removed`) and, once the command succeeds, taking it out of the
-  // shared finished terminals (`unshareFinished`) so the sidebar and a
-  // reopened hub stop listing it. When the command fails, its row comes back
-  // and the person is told why. Does nothing without an overlay.
+  /**
+   * Removes the finished terminal at `address` with `hc rm`, hiding its row
+   * at once (`removed`) and, once the command succeeds, taking it out of the
+   * shared finished terminals (`unshareFinished`) so the sidebar and a
+   * reopened hub stop listing it. When the command fails, its row comes back
+   * and the person is told why. Does nothing without an overlay.
+   */
   removeFinished(address: string, cx: Context): void {
     if (!this.live) return;
 
@@ -519,10 +583,12 @@ export default class Find extends View {
     });
   }
 
-  // Interrupts the terminal `row` names, agent or plain, with
-  // `hc interrupt` and tells the person when it shows no sign of stopping or
-  // the command fails. The hub stays open. Does nothing on other rows, or
-  // without an overlay.
+  /**
+   * Interrupts the terminal `row` names, agent or plain, with
+   * `hc interrupt` and tells the person when it shows no sign of stopping or
+   * the command fails. The hub stays open. Does nothing on other rows, or
+   * without an overlay.
+   */
   interrupt(row: FindRow | undefined, cx: Context): void {
     if (row?.kind !== "terminal" || !this.live) return;
 
@@ -547,12 +613,14 @@ export default class Find extends View {
     });
   }
 
-  // The list to show for `rows`, as `planShownList` decides: every row but
-  // folded tabs' terminal rows (`unfoldedRows`) for a blank query, else
-  // fzf's match over the rows a query can match (`filterableRows`). While
-  // the needs-you filter is on, `needsYouRows` stands in for both. A match
-  // not yet known is scheduled, and the list on screen stays until it
-  // arrives, without the rows the current filter leaves out.
+  /**
+   * The list to show for `rows`, as `planShownList` decides: every row but
+   * folded tabs' terminal rows (`unfoldedRows`) for a blank query, else
+   * fzf's match over the rows a query can match (`filterableRows`). While
+   * the needs-you filter is on, `needsYouRows` stands in for both. A match
+   * not yet known is scheduled, and the list on screen stays until it
+   * arrives, without the rows the current filter leaves out.
+   */
   shownList(rows: FindRow[], cx: Context): FindRow[] {
     const filterable = this.isNeedsYouOn
       ? needsYouRows(rows)
@@ -598,7 +666,7 @@ export default class Find extends View {
     cx.notify();
   }
 
-  // `rows` matching `query`, or every row with the reason matching failed.
+  /** `rows` matching `query`, or every row with the reason matching failed. */
   async matchWork(
     query: string,
     rows: FindRow[],
@@ -614,10 +682,12 @@ export default class Find extends View {
     return matchOrAll(exec, this.fzfPath, query, rows);
   }
 
-  // Schedules a read of the agent at `address`'s screen for preview `key`,
-  // after the cursor has rested on it for `PREVIEW_DELAY_MS`, while the hub
-  // is live. The read runs, and its screen is kept, only while `key` is
-  // still `previewWanted`.
+  /**
+   * Schedules a read of the agent at `address`'s screen for preview `key`,
+   * after the cursor has rested on it for `PREVIEW_DELAY_MS`, while the hub
+   * is live. The read runs, and its screen is kept, only while `key` is
+   * still `previewWanted`.
+   */
   wantAgentPreview(key: string, address: string, cx: Context): void {
     if (!this.live) return;
 
@@ -1150,13 +1220,15 @@ export default class Find extends View {
       );
   }
 
-  // The preview of `row` that fits the preview's height: a space's tree of
-  // terminals from the unfiltered `rows`, top-anchored, or a live or
-  // finished terminal's screen, bottom-anchored like a terminal, under a
-  // header line. Machine headers, tab dividers,
-  // elsewhere labels and new rows have none. Scrolling resets when the preview
-  // changes. Records in `previewScrollable` whether the lines overflow the
-  // preview.
+  /**
+   * The preview of `row` that fits the preview's height: a space's tree of
+   * terminals from the unfiltered `rows`, top-anchored, or a live or
+   * finished terminal's screen, bottom-anchored like a terminal, under a
+   * header line. Machine headers, tab dividers,
+   * elsewhere labels and new rows have none. Scrolling resets when the preview
+   * changes. Records in `previewScrollable` whether the lines overflow the
+   * preview.
+   */
   previewLines(
     row: FindRow | undefined,
     rows: readonly FindRow[],
@@ -1276,9 +1348,11 @@ export default class Find extends View {
   }
 }
 
-// The machine whose header `row` sits under, by name; null for this
-// computer, and for a machine header and the new rows, which no header
-// dims.
+/**
+ * The machine whose header `row` sits under, by name; null for this
+ * computer, and for a machine header and the new rows, which no header
+ * dims.
+ */
 function machineOver(row: FindRow): string | null {
   switch (row.kind) {
     case "terminal":
@@ -1296,8 +1370,10 @@ function machineOver(row: FindRow): string | null {
   }
 }
 
-// The app's zoom, which `on_size_change` and window sizes are divided by to
-// get the logical px the layout is written in.
+/**
+ * The app's zoom, which `on_size_change` and window sizes are divided by to
+ * get the logical px the layout is written in.
+ */
 function zoom(): number {
   const z = settings().zoom;
   return typeof z === "number" && z > 0 ? z : 1;

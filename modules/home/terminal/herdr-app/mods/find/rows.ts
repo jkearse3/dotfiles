@@ -46,169 +46,223 @@ import type {
   TreeTerminalStep,
 } from "./tree.js";
 
-// The app's data the hub's rows are built from, read once per render.
+/** The app's data the hub's rows are built from, read once per render. */
 export interface FindWorld {
-  // `terminals()`, in its order.
+  /** `terminals()`, in its order. */
   terminals: TerminalEntry[];
   agents: AgentInfo[];
   panes: PaneInfo[];
-  // `spaces()`, in its order, which the hub lists each machine's spaces in,
-  // apart from the nesting `checkouts` gives.
+  /**
+   * `spaces()`, in its order, which the hub lists each machine's spaces in,
+   * apart from the nesting `checkouts` gives.
+   */
   spaces: SpaceInfo[];
-  // Each space's checkout by space id, as the desk-spaces sidebar shares it
-  // (`readSpaceCheckouts` of `shared(SPACE_CHECKOUTS_KEY)`): null for a
-  // space whose folder is in no repo. A space left out, or every space when
-  // the whole value is null, has no checkout line and is not nested.
+  /**
+   * Each space's checkout by space id, as the desk-spaces sidebar shares it
+   * (`readSpaceCheckouts` of `shared(SPACE_CHECKOUTS_KEY)`): null for a
+   * space whose folder is in no repo. A space left out, or every space when
+   * the whole value is null, has no checkout line and is not nested.
+   */
   checkouts: Record<string, SpaceCheckout | null> | null;
-  // The `machines` of `hc machine ls --json`, read when the hub opens; empty
-  // until that answers or when it fails.
+  /**
+   * The `machines` of `hc machine ls --json`, read when the hub opens; empty
+   * until that answers or when it fails.
+   */
   machines: MachineEntry[];
-  // The finished terminals known (`buildTree` hangs each under its live
-  // parent, and the hub lists each as a `finished` row).
+  /**
+   * The finished terminals known (`buildTree` hangs each under its live
+   * parent, and the hub lists each as a `finished` row).
+   */
   finished: FinishedTerminal[];
-  // `home()`: this computer's home folder, written as `~` in plain
-  // terminals' labels.
+  /**
+   * `home()`: this computer's home folder, written as `~` in plain
+   * terminals' labels.
+   */
   home: string;
 }
 
-// One row of the hub. `key` is unique among a `findRows` result and never
-// shown; `text` is the row's visible text, the only text a query matches.
+/**
+ * One row of the hub. `key` is unique among a `findRows` result and never
+ * shown; `text` is the row's visible text, the only text a query matches.
+ */
 export type FindRow =
   | {
       kind: "terminal";
-      // `a:<address>`.
+      /** `a:<address>`. */
       key: string;
-      // Its `model`'s program name, title, status word, blocked kind and
-      // folder, as its row draws them, then its space's name (or
-      // "elsewhere") and its machine, so a query can match a terminal by
-      // its program, such as "claude" or "fish", an agent by the status its
-      // row shows, such as "blocked" or "done", a blocked agent by what it
-      // waits for, such as "permission", or a terminal by a segment of the
-      // folder its row shows.
+      /**
+       * Its `model`'s program name, title, status word, blocked kind and
+       * folder, as its row draws them, then its space's name (or
+       * "elsewhere") and its machine, so a query can match a terminal by
+       * its program, such as "claude" or "fish", an agent by the status its
+       * row shows, such as "blocked" or "done", a blocked agent by what it
+       * waits for, such as "permission", or a terminal by a segment of the
+       * folder its row shows.
+       */
       text: string;
       address: string;
-      // What its row shows (`terminalRowModel` from `labels.ts`), drawn by
-      // `terminalRow` from `tree-rows.ts`. An agent's status is `rowStatus`
-      // of its tree status (`TreeTerminal.status`). A plain terminal's label
-      // repeated within its space ends with an ordinal ("fish  ~/x  #2"),
-      // which its title, as the row draws it, ends with too ("#2" alone
-      // without a title). A plain terminal running a command has it as its
-      // `detail`, without a start time.
+      /**
+       * What its row shows (`terminalRowModel` from `labels.ts`), drawn by
+       * `terminalRow` from `tree-rows.ts`. An agent's status is `rowStatus`
+       * of its tree status (`TreeTerminal.status`). A plain terminal's label
+       * repeated within its space ends with an ordinal ("fish  ~/x  #2"),
+       * which its title, as the row draws it, ends with too ("#2" alone
+       * without a title). A plain terminal running a command has it as its
+       * `detail`, without a start time.
+       */
       model: TerminalRowModel;
-      // When an agent's status last changed, in ms since the epoch: its
-      // `terminals()` entry's `status_ms`. Null while it works, when its
-      // spinner says so, when unknown, and for a plain terminal.
+      /**
+       * When an agent's status last changed, in ms since the epoch: its
+       * `terminals()` entry's `status_ms`. Null while it works, when its
+       * spinner says so, when unknown, and for a plain terminal.
+       */
       since: number | null;
-      // 0 at the top level of its space or of an elsewhere label, its
-      // parent's depth + 1 for a terminal nested under its parent.
+      /**
+       * 0 at the top level of its space or of an elsewhere label, its
+       * parent's depth + 1 for a terminal nested under its parent.
+       */
       depth: number;
-      // The label of the terminal it is nested under; at the top level, its
-      // parent's label when that is listed under another header or is an
-      // agent that ended, else null.
+      /**
+       * The label of the terminal it is nested under; at the top level, its
+       * parent's label when that is listed under another header or is an
+       * agent that ended, else null.
+       */
       parentLabel: string | null;
-      // "no pane" for a terminal without a pane listed after its space's
-      // tabs or under an elsewhere label; else null.
+      /**
+       * "no pane" for a terminal without a pane listed after its space's
+       * tabs or under an elsewhere label; else null.
+       */
       note: string | null;
-      // The space it is listed under; null under an elsewhere label.
+      /** The space it is listed under; null under an elsewhere label. */
       space: SpaceInfo | null;
-      // `machineOf(address)`.
+      /** `machineOf(address)`. */
       machine: string | null;
-      // The tab of its first pane in `panes()` order, or null without one.
+      /** The tab of its first pane in `panes()` order, or null without one. */
       tab: string | null;
-      // That tab's position in its space, from 1 (`TabInfo.index`); null
-      // without a pane, or when no space in `spaces()` holds the tab.
+      /**
+       * That tab's position in its space, from 1 (`TabInfo.index`); null
+       * without a pane, or when no space in `spaces()` holds the tab.
+       */
       tabIndex: number | null;
-      // Its first pane's position among its tab's panes in `panes()` order,
-      // from 1, counting mod panes, which take a place in the tab like any
-      // other; null without a pane.
+      /**
+       * Its first pane's position among its tab's panes in `panes()` order,
+       * from 1, counting mod panes, which take a place in the tab like any
+       * other; null without a pane.
+       */
       paneIndex: number | null;
-      // `folderOf` the terminal: its current folder, with this computer's
-      // home as `~`; null when it reports no folder.
+      /**
+       * `folderOf` the terminal: its current folder, with this computer's
+       * home as `~`; null when it reports no folder.
+       */
       folder: string | null;
-      // Whether it is listed under a folded tab (`tabFolded`: settled, with
-      // nothing in it needing the person), whose divider shows without its
-      // terminal rows while the query is empty; a query still matches it.
+      /**
+       * Whether it is listed under a folded tab (`tabFolded`: settled, with
+       * nothing in it needing the person), whose divider shows without its
+       * terminal rows while the query is empty; a query still matches it.
+       */
       folded: boolean;
     }
   | {
-      // A finished terminal, listed after the live terminals nested under
-      // the live terminal that started it, drawn by `finishedRow` from
-      // `tree-rows.ts`. Enter goes to that live terminal.
+      /**
+       * A finished terminal, listed after the live terminals nested under
+       * the live terminal that started it, drawn by `finishedRow` from
+       * `tree-rows.ts`. Enter goes to that live terminal.
+       */
       kind: "finished";
-      // `f:<address>`.
+      /** `f:<address>`. */
       key: string;
-      // Its label (`finishedLabel`), how it ended (`finishedOutcome`'s
-      // text, such as "exit 1"), the word "finished", its space's name (or
-      // "elsewhere") and its machine, so a query such as "finished" or
-      // "exit 1" finds it.
+      /**
+       * Its label (`finishedLabel`), how it ended (`finishedOutcome`'s
+       * text, such as "exit 1"), the word "finished", its space's name (or
+       * "elsewhere") and its machine, so a query such as "finished" or
+       * "exit 1" finds it.
+       */
       text: string;
       finished: FinishedTerminal;
-      // The address of the live terminal it is listed under.
+      /** The address of the live terminal it is listed under. */
       parent: string;
-      // That terminal's label (`TerminalRowModel.label`), which names it on a
-      // flat list's row, where indentation doesn't show it.
+      /**
+       * That terminal's label (`TerminalRowModel.label`), which names it on a
+       * flat list's row, where indentation doesn't show it.
+       */
       parentLabel: string;
-      // The tab of that terminal's first pane in `panes()` order; null when
-      // it has no pane, so Enter peeks at it instead.
+      /**
+       * The tab of that terminal's first pane in `panes()` order; null when
+       * it has no pane, so Enter peeks at it instead.
+       */
       parentTab: string | null;
-      // Its parent's depth + 1.
+      /** Its parent's depth + 1. */
       depth: number;
-      // The space it is listed under; null under an elsewhere label.
+      /** The space it is listed under; null under an elsewhere label. */
       space: SpaceInfo | null;
-      // `machineOf(finished.address)`.
+      /** `machineOf(finished.address)`. */
       machine: string | null;
-      // Whether it is listed under a folded tab (`tabFolded`), as a
-      // terminal row's `folded`.
+      /**
+       * Whether it is listed under a folded tab (`tabFolded`), as a
+       * terminal row's `folded`.
+       */
       folded: boolean;
     }
   | {
-      // The divider that starts a tab's rows, drawn by `tabDivider` from
-      // `tree-rows.ts` and dimmed while the tab is settled; never selected,
-      // and dropped while filtering.
+      /**
+       * The divider that starts a tab's rows, drawn by `tabDivider` from
+       * `tree-rows.ts` and dimmed while the tab is settled; never selected,
+       * and dropped while filtering.
+       */
       kind: "tab";
-      // `t:<id>`.
+      /** `t:<id>`. */
       key: string;
-      // The tab's name; never shown or matched.
+      /** The tab's name; never shown or matched. */
       text: string;
       tab: TabInfo;
-      // The space the tab is in.
+      /** The space the tab is in. */
       space: SpaceInfo;
     }
   | {
-      // A machine's header, drawn by `machineHeader` from `tree-rows.ts`;
-      // never selected, and dropped while filtering.
+      /**
+       * A machine's header, drawn by `machineHeader` from `tree-rows.ts`;
+       * never selected, and dropped while filtering.
+       */
       kind: "machine";
-      // `m:<name>`, or "m:" for this computer.
+      /** `m:<name>`, or "m:" for this computer. */
       key: string;
-      // Its name, or "this computer".
+      /** Its name, or "this computer". */
       text: string;
-      // What its header shows; the rows under it carry the rest.
+      /** What its header shows; the rows under it carry the rest. */
       machine: Pick<TreeMachine, "name" | "state" | "sinceMs">;
     }
   | {
       kind: "space";
-      // `s:<id>`.
+      /** `s:<id>`. */
       key: string;
-      // Its name and machine, then its checkout line, so a query such as
-      // "ws3" matches the space of a checkout by its workspace's name.
+      /**
+       * Its name and machine, then its checkout line, so a query such as
+       * "ws3" matches the space of a checkout by its workspace's name.
+       */
       text: string;
       space: SpaceInfo;
-      // The line under its name: `checkoutText` of its shared checkout
-      // ("dotfiles / ws3"); null when `FindWorld.checkouts` has no entry for
-      // it or there is no folder to name.
+      /**
+       * The line under its name: `checkoutText` of its shared checkout
+       * ("dotfiles / ws3"); null when `FindWorld.checkouts` has no entry for
+       * it or there is no folder to name.
+       */
       checkoutLine: string | null;
-      // Its branch mark ("├─", "└─" for the last) when it is listed under its
-      // repo's main checkout (`spaceOrder`), else null.
+      /**
+       * Its branch mark ("├─", "└─" for the last) when it is listed under its
+       * repo's main checkout (`spaceOrder`), else null.
+       */
       tree: "├─" | "└─" | null;
     }
   | {
-      // The label over a machine's terminals no space holds; never
-      // selected, and dropped while filtering.
+      /**
+       * The label over a machine's terminals no space holds; never
+       * selected, and dropped while filtering.
+       */
       kind: "elsewhere";
-      // `elsewhere:<machine>`, or "elsewhere:" for this computer.
+      /** `elsewhere:<machine>`, or "elsewhere:" for this computer. */
       key: string;
       text: "elsewhere";
-      // The machine whose terminals it heads; null for this computer.
+      /** The machine whose terminals it heads; null for this computer. */
       machine: string | null;
     }
   | {
@@ -220,40 +274,42 @@ export type FindRow =
       kind: "new-space";
       key: string;
       text: string;
-      // The machine to start it on, or null for this computer.
+      /** The machine to start it on, or null for this computer. */
       machine: string | null;
     };
 
-// The hub's rows for `world`, in the app's layout order:
-// 1. Every machine of `buildTree`'s tree, this computer first and then the
-//    others by name, even one with no rows under it: its header, then each
-//    of its spaces as a header followed by its tab dividers and terminal
-//    rows, then, when it has terminals no space holds, its elsewhere label
-//    followed by those.
-//    - Spaces: `spaces()` order, except that a linked checkout's space
-//      follows its repo's main checkout's, marked (`spaceOrder` of
-//      `world.checkouts`); a space with an entry there, a checkout or null
-//      for no repo, gets its checkout line.
-//    - Rows: every live terminal, where `buildTree` places it: in the space
-//      `spaceMembership` gives (its own pane or `herdr.space` label, else its
-//      nearest ancestor's), else under its machine's elsewhere label.
-//    - A space lists each of its tabs in order, empty ones included, as a
-//      divider followed by the tab's terminals in `panes()` order, then,
-//      without a divider, its terminals in none of its tabs; an elsewhere
-//      label lists its terminals in `terminals()` order. Each terminal's
-//      sub-terminals follow it, one level deeper (`walkTree`), then the
-//      finished terminals it started, oldest first, as `finished` rows at
-//      that depth. A terminal
-//      without a pane after its space's tabs, or under an elsewhere label,
-//      notes "no pane". The terminal and finished rows of a folded tab
-//      (`tabFolded`) are marked `folded`.
-//    - A row's status is `rowStatus`'s, so an agent nested under an agent
-//      shows done as idle.
-//    - Plain labels repeated within a space, or within one elsewhere, get
-//      ordinals (`  #1`, `#2`), in row order.
-// 2. The new-terminal row, named after the active space.
-// 3. The new-space row for this computer, and one per connected machine, by
-//    name.
+/**
+ * The hub's rows for `world`, in the app's layout order:
+ * 1. Every machine of `buildTree`'s tree, this computer first and then the
+ *    others by name, even one with no rows under it: its header, then each
+ *    of its spaces as a header followed by its tab dividers and terminal
+ *    rows, then, when it has terminals no space holds, its elsewhere label
+ *    followed by those.
+ *    - Spaces: `spaces()` order, except that a linked checkout's space
+ *      follows its repo's main checkout's, marked (`spaceOrder` of
+ *      `world.checkouts`); a space with an entry there, a checkout or null
+ *      for no repo, gets its checkout line.
+ *    - Rows: every live terminal, where `buildTree` places it: in the space
+ *      `spaceMembership` gives (its own pane or `herdr.space` label, else its
+ *      nearest ancestor's), else under its machine's elsewhere label.
+ *    - A space lists each of its tabs in order, empty ones included, as a
+ *      divider followed by the tab's terminals in `panes()` order, then,
+ *      without a divider, its terminals in none of its tabs; an elsewhere
+ *      label lists its terminals in `terminals()` order. Each terminal's
+ *      sub-terminals follow it, one level deeper (`walkTree`), then the
+ *      finished terminals it started, oldest first, as `finished` rows at
+ *      that depth. A terminal
+ *      without a pane after its space's tabs, or under an elsewhere label,
+ *      notes "no pane". The terminal and finished rows of a folded tab
+ *      (`tabFolded`) are marked `folded`.
+ *    - A row's status is `rowStatus`'s, so an agent nested under an agent
+ *      shows done as idle.
+ *    - Plain labels repeated within a space, or within one elsewhere, get
+ *      ordinals (`  #1`, `#2`), in row order.
+ * 2. The new-terminal row, named after the active space.
+ * 3. The new-space row for this computer, and one per connected machine, by
+ *    name.
+ */
 export function findRows(world: FindWorld): FindRow[] {
   const tree = buildTree(world);
   const machineSections = tree.machines.map((machine) => ({
@@ -524,58 +580,68 @@ export function findRows(world: FindWorld): FindRow[] {
   return rows;
 }
 
-// The terminal rows one header heads: a space's, or a machine's elsewhere
-// label's when `space` is null.
+/**
+ * The terminal rows one header heads: a space's, or a machine's elsewhere
+ * label's when `space` is null.
+ */
 interface Section {
-  // The header row's key: `s:<id>` or `elsewhere:<machine>`.
+  /** The header row's key: `s:<id>` or `elsewhere:<machine>`. */
   key: string;
   space: SpaceInfo | null;
-  // The machine it is under; null for this computer.
+  /** The machine it is under; null for this computer. */
   machine: string | null;
-  // A space's `spaceOrder` branch mark; null for an elsewhere label.
+  /** A space's `spaceOrder` branch mark; null for an elsewhere label. */
   tree: "├─" | "└─" | null;
-  // A space's tabs in order, then its loose terminals; an elsewhere
-  // label's terminals alone.
+  /**
+   * A space's tabs in order, then its loose terminals; an elsewhere
+   * label's terminals alone.
+   */
   groups: ListingGroup[];
 }
 
-// The terminal rows of one tab, or a header's terminals in no tab.
+/** The terminal rows of one tab, or a header's terminals in no tab. */
 interface ListingGroup {
-  // The tab whose divider heads them; null for terminals in no tab.
+  /** The tab whose divider heads them; null for terminals in no tab. */
   tab: TabInfo | null;
-  // `tabFolded` of the tab; false without one.
+  /** `tabFolded` of the tab; false without one. */
   folded: boolean;
   listings: Listing[];
 }
 
-// One row of a `Section` under a header or tab: a live terminal's or a
-// finished one's.
+/**
+ * One row of a `Section` under a header or tab: a live terminal's or a
+ * finished one's.
+ */
 type Listing = TerminalListing | FinishedListing;
 
-// One terminal row of a `Section`, before its label is settled.
+/** One terminal row of a `Section`, before its label is settled. */
 interface TerminalListing {
   kind: "terminal";
-  // Its `walkTree` step, with its depth.
+  /** Its `walkTree` step, with its depth. */
   step: TreeTerminalStep;
-  // The terminal it is nested under; null at the top level.
+  /** The terminal it is nested under; null at the top level. */
   parent: TreeTerminal | null;
-  // `rowStatus` of it under `parent`.
+  /** `rowStatus` of it under `parent`. */
   status: AgentStatus | null;
-  // "no pane" for a terminal without a pane in none of its space's tabs, or
-  // under an elsewhere label; else null.
+  /**
+   * "no pane" for a terminal without a pane in none of its space's tabs, or
+   * under an elsewhere label; else null.
+   */
   note: string | null;
 }
 
-// One finished terminal's row of a `Section`.
+/** One finished terminal's row of a `Section`. */
 interface FinishedListing {
   kind: "finished";
-  // Its `walkTree` step, with its depth and parent.
+  /** Its `walkTree` step, with its depth and parent. */
   step: TreeFinishedStep;
 }
 
-// `machine`'s live terminals as `buildTree` arranges them, one `Section`
-// per space in `spaceOrder`'s order by `checkouts` (a space without an
-// entry counts as in no repo), then its elsewhere's when it has terminals.
+/**
+ * `machine`'s live terminals as `buildTree` arranges them, one `Section`
+ * per space in `spaceOrder`'s order by `checkouts` (a space without an
+ * entry counts as in no repo), then its elsewhere's when it has terminals.
+ */
 function treeSections(
   machine: TreeMachine,
   checkouts: Record<string, SpaceCheckout | null> | null,
@@ -623,9 +689,11 @@ function treeSections(
   return sections;
 }
 
-// The rows of the top-level terminals `nodes`, every live terminal nested
-// under them and the finished terminals under those, in `walkTree` order;
-// `marksPaneless` notes "no pane" on each live one without a pane.
+/**
+ * The rows of the top-level terminals `nodes`, every live terminal nested
+ * under them and the finished terminals under those, in `walkTree` order;
+ * `marksPaneless` notes "no pane" on each live one without a pane.
+ */
 function treeListings(
   nodes: TreeTerminal[],
   marksPaneless: boolean,
@@ -651,34 +719,42 @@ function treeListings(
   });
 }
 
-// Whether the cursor can rest on `row`: every row but the machine headers,
-// tab dividers and elsewhere labels, which only label the rows under them.
+/**
+ * Whether the cursor can rest on `row`: every row but the machine headers,
+ * tab dividers and elsewhere labels, which only label the rows under them.
+ */
 export function isSelectable(row: FindRow): boolean {
   return (
     row.kind !== "machine" && row.kind !== "tab" && row.kind !== "elsewhere"
   );
 }
 
-// The rows a query matches: `rows` without the machine headers, tab
-// dividers and elsewhere labels, folded terminal rows included.
+/**
+ * The rows a query matches: `rows` without the machine headers, tab
+ * dividers and elsewhere labels, folded terminal rows included.
+ */
 export function filterableRows(rows: readonly FindRow[]): FindRow[] {
   return rows.filter(isSelectable);
 }
 
-// The rows the hub lists while the query is empty: `rows` without the
-// terminal and finished rows of folded tabs, whose dividers stay.
+/**
+ * The rows the hub lists while the query is empty: `rows` without the
+ * terminal and finished rows of folded tabs, whose dividers stay.
+ */
 export function unfoldedRows(rows: readonly FindRow[]): FindRow[] {
   return rows.filter(
     (r) => (r.kind !== "terminal" && r.kind !== "finished") || !r.folded,
   );
 }
 
-// The rows the needs-you filter keeps, in `rows` order: `rows`' terminal
-// rows whose shown status (`TerminalRowModel.status`) is blocked or done,
-// and its finished rows that failed (`finishedOutcome`); one that exited 0
-// needs no one. Pass the `findRows` result, so they list in the tree's
-// order; the hub shows them as a flat list, or matches a query over them
-// alone.
+/**
+ * The rows the needs-you filter keeps, in `rows` order: `rows`' terminal
+ * rows whose shown status (`TerminalRowModel.status`) is blocked or done,
+ * and its finished rows that failed (`finishedOutcome`); one that exited 0
+ * needs no one. Pass the `findRows` result, so they list in the tree's
+ * order; the hub shows them as a flat list, or matches a query over them
+ * alone.
+ */
 export function needsYouRows(rows: readonly FindRow[]): FindRow[] {
   return rows.filter(
     (r) =>

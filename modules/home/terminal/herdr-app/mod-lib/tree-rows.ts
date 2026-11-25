@@ -32,15 +32,17 @@ import { quietFor } from "./quiet.js";
 import { stripeColor } from "./row-colors.js";
 import type { TreeMachine } from "./tree.js";
 
-// The start of a machine's header row, in small dim text: a monitor icon
-// for this computer or a server icon for another machine, then its name
-// (`machineLabel`, with `opts.thisComputerName`), then, while `hc machine
-// ls` reports it in a state other than connected, a badge with that state
-// and how long it has been in it (`machineBadge`: "needs login · 14m").
-// `opts.narrow` draws the icon alone, for the sidebar's rail. The name grows
-// to fill the width, so the caller's controls appended after it sit at the
-// row's end. `now` is the time in ms since the epoch. `t` is the theme's
-// colors by name (`theme()`).
+/**
+ * The start of a machine's header row, in small dim text: a monitor icon
+ * for this computer or a server icon for another machine, then its name
+ * (`machineLabel`, with `opts.thisComputerName`), then, while `hc machine
+ * ls` reports it in a state other than connected, a badge with that state
+ * and how long it has been in it (`machineBadge`: "needs login · 14m").
+ * `opts.narrow` draws the icon alone, for the sidebar's rail. The name grows
+ * to fill the width, so the caller's controls appended after it sit at the
+ * row's end. `now` is the time in ms since the epoch. `t` is the theme's
+ * colors by name (`theme()`).
+ */
 export function machineHeader(
   t: Record<string, Color>,
   machine: Pick<TreeMachine, "name" | "state" | "sinceMs">,
@@ -78,8 +80,10 @@ export function machineHeader(
     );
 }
 
-// The name a machine's header shows: its `hc machine ls` name, or for this
-// computer `thisComputerName`, "This computer" while that is null.
+/**
+ * The name a machine's header shows: its `hc machine ls` name, or for this
+ * computer `thisComputerName`, "This computer" while that is null.
+ */
 export function machineLabel(
   machine: Pick<TreeMachine, "name">,
   thisComputerName: string | null,
@@ -87,10 +91,12 @@ export function machineLabel(
   return machine.name ?? thisComputerName ?? "This computer";
 }
 
-// The badge a machine's header shows while `hc machine ls` reports it in a
-// state other than connected: that state and how long it has been in it
-// ("needs login · 14m"), the state alone without `sinceMs`; null while
-// connected or without a state. `now` is the time in ms since the epoch.
+/**
+ * The badge a machine's header shows while `hc machine ls` reports it in a
+ * state other than connected: that state and how long it has been in it
+ * ("needs login · 14m"), the state alone without `sinceMs`; null while
+ * connected or without a state. `now` is the time in ms since the epoch.
+ */
 export function machineBadge(
   machine: Pick<TreeMachine, "state" | "sinceMs">,
   now: number,
@@ -104,12 +110,14 @@ export function machineBadge(
     : state;
 }
 
-// A thin line (18px high) that starts a tab's rows: the tab's name in small
-// dim text, then a 1px rule filling the rest of the width ("1 ─────"). An
-// unnamed tab shows its position, which is its `name`; a named one shows its
-// position before its name ("2 notes ─────"). `dim` fades the whole line,
-// for a tab that asks for less attention. `t` is the theme's colors by name
-// (`theme()`).
+/**
+ * A thin line (18px high) that starts a tab's rows: the tab's name in small
+ * dim text, then a 1px rule filling the rest of the width ("1 ─────"). An
+ * unnamed tab shows its position, which is its `name`; a named one shows its
+ * position before its name ("2 notes ─────"). `dim` fades the whole line,
+ * for a tab that asks for less attention. `t` is the theme's colors by name
+ * (`theme()`).
+ */
 export function tabDivider(
   t: Record<string, Color>,
   tab: TabInfo,
@@ -135,32 +143,34 @@ export function tabDivider(
     .child(div().flex_1().min_w(0).h(1).bg(t.border));
 }
 
-// A live terminal's row content, from `model` (`terminalRowModel`), its
-// lines cut off at their end unless said otherwise. First a 3px rounded
-// stripe as tall as its lines, in the color of the terminal's state
-// (`stripeColor`), in a column `STATE_COLUMN_W` wide; then the program's
-// icon (an empty square without one, so labels align), then up to three
-// lines:
-// - a first line with the program's short name (`programName`) semibold,
-//   then its `title` when it has one, `opts.parentHint` ("↳ lead"),
-//   `opts.hint`, `opts.note`, and for an agent its status mark;
-// - a second line, always, with the folder it is in now (`folder`) dim, cut
-//   from the left so the folder's last segments stay, or `opts.folderLine`
-//   in its place;
-// - for an agent, a third line with what it is doing (`detail`: what a
-//   blocked agent waits for in the blocked color, its activity muted, its
-//   status word dim), and at its end "quiet 12m" in amber (the theme's
-//   `ansi3`) while it works but has shown no activity since `opts.activeAt`
-//   for a while (`quietFor`), else the time since `opts.since` (none while
-//   it works, its spinner says so, or without `since`);
-// - for a plain terminal running a command (a "command" `detail`), a third
-//   line with the command in cyan (the theme's `ansi6`) in
-//   `opts.commandFont`, at the size of an agent's third line so the row
-//   keeps its height, and at its end, dim, how long it has run (none
-//   without its `since`).
-// `opts.emphasized` makes the title semibold and `opts.dimTitle` mutes it.
-// `now` is the time in ms since the epoch. `t` is the theme's colors by
-// name (`theme()`). The content keeps `ROW_PAD_Y` above and below.
+/**
+ * A live terminal's row content, from `model` (`terminalRowModel`), its
+ * lines cut off at their end unless said otherwise. First a 3px rounded
+ * stripe as tall as its lines, in the color of the terminal's state
+ * (`stripeColor`), in a column `STATE_COLUMN_W` wide; then the program's
+ * icon (an empty square without one, so labels align), then up to three
+ * lines:
+ * - a first line with the program's short name (`programName`) semibold,
+ *   then its `title` when it has one, `opts.parentHint` ("↳ lead"),
+ *   `opts.hint`, `opts.note`, and for an agent its status mark;
+ * - a second line, always, with the folder it is in now (`folder`) dim, cut
+ *   from the left so the folder's last segments stay, or `opts.folderLine`
+ *   in its place;
+ * - for an agent, a third line with what it is doing (`detail`: what a
+ *   blocked agent waits for in the blocked color, its activity muted, its
+ *   status word dim), and at its end "quiet 12m" in amber (the theme's
+ *   `ansi3`) while it works but has shown no activity since `opts.activeAt`
+ *   for a while (`quietFor`), else the time since `opts.since` (none while
+ *   it works, its spinner says so, or without `since`);
+ * - for a plain terminal running a command (a "command" `detail`), a third
+ *   line with the command in cyan (the theme's `ansi6`) in
+ *   `opts.commandFont`, at the size of an agent's third line so the row
+ *   keeps its height, and at its end, dim, how long it has run (none
+ *   without its `since`).
+ * `opts.emphasized` makes the title semibold and `opts.dimTitle` mutes it.
+ * `now` is the time in ms since the epoch. `t` is the theme's colors by
+ * name (`theme()`). The content keeps `ROW_PAD_Y` above and below.
+ */
 export function terminalRow(
   t: Record<string, Color>,
   model: TerminalRowModel,
@@ -252,9 +262,11 @@ export function terminalRow(
     );
 }
 
-// A `terminalRow`'s third line, saying `detail` for the terminal `model`
-// describes, then at its end, for an agent, how long it has been quiet, else
-// how long it has been in its status; for a command, how long it has run.
+/**
+ * A `terminalRow`'s third line, saying `detail` for the terminal `model`
+ * describes, then at its end, for an agent, how long it has been quiet, else
+ * how long it has been in its status; for a command, how long it has run.
+ */
 function detailLine(
   t: Record<string, Color>,
   detail: TerminalRowDetail,
@@ -316,43 +328,53 @@ function detailLine(
     );
 }
 
-// What a caller adds to a `terminalRow` beyond its model.
+/** What a caller adds to a `terminalRow` beyond its model. */
 export interface TerminalRowOptions {
-  // When its status last changed, in ms since the epoch; null or absent when
-  // unknown.
+  /**
+   * When its status last changed, in ms since the epoch; null or absent when
+   * unknown.
+   */
   since?: number | null;
-  // When the agent last showed activity (a new report message, turn or
-  // state), in ms since the epoch; null or absent when unknown, which never
-  // reads as quiet.
+  /**
+   * When the agent last showed activity (a new report message, turn or
+   * state), in ms since the epoch; null or absent when unknown, which never
+   * reads as quiet.
+   */
   activeAt?: number | null;
-  // A dim word after the title saying how it is held ("no pane").
+  /** A dim word after the title saying how it is held ("no pane"). */
   note?: string;
-  // Dim text after the title that places it, such as its space.
+  /** Dim text after the title that places it, such as its space. */
   hint?: string;
-  // Its parent's label, for a row that does not show its parent above it.
+  /** Its parent's label, for a row that does not show its parent above it. */
   parentHint?: string;
-  // Draws the title semibold.
+  /** Draws the title semibold. */
   emphasized?: boolean;
-  // Draws the title muted, for a row that asks for less attention.
+  /** Draws the title muted, for a row that asks for less attention. */
   dimTitle?: boolean;
-  // The font family a plain terminal's command (its third line) is drawn
-  // in, such as the terminal's own font; absent, the row's font.
+  /**
+   * The font family a plain terminal's command (its third line) is drawn
+   * in, such as the terminal's own font; absent, the row's font.
+   */
   commandFont?: string;
-  // What the second line shows in place of the folder, such as the
-  // checkout the folder is in; absent, the folder (`model.folder`).
+  /**
+   * What the second line shows in place of the folder, such as the
+   * checkout the folder is in; absent, the folder (`model.folder`).
+   */
   folderLine?: Element;
 }
 
-// A finished terminal's row content, one line: an empty column where a live
-// row has its stripe (a finished terminal has no state to show), then a "✓"
-// in the done color where a live row has its program icon, or a "✗" in the
-// blocked color when it failed (`finishedOutcome`), then its label
-// (`finishedLabel`) muted, and at the end, dim, `opts.parentHint`
-// ("↳ lead") and `opts.hint` as on a `terminalRow`, how it ended ("exit 1")
-// and how long ago (none when the core gave no time). `now` is the time in
-// ms since the epoch. `t` is the theme's colors by name (`theme()`). Like
-// `terminalRow`'s, the content keeps `ROW_PAD_Y` above and below. Without
-// `opts`, it shows no hints.
+/**
+ * A finished terminal's row content, one line: an empty column where a live
+ * row has its stripe (a finished terminal has no state to show), then a "✓"
+ * in the done color where a live row has its program icon, or a "✗" in the
+ * blocked color when it failed (`finishedOutcome`), then its label
+ * (`finishedLabel`) muted, and at the end, dim, `opts.parentHint`
+ * ("↳ lead") and `opts.hint` as on a `terminalRow`, how it ended ("exit 1")
+ * and how long ago (none when the core gave no time). `now` is the time in
+ * ms since the epoch. `t` is the theme's colors by name (`theme()`). Like
+ * `terminalRow`'s, the content keeps `ROW_PAD_Y` above and below. Without
+ * `opts`, it shows no hints.
+ */
 export function finishedRow(
   t: Record<string, Color>,
   f: FinishedTerminal,
@@ -409,13 +431,15 @@ export function finishedRow(
     .child(v_flex().flex_1().min_w(0).line_height(1.3).child(line));
 }
 
-// The side of a row's square program icon, in px.
+/** The side of a row's square program icon, in px. */
 const ICON_SIZE = 14;
-// The space above and below a terminal row's content, in px.
+/** The space above and below a terminal row's content, in px. */
 const ROW_PAD_Y = 4;
-// The width of a terminal row's state stripe, in px.
+/** The width of a terminal row's state stripe, in px. */
 const STRIPE_W = 3;
-// The width of the column a terminal row's stripe sits in, from the row's
-// left edge to its icon, in px: the stripe and the gap after it. A finished
-// row leaves the column empty, so its mark lines up with the icons.
+/**
+ * The width of the column a terminal row's stripe sits in, from the row's
+ * left edge to its icon, in px: the stripe and the gap after it. A finished
+ * row leaves the column empty, so its mark lines up with the icons.
+ */
 const STATE_COLUMN_W = 10;

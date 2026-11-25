@@ -7,10 +7,12 @@ import type { AgentInfo, Status } from "herdr";
 import { RANK } from "./status.js";
 import type { TerminalEntry } from "./terminals.js";
 
-// The agents of `list` that need you: those ranking done or above by `rank`
-// (an agent -> its `RANK` value), most urgent first, newest first within a
-// rank (higher `seq`), otherwise in `list` order. "Needs you" draws them by
-// status; the next/previous order ranks by `orderRank`.
+/**
+ * The agents of `list` that need you: those ranking done or above by `rank`
+ * (an agent -> its `RANK` value), most urgent first, newest first within a
+ * rank (higher `seq`), otherwise in `list` order. "Needs you" draws them by
+ * status; the next/previous order ranks by `orderRank`.
+ */
 export const needsYou = (
   list: AgentInfo[],
   rank: (a: AgentInfo) => number,
@@ -19,10 +21,12 @@ export const needsYou = (
     .filter((a) => rank(a) >= RANK.done)
     .sort((x, y) => rank(y) - rank(x) || y.seq - x.seq);
 
-// When each agent's status last changed (`track`, `since`), for the time its
-// row shows, when each agent last showed activity (`trackActivity`,
-// `activeAt`), for whether its row reads quiet, and the focused agent's held
-// rank (`hold`, `orderRank`), for the next/previous order.
+/**
+ * When each agent's status last changed (`track`, `since`), for the time its
+ * row shows, when each agent last showed activity (`trackActivity`,
+ * `activeAt`), for whether its row reads quiet, and the focused agent's held
+ * rank (`hold`, `orderRank`), for the next/previous order.
+ */
 export class AgentHistory {
   declare changed: Record<string, StatusChange>;
   declare active: Record<string, Activity>;
@@ -43,12 +47,14 @@ export class AgentHistory {
     this.held = null;
   }
 
-  // Stamps agents whose state changed with when the core says their status
-  // changed (the `status_ms` of their `entries` terminal, by address), or
-  // `now` when it reports none, so a change made while the app was closed
-  // keeps its real time. Done and idle count as one: looking at a finished
-  // agent turns done into idle and the core restamps its status time, and
-  // looking isn't the agent doing anything, so it keeps the time it finished.
+  /**
+   * Stamps agents whose state changed with when the core says their status
+   * changed (the `status_ms` of their `entries` terminal, by address), or
+   * `now` when it reports none, so a change made while the app was closed
+   * keeps its real time. Done and idle count as one: looking at a finished
+   * agent turns done into idle and the core restamps its status time, and
+   * looking isn't the agent doing anything, so it keeps the time it finished.
+   */
   track(list: AgentInfo[], entries: TerminalEntry[], now: number): void {
     const statusMs = new Map(entries.map((k) => [k.address, k.status_ms]));
 
@@ -71,18 +77,20 @@ export class AgentHistory {
     localStorage.setItem("changed", JSON.stringify(this.changed));
   }
 
-  // When `a`'s status last changed (ms, see `track`), 0 when never seen.
+  /** When `a`'s status last changed (ms, see `track`), 0 when never seen. */
   since(a: AgentInfo): number {
     return this.changed[a.address]?.at ?? 0;
   }
 
-  // Stamps the terminals of `entries` that report a status and whose
-  // activity changed: a new state (done counted as idle, as `track` does) or
-  // status time from the core (`status_ms`, so a state change between two
-  // samples still counts), report message or turn. One seen for the first
-  // time, or stored without one of these, is stamped `now`.
-  // Like `track`, it drops agents gone from `entries` for over 30 days and
-  // saves only when something changed.
+  /**
+   * Stamps the terminals of `entries` that report a status and whose
+   * activity changed: a new state (done counted as idle, as `track` does) or
+   * status time from the core (`status_ms`, so a state change between two
+   * samples still counts), report message or turn. One seen for the first
+   * time, or stored without one of these, is stamped `now`.
+   * Like `track`, it drops agents gone from `entries` for over 30 days and
+   * saves only when something changed.
+   */
   trackActivity(entries: TerminalEntry[], now: number): void {
     let dirty = false;
     for (const k of entries) {
@@ -116,15 +124,19 @@ export class AgentHistory {
     localStorage.setItem("active", JSON.stringify(this.active));
   }
 
-  // When the agent at `address` last showed activity (ms, see
-  // `trackActivity`), null when never seen.
+  /**
+   * When the agent at `address` last showed activity (ms, see
+   * `trackActivity`), null when never seen.
+   */
   activeAt(address: string): number | null {
     return this.active[address]?.at ?? null;
   }
 
-  // Remembers the focused agent's rank on arrival. Looking at a done agent
-  // turns it idle; the remembered rank keeps it in its next/previous slot
-  // until you leave it. Any other change takes the new rank at once.
+  /**
+   * Remembers the focused agent's rank on arrival. Looking at a done agent
+   * turns it idle; the remembered rank keeps it in its next/previous slot
+   * until you leave it. Any other change takes the new rank at once.
+   */
   hold(list: AgentInfo[]): void {
     const cur = list.find((a) => a.focused);
     const same = cur && cur.address === this.held?.address;
@@ -137,8 +149,10 @@ export class AgentHistory {
         : null;
   }
 
-  // The rank an agent keeps in the next/previous order: a held agent that went
-  // done to idle still ranks as done.
+  /**
+   * The rank an agent keeps in the next/previous order: a held agent that went
+   * done to idle still ranks as done.
+   */
   orderRank(a: AgentInfo): number {
     const sawDone =
       a.address === this.held?.address &&
@@ -148,17 +162,21 @@ export class AgentHistory {
   }
 }
 
-// An agent's last state (done counted as idle) and when it changed (ms
-// since the epoch, from the core when it reported one).
+/**
+ * An agent's last state (done counted as idle) and when it changed (ms
+ * since the epoch, from the core when it reported one).
+ */
 interface StatusChange {
   s: Status;
   at: number;
 }
 
-// An agent's last seen activity: its state (`s`, done counted as idle), when
-// the core says that state last changed (`sm`, ms since the epoch), its report
-// message (`m`) and its turn count (`n`), each null when the core reports
-// none, and when any of them last changed (`at`, ms).
+/**
+ * An agent's last seen activity: its state (`s`, done counted as idle), when
+ * the core says that state last changed (`sm`, ms since the epoch), its report
+ * message (`m`) and its turn count (`n`), each null when the core reports
+ * none, and when any of them last changed (`at`, ms).
+ */
 interface Activity {
   s: string;
   sm: number | null;
@@ -167,7 +185,7 @@ interface Activity {
   at: number;
 }
 
-// The focused agent's address and its `RANK` value when it got focus.
+/** The focused agent's address and its `RANK` value when it got focus. */
 interface HeldRank {
   address: string;
   rank: number;

@@ -30,26 +30,32 @@ import {
   window as win,
 } from "herdr";
 
-// The theme's colors by name. The app's typings type `theme()` as
-// `Record<string, string>`, though every value is a color.
+/**
+ * The theme's colors by name. The app's typings type `theme()` as
+ * `Record<string, string>`, though every value is a color.
+ */
 type ThemeColors = Record<string, Color>;
 
-// The arguments an entry runs its command with; `{}` for none.
+/** The arguments an entry runs its command with; `{}` for none. */
 type CommandArgs = Record<string, string>;
 
-// One thing the palette can run: the command NAME with ARGS, shown as TITLE
-// under GROUP, and found by the extra search WORDS too.
+/**
+ * One thing the palette can run: the command NAME with ARGS, shown as TITLE
+ * under GROUP, and found by the extra search WORDS too.
+ */
 interface PaletteEntry {
   name: string;
   args: CommandArgs;
   group: string;
   title: string;
   words: string;
-  // The entry's identity in the recent list: its name and arguments.
+  /** The entry's identity in the recent list: its name and arguments. */
   id: string;
 }
 
-// A command the palette names itself: [command, args, group, title, keywords].
+/**
+ * A command the palette names itself: [command, args, group, title, keywords].
+ */
 type NamedCommand = [
   name: string,
   args: CommandArgs,
@@ -58,9 +64,11 @@ type NamedCommand = [
   words: string,
 ];
 
-// One shown row: an entry under its group's title (HEAD) while the query is
-// empty, or a match ranked by SCORE, with its title's matched positions
-// (HITS), while typing.
+/**
+ * One shown row: an entry under its group's title (HEAD) while the query is
+ * empty, or a match ranked by SCORE, with its title's matched positions
+ * (HITS), while typing.
+ */
 interface PaletteRow {
   e: PaletteEntry;
   head?: string;
@@ -68,30 +76,40 @@ interface PaletteRow {
   hits?: number[];
 }
 
-// A fuzzy match: how well it matched, and the matched positions.
+/** A fuzzy match: how well it matched, and the matched positions. */
 interface FuzzyMatch {
   score: number;
   hits: number[];
 }
 
-// Where a row sits in the list strip, in px from its top: its group title's
-// top (TITLE) when it opens a group (HEAD), and its own top (ROW).
+/**
+ * Where a row sits in the list strip, in px from its top: its group title's
+ * top (TITLE) when it opens a group (HEAD), and its own top (ROW).
+ */
 interface RowPlacement {
   head: boolean;
   title: number;
   row: number;
 }
 
-// One key binding, as `keys()` lists it.
+/** One key binding, as `keys()` lists it. */
 type KeyBindingInfo = ReturnType<typeof keys>[number];
 
-// The list keeps one height while you move: rows and group titles have fixed
-// heights, and the window shows as many as fit in LIST_H.
-// 10 rows: with the search line it fits the popup (at most 85% of the
-// window) down to ~580 px windows at zoom 1.3.
+/**
+ * How many rows tall the list grows before it scrolls (`LIST_H`), and how far
+ * page up and page down move the cursor. 10 rows: with the search line it fits
+ * the popup (at most 85% of the window) down to ~580 px windows at zoom 1.3.
+ */
 const SHOWN = 10;
+/** A row's fixed height. */
 const ROW_H = 32;
+/** A group title's fixed height. */
 const HEAD_H = 26;
+/**
+ * The tallest the list grows before it scrolls. Rows (`ROW_H`) and group
+ * titles (`HEAD_H`) have fixed heights, so a scrolling list keeps this height
+ * while you move and shows as many as fit.
+ */
 const LIST_H = SHOWN * ROW_H;
 const GROUPS = [
   "Recent",
@@ -105,7 +123,9 @@ const GROUPS = [
   "App",
 ];
 
-// The palette's names for commands: [command, args, group, title, keywords].
+/**
+ * The palette's names for commands: [command, args, group, title, keywords].
+ */
 const NAMED: NamedCommand[] = [
   ["tab.new", {}, "Tab", "New tab", "tab agent new task"],
   [
@@ -203,8 +223,10 @@ const NAMED: NamedCommand[] = [
   ),
 ];
 
-// Commands that act on something you point at (ids, terminals): not for a list.
-// `space.new` is listed as "New space", which opens the folder picker instead.
+/**
+ * Commands that act on something you point at (ids, terminals): not for a list.
+ * `space.new` is listed as "New space", which opens the folder picker instead.
+ */
 const HIDDEN = new Set([
   "space.new",
   "space.move",
@@ -245,7 +267,7 @@ function titleOf(name: string): { group: string; title: string } {
   };
 }
 
-// Every entry for the state we're in now.
+/** Every entry for the state we're in now. */
 function entries(): PaletteEntry[] {
   const known = new Set(commands().map((c) => c.name));
   const mac = win()?.platform === "macos";
@@ -284,7 +306,7 @@ function entries(): PaletteEntry[] {
   return list.map((e) => ({ ...e, id: `${e.name}:${JSON.stringify(e.args)}` }));
 }
 
-// The key bound to an entry: `name` or `name:value` in keys.json.
+/** The key bound to an entry: `name` or `name:value` in keys.json. */
 function keyOf(e: PaletteEntry, bound: KeyBindingInfo[]): string | null {
   const v = Object.values(e.args)[0];
   const want = v === undefined ? e.name : `${e.name}:${v}`;
@@ -292,12 +314,12 @@ function keyOf(e: PaletteEntry, bound: KeyBindingInfo[]): string | null {
   return k ? k.keys : null;
 }
 
-// "ctrl-shift-p" -> ["ctrl", "shift", "p"]; "ctrl--" -> ["ctrl", "-"].
+/** "ctrl-shift-p" -> ["ctrl", "shift", "p"]; "ctrl--" -> ["ctrl", "-"]. */
 function keyParts(k: string): string[] {
   return k.endsWith("--") ? [...k.slice(0, -2).split("-"), "-"] : k.split("-");
 }
 
-// Fuzzy score of `q` in `text`, with the matched positions; null: no match.
+/** Fuzzy score of `q` in `text`, with the matched positions; null: no match. */
 function fuzzy(q: string, text: string): FuzzyMatch | null {
   const t = text.toLowerCase();
   let score = 0;
@@ -319,12 +341,12 @@ function fuzzy(q: string, text: string): FuzzyMatch | null {
 export default class Palette extends View {
   declare query: string;
   declare input: InputState;
-  // The selected row's index.
+  /** The selected row's index. */
   declare at: number;
   declare scroll: number;
-  // How far the list can scroll, px.
+  /** How far the list can scroll, px. */
   declare maxScroll: number;
-  // The ids of the entries run lately, most recent first.
+  /** The ids of the entries run lately, most recent first. */
   declare recent: string[];
   declare handle: FocusHandle;
 
@@ -378,7 +400,7 @@ export default class Palette extends View {
     }
   }
 
-  // The rows to show: grouped when empty, ranked while typing.
+  /** The rows to show: grouped when empty, ranked while typing. */
   rows(): PaletteRow[] {
     const all = entries();
     const q = this.query.trim().toLowerCase().replace(/\s+/g, "");

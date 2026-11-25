@@ -28,23 +28,31 @@ import type { SpaceCheckout } from "./space-order.js";
 import { machineOf } from "./terminals.js";
 import type { TerminalEntry } from "./terminals.js";
 
-// A space's or repo's location: its machine (null for this computer) and a
-// folder there. `where()` keys and checkouts' `repo` are these as JSON.
+/**
+ * A space's or repo's location: its machine (null for this computer) and a
+ * folder there. `where()` keys and checkouts' `repo` are these as JSON.
+ */
 export type MachinePath = [machine: string | null, path: string];
 
-// A checkout's root as `locate` finds it: its machine (null for this
-// computer), its root folder, and which tool's checkout it is, which picks
-// the full lookup `check` runs. Root keys (`Checkouts.git`'s) are these as
-// JSON, so a root that turns from Git to jj gets a new key.
+/**
+ * A checkout's root as `locate` finds it: its machine (null for this
+ * computer), its root folder, and which tool's checkout it is, which picks
+ * the full lookup `check` runs. Root keys (`Checkouts.git`'s) are these as
+ * JSON, so a root that turns from Git to jj gets a new key.
+ */
 type CheckoutRoot = [machine: string | null, top: string, kind: "jj" | "git"];
 
-// A Git checkout as `Checkouts.check` reads it: the repo's name, the
-// checkout's root folder (`top`), its branch (null when detached), how far it
-// is ahead of and behind its upstream, its repo (`MachinePath` JSON of the
-// repo's git folder), and whether it is a linked worktree.
+/**
+ * A Git checkout as `Checkouts.check` reads it: the repo's name, the
+ * checkout's root folder (`top`), its branch (null when detached), how far it
+ * is ahead of and behind its upstream, its repo (`MachinePath` JSON of the
+ * repo's git folder), and whether it is a linked worktree.
+ */
 export interface GitCheckout {
-  // Never set: only a jj checkout has `jj`, so a falsy `jj` narrows
-  // `Checkout` to this type.
+  /**
+   * Never set: only a jj checkout has `jj`, so a falsy `jj` narrows
+   * `Checkout` to this type.
+   */
   jj?: false;
   name: string;
   top: string;
@@ -55,11 +63,13 @@ export interface GitCheckout {
   linked: boolean;
 }
 
-// A jj checkout as the terminal prompt shows it (`checkJj`): the repo's name,
-// the workspace root (`top`), the nearest bookmark ("(+1b)" when more share
-// it, null without one), which way and how far @ is from it, @'s change ID,
-// whether @ has a conflict or edits, its repo (`MachinePath` JSON of the
-// shared repo folder), and whether it is a secondary workspace.
+/**
+ * A jj checkout as the terminal prompt shows it (`checkJj`): the repo's name,
+ * the workspace root (`top`), the nearest bookmark ("(+1b)" when more share
+ * it, null without one), which way and how far `@` is from it, `@`'s change ID,
+ * whether `@` has a conflict or edits, its repo (`MachinePath` JSON of the
+ * shared repo folder), and whether it is a secondary workspace.
+ */
 export interface JjCheckout {
   jj: true;
   name: string;
@@ -74,29 +84,33 @@ export interface JjCheckout {
   linked: boolean;
 }
 
-// A place's checkout, Git or jj (`jj` tells them apart).
+/** A place's checkout, Git or jj (`jj` tells them apart). */
 export type Checkout = GitCheckout | JjCheckout;
 
-// A space's place: its machine and the space's own folder (where its new
-// terminals start, not where its terminals have since moved), as one string
-// key (JSON) for `Checkouts`' maps. An empty folder is that machine's home:
-// this computer's is filled in; another machine's stays empty, a place
-// `Checkouts.due` never looks at.
+/**
+ * A space's place: its machine and the space's own folder (where its new
+ * terminals start, not where its terminals have since moved), as one string
+ * key (JSON) for `Checkouts`' maps. An empty folder is that machine's home:
+ * this computer's is filled in; another machine's stays empty, a place
+ * `Checkouts.due` never looks at.
+ */
 export const where = (s: SpaceInfo): string =>
   JSON.stringify([s.machine ?? null, s.folder || (s.machine ? "" : home())]);
-// A terminal's place: its machine and the folder it is in now
-// (`foreground.cwd`, else the `cwd` it started in, as `folderOf` reads it).
-// Null without either folder.
+/**
+ * A terminal's place: its machine and the folder it is in now
+ * (`foreground.cwd`, else the `cwd` it started in, as `folderOf` reads it).
+ * Null without either folder.
+ */
 export const terminalPlace = (t: TerminalEntry): MachinePath | null => {
   const cwd = t.foreground?.cwd || t.cwd;
   return cwd ? [machineOf(t.address), cwd] : null;
 };
-// `terminalPlace` as a key, as `where` keys a space's place.
+/** `terminalPlace` as a key, as `where` keys a space's place. */
 export const terminalWhere = (t: TerminalEntry): string | null => {
   const place = terminalPlace(t);
   return place && JSON.stringify(place);
 };
-// `path` made absolute against `from`, without "." or ".." segments.
+/** `path` made absolute against `from`, without "." or ".." segments. */
 const resolve = (from: string, path: string): string => {
   const out: string[] = [];
   for (const part of (path.startsWith("/") ? path : `${from}/${path}`).split(
@@ -107,13 +121,17 @@ const resolve = (from: string, path: string): string => {
   }
   return `/${out.join("/")}`;
 };
-// Changes made outside Herdr (an editor's save, a commit in another app):
-// looked for this often, in repos the list shows, while the window is in front.
+/**
+ * Changes made outside Herdr (an editor's save, a commit in another app):
+ * looked for this often, in repos the list shows, while the window is in front.
+ */
 const FALLBACK = 60000;
 
-// The checkouts of the places spaces and live terminals are in, and the
-// looks that keep them current. `skipsFallback` says which machines' repos
-// skip the fallback look: the view's folded machines and those it leaves out.
+/**
+ * The checkouts of the places spaces and live terminals are in, and the
+ * looks that keep them current. `skipsFallback` says which machines' repos
+ * skip the fallback look: the view's folded machines and those it leaves out.
+ */
 export class Checkouts {
   declare roots: Record<string, string | null>;
   declare git: Record<string, Checkout | null>;
@@ -143,33 +161,39 @@ export class Checkouts {
     this.skipsFallback = skipsFallback;
   }
 
-  // The checkout the place `key` (a `where()`) is in: null when it is in
-  // none or its lookup could not answer yet (`unsureOf`), undefined when it
-  // has not been looked at, or its root not looked up, yet.
+  /**
+   * The checkout the place `key` (a `where()`) is in: null when it is in
+   * none or its lookup could not answer yet (`unsureOf`), undefined when it
+   * has not been looked at, or its root not looked up, yet.
+   */
   checkoutOf(key: string): Checkout | null | undefined {
     const root = this.roots[key];
     return root == null ? root : this.git[root];
   }
 
-  // Whether the last look at the place `key`, or at its checkout's root,
-  // could not answer (its machine away), so what `checkoutOf` gives may be
-  // old.
+  /**
+   * Whether the last look at the place `key`, or at its checkout's root,
+   * could not answer (its machine away), so what `checkoutOf` gives may be
+   * old.
+   */
   unsureOf(key: string): boolean {
     const root = this.roots[key];
     return this.unsure.has(key) || (root != null && this.unsure.has(root));
   }
 
-  // Places whose git could have changed: new ones (a new space, a space whose
-  // folder changed, a folder a live terminal in `live` is in for the first
-  // time; a shell that cds elsewhere does not move its space) no pass has
-  // taken up yet, where a command or an agent's turn just ended in a pane of
-  // a space's tab (that space's place and the terminal's own, a checkout, a
-  // commit, edits), those on a machine that is back, and repos in view whose
-  // fallback is due. A new place counts as taken up once a pass stamps it in
-  // `checked`, before `locate` records its root, so its first look is not
-  // asked for again while it runs.
-  // Drops what it knew of places no space and no terminal in `live` is in
-  // any more (`prune`).
+  /**
+   * Places whose git could have changed: new ones (a new space, a space whose
+   * folder changed, a folder a live terminal in `live` is in for the first
+   * time; a shell that cds elsewhere does not move its space) no pass has
+   * taken up yet, where a command or an agent's turn just ended in a pane of
+   * a space's tab (that space's place and the terminal's own, a checkout, a
+   * commit, edits), those on a machine that is back, and repos in view whose
+   * fallback is due. A new place counts as taken up once a pass stamps it in
+   * `checked`, before `locate` records its root, so its first look is not
+   * asked for again while it runs.
+   * Drops what it knew of places no space and no terminal in `live` is in
+   * any more (`prune`).
+   */
   due(
     now: number,
     sp: SpaceInfo[],
@@ -243,9 +267,11 @@ export class Checkouts {
     return due;
   }
 
-  // Forgets the places not in `used` and the roots no remaining place is in,
-  // so no later look, fallback or repo watch asks for them again. A look
-  // still running may add one back; the next call drops it again.
+  /**
+   * Forgets the places not in `used` and the roots no remaining place is in,
+   * so no later look, fallback or repo watch asks for them again. A look
+   * still running may add one back; the next call drops it again.
+   */
   prune(used: Set<string>): void {
     for (const key of new Set([
       ...Object.keys(this.roots),
@@ -264,11 +290,13 @@ export class Checkouts {
     }
   }
 
-  // The checkout of each of `sp` by space id, with only
-  // `SpaceCheckout`'s fields: null for a space whose folder git said is in
-  // no repo. A space whose last look could not answer (its machine away)
-  // keeps the checkout an earlier look found, as the sidebar does; one not
-  // looked up yet, or never answered, is left out.
+  /**
+   * The checkout of each of `sp` by space id, with only
+   * `SpaceCheckout`'s fields: null for a space whose folder git said is in
+   * no repo. A space whose last look could not answer (its machine away)
+   * keeps the checkout an earlier look found, as the sidebar does; one not
+   * looked up yet, or never answered, is left out.
+   */
   spaceCheckouts(sp: SpaceInfo[]): Record<string, SpaceCheckout | null> {
     const out: Record<string, SpaceCheckout | null> = {};
     for (const s of sp) {
@@ -286,8 +314,10 @@ export class Checkouts {
     return out;
   }
 
-  // `key` and the other places in its repo (a commit there moves their
-  // ahead/behind).
+  /**
+   * `key` and the other places in its repo (a commit there moves their
+   * ahead/behind).
+   */
   sameRepo(key: string, keys: Set<string>): string[] {
     const repo = this.checkoutOf(key)?.repo;
     return [
@@ -298,23 +328,29 @@ export class Checkouts {
     ];
   }
 
-  // Looks at the places `keys` (`where()`s): finds each one's root, then
-  // looks up each root found once.
+  /**
+   * Looks at the places `keys` (`where()`s): finds each one's root, then
+   * looks up each root found once.
+   */
   refreshGit(keys: Iterable<string>, cx: AsyncContext): void {
     for (const k of keys) this.pending.add(k);
     this.refresh(cx);
   }
 
-  // Looks up the roots `roots` (root keys) again without looking at the
-  // places in them, as after a jj operation or a commit in their repo.
+  /**
+   * Looks up the roots `roots` (root keys) again without looking at the
+   * places in them, as after a jj operation or a commit in their repo.
+   */
   refreshRoots(roots: Iterable<string>, cx: AsyncContext): void {
     for (const root of roots) this.pendingRoots.add(root);
     this.refresh(cx);
   }
 
-  // One look at a time, each place and each root once however often it was
-  // asked for meanwhile; places first, so the roots they find join the same
-  // pass.
+  /**
+   * One look at a time, each place and each root once however often it was
+   * asked for meanwhile; places first, so the roots they find join the same
+   * pass.
+   */
   refresh(cx: AsyncContext): void {
     if (this.refreshing) return;
     this.refreshing = true;
@@ -355,11 +391,13 @@ export class Checkouts {
     });
   }
 
-  // Finds the root of the innermost checkout the place `key` is in, records
-  // it in `roots` and returns its root key; null when the place is in no
-  // checkout. When it cannot tell (the machine away, git failing for another
-  // reason), keeps the root an earlier look found, marks the place unsure and
-  // returns null, so nothing is looked up for it.
+  /**
+   * Finds the root of the innermost checkout the place `key` is in, records
+   * it in `roots` and returns its root key; null when the place is in no
+   * checkout. When it cannot tell (the machine away, git failing for another
+   * reason), keeps the root an earlier look found, marks the place unsure and
+   * returns null, so nothing is looked up for it.
+   */
   async locate(key: string): Promise<string | null> {
     const [on, cwd] = JSON.parse(key) as MachinePath;
     this.unsure.delete(key);
@@ -394,9 +432,11 @@ export class Checkouts {
     }
   }
 
-  // One checkout root's lookup (`root`, a root key): branch or bookmark,
-  // ahead/behind, its repo. When it cannot answer, keeps what an earlier
-  // lookup found and marks the root unsure.
+  /**
+   * One checkout root's lookup (`root`, a root key): branch or bookmark,
+   * ahead/behind, its repo. When it cannot answer, keeps what an earlier
+   * lookup found and marks the root unsure.
+   */
   async check(root: string, cx: AsyncContext): Promise<void> {
     const [on, top, kind] = JSON.parse(root) as CheckoutRoot;
     this.unsure.delete(root);
@@ -424,8 +464,10 @@ export class Checkouts {
     }
   }
 
-  // `dir` is what changes when the repo does: the git folder, or a jj repo's
-  // op_heads.
+  /**
+   * `dir` is what changes when the repo does: the git folder, or a jj repo's
+   * op_heads.
+   */
   watch(repo: string, cx: AsyncContext, dir: string = repo): void {
     if (this.watching.has(repo)) return;
     this.watching.add(repo);
@@ -447,15 +489,19 @@ export class Checkouts {
   }
 }
 
-// A checkout as a full lookup found it, with its repo folder: the git
-// folder of a Git checkout, the shared repo folder of a jj one.
+/**
+ * A checkout as a full lookup found it, with its repo folder: the git
+ * folder of a Git checkout, the shared repo folder of a jj one.
+ */
 interface CheckoutLookup {
   checkout: Checkout;
   repo: string;
 }
 
-// The Git checkout whose root is `top`: its branch, ahead/behind and repo.
-// Null when git cannot answer there.
+/**
+ * The Git checkout whose root is `top`: its branch, ahead/behind and repo.
+ * Null when git cannot answer there.
+ */
 async function checkGit(
   top: string,
   on: string | null,
@@ -508,12 +554,14 @@ async function checkGit(
   return { checkout: info, repo };
 }
 
-// Runs jj with `args` in `cwd` on machine `on`. On this machine, the user's
-// jj by its store path, since the app's PATH depends on how the app was
-// started; another machine resolves its own `jj`. A dotfiles-paths.json
-// without the entry leaves the bare name. Every call passes
-// --ignore-working-copy: a snapshot would write an operation on each look,
-// which the op_heads watch would answer with another look.
+/**
+ * Runs jj with `args` in `cwd` on machine `on`. On this machine, the user's
+ * jj by its store path, since the app's PATH depends on how the app was
+ * started; another machine resolves its own `jj`. A dotfiles-paths.json
+ * without the entry leaves the bare name. Every call passes
+ * --ignore-working-copy: a snapshot would write an operation on each look,
+ * which the op_heads watch would answer with another look.
+ */
 async function jjCommand(
   args: string[],
   cwd: string,
@@ -527,10 +575,12 @@ async function jjCommand(
   );
 }
 
-// The jj checkout whose workspace root is `top`, as the terminal prompt
-// shows it. modules/home/shell/starship/jj-starship-prompt.sh mirrors this
-// bookmark and distance rule; change both together. Null when jj cannot
-// answer there.
+/**
+ * The jj checkout whose workspace root is `top`, as the terminal prompt
+ * shows it. modules/home/shell/starship/jj-starship-prompt.sh mirrors this
+ * bookmark and distance rule; change both together. Null when jj cannot
+ * answer there.
+ */
 async function checkJj(
   top: string,
   on: string | null,

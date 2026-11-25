@@ -35,11 +35,13 @@ import {
 import type { SpaceInfo } from "herdr";
 import { cliPath, place } from "./paths.js";
 
-// The theme's colors by name. The app's typings type `theme()` as
-// `Record<string, string>`, though every value is a color.
+/**
+ * The theme's colors by name. The app's typings type `theme()` as
+ * `Record<string, string>`, though every value is a color.
+ */
 type ThemeColors = Record<string, Color>;
 
-// One space's row in the dialog; `init` describes its fields.
+/** One space's row in the dialog; `init` describes its fields. */
 interface RenameRow {
   id: string;
   initial: string;
@@ -52,7 +54,7 @@ interface RenameRow {
   focused: boolean;
 }
 
-// A checkout's root folder (`top`) and its repo's name.
+/** A checkout's root folder (`top`) and its repo's name. */
 interface Checkout {
   top: string;
   name: string;
@@ -60,11 +62,11 @@ interface Checkout {
 
 export default class SpaceRenameAll extends View {
   declare rows: RenameRow[];
-  // The last focused row's index in `rows`, -1 once no row is left.
+  /** The last focused row's index in `rows`, -1 once no row is left. */
   declare current: number;
   declare scroll: number;
   declare handle: FocusHandle;
-  // The list's laid-out height in logical px, once it has been laid out.
+  /** The list's laid-out height in logical px, once it has been laid out. */
   declare rowsLaidOutHeight: number | undefined;
   declare rehoming: boolean | undefined;
 
@@ -153,15 +155,17 @@ export default class SpaceRenameAll extends View {
     }
   }
 
-  // The rows whose space still exists, in the dialog's order.
+  /** The rows whose space still exists, in the dialog's order. */
   live() {
     const ids = new Set(spaces().map((s) => s.id));
     return this.rows.filter((r) => ids.has(r.id));
   }
 
-  // Scrolls the list just far enough to show ROW whole. Focus moving to a row
-  // calls this, so moving between fields never leaves the field taking keys
-  // out of sight.
+  /**
+   * Scrolls the list just far enough to show ROW whole. Focus moving to a row
+   * calls this, so moving between fields never leaves the field taking keys
+   * out of sight.
+   */
   reveal(row: RenameRow): void {
     const top = this.live().indexOf(row) * ROW_PITCH;
     if (top < 0) return;
@@ -171,10 +175,12 @@ export default class SpaceRenameAll extends View {
       this.scroll = top + ROW_H - visible;
   }
 
-  // How much of the list the dialog shows for COUNT rows: all of them up to
-  // ROWS_MAX_H, less when the window is too short for the dialog to hold that
-  // and layout squeezes the list (`rowsLaidOutHeight`, measured after each
-  // layout, unknown before the first frame).
+  /**
+   * How much of the list the dialog shows for COUNT rows: all of them up to
+   * ROWS_MAX_H, less when the window is too short for the dialog to hold that
+   * and layout squeezes the list (`rowsLaidOutHeight`, measured after each
+   * layout, unknown before the first frame).
+   */
   shownHeight(count: number): number {
     return Math.min(
       ROWS_MAX_H,
@@ -183,11 +189,13 @@ export default class SpaceRenameAll extends View {
     );
   }
 
-  // Moves the keyboard off the focused row once its space has closed: to the
-  // next surviving row, else the last one, else the dialog itself, so Tab,
-  // Enter and Esc keep working. Focusing is refused during render, so it
-  // happens on the next turn; `rehoming` keeps renders before then from
-  // queueing it again.
+  /**
+   * Moves the keyboard off the focused row once its space has closed: to the
+   * next surviving row, else the last one, else the dialog itself, so Tab,
+   * Enter and Esc keep working. Focusing is refused during render, so it
+   * happens on the next turn; `rehoming` keeps renders before then from
+   * queueing it again.
+   */
   rehome(cx: Context): void {
     if (this.rehoming) return;
     this.rehoming = true;
@@ -202,8 +210,10 @@ export default class SpaceRenameAll extends View {
     });
   }
 
-  // Closes the dialog, then renames each remaining space whose field
-  // changed; an emptied field restores the automatic name.
+  /**
+   * Closes the dialog, then renames each remaining space whose field
+   * changed; an emptied field restores the automatic name.
+   */
   apply() {
     const changed = this.live().filter(
       (r) => r.input.value().trim() !== r.initial,
@@ -414,23 +424,26 @@ export default class SpaceRenameAll extends View {
   }
 }
 
-// A row's height, the space between rows, and the tallest the list grows
-// before it scrolls.
+/** A row's height. */
 const ROW_H = 32;
+/** The space between rows. */
 const ROW_GAP = 8;
+/** The tallest the list grows before it scrolls. */
 const ROWS_MAX_H = 420;
 const ROW_PITCH = ROW_H + ROW_GAP;
 
-// The height COUNT rows take stacked, gaps between them.
+/** The height COUNT rows take stacked, gaps between them. */
 const rowsHeight = (count: number): number =>
   Math.max(0, count * ROW_PITCH - ROW_GAP);
 
-// The checkout SPACE's row names, shown on every row:
-// "dotfiles / ws3" for a checkout whose folder differs from its repo's name,
-// "dotfiles" when they match, and the folder alone outside a repo ("~" at
-// its machine's home). Another machine's space starts with that machine's
-// name. `row.folder` is the space's own folder (empty: its machine's home);
-// `row.checkout` that folder's checkout, null until known or outside a repo.
+/**
+ * The checkout SPACE's row names, shown on every row:
+ * "dotfiles / ws3" for a checkout whose folder differs from its repo's name,
+ * "dotfiles" when they match, and the folder alone outside a repo ("~" at
+ * its machine's home). Another machine's space starts with that machine's
+ * name. `row.folder` is the space's own folder (empty: its machine's home);
+ * `row.checkout` that folder's checkout, null until known or outside a repo.
+ */
 function checkoutLabel(space: SpaceInfo, row: RenameRow): string {
   const c = row.checkout;
   const path = c?.top ?? row.folder;
@@ -441,13 +454,15 @@ function checkoutLabel(space: SpaceInfo, row: RenameRow): string {
   return space.machine ? `${space.machine} · ${text}` : text;
 }
 
-// The name the app gives a space whose first terminal is in CWD, on machine
-// ON (null: this one), when the space has no name of its own: after the Git
-// checkout CWD is in when git names both its root and its HEAD, else CWD
-// itself (outside a repo, and in a repo with no commits yet); "~" at its
-// machine's home. Mirrors the app's automatic space name (its model.rs
-// `space_name`), which reads the folder from window.rs `folder_info`: the
-// same git command, run only away from this machine's home.
+/**
+ * The name the app gives a space whose first terminal is in CWD, on machine
+ * ON (null: this one), when the space has no name of its own: after the Git
+ * checkout CWD is in when git names both its root and its HEAD, else CWD
+ * itself (outside a repo, and in a repo with no commits yet); "~" at its
+ * machine's home. Mirrors the app's automatic space name (its model.rs
+ * `space_name`), which reads the folder from window.rs `folder_info`: the
+ * same git command, run only away from this machine's home.
+ */
 async function automaticName(cwd: string, on: string | null): Promise<string> {
   let top = cwd;
   if (cwd && (on || cwd !== home()))
@@ -465,12 +480,14 @@ async function automaticName(cwd: string, on: string | null): Promise<string> {
   return !top || (!on && top === home()) ? "~" : base(top);
 }
 
-// The checkout folder CWD is in, on machine ON (null: this one), as
-// `{ top, name }`: `top` is the checkout's root and `name` its repo's, taken
-// from the repo's own folder, so a jj workspace or Git worktree is named
-// after the repo it belongs to. A jj checkout is read as jj sees it, else a
-// Git one; null outside a repo or when neither answers (the machine is away).
-// Mirrors desk-spaces' `check` and `checkJj` naming; change both together.
+/**
+ * The checkout folder CWD is in, on machine ON (null: this one), as
+ * `{ top, name }`: `top` is the checkout's root and `name` its repo's, taken
+ * from the repo's own folder, so a jj workspace or Git worktree is named
+ * after the repo it belongs to. A jj checkout is read as jj sees it, else a
+ * Git one; null outside a repo or when neither answers (the machine is away).
+ * Mirrors desk-spaces' `check` and `checkJj` naming; change both together.
+ */
 async function checkout(
   cwd: string,
   on: string | null,
@@ -519,8 +536,10 @@ async function checkout(
 
 // These mirror desk-spaces: its avatar colors, and its path helpers.
 
-// What a stored color name looks like on an avatar (the same in every mod
-// that draws space avatars): one strong color per hue, light and dark alike.
+/**
+ * What a stored color name looks like on an avatar (the same in every mod
+ * that draws space avatars): one strong color per hue, light and dark alike.
+ */
 const MARK: Record<string, Color> = {
   ansi6: "#22a99a",
   ansi3: "#e3814f",
@@ -530,11 +549,11 @@ const MARK: Record<string, Color> = {
   ansi1: "#d9649a",
 };
 
-// `split` always returns at least one element, so `pop` finds one.
+/** `split` always returns at least one element, so `pop` finds one. */
 const base = (path: string): string =>
   path.replace(/\/+$/, "").split("/").pop()!;
 
-// `path` made absolute against `from`, without "." or ".." segments.
+/** `path` made absolute against `from`, without "." or ".." segments. */
 const resolve = (from: string, path: string): string => {
   const out: string[] = [];
   for (const part of (path.startsWith("/") ? path : `${from}/${path}`).split(

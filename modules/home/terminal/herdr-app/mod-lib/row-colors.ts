@@ -13,11 +13,13 @@
 import type { Color } from "gpui-kit";
 import type { TerminalRowModel } from "./labels.js";
 
-// A hovered row's fill: halfway from `backdrop`, the color the row sits on,
-// to the focused row's `t.hover`, so a hovered row next to the focused one
-// reads as a lighter touch, not a second selection. `t.hover` itself when
-// either color isn't hex ("#rgb", "#rrggbb" or "#rrggbbaa"); alpha mixes
-// like the other channels, a color without one counting as opaque.
+/**
+ * A hovered row's fill: halfway from `backdrop`, the color the row sits on,
+ * to the focused row's `t.hover`, so a hovered row next to the focused one
+ * reads as a lighter touch, not a second selection. `t.hover` itself when
+ * either color isn't hex ("#rgb", "#rrggbb" or "#rrggbbaa"); alpha mixes
+ * like the other channels, a color without one counting as opaque.
+ */
 export function hoverFill(t: Record<string, Color>, backdrop: Color): Color {
   const a = channels(backdrop);
   const b = channels(t.hover);
@@ -26,7 +28,7 @@ export function hoverFill(t: Record<string, Color>, backdrop: Color): Color {
   return `#${mix.map((v) => v.toString(16).padStart(2, "0")).join("")}`;
 }
 
-// A hex color "#rgb", "#rrggbb" or "#rrggbbaa" as [r, g, b, a], or null.
+/** A hex color "#rgb", "#rrggbb" or "#rrggbbaa" as [r, g, b, a], or null. */
 function channels(hex: string | undefined): number[] | null {
   const m = /^#([0-9a-f]{3}|[0-9a-f]{6}|[0-9a-f]{8})$/i.exec(hex ?? "");
   if (!m) return null;
@@ -36,14 +38,16 @@ function channels(hex: string | undefined): number[] | null {
   );
 }
 
-// The color of the stripe on a terminal row's left edge, which tells the
-// terminal's state at a glance: an agent's status (`model.status`) in the
-// colors `statusMark` draws it with, working `t.working`, blocked
-// `t.blocked`, done `t.done` (`t.dim` without one), and idle or any other
-// word, such as a sub-agent's raw status, `t.idle` (`t.dim` without one); a
-// plain terminal running a command (`model.detail` of kind "command") cyan
-// `t.ansi6`, and any other plain terminal the idle agent's grey. A sub-agent
-// that is done gets the idle grey: the sidebar shows it idle (`rowStatus`).
+/**
+ * The color of the stripe on a terminal row's left edge, which tells the
+ * terminal's state at a glance: an agent's status (`model.status`) in the
+ * colors `statusMark` draws it with, working `t.working`, blocked
+ * `t.blocked`, done `t.done` (`t.dim` without one), and idle or any other
+ * word, such as a sub-agent's raw status, `t.idle` (`t.dim` without one); a
+ * plain terminal running a command (`model.detail` of kind "command") cyan
+ * `t.ansi6`, and any other plain terminal the idle agent's grey. A sub-agent
+ * that is done gets the idle grey: the sidebar shows it idle (`rowStatus`).
+ */
 export function stripeColor(
   t: Record<string, Color>,
   model: Pick<TerminalRowModel, "status" | "detail">,

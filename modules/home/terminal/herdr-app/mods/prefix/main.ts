@@ -54,50 +54,62 @@ import {
 
 const TITLE = "Prefix";
 
-// The command keys.json's `mod:prefix` section sends (as `prefix.ctrl-b`)
-// for `ctrl-b` while prefix mode is open; it handles `ctrl-b` as the prefix
-// keystroke.
+/**
+ * The command keys.json's `mod:prefix` section sends (as `prefix.ctrl-b`)
+ * for `ctrl-b` while prefix mode is open; it handles `ctrl-b` as the prefix
+ * keystroke.
+ */
 const CTRL_B_COMMAND = "ctrl-b";
 
-// The status bar mod that shows the PREFIX pill and hints.
+/** The status bar mod that shows the PREFIX pill and hints. */
 const STATUS_MOD = "prefix-status";
 
-// What `bindings.json` holds: the `prefix` attribute of `keys.nix`, which
-// the Home Manager module validates before writing it.
+/**
+ * What `bindings.json` holds: the `prefix` attribute of `keys.nix`, which
+ * the Home Manager module validates before writing it.
+ */
 interface PrefixBindingsFile {
-  // Keystroke -> keys.json action.
+  /** Keystroke -> keys.json action. */
   bindings: Record<string, string>;
   hints: PrefixHint[];
 }
 
-// One status bar hint: the LABEL shown after the keys of every binding whose
-// action is ACTION, or whose command name (the part before `:`) is ACTION.
+/**
+ * One status bar hint: the LABEL shown after the keys of every binding whose
+ * action is ACTION, or whose command name (the part before `:`) is ACTION.
+ */
 interface PrefixHint {
   action: string;
   label: string;
 }
 
-// The parts of a keystroke that select a binding.
+/** The parts of a keystroke that select a binding. */
 type PrefixKey = Pick<KeyEvent, "keystroke" | "key_char">;
 
-// Runs the status bar's COMMAND (`on` or `off`) when the shown layout has
-// the bar, and does nothing otherwise.
+/**
+ * Runs the status bar's COMMAND (`on` or `off`) when the shown layout has
+ * the bar, and does nothing otherwise.
+ */
 function runStatusCommand(command: "on" | "off"): void {
   if (namesMod(layout(), STATUS_MOD)) run(`${STATUS_MOD}.${command}`);
 }
 
-// Whether NODE, a layout document or part of one, names mod NAME as a `mod`
-// value at any depth, the rule the build's layout check also uses.
+/**
+ * Whether NODE, a layout document or part of one, names mod NAME as a `mod`
+ * value at any depth, the rule the build's layout check also uses.
+ */
 function namesMod(node: unknown, name: string): boolean {
   if (node === null || typeof node !== "object") return false;
   if ((node as { mod?: unknown }).mod === name) return true;
   return Object.values(node).some((child) => namesMod(child, name));
 }
 
-// Reads `bindings.json` as `{ bindings, hints }`: a Map of keystroke ->
-// action, and the `{action, label}` hints. Throws when the file is missing,
-// or is not a JSON object whose `bindings` is an object and `hints` an
-// array, which a Home Manager switch fixes.
+/**
+ * Reads `bindings.json` as `{ bindings, hints }`: a Map of keystroke ->
+ * action, and the `{action, label}` hints. Throws when the file is missing,
+ * or is not a JSON object whose `bindings` is an object and `hints` an
+ * array, which a Home Manager switch fixes.
+ */
 async function loadBindings(): Promise<{
   bindings: Map<string, string>;
   hints: PrefixHint[];
@@ -125,8 +137,10 @@ async function loadBindings(): Promise<{
   return { bindings: new Map(Object.entries(bindings)), hints };
 }
 
-// The status bar's `[keys, label]` hints for BINDINGS, in HINTS order,
-// skipping labels no keystroke is bound to, and ending with Esc.
+/**
+ * The status bar's `[keys, label]` hints for BINDINGS, in HINTS order,
+ * skipping labels no keystroke is bound to, and ending with Esc.
+ */
 function hintsFor(
   bindings: Map<string, string>,
   hints: PrefixHint[],
@@ -147,17 +161,21 @@ function hintsFor(
   return shown;
 }
 
-// The label of the HINTS entry matching ACTION, exactly or else by its
-// command name (the part before `:`), or undefined when none matches.
+/**
+ * The label of the HINTS entry matching ACTION, exactly or else by its
+ * command name (the part before `:`), or undefined when none matches.
+ */
 function labelFor(action: string, hints: PrefixHint[]): string | undefined {
   const command = action.split(":")[0];
   const exact = hints.find((hint) => hint.action === action);
   return (exact ?? hints.find((hint) => hint.action === command))?.label;
 }
 
-// Spells the keystrokes `keys` as one hint: `1–9` for three or more
-// consecutive digits, `hjkl` for three or more single letters, otherwise
-// `v / -`, with letters and digits before punctuation.
+/**
+ * Spells the keystrokes `keys` as one hint: `1–9` for three or more
+ * consecutive digits, `hjkl` for three or more single letters, otherwise
+ * `v / -`, with letters and digits before punctuation.
+ */
 function joinKeys(keys: string[]): string {
   const isPunctuation = (key: string) => /^[^a-z0-9]$/i.test(key);
   const sorted = [...keys].sort(
@@ -177,7 +195,7 @@ function joinKeys(keys: string[]): string {
   return sorted.join(" / ");
 }
 
-// Tells the person a `send:` keystroke did not reach the terminal.
+/** Tells the person a `send:` keystroke did not reach the terminal. */
 function reportSendFailure(body: string): void {
   notify({
     title: TITLE,
@@ -241,8 +259,10 @@ export default class Prefix extends View {
     });
   }
 
-  // Runs however the popup goes: a key, Esc, a click outside, or quit. Turns
-  // the status bar's PREFIX pill off when the shown layout has the bar.
+  /**
+   * Runs however the popup goes: a key, Esc, a click outside, or quit. Turns
+   * the status bar's PREFIX pill off when the shown layout has the bar.
+   */
   async close(_cx: AsyncContext): Promise<void> {
     runStatusCommand("off");
   }
@@ -255,16 +275,20 @@ export default class Prefix extends View {
     });
   }
 
-  // Handles KEY now, or keeps it as `pendingKey` until the bindings load
-  // (only the first key pressed before then is kept).
+  /**
+   * Handles KEY now, or keeps it as `pendingKey` until the bindings load
+   * (only the first key pressed before then is kept).
+   */
   receiveKey(key: PrefixKey): void {
     if (this.bindings) this.handleKey(key);
     else if (!this.pendingKey) this.pendingKey = key;
   }
 
-  // Leaves prefix mode, running the action bound to KEY, if any. `?` and
-  // `:` are bound by the character they type, so the keystroke is tried
-  // first, then the character.
+  /**
+   * Leaves prefix mode, running the action bound to KEY, if any. `?` and
+   * `:` are bound by the character they type, so the keystroke is tried
+   * first, then the character.
+   */
   handleKey({ keystroke, key_char }: PrefixKey): void {
     if (keystroke === "escape") return this.dismiss();
     const action =
@@ -273,18 +297,22 @@ export default class Prefix extends View {
     this.dismiss(action && (() => this.perform(action)));
   }
 
-  // Ends prefix mode, closes the popup, then runs THEN (if any; `handleKey`
-  // passes the empty string when the bound action is empty).
+  /**
+   * Ends prefix mode, closes the popup, then runs THEN (if any; `handleKey`
+   * passes the empty string when the bound action is empty).
+   */
   dismiss(then?: (() => void) | ""): void {
     runStatusCommand("off");
     closeOverlay(props().overlay);
     if (then) then();
   }
 
-  // Runs one bound action. The build's `keys-check.jq` guarantees a `send:`
-  // action carries exactly one control character (U+0001-U+001A), typed as
-  // its ctrl- key into the captured terminal; with no terminal captured it
-  // does nothing, and a failed `hc keys` shows an error notification.
+  /**
+   * Runs one bound action. The build's `keys-check.jq` guarantees a `send:`
+   * action carries exactly one control character (U+0001-U+001A), typed as
+   * its ctrl- key into the captured terminal; with no terminal captured it
+   * does nothing, and a failed `hc keys` shows an error notification.
+   */
   perform(action: string) {
     if (!action.startsWith("send:")) return run(action);
 
@@ -302,7 +330,7 @@ export default class Prefix extends View {
     );
   }
 
-  // An invisible key catcher: the status bar draws the indicator.
+  /** An invisible key catcher: the status bar draws the indicator. */
   render(_cx: Context) {
     return div()
       .id("prefix")

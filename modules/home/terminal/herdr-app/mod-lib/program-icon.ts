@@ -11,9 +11,11 @@ import { image, svg } from "gpui-kit";
 import type { Color, Element } from "gpui-kit";
 import type { Program } from "herdr";
 
-// Program P's icon, SIZE pixels square and never shrunk by its row: a tinted
-// icon is a glyph drawn in COLOR, any other a picture in its own colors. Null
-// when P is missing or has no icon. Copied from the shipped `agents` mod.
+/**
+ * Program P's icon, SIZE pixels square and never shrunk by its row: a tinted
+ * icon is a glyph drawn in COLOR, any other a picture in its own colors. Null
+ * when P is missing or has no icon. Copied from the shipped `agents` mod.
+ */
 export function programIcon(
   p: Program | undefined,
   size: number,

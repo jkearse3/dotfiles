@@ -30,116 +30,136 @@ import type { AgentStatus } from "./status.js";
 import { MAX_ANCESTORS, machineOf, parentAddress } from "./terminals.js";
 import type { TerminalEntry } from "./terminals.js";
 
-// The app's data a tree is built from, read once per render.
+/** The app's data a tree is built from, read once per render. */
 export interface TreeWorld {
-  // `terminals()`, in its order.
+  /** `terminals()`, in its order. */
   terminals: TerminalEntry[];
   agents: AgentInfo[];
-  // `panes()`, in its order.
+  /** `panes()`, in its order. */
   panes: PaneInfo[];
-  // `spaces()`, in its order.
+  /** `spaces()`, in its order. */
   spaces: SpaceInfo[];
-  // The `machines` of `hc machine ls --json`, in any order.
+  /** The `machines` of `hc machine ls --json`, in any order. */
   machines: MachineEntry[];
-  // The finished terminals known, in any order.
+  /** The finished terminals known, in any order. */
   finished: FinishedTerminal[];
 }
 
-// The fields of an `hc machine ls --json` machine that a tree reads.
+/** The fields of an `hc machine ls --json` machine that a tree reads. */
 export interface MachineEntry {
-  // What this computer calls it: `rohan` in `rohan/t7`.
+  /** What this computer calls it: `rohan` in `rohan/t7`. */
   name: string;
-  // connecting, connected, needs_login or unreachable.
+  /** connecting, connected, needs_login or unreachable. */
   state: string;
-  // Since when it is not connected, in ms since the epoch; null or missing
-  // while connected.
+  /**
+   * Since when it is not connected, in ms since the epoch; null or missing
+   * while connected.
+   */
   since_ms?: number | null;
-  // A machine someone reached for one command; trees leave it out.
+  /** A machine someone reached for one command; trees leave it out. */
   temporary?: boolean;
 }
 
-// The app's live terminals as one tree (`buildTree`).
+/** The app's live terminals as one tree (`buildTree`). */
 export interface Tree {
-  // This computer first, then other machines by name.
+  /** This computer first, then other machines by name. */
   machines: TreeMachine[];
 }
 
-// A machine, the spaces that live on it and its terminals no space holds.
+/** A machine, the spaces that live on it and its terminals no space holds. */
 export interface TreeMachine {
-  // Its `hc machine ls` name; null for this computer.
+  /** Its `hc machine ls` name; null for this computer. */
   name: string | null;
-  // Its `hc machine ls` state; null for this computer, and for a machine
-  // that a space or an elsewhere terminal names but `hc machine ls` does
-  // not list.
+  /**
+   * Its `hc machine ls` state; null for this computer, and for a machine
+   * that a space or an elsewhere terminal names but `hc machine ls` does
+   * not list.
+   */
   state: string | null;
-  // Since when it is not connected, in ms since the epoch; null while
-  // connected and whenever `state` is null.
+  /**
+   * Since when it is not connected, in ms since the epoch; null while
+   * connected and whenever `state` is null.
+   */
   sinceMs: number | null;
-  // Its spaces, in `spaces()` order; empty when it has none.
+  /** Its spaces, in `spaces()` order; empty when it has none. */
   spaces: TreeSpace[];
-  // Its live terminals no space holds (`spaceMembership` gives none), by
-  // `machineOf` their address, in `terminals()` order, with their
-  // sub-terminals nested; empty when it has none.
+  /**
+   * Its live terminals no space holds (`spaceMembership` gives none), by
+   * `machineOf` their address, in `terminals()` order, with their
+   * sub-terminals nested; empty when it has none.
+   */
   elsewhere: TreeTerminal[];
 }
 
-// A space and the live terminals that belong to it.
+/** A space and the live terminals that belong to it. */
 export interface TreeSpace {
   space: SpaceInfo;
-  // Every tab of the space in its order, including empty and settled ones.
+  /** Every tab of the space in its order, including empty and settled ones. */
   tabs: TreeTab[];
-  // The top-level terminals that belong to the space but show in none of
-  // its tabs (no pane, so they belong by a label or an ancestor), in
-  // `terminals()` order.
+  /**
+   * The top-level terminals that belong to the space but show in none of
+   * its tabs (no pane, so they belong by a label or an ancestor), in
+   * `terminals()` order.
+   */
   loose: TreeTerminal[];
 }
 
-// A tab and the top-level terminals shown in it.
+/** A tab and the top-level terminals shown in it. */
 export interface TreeTab {
   tab: TabInfo;
-  // The terminals whose first pane in `panes()` order is in this tab, in
-  // that pane order; a terminal shown in two panes is listed once. Mod panes
-  // hold no terminal and give none. A terminal nested under its parent is
-  // listed there instead.
+  /**
+   * The terminals whose first pane in `panes()` order is in this tab, in
+   * that pane order; a terminal shown in two panes is listed once. Mod panes
+   * hold no terminal and give none. A terminal nested under its parent is
+   * listed there instead.
+   */
   terminals: TreeTerminal[];
 }
 
-// A live terminal in a tree.
+/** A live terminal in a tree. */
 export interface TreeTerminal {
   terminal: TerminalEntry;
-  // Its `agents()` entry; null for a plain terminal or a paneless agent.
+  /** Its `agents()` entry; null for a plain terminal or a paneless agent. */
   info: AgentInfo | null;
-  // Its first pane in `panes()` order; null without one.
+  /** Its first pane in `panes()` order; null without one. */
   pane: PaneInfo | null;
-  // An agent's own status: its `agents()` status when it has a pane, else
-  // `kidStatus` of its `terminals()` status word. Null for a terminal that
-  // reports no status.
+  /**
+   * An agent's own status: its `agents()` status when it has a pane, else
+   * `kidStatus` of its `terminals()` status word. Null for a terminal that
+   * reports no status.
+   */
   status: AgentStatus | null;
-  // `machineOf(terminal.address)`.
+  /** `machineOf(terminal.address)`. */
   machine: string | null;
-  // The live terminals whose parent is this one and that belong to the same
-  // space (or, like it, to none), in `terminals()` order, wherever their
-  // panes are.
+  /**
+   * The live terminals whose parent is this one and that belong to the same
+   * space (or, like it, to none), in `terminals()` order, wherever their
+   * panes are.
+   */
   children: TreeTerminal[];
-  // The finished terminals whose parent is this one, oldest `finishedMs`
-  // first, for a view to list after its children.
+  /**
+   * The finished terminals whose parent is this one, oldest `finishedMs`
+   * first, for a view to list after its children.
+   */
   finished: FinishedTerminal[];
 }
 
-// The app's live terminals (`state` "live") as a tree:
-// - Machines: this computer, then every non-temporary machine `hc machine
-//   ls` lists and every machine a space or an elsewhere terminal names, by
-//   name.
-// - A terminal belongs to the space `spaceMembership` gives, or else to its
-//   machine's elsewhere.
-// - A terminal nests under its parent when the parent is live and belongs to
-//   the same space (or, like it, to none), even when they show in different
-//   tabs. On a parent cycle, the first member in `terminals()` order stays at
-//   the top level and the others nest under it.
-// - A finished terminal hangs under its parent when that is live, wherever
-//   the parent is; one whose parent is not live is left out.
-// - A top-level terminal goes in the tab of its first pane, or in its
-//   space's `loose` when that pane is in none of the space's tabs.
+/**
+ * The app's live terminals (`state` "live") as a tree:
+ * - Machines: this computer, then every non-temporary machine `hc machine
+ *   ls` lists and every machine a space or an elsewhere terminal names, by
+ *   name.
+ * - A terminal belongs to the space `spaceMembership` gives, or else to its
+ *   machine's elsewhere.
+ * - A terminal nests under its parent when the parent is live and belongs to
+ *   the same space (or, like it, to none), even when they show in different
+ *   tabs. On a parent cycle, the first member in `terminals()` order stays at
+ *   the top level and the others nest under it.
+ * - A finished terminal hangs under its parent when that is live, wherever
+ *   the parent is; one whose parent is not live is left out.
+ * - A top-level terminal goes in the tab of its first pane, or in its
+ *   space's `loose` when that pane is in none of the space's tabs.
+ */
 export function buildTree(world: TreeWorld): Tree {
   const spaceOf = spaceMembership(world);
   const position = new Map(world.terminals.map((t, i) => [t.address, i]));
@@ -252,8 +272,10 @@ export function buildTree(world: TreeWorld): Tree {
   };
 }
 
-// The top-level terminals of `treeSpace`: each tab's in tab order, then its
-// `loose` ones. Their sub-terminals stay nested under them.
+/**
+ * The top-level terminals of `treeSpace`: each tab's in tab order, then its
+ * `loose` ones. Their sub-terminals stay nested under them.
+ */
 export function spaceTerminals(treeSpace: TreeSpace): TreeTerminal[] {
   return [
     ...treeSpace.tabs.flatMap((tab) => tab.terminals),
@@ -261,11 +283,13 @@ export function spaceTerminals(treeSpace: TreeSpace): TreeTerminal[] {
   ];
 }
 
-// Whether a view folds `treeTab` away, showing its divider without its
-// terminal rows: true when the tab is settled (`TabInfo.settled`) and
-// nothing in it, at any depth, needs the person: no terminal is blocked or
-// done and no finished terminal failed (`finishedOutcome`). A tab that is
-// not settled never folds.
+/**
+ * Whether a view folds `treeTab` away, showing its divider without its
+ * terminal rows: true when the tab is settled (`TabInfo.settled`) and
+ * nothing in it, at any depth, needs the person: no terminal is blocked or
+ * done and no finished terminal failed (`finishedOutcome`). A tab that is
+ * not settled never folds.
+ */
 export function tabFolded(treeTab: TreeTab): boolean {
   if (!treeTab.tab.settled) return false;
   for (const step of walkTree(treeTab.terminals)) {
@@ -278,10 +302,12 @@ export function tabFolded(treeTab: TreeTab): boolean {
   return true;
 }
 
-// The status a terminal's row shows: its tree status, except that an agent
-// nested under another agent (`parent`, null at the top level) is never
-// done: it reports to its parent, and the parent's done is the news. Null
-// for a terminal reporting no status.
+/**
+ * The status a terminal's row shows: its tree status, except that an agent
+ * nested under another agent (`parent`, null at the top level) is never
+ * done: it reports to its parent, and the parent's done is the news. Null
+ * for a terminal reporting no status.
+ */
 export function rowStatus(
   node: TreeTerminal,
   parent: TreeTerminal | null,
@@ -290,38 +316,46 @@ export function rowStatus(
   return reportsToAgent && node.status === "done" ? "idle" : node.status;
 }
 
-// `nodes` and every terminal nested under them, depth first, each parent
-// before its children, then its finished terminals (`TreeStep`).
+/**
+ * `nodes` and every terminal nested under them, depth first, each parent
+ * before its children, then its finished terminals (`TreeStep`).
+ */
 export function* walkTree(nodes: TreeTerminal[]): Generator<TreeStep> {
   yield* walkFrom(nodes, 0);
 }
 
-// One row on a `walkTree` walk: a live terminal or a finished one under its
-// live parent.
+/**
+ * One row on a `walkTree` walk: a live terminal or a finished one under its
+ * live parent.
+ */
 export type TreeStep = TreeTerminalStep | TreeFinishedStep;
 
-// A live terminal on a `walkTree` walk.
+/** A live terminal on a `walkTree` walk. */
 export interface TreeTerminalStep extends TreePlace {
   kind: "terminal";
   node: TreeTerminal;
 }
 
-// A finished terminal on a `walkTree` walk, after its parent's children.
+/** A finished terminal on a `walkTree` walk, after its parent's children. */
 export interface TreeFinishedStep extends TreePlace {
   kind: "finished";
   finished: FinishedTerminal;
-  // The live terminal it hangs under.
+  /** The live terminal it hangs under. */
   parent: TreeTerminal;
 }
 
-// Where a `TreeStep` sits in the walk.
+/** Where a `TreeStep` sits in the walk. */
 export interface TreePlace {
-  // 0 for one of the nodes the walk started from, 1 for its child, and so on.
+  /**
+   * 0 for one of the nodes the walk started from, 1 for its child, and so on.
+   */
   depth: number;
 }
 
-// `walkTree` below `nodes`, then the finished terminals `finished` of their
-// parent `parent` (none at the top level), all at `depth`.
+/**
+ * `walkTree` below `nodes`, then the finished terminals `finished` of their
+ * parent `parent` (none at the top level), all at `depth`.
+ */
 function* walkFrom(
   nodes: TreeTerminal[],
   depth: number,
@@ -347,9 +381,11 @@ function* walkFrom(
   }
 }
 
-// This computer, then the non-temporary `world.machines` and the machines
-// `spaces` and `elsewhere` name, by name, each holding its spaces and its
-// elsewhere terminals in their order.
+/**
+ * This computer, then the non-temporary `world.machines` and the machines
+ * `spaces` and `elsewhere` name, by name, each holding its spaces and its
+ * elsewhere terminals in their order.
+ */
 function treeMachines(
   world: TreeWorld,
   spaces: TreeSpace[],
@@ -400,13 +436,15 @@ function treeMachines(
   return [thisComputer, ...others];
 }
 
-// The rule that decides which space a terminal belongs to, as a function of
-// one terminal: walking from it up its `parent` links (`parentAddress`,
-// through ended terminals too), the first terminal whose first pane in
-// `panes()` order is in a space's tab gives that space, as does the first
-// whose `herdr.space` label names a space (qualified with that terminal's
-// machine when bare). Null (elsewhere) when none does within `MAX_ANCESTORS`
-// steps. Each terminal's walk runs once per returned function.
+/**
+ * The rule that decides which space a terminal belongs to, as a function of
+ * one terminal: walking from it up its `parent` links (`parentAddress`,
+ * through ended terminals too), the first terminal whose first pane in
+ * `panes()` order is in a space's tab gives that space, as does the first
+ * whose `herdr.space` label names a space (qualified with that terminal's
+ * machine when bare). Null (elsewhere) when none does within `MAX_ANCESTORS`
+ * steps. Each terminal's walk runs once per returned function.
+ */
 export function spaceMembership(
   world: Pick<TreeWorld, "terminals" | "panes" | "spaces">,
 ): (t: TerminalEntry) => SpaceInfo | null {
@@ -450,8 +488,10 @@ export function spaceMembership(
   };
 }
 
-// Each terminal's first pane in `panes` order, by address; mod panes hold no
-// terminal and are left out.
+/**
+ * Each terminal's first pane in `panes` order, by address; mod panes hold no
+ * terminal and are left out.
+ */
 function firstPaneByTerminal(panes: PaneInfo[]): Map<string, PaneInfo> {
   const first = new Map<string, PaneInfo>();
   for (const p of panes) {

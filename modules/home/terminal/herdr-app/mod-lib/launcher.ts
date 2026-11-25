@@ -16,19 +16,25 @@ import type { Context } from "gpui-kit";
 import { closeOverlay, hc, notify, openOverlay, props } from "herdr";
 import { cliPath } from "./paths.js";
 
-// What a launcher mod hands `launch`: the title its warnings, errors and popup
-// show, and `prepare`, which chooses what to run.
+/**
+ * What a launcher mod hands `launch`: the title its warnings, errors and popup
+ * show, and `prepare`, which chooses what to run.
+ */
 interface Launcher {
   title: string;
   prepare: () => LaunchPlan;
 }
 
-// What `prepare` chose: a refusal, whose non-empty message says why nothing
-// starts, or the program to run.
+/**
+ * What `prepare` chose: a refusal, whose non-empty message says why nothing
+ * starts, or the program to run.
+ */
 type LaunchPlan = { refuse: string } | LaunchProgram;
 
-// The `dotfiles-paths.json` name of the program to run (`cli`), the folder to
-// start it in, and its arguments.
+/**
+ * The `dotfiles-paths.json` name of the program to run (`cli`), the folder to
+ * start it in, and its arguments.
+ */
 interface LaunchProgram {
   refuse?: undefined;
   cli: string;
@@ -36,26 +42,30 @@ interface LaunchProgram {
   args: string[];
 }
 
-// What `hc run --json` prints for the terminal it started.
+/** What `hc run --json` prints for the terminal it started. */
 interface HcRunOutput {
   address?: string;
 }
 
-// What `showPopup` shows: the core terminal's address and the title bar's
-// text.
+/**
+ * What `showPopup` shows: the core terminal's address and the title bar's
+ * text.
+ */
 interface Popup {
   terminal: string;
   title: string;
 }
 
-// Runs the launcher opened as overlay `props().overlay`, titled TITLE.
-// PREPARE runs synchronously, before anything starts, and returns either
-// `{ refuse: message }`, which closes the launcher and shows MESSAGE as a
-// warning, or `{ cli, folder, args }`: the `dotfiles-paths.json` name of the
-// program to run, the folder to start it in, and its arguments. The launcher
-// then starts the program and shows it in a popup, or closes and shows the
-// error. It waits for `hc run` while still open, because closing it cancels
-// its pending tasks and would leave the started terminal with no popup.
+/**
+ * Runs the launcher opened as overlay `props().overlay`, titled TITLE.
+ * PREPARE runs synchronously, before anything starts, and returns either
+ * `{ refuse: message }`, which closes the launcher and shows MESSAGE as a
+ * warning, or `{ cli, folder, args }`: the `dotfiles-paths.json` name of the
+ * program to run, the folder to start it in, and its arguments. The launcher
+ * then starts the program and shows it in a popup, or closes and shows the
+ * error. It waits for `hc run` while still open, because closing it cancels
+ * its pending tasks and would leave the started terminal with no popup.
+ */
 export function launch(cx: Context, { title, prepare }: Launcher): void {
   const overlay = launcherOverlay();
   if (!overlay) return;
@@ -85,20 +95,22 @@ export function launch(cx: Context, { title, prepare }: Launcher): void {
   });
 }
 
-// The overlay this launcher was opened as, or undefined. `herdr-app check`
-// renders the mod with no props, outside an overlay. Start nothing then: `hc`
-// would start a core when none runs.
+/**
+ * The overlay this launcher was opened as, or undefined. `herdr-app check`
+ * renders the mod with no props, outside an overlay. Start nothing then: `hc`
+ * would start a core when none runs.
+ */
 function launcherOverlay(): string | undefined {
   return props()?.overlay;
 }
 
-// Closes the launcher OVERLAY and shows why it starts nothing as a warning.
+/** Closes the launcher OVERLAY and shows why it starts nothing as a warning. */
 function refuse(overlay: string, title: string, body: string): void {
   closeOverlay(overlay);
   notify({ title, body, level: "warning" });
 }
 
-// Closes the launcher OVERLAY and shows ERROR, which stopped the launch.
+/** Closes the launcher OVERLAY and shows ERROR, which stopped the launch. */
 function fail(overlay: string, title: string, error: unknown): void {
   closeOverlay(overlay);
   notify({
@@ -110,10 +122,12 @@ function fail(overlay: string, title: string, error: unknown): void {
   });
 }
 
-// Starts ARGV in FOLDER in a new core terminal and returns its address. No
-// herdr labels, so it never becomes a pane; no parent, so it never types
-// notes into the terminal that happened to be focused; `--rm`, so no
-// finished record stays behind.
+/**
+ * Starts ARGV in FOLDER in a new core terminal and returns its address. No
+ * herdr labels, so it never becomes a pane; no parent, so it never types
+ * notes into the terminal that happened to be focused; `--rm`, so no
+ * finished record stays behind.
+ */
 async function startTerminal(folder: string, argv: string[]): Promise<string> {
   const r = await hc([
     "run",
@@ -135,13 +149,15 @@ async function startTerminal(folder: string, argv: string[]): Promise<string> {
   return address;
 }
 
-// Closes the launcher OVERLAY and shows TERMINAL in a modal dialog of 0.6 ×
-// 0.5 of the window, under the `popup` mod's 30px title bar showing TITLE.
-//
-// The order matters: in one synchronous turn the launcher closes itself
-// before opening the popup. Opening focuses the popup's terminal, whereas a
-// dialog closed afterwards would hand the keyboard to the popup's frame
-// instead (herdr-app `src/window.rs` `remove_overlay`, `restore_focus`).
+/**
+ * Closes the launcher OVERLAY and shows TERMINAL in a modal dialog of 0.6 ×
+ * 0.5 of the window, under the `popup` mod's 30px title bar showing TITLE.
+ *
+ * The order matters: in one synchronous turn the launcher closes itself
+ * before opening the popup. Opening focuses the popup's terminal, whereas a
+ * dialog closed afterwards would hand the keyboard to the popup's frame
+ * instead (herdr-app `src/window.rs` `remove_overlay`, `restore_focus`).
+ */
 function showPopup(overlay: string, { terminal, title }: Popup): void {
   closeOverlay(overlay);
   openOverlay({

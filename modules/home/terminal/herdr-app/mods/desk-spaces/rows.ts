@@ -17,23 +17,31 @@ import { terminalCheckoutNeedsReview } from "./checkout-badge.js";
 import type { AgentStatus } from "./status.js";
 import { machineOf } from "./terminals.js";
 
-// The theme's colors by name. The app's typings type `theme()` as
-// `Record<string, string>`, though every value is a color.
+/**
+ * The theme's colors by name. The app's typings type `theme()` as
+ * `Record<string, string>`, though every value is a color.
+ */
 export type ThemeColors = Record<string, Color>;
 
-// One space in the sidebar's list, in the order `ordered` gives: the space
-// and its index in `spaces()`.
+/**
+ * One space in the sidebar's list, in the order `ordered` gives: the space
+ * and its index in `spaces()`.
+ */
 export interface SpaceRow {
   w: SpaceInfo;
   i: number;
 }
 
-// Space colors by space id, as shared "space.colors" keeps them: a theme
-// color name ("ansi6") or a picked hex color.
+/**
+ * Space colors by space id, as shared "space.colors" keeps them: a theme
+ * color name ("ansi6") or a picked hex color.
+ */
 type SpaceColorChoices = Record<string, string>;
 
-// What a stored color name looks like on an avatar (the same in every mod
-// that draws space avatars): one strong color per hue, light and dark alike.
+/**
+ * What a stored color name looks like on an avatar (the same in every mod
+ * that draws space avatars): one strong color per hue, light and dark alike.
+ */
 const MARK: Record<string, Color> = {
   ansi6: "#22a99a",
   ansi3: "#e3814f",
@@ -43,10 +51,12 @@ const MARK: Record<string, Color> = {
   ansi1: "#d9649a",
 };
 
-// Gives each space in `sp` without a stored `space.colors` entry the palette
-// color fewest spaces use (none for the home space "~", which avatarFill draws
-// teal), and drops entries of spaces that are gone. Writes `space.colors` only
-// when that changes it.
+/**
+ * Gives each space in `sp` without a stored `space.colors` entry the palette
+ * color fewest spaces use (none for the home space "~", which avatarFill draws
+ * teal), and drops entries of spaces that are gone. Writes `space.colors` only
+ * when that changes it.
+ */
 export function assignSpaceColors(sp: SpaceInfo[]): void {
   const palette = ["ansi6", "ansi3", "ansi4", "ansi5", "ansi2", "ansi1"];
   const ids = new Set(sp.map((p) => p.id));
@@ -68,47 +78,64 @@ export function assignSpaceColors(sp: SpaceInfo[]): void {
   if (changed) setShared("space.colors", kept);
 }
 
-// A space's avatar color: its stored `space.colors` name or hex, else teal.
+/** A space's avatar color: its stored `space.colors` name or hex, else teal. */
 export const avatarFill = (spaceId: string, t: ThemeColors): Color => {
   const color =
     ((shared("space.colors") as SpaceColorChoices) ?? {})[spaceId] ?? "ansi6";
   return color.startsWith("#") ? (color as Color) : (MARK[color] ?? t[color]);
 };
 
-// Where a space's color tick sits, from the left of its group: the column the
-// active space's rail runs down too.
+/**
+ * Where a space's color tick sits, from the left of its group: the column the
+ * active space's rail runs down too.
+ */
 export const TICK_X = 8;
-// Where a group's rows begin: right of the tick column, so a row's rounded
-// hover and focus fills never run under the tick or rail.
+/**
+ * Where a group's rows begin: right of the tick column, so a row's rounded
+ * hover and focus fills never run under the tick or rail.
+ */
 export const ROW_X = 14;
-// How much further in a nested terminal row starts than its parent's, in px
-// per level of nesting, its fill included.
+/**
+ * How much further in a nested terminal row starts than its parent's, in px
+ * per level of nesting, its fill included.
+ */
 export const DEPTH_INDENT = 16;
-// Where the focus bar sits: midway between the tick column and the rows'
-// text, which starts at `TEXT_X`.
+/**
+ * Where the focus bar sits: midway between the tick column and the rows'
+ * text at `TEXT_X`.
+ */
 const BAR_X = 17;
+/** Where the rows' text starts, in px from the left of their group. */
 export const TEXT_X = 26;
-// How far a top-level terminal row's fill starts right of `ROW_X`, in px,
-// so its rounded fill sits inside the space's rows rather than flush with
-// the tick column; with `TERMINAL_ROW_PAD_X` and the 10px column
-// `terminalRow` draws its stripe in, its stripe starts at x 20 and its icon
-// at x 30, 4px right of the space's name at `TEXT_X`.
+/**
+ * How far a top-level terminal row's fill starts right of `ROW_X`, in px,
+ * so its rounded fill sits inside the space's rows rather than flush with
+ * the tick column; with `TERMINAL_ROW_PAD_X` and the 10px column
+ * `terminalRow` draws its stripe in, its stripe starts at x 20 and its icon
+ * at x 30, 4px right of the space's name at `TEXT_X`.
+ */
 export const TERMINAL_ROW_INSET = 4;
-// The space between a terminal row's fill edge and its state stripe, in px.
+/** The space between a terminal row's fill edge and its state stripe, in px. */
 export const TERMINAL_ROW_PAD_X = 2;
-// The space between stacked rows, so two filled rows (one hovered, one
-// focused) read as two rounded shapes rather than one block.
+/**
+ * The space between stacked rows, so two filled rows (one hovered, one
+ * focused) read as two rounded shapes rather than one block.
+ */
 export const ROW_GAP = 5;
-// The space between stacked terminal rows (a tab's, the loose ones, or
-// a Background row's), wider than `ROW_GAP` so each terminal, with its stripe,
-// reads as a unit of its own.
+/**
+ * The space between stacked terminal rows (a tab's, the loose ones, or
+ * a Background row's), wider than `ROW_GAP` so each terminal, with its stripe,
+ * reads as a unit of its own.
+ */
 export const TERMINAL_ROW_GAP = 7;
-// The "Needs you" rows' height: three two-line rows and the gaps between.
+/** The "Needs you" rows' height: three two-line rows and the gaps between. */
 const TRAY_H = 3 * 44 + 2 * ROW_GAP;
 
-// The mark of a space row holding focus: a short rounded accent bar at
-// `BAR_X`. Its row must be `relative()` and begin at `ROW_X`. A terminal
-// row holding focus shows it by its fill alone.
+/**
+ * The mark of a space row holding focus: a short rounded accent bar at
+ * `BAR_X`. Its row must be `relative()` and begin at `ROW_X`. A terminal
+ * row holding focus shows it by its fill alone.
+ */
 export const focusBar = (t: ThemeColors): Element =>
   div()
     .absolute()
@@ -119,8 +146,10 @@ export const focusBar = (t: ThemeColors): Element =>
     .rounded(1)
     .bg(t.accent);
 
-// On the rail a space speaks up with its agents' most urgent status
-// (`status`, null without agents).
+/**
+ * On the rail a space speaks up with its agents' most urgent status
+ * (`status`, null without agents).
+ */
 export function compact(
   { w, i }: SpaceRow,
   t: ThemeColors,
@@ -143,10 +172,12 @@ export function compact(
     .child(div().text_color(tone(t, status)).child(glyph(status)));
 }
 
-// A space speaks up only when something in it needs you. The rail draws its
-// status as one text character (`glyph`) in a status color (`tone`); agent
-// rows draw theirs with `statusMark`: a spinner, a "!" badge, a ring or a dot.
-// They stay separate because one mark for both would change what either shows.
+/**
+ * A space speaks up only when something in it needs you. The rail draws its
+ * status as one text character (`glyph`) in a status color (`tone`); agent
+ * rows draw theirs with `statusMark`: a spinner, a "!" badge, a ring or a dot.
+ * They stay separate because one mark for both would change what either shows.
+ */
 function glyph(status: AgentStatus | null): string {
   return status === "blocked" || status === "done" ? "●" : "·";
 }
@@ -156,10 +187,12 @@ function tone(t: ThemeColors, status: AgentStatus | null): Color {
   return t[status as AgentStatus] ?? t.unknown;
 }
 
-// The "review" badge for a terminal row's checkout line
-// (`terminalCheckoutLine`), by the terminal's agent status (`status`, null
-// for a plain terminal) and checkout `g`, as `terminalCheckoutNeedsReview`
-// decides it: a small chip in the accent color, faint. Null without one.
+/**
+ * The "review" badge for a terminal row's checkout line
+ * (`terminalCheckoutLine`), by the terminal's agent status (`status`, null
+ * for a plain terminal) and checkout `g`, as `terminalCheckoutNeedsReview`
+ * decides it: a small chip in the accent color, faint. Null without one.
+ */
 export function terminalCheckoutBadge(
   status: AgentStatus | null,
   g: Checkout,
@@ -182,13 +215,15 @@ export function terminalCheckoutBadge(
     .child("review");
 }
 
-// A Git checkout's status, only what's unusual:
-// "herdr \u00b7 spike \u21912 \u21931". The repo goes when `quietRepo`
-// (text beside it already names the repo, as a terminal row's checkout line
-// does) or when `name` already says it; the branch goes when `name` says it
-// (a worktree's folder is named after its branch), and master/main go:
-// nearly every checkout is on one. Null when nothing is left to show.
-// `size` is the text size, in px, of the line it joins.
+/**
+ * A Git checkout's status, only what's unusual:
+ * "herdr \u00b7 spike \u21912 \u21931". The repo goes when `quietRepo`
+ * (text beside it already names the repo, as a terminal row's checkout line
+ * does) or when `name` already says it; the branch goes when `name` says it
+ * (a worktree's folder is named after its branch), and master/main go:
+ * nearly every checkout is on one. Null when nothing is left to show.
+ * `size` is the text size, in px, of the line it joins.
+ */
 export function gitTail(
   g: GitCheckout,
   quietRepo: boolean,
@@ -221,13 +256,15 @@ export function gitTail(
     );
 }
 
-// A jj checkout's status, never empty, in the terminal prompt's words and
-// colors: the nearest bookmark (purple, "(+1b)" when more share it), how far
-// @ is from it (cyan \u2191 after it, \u2193 before it), a conflict (bold
-// red \u00d7, as `jj log` marks a conflicted revision) and edits in @
-// (yellow \u25cf). The change ID shows only without a bookmark, where
-// nothing else says where @ is. The repo shows as for git.
-// `size` is the text size, in px, of the line it joins.
+/**
+ * A jj checkout's status, never empty, in the terminal prompt's words and
+ * colors: the nearest bookmark (purple, "(+1b)" when more share it), how far
+ * `@` is from it (cyan \u2191 after it, \u2193 before it), a conflict (bold
+ * red \u00d7, as `jj log` marks a conflicted revision) and edits in `@`
+ * (yellow \u25cf). The change ID shows only without a bookmark, where
+ * nothing else says where `@` is. The repo shows as for git.
+ * `size` is the text size, in px, of the line it joins.
+ */
 export function jjTail(
   g: JjCheckout,
   quietRepo: boolean,
@@ -272,16 +309,18 @@ export function jjTail(
     );
 }
 
-// A terminal row's second line for a folder `cwd` in checkout `g` on
-// `machine` (null for this computer), in place of the folder: the checkout
-// by its repo and root folder (`checkoutText`: "dotfiles / ws3"),
-// then, dimmer, the path from the checkout's root down to `cwd` when it is
-// below the root ("modules/home"), then " · " and the checkout's tail
-// (`gitTail`, `jjTail`) when it has one, the repo left out because the
-// checkout already names it, and last its badge (`terminalCheckoutBadge`,
-// by the terminal's agent status `status`, null for a plain terminal). Too
-// wide, the path and the tail shrink; the checkout's name and the badge stay
-// whole.
+/**
+ * A terminal row's second line for a folder `cwd` in checkout `g` on
+ * `machine` (null for this computer), in place of the folder: the checkout
+ * by its repo and root folder (`checkoutText`: "dotfiles / ws3"),
+ * then, dimmer, the path from the checkout's root down to `cwd` when it is
+ * below the root ("modules/home"), then " · " and the checkout's tail
+ * (`gitTail`, `jjTail`) when it has one, the repo left out because the
+ * checkout already names it, and last its badge (`terminalCheckoutBadge`,
+ * by the terminal's agent status `status`, null for a plain terminal). Too
+ * wide, the path and the tail shrink; the checkout's name and the badge stay
+ * whole.
+ */
 export function terminalCheckoutLine(
   g: Checkout,
   cwd: string,
@@ -328,15 +367,17 @@ export function terminalCheckoutLine(
     .when(badge !== null, (el) => el.child(badge!));
 }
 
-// The "Needs you" section: a heading with how many, then blocked agents and
-// done ones, newest first; `since` gives when an agent's status last changed.
-// `labelOf` gives what an agent is (`agentLabel`), and `waitsForOf` what a
-// blocked one waits for (`blockedKind`), null when it does not say. With
-// none, the heading shows "0", all dim, over a dim "Nothing waiting"; the
-// label turns amber when one does. A row's second line names its agent's
-// space and machine ("~ · box"), for every agent: another machine as
-// `machineOf` its address gives it, this computer as `thisComputerName`, or
-// "This computer" without one, as its machine header does (`machineHeader`).
+/**
+ * The "Needs you" section: a heading with how many, then blocked agents and
+ * done ones, newest first; `since` gives when an agent's status last changed.
+ * `labelOf` gives what an agent is (`agentLabel`), and `waitsForOf` what a
+ * blocked one waits for (`blockedKind`), null when it does not say. With
+ * none, the heading shows "0", all dim, over a dim "Nothing waiting"; the
+ * label turns amber when one does. A row's second line names its agent's
+ * space and machine ("~ · box"), for every agent: another machine as
+ * `machineOf` its address gives it, this computer as `thisComputerName`, or
+ * "This computer" without one, as its machine header does (`machineHeader`).
+ */
 export function needsYouRows(
   needsYou: AgentInfo[],
   labelOf: (a: AgentInfo) => string,

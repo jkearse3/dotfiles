@@ -11,73 +11,93 @@
 
 import type { Program } from "herdr";
 
-// The fields of a `terminals()` entry (a core terminal, agent or not) that
-// the mods linking this file read. The app's typings type `terminals()`
-// entries only as an open record with a `selection`, so a mod casts the list
-// through `unknown` to this type.
+/**
+ * The fields of a `terminals()` entry (a core terminal, agent or not) that
+ * the mods linking this file read. The app's typings type `terminals()`
+ * entries only as an open record with a `selection`, so a mod casts the list
+ * through `unknown` to this type.
+ */
 export interface TerminalEntry {
-  // Bare on this computer, "<machine>/<id>" on another.
+  /** Bare on this computer, "<machine>/<id>" on another. */
   address: string;
-  // Its status as a plain word: an agent's `Status`, or another word such as
-  // "error". Empty or missing for a terminal that reports none.
+  /**
+   * Its status as a plain word: an agent's `Status`, or another word such as
+   * "error". Empty or missing for a terminal that reports none.
+   */
   status?: string | null;
-  // The terminal that started it. A bare address refers to the machine of
-  // the terminal that names it.
+  /**
+   * The terminal that started it. A bare address refers to the machine of
+   * the terminal that names it.
+   */
   parent?: string | null;
-  // "live" while it runs.
+  /** "live" while it runs. */
   state?: string;
-  // The name someone gave it.
+  /** The name someone gave it. */
   name?: string | null;
   program?: Program;
-  // When its status last changed, in ms since the epoch.
+  /** When its status last changed, in ms since the epoch. */
   status_ms?: number | null;
-  // Its agent's turn count from the core.
+  /** Its agent's turn count from the core. */
   turn?: number | null;
-  // Its agent's status report (OSC 7501).
+  /** Its agent's status report (OSC 7501). */
   report?: {
     app?: string;
     state?: string;
     msg?: string;
-    // What a blocked agent waits for: "permission", "question" or "auth".
-    // Null or missing when it is not blocked or did not say.
+    /**
+     * What a blocked agent waits for: "permission", "question" or "auth".
+     * Null or missing when it is not blocked or did not say.
+     */
     kind?: string | null;
   };
-  // Its core labels. `herdr.space` names the space it shows in, as an id
-  // without the machine prefix. Null or missing when it has none.
+  /**
+   * Its core labels. `herdr.space` names the space it shows in, as an id
+   * without the machine prefix. Null or missing when it has none.
+   */
   labels?: Record<string, string> | null;
-  // The folder it started in on its machine; `foreground.cwd` is the one it
-  // is in now.
+  /**
+   * The folder it started in on its machine; `foreground.cwd` is the one it
+   * is in now.
+   */
   cwd?: string | null;
-  // Its root process id: the process the core started in it.
+  /** Its root process id: the process the core started in it. */
   pid?: number | null;
-  // What runs in it right now. Null or missing when the core reports none.
+  /** What runs in it right now. Null or missing when the core reports none. */
   foreground?: TerminalForeground | null;
 }
 
-// What runs in a terminal right now and where, from the core's terminal
-// record: its foreground process, which is the terminal's root process
-// (`TerminalEntry.pid`) while nothing else holds the terminal.
+/**
+ * What runs in a terminal right now and where, from the core's terminal
+ * record: its foreground process, which is the terminal's root process
+ * (`TerminalEntry.pid`) while nothing else holds the terminal.
+ */
 export interface TerminalForeground {
-  // The foreground process's id.
+  /** The foreground process's id. */
   pid: number;
-  // The process's name.
+  /** The process's name. */
   name: string;
-  // The command line it was started with, program first.
+  /** The command line it was started with, program first. */
   argv: string[];
-  // The folder it is in on the terminal's machine. Null or missing when the
-  // core cannot tell.
+  /**
+   * The folder it is in on the terminal's machine. Null or missing when the
+   * core cannot tell.
+   */
   cwd?: string | null;
 }
 
-// The machine part of `address` ("<machine>/<id>"), or null for a terminal on
-// this computer.
+/**
+ * The machine part of `address` ("<machine>/<id>"), or null for a terminal on
+ * this computer.
+ */
 export function machineOf(address: string): string | null {
   const slash = address.indexOf("/");
   return slash > 0 ? address.slice(0, slash) : null;
 }
 
-// `child.parent` as a full address: a bare parent of a remote child lives on
-// the child's machine. Null when it has no parent.
+/**
+ * `child.parent` as a full address: a bare parent of a remote child lives on
+ * the child's machine. Null when it has no parent.
+ */
 export function parentAddress(child: TerminalEntry): string | null {
   if (!child.parent) return null;
   if (child.parent.includes("/")) return child.parent;
@@ -85,5 +105,5 @@ export function parentAddress(child: TerminalEntry): string | null {
   return machine ? `${machine}/${child.parent}` : child.parent;
 }
 
-// The most steps a walk up `parent` links takes, so a parent cycle ends.
+/** The most steps a walk up `parent` links takes, so a parent cycle ends. */
 export const MAX_ANCESTORS = 32;

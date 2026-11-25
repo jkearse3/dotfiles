@@ -20,22 +20,28 @@ import {
   nextCommand,
 } from "herdr";
 
-// The theme's colors by name. The app's typings type `theme()` as
-// `Record<string, string>`, though every value is a color.
+/**
+ * The theme's colors by name. The app's typings type `theme()` as
+ * `Record<string, string>`, though every value is a color.
+ */
 type ThemeColors = Record<string, Color>;
 
-// What the `prefix` mod publishes as `shared("prefix")`: its key hints as
-// `[key, label]` pairs, in the order the bar shows them.
+/**
+ * What the `prefix` mod publishes as `shared("prefix")`: its key hints as
+ * `[key, label]` pairs, in the order the bar shows them.
+ */
 interface PrefixShared {
   hints?: [string, string][];
 }
 
 export default class WorkspaceStatus extends View {
-  // Whether prefix mode is on, so the bar shows the PREFIX pill and hints.
+  /** Whether prefix mode is on, so the bar shows the PREFIX pill and hints. */
   declare prefix: boolean;
 
-  // Prefix mode is on between the `prefix` mod's "prefix-status.on" and
-  // ".off" commands; a command, unlike setShared, reliably redraws the bar.
+  /**
+   * Prefix mode is on between the `prefix` mod's "prefix-status.on" and
+   * ".off" commands; a command, unlike setShared, reliably redraws the bar.
+   */
   init(_props: Props | undefined, cx: AsyncContext): void {
     this.prefix = false;
     cx.spawn(async (cx) => {
@@ -47,8 +53,10 @@ export default class WorkspaceStatus extends View {
     });
   }
 
-  // The `palette` mod's key as actually bound, not a hardcoded one; without a
-  // binding the hint stays useful ("commands") instead of lying.
+  /**
+   * The `palette` mod's key as actually bound, not a hardcoded one; without a
+   * binding the hint stays useful ("commands") instead of lying.
+   */
   hint(): string {
     const mac = window()?.platform === "macos";
     const mod: Record<string, string> = {

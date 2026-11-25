@@ -12,15 +12,19 @@
 
 import type { AgentStatus } from "./status.js";
 
-// How long a working agent shows no activity before it counts as quiet, in
-// ms: 10 minutes.
+/**
+ * How long a working agent shows no activity before it counts as quiet, in
+ * ms: 10 minutes.
+ */
 export const QUIET_MS = 10 * 60000;
 
-// How long the agent showing `status` has been quiet, in ms: `now -
-// activeAt` when it is working and that is at least `QUIET_MS`, else null.
-// `activeAt` is when it last showed activity, in ms since the epoch; null
-// when unknown, which never counts as quiet. `now` is the time in ms since
-// the epoch.
+/**
+ * How long the agent showing `status` has been quiet, in ms: `now -
+ * activeAt` when it is working and that is at least `QUIET_MS`, else null.
+ * `activeAt` is when it last showed activity, in ms since the epoch; null
+ * when unknown, which never counts as quiet. `now` is the time in ms since
+ * the epoch.
+ */
 export function quietFor(
   status: AgentStatus | null,
   activeAt: number | null,

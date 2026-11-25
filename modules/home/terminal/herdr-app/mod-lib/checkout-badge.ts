@@ -11,11 +11,13 @@
 
 import type { AgentStatus } from "./status.js";
 
-// What the badge needs to know about a checkout. The desk-spaces sidebar's
-// `Checkout` (`JjCheckout` or `GitCheckout`) holds these fields: for jj,
-// whether @ has a conflict or edits, and which way and how far @ is from
-// the nearest bookmark, counting @ itself; for Git, how many commits it is
-// ahead of its upstream.
+/**
+ * What the badge needs to know about a checkout. The desk-spaces sidebar's
+ * `Checkout` (`JjCheckout` or `GitCheckout`) holds these fields: for jj,
+ * whether `@` has a conflict or edits, and which way and how far `@` is from
+ * the nearest bookmark, counting `@` itself; for Git, how many commits it is
+ * ahead of its upstream.
+ */
 export type BadgeCheckout =
   | {
       jj: true;
@@ -29,14 +31,16 @@ export type BadgeCheckout =
       ahead: number;
     };
 
-// Whether a terminal row's checkout line gets the "review" badge, by the
-// terminal's agent status (`status`, null for a plain terminal) and checkout
-// `g`: true for unshipped work (jj: edits in @ or revisions after the
-// nearest bookmark; git: commits ahead of upstream), only on an agent that
-// is neither working nor blocked, since the tail's yellow ● already marks
-// edits on every row. Never on a jj checkout with a conflict: the tail's
-// red × marks that on every row, and the conflict needs resolving before
-// review.
+/**
+ * Whether a terminal row's checkout line gets the "review" badge, by the
+ * terminal's agent status (`status`, null for a plain terminal) and checkout
+ * `g`: true for unshipped work (jj: edits in `@` or revisions after the
+ * nearest bookmark; git: commits ahead of upstream), only on an agent that
+ * is neither working nor blocked, since the tail's yellow ● already marks
+ * edits on every row. Never on a jj checkout with a conflict: the tail's
+ * red × marks that on every row, and the conflict needs resolving before
+ * review.
+ */
 export function terminalCheckoutNeedsReview(
   status: AgentStatus | null,
   g: BadgeCheckout,

@@ -8,18 +8,24 @@ import { hc } from "herdr";
 import { finishedAddresses, finishedTerminalOf } from "./finished.js";
 import type { FinishedTerminal } from "./finished.js";
 
-// The finished terminals known while the sidebar runs, and the reads that
-// keep them current. Reads run one at a time: a `refresh` asked for while
-// one runs makes it read again once it ends. A failed `hc ls` keeps the last
-// good set; a failed `hc get` leaves that terminal out until a later
-// refresh reads it.
+/**
+ * The finished terminals known while the sidebar runs, and the reads that
+ * keep them current. Reads run one at a time: a `refresh` asked for while
+ * one runs makes it read again once it ends. A failed `hc ls` keeps the last
+ * good set; a failed `hc get` leaves that terminal out until a later
+ * refresh reads it.
+ */
 export class FinishedLoader {
-  // Address -> its finished terminal, as `hc get` gave it. A finished
-  // terminal's record does not change, so each is read once; one that
-  // `hc ls` stops listing (removed) is dropped.
+  /**
+   * Address -> its finished terminal, as `hc get` gave it. A finished
+   * terminal's record does not change, so each is read once; one that
+   * `hc ls` stops listing (removed) is dropped.
+   */
   declare byAddress: Map<string, FinishedTerminal>;
-  // The live terminal addresses `checkLive` last saw, sorted and joined;
-  // null before the first look.
+  /**
+   * The live terminal addresses `checkLive` last saw, sorted and joined;
+   * null before the first look.
+   */
   declare liveKey: string | null;
   declare refreshing: boolean;
   declare rerun: boolean;
@@ -31,14 +37,16 @@ export class FinishedLoader {
     this.rerun = false;
   }
 
-  // The finished terminals known, in `hc ls` order.
+  /** The finished terminals known, in `hc ls` order. */
   get finished(): FinishedTerminal[] {
     return [...this.byAddress.values()];
   }
 
-  // Refreshes when the live terminals (`liveAddresses`, in any order)
-  // differ from the last call's, since a terminal that leaves them may have
-  // just finished. The first call always refreshes.
+  /**
+   * Refreshes when the live terminals (`liveAddresses`, in any order)
+   * differ from the last call's, since a terminal that leaves them may have
+   * just finished. The first call always refreshes.
+   */
   checkLive(liveAddresses: string[], cx: AsyncContext): void {
     const key = [...liveAddresses].sort().join("\n");
     if (key === this.liveKey) return;
@@ -47,8 +55,10 @@ export class FinishedLoader {
     this.refresh(cx);
   }
 
-  // Reads the finished terminals again, then redraws the view when the set
-  // changed.
+  /**
+   * Reads the finished terminals again, then redraws the view when the set
+   * changed.
+   */
   refresh(cx: AsyncContext): void {
     if (this.refreshing) {
       this.rerun = true;
@@ -70,9 +80,11 @@ export class FinishedLoader {
     });
   }
 
-  // One read: the finished addresses `hc ls` lists, each looked up in
-  // `byAddress` or read with `hc get`. Whether the set of known finished
-  // terminals changed; false, keeping the set, when `hc ls` fails.
+  /**
+   * One read: the finished addresses `hc ls` lists, each looked up in
+   * `byAddress` or read with `hc get`. Whether the set of known finished
+   * terminals changed; false, keeping the set, when `hc ls` fails.
+   */
   async load(): Promise<boolean> {
     const listed = await hcStdout(["ls", "--all", "--json"]);
     const addresses = listed === null ? null : finishedAddresses(listed);
@@ -98,8 +110,10 @@ export class FinishedLoader {
   }
 }
 
-// The standard output of `hc args`; null when it cannot run or exits
-// non-zero, which callers treat as no answer this time.
+/**
+ * The standard output of `hc args`; null when it cannot run or exits
+ * non-zero, which callers treat as no answer this time.
+ */
 async function hcStdout(args: string[]): Promise<string | null> {
   try {
     const r = await hc(args);

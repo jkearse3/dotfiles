@@ -18,12 +18,16 @@ import type { AsyncContext, Color, Context } from "gpui-kit";
 import { h_flex } from "gpui-base";
 import { closeOverlay, props, run, terminals, theme } from "herdr";
 
-// The theme's colors by name. The app's typings type `theme()` as
-// `Record<string, string>`, though every value is a color.
+/**
+ * The theme's colors by name. The app's typings type `theme()` as
+ * `Record<string, string>`, though every value is a color.
+ */
 type ThemeColors = Record<string, Color>;
 
-// This block's props, as the header describes them. All are absent when
-// `herdr-app check` renders the mod.
+/**
+ * This block's props, as the header describes them. All are absent when
+ * `herdr-app check` renders the mod.
+ */
 interface PopupProps {
   overlay?: string;
   title?: string;
@@ -67,12 +71,14 @@ export default class Popup extends View {
       );
   }
 
-  // Runs once when the overlay goes, by any route. On quit only
-  // `terminal.kill` still goes out (an `hc` call would be lost), so the kill
-  // is a synchronous `run`. The kill skips a terminal that is no longer
-  // listed: one that ended normally is already gone, and killing it would
-  // show an error toast. A close within milliseconds of opening, before the
-  // terminal is listed, therefore leaves it running; that is accepted.
+  /**
+   * Runs once when the overlay goes, by any route. On quit only
+   * `terminal.kill` still goes out (an `hc` call would be lost), so the kill
+   * is a synchronous `run`. The kill skips a terminal that is no longer
+   * listed: one that ended normally is already gone, and killing it would
+   * show an error toast. A close within milliseconds of opening, before the
+   * terminal is listed, therefore leaves it running; that is accepted.
+   */
   close(_cx: AsyncContext): void {
     const { terminal }: PopupProps = props() ?? {};
     if (terminal && terminals().some((t) => t.address === terminal)) {

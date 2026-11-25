@@ -12,10 +12,12 @@ import { div, svg } from "gpui-kit";
 import type { Color, Element } from "gpui-kit";
 import type { AgentStatus } from "./status.js";
 
-// An agent status as the shipped agents list draws it in priority view: a
-// spinner for working, a "!" for blocked, a dot for done, a ring for idle,
-// and an invisible dot of the same size for any other status or none, so
-// rows stay aligned. `t` is the theme's colors by name (`theme()`).
+/**
+ * An agent status as the shipped agents list draws it in priority view: a
+ * spinner for working, a "!" for blocked, a dot for done, a ring for idle,
+ * and an invisible dot of the same size for any other status or none, so
+ * rows stay aligned. `t` is the theme's colors by name (`theme()`).
+ */
 export function statusMark(
   t: Record<string, Color>,
   status: AgentStatus | null,
@@ -56,9 +58,11 @@ export function statusMark(
     .bg(status === "done" ? (t.done ?? t.dim) : ((t.dim + "00") as Color));
 }
 
-// `ms` as the agents list writes how long ago something happened: "<1m"
-// under a minute, then whole minutes ("5m"), hours ("3h") or days ("2d"),
-// rounded down. Copied from the shipped `agents` mod.
+/**
+ * `ms` as the agents list writes how long ago something happened: "<1m"
+ * under a minute, then whole minutes ("5m"), hours ("3h") or days ("2d"),
+ * rounded down. Copied from the shipped `agents` mod.
+ */
 export function duration(ms: number): string {
   const m = Math.floor(ms / 60000);
   if (m < 1) return "<1m";
