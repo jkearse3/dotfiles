@@ -114,6 +114,10 @@ in
     # The size the Herdr app (../herdr-app/settings.json) and Ghostty (its
     # macOS default) use.
     "Workspace.terminalFontPointSize" = 13;
+    # The tab sidebar on the left of the window, as set on this machine.
+    # init.lua cannot set it and Rex offers no app action for it, so it is
+    # written as an app preference like the settings above.
+    "Workspace.sidebarPosition" = "left";
     # Remote Control (Settings > Server > Client Info) lets the `rex` CLI and
     # agents perform app actions, which the theme activation above uses.
     "rex.client.remoteControl" = true;
