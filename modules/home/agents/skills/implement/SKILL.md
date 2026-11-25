@@ -95,7 +95,8 @@ work. The record holds:
 - `Input`: the outcome, criteria, exclusions, settled decisions, and binding
   requirements verbatim, or, for an input file in the run store's `.agent/`
   directory, its path and which sections hold each;
-- `Decisions`: each user answer, dated, and each decision `diff-fix` takes,
+- `Decisions`: each user answer, dated, including a handover and each choice
+  made under it with the option it rejected, and each decision `diff-fix` takes,
   prefixed `diff-fix:`;
 - `Spec`: the path of the agreed spec and the date the user agreed it or handed
   it over; otherwise, the visible changes the input settles, with evidence from
@@ -119,10 +120,11 @@ work. The record holds:
    change belongs. Plan only this revision in detail. The same agent plans,
    edits, runs the applicable checks, and reviews the complete diff. Follow
    `coding-style` and the Change Review rule. Do not pause between planning and
-   editing unless a user-owned decision remains or the work would depart from
-   the agreement. If that happens during editing, stop before landing, keep any
-   unfinished work separate from the verified tip, and present the deviation and
-   evidence.
+   editing unless a user-owned decision the handover, if any, does not cover
+   remains, or the work would depart from the agreement in a way the Alignment
+   rule does not let you amend. If that happens during editing, stop before
+   landing, keep any unfinished work separate from the verified tip, and present
+   the deviation and evidence.
 
    If delegating, give the agent the path to `run.md`, the authorized target,
    scope, and expected evidence. It edits only the task working copy and does
@@ -174,10 +176,11 @@ set `Review: done` in the header of every deferred run it covered.
 
 A stop before `run.md` exists only says why. Otherwise write `Outcome`: `done`,
 `blocked`, or `stopped by user`, then append `diff-fix`'s outcome when a review
-ran. Report the result, landed revisions in branch order, the bookmark, checks,
-and any remaining work, conflicts, or unsettled suspected defects, then
-`diff-fix`'s report, or why the review did not run. Link the run record and
-agreed spec, if any. When review stays deferred, end with one line naming the
-revisions a ready review would cover by the change IDs of the earliest and the
-tip, with their count, the bookmark, and the branch base, and saying that
-calling the draft ready reviews it.
+ran. After a handover, open with every choice made under it, each with the
+option it rejected. Report the result, landed revisions in branch order, the
+bookmark, checks, and any remaining work, conflicts, or unsettled suspected
+defects, then `diff-fix`'s report, or why the review did not run. Link the run
+record and agreed spec, if any. When review stays deferred, end with one line
+naming the revisions a ready review would cover by the change IDs of the
+earliest and the tip, with their count, the bookmark, and the branch base, and
+saying that calling the draft ready reviews it.

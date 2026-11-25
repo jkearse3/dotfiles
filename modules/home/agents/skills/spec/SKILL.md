@@ -135,7 +135,10 @@ absent or could mean materially different changes.
    evidence settles is yours to make: write it into its criterion with a `Why:`
    line, and list it when presenting the spec. A visible choice the evidence
    does not settle, or one that is hard to undo or likely contested, is the
-   user's: ask it, and keep it as an Open question while it is unanswered.
+   user's: ask it, and keep it as an Open question while it is unanswered. When
+   the user handed you their decisions under the reasoning rules, decide each
+   choice this step would otherwise ask that the handover covers, and keep only
+   the rest as Open questions.
 
 3. **Specify the proof.** Give every criterion a `Verify:` line that says how to
    prove it with a scenario, command, test, or inspection, and what is observed.
@@ -196,9 +199,9 @@ absent or could mean materially different changes.
    applying step 2's checks again when the fix changes a criterion. Ask a flaw
    or repair that turns on a user-owned choice under step 2's rules. When a flaw
    sinks the design or the alternative is better, take the alternative to the
-   user; after the design changes, repeat steps 2 through 4. When the user keeps
-   the design, record the alternative as rejected in the `Why:` line of the
-   criterion it concerns.
+   user, or take it yourself when a handover covers it; after the design
+   changes, repeat steps 2 through 4. When the user keeps the design, record the
+   alternative as rejected in the `Why:` line of the criterion it concerns.
 
    Then run another round. Give the critic every prior flaw with its outcome, so
    it does not re-raise a declined, fixed, or user-accepted flaw unless the spec
@@ -311,16 +314,16 @@ Present a finished spec in this order:
 
 1. its size, as the number of milestones and criteria, and its saved path;
 2. under "Choices I made without asking you", when there are any, each visible
-   choice step 2 made without the user, one line each with the option it
-   rejected; wording and format details are written in without being listed;
+   choice made without the user, one line each with the option it rejected;
+   wording and format details are written in without being listed;
 3. the whole spec.
 
 A spec with Open questions is blocked: after it, ask its questions. Write each
 answer into its criterion, remove the question, and present the revised spec. Do
 not hand a blocked spec to `implement`. After a spec without Open questions,
 offer in one line to `implement` it or to publish it as a ticket. Handing a spec
-to `implement`, or saying to build it, accepts it with every listed choice. Do
-not take a next step unasked.
+to `implement`, saying to build it, or a handover the Alignment rule counts as
+agreement accepts it with every listed choice. Do not take a next step unasked.
 
 ## Publishing
 
@@ -342,5 +345,6 @@ the spec changes, offer to update the published issues from it.
   into user decisions.
 - Do not copy an external contract's requirements into competing criteria;
   reference the contract and state what this change must satisfy.
-- Never decide a user-owned question for the user. Ask it under step 2; it stays
-  an Open question only while it remains unanswered.
+- Never decide a user-owned question the user has not handed you under the
+  reasoning rules. Ask it under step 2; it stays an Open question only while it
+  remains unanswered.
