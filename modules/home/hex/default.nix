@@ -14,7 +14,9 @@ let
     text = builtins.readFile ./apply-settings.sh;
   };
 in
-{
+# Hex is a macOS app that modules/darwin/homebrew.nix installs, so there is
+# nothing to configure on other platforms.
+lib.mkIf pkgs.stdenv.hostPlatform.isDarwin {
   # Hex writes its own settings.json, from its window and when it migrates the
   # file's format, so a read-only link to the repository would break it.
   # Instead each switch applies the settings declared in ./settings.json and
