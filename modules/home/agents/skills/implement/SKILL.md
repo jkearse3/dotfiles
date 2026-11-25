@@ -30,7 +30,8 @@ criteria as the criteria and the complete list of what may become visible,
 `Boundaries` as the exclusions and binding constraints, and each `Why:` line as
 a settled decision. A spec with a `Changes` section predates that shape; use it
 as input to `spec` rather than building it as written. Settled decisions count
-as user decisions.
+as user decisions, except those of a spec a handover agreed, which count as
+decisions this session took.
 
 ## Review Mode
 
@@ -95,9 +96,9 @@ work. The record holds:
 - `Input`: the outcome, criteria, exclusions, settled decisions, and binding
   requirements verbatim, or, for an input file in the run store's `.agent/`
   directory, its path and which sections hold each;
-- `Decisions`: each user answer, dated, including a handover and each choice
-  made under it with the option it rejected, and each decision `diff-fix` takes,
-  prefixed `diff-fix:`;
+- `Decisions`: each user answer, dated, including a handover; each choice made
+  under a handover with the option it rejected, prefixed `handover:`; and each
+  decision `diff-fix` takes, prefixed `diff-fix:`;
 - `Spec`: the path of the agreed spec and the date the user agreed it or handed
   it over; otherwise, the visible changes the input settles, with evidence from
   `Input`, or an explanation that the work makes none;
@@ -160,13 +161,15 @@ from every reviewed run combined:
 - the criteria: its criteria and binding requirements, and its agreed spec from
   `Spec`, whose acceptance criteria are the complete list of what the target may
   make visible, or the visible changes `Spec` records as that list in their
-  place;
+  place, with each criterion a `diff-fix:` decision amended replaced by its
+  amended form;
 - the context: its exclusions;
-- the user decisions: its settled decisions, its `Decisions` not prefixed
-  `diff-fix:`, and this one: fixes, conflict resolutions, and reshapes change
-  only revisions a reviewed run could change; a finding or conflict in any other
-  revision needs the user;
-- the decisions `diff-fix` took earlier: its `Decisions` prefixed `diff-fix:`.
+- the user decisions: its settled decisions that count as user decisions, its
+  `Decisions` prefixed neither `diff-fix:` nor `handover:`, and this one: fixes,
+  conflict resolutions, and reshapes change only revisions a reviewed run could
+  change; a finding or conflict in any other revision needs the user;
+- the decisions this session took earlier: its other settled decisions and its
+  `Decisions` prefixed `diff-fix:` or `handover:`.
 
 Record the review in this run's `run.md`, or, when reviewing a ready draft
 without building, in the newest deferred run's. When the review ends `finished`,
@@ -177,10 +180,11 @@ set `Review: done` in the header of every deferred run it covered.
 A stop before `run.md` exists only says why. Otherwise write `Outcome`: `done`,
 `blocked`, or `stopped by user`, then append `diff-fix`'s outcome when a review
 ran. After a handover, open with every choice made under it, each with the
-option it rejected. Report the result, landed revisions in branch order, the
-bookmark, checks, and any remaining work, conflicts, or unsettled suspected
-defects, then `diff-fix`'s report, or why the review did not run. Link the run
-record and agreed spec, if any. When review stays deferred, end with one line
-naming the revisions a ready review would cover by the change IDs of the
-earliest and the tip, with their count, the bookmark, and the branch base, and
-saying that calling the draft ready reviews it.
+option it rejected and any `diff-fix:` decision that replaced it. Report the
+result, landed revisions in branch order, the bookmark, checks, and any
+remaining work, conflicts, or unsettled suspected defects, then `diff-fix`'s
+report, or why the review did not run. Link the run record and agreed spec, if
+any. When review stays deferred, end with one line naming the revisions a ready
+review would cover by the change IDs of the earliest and the tip, with their
+count, the bookmark, and the branch base, and saying that calling the draft
+ready reviews it.

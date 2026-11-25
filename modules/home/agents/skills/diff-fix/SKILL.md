@@ -21,7 +21,8 @@ Rounds share only the user's decisions, the decisions this session takes, every
 review's confirmed findings, and the last review's declined candidates. This
 session passes findings on without matching them; each review judges which still
 hold or keep recurring and finds again whatever else is still wrong. Never lower
-the finding bar, edit criteria, or phrase requests to suppress findings.
+the finding bar, edit criteria except as the Decisions section amends them, or
+phrase requests to suppress findings.
 
 ## Target
 
@@ -40,12 +41,21 @@ reshape needs a user decision, and no other revision changes.
 This session decides, instead of asking the user, each `design` or `question`
 finding no decision settles, each fixer's `needs-decision` return, and whether
 to accept each fixer's `rejected` return. It takes the option the evidence best
-supports that stays within the criteria and decisions; when no option does, it
-sets the finding aside for the Report. It records each decision with the
-finding, the option taken, the options rejected, the evidence, the revisions its
-fix touched, and its kind: `taste` when the evidence favors no option and the
-choice is preference, such as naming, wording, or which of two sound designs to
-keep, and `evidence` otherwise.
+supports that stays within the criteria and binding decisions, as the next
+paragraph defines them; when no option does, it sets the finding aside for the
+Report. It records each decision with the finding, the option taken, the options
+rejected, the evidence, the revisions its fix touched, and its kind: `taste`
+when the evidence favors no option and the choice is preference, such as naming,
+wording, or which of two sound designs to keep, and `evidence` otherwise.
+
+Only the user's decisions bind a finding. A decision this session took earlier
+gives way when a confirmed finding's evidence, which that decision did not
+weigh, shows it is a mistake: decide the finding on that evidence, record the
+decision it replaces and each criterion it amends, and give every later review
+and fixer, in place of each criterion that states the replaced decision, that
+criterion amended to match, marked with the decision that amended it. When the
+replacement is a choice a handover would not cover under the reasoning rules,
+set the finding aside for the user instead.
 
 ## Loop
 
