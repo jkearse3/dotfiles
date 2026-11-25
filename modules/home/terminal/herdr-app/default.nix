@@ -144,12 +144,13 @@ in
     herdr-jj-workspace = dotfilesPackages.herdr-jj-workspaces.skill;
   };
 
-  # How agents inside herdr-core run jobs, servers, and other agents in `hc`
-  # terminals, as a shared rule in the agent instruction files this repo
-  # renders. Agent children report by writing a result file, and parents learn
-  # of them through `hc-child-watch` or `hc wait`, so nothing is typed into an
-  # input box. The upstream skill loads only on demand and misses or
-  # contradicts some of the `hc` behavior this works around, which
-  # `hc-behavior.md` records with reproductions.
+  # The `hc` commands for each step of the Agent Terminals rule
+  # (`../agent-terminals.md`), as a shared rule in the agent instruction files
+  # this repo renders: starting, waiting on, reading, and removing `hc`
+  # terminals, launching agents in them, and learning of their news through
+  # `hc-child-watch` or `hc wait`, so nothing is typed into an input box. The
+  # upstream skill loads only on demand and misses or contradicts some of the
+  # `hc` behavior this works around, which `hc-behavior.md` records with
+  # reproductions.
   agents.sharedRules.herdr-core = ./agent-rule.md;
 }

@@ -2,9 +2,9 @@
 
 For a Pi session not itself started by another agent, standing delegation
 authorization includes the `subagent` tool. Use it for Pi's built-in delegation,
-not shell launches outside `hc`, an in-process agent, or a legacy teammate
-manager. If the tool is unavailable or fails, stop rather than replaying work or
-silently switching mechanisms.
+not shell launches outside an Agent Terminals terminal, an in-process agent, or
+a legacy teammate manager. If the tool is unavailable or fails, stop rather than
+replaying work or silently switching mechanisms.
 
 Supply bounded scope, necessary context, explicit authority, expected results,
 verification, and limitations. Children have normal configured Pi tools,

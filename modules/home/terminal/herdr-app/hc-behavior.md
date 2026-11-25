@@ -1,9 +1,10 @@
 # Known `hc` behavior
 
-The agent rule `modules/home/terminal/herdr-app/agent-rule.md` works around the
+The Agent Terminals rule `modules/home/terminal/agent-terminals.md` and the
+herdr-core rule `modules/home/terminal/herdr-app/agent-rule.md` work around the
 behavior below, observed with `hc 0.1.21` and the agents it starts. Some of it
 contradicts the upstream `hc --skill` guide. After an update, rerun the
-reproductions and drop the rule's matching instruction for anything that no
+reproductions and drop the rules' matching instruction for anything that no
 longer holds.
 
 ## `--bg --rm` loses a fast job's exit code
