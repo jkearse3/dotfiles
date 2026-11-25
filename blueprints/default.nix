@@ -20,6 +20,7 @@ let
       ../modules/home/database
       ../modules/home/gcp
       ../modules/home/go
+      ../modules/home/hex
       ../modules/home/hunk
       ../modules/home/javascript
       ../modules/home/jsonnet

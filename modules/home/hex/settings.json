@@ -1,0 +1,41 @@
+{
+  "dictation_processing.default_mode": {
+    "name": "Global",
+    "applications": [],
+    "browser_hosts": [],
+    "replacements": [
+      {
+        "matched_phrase": "Johnny Kierce",
+        "output": "Johnnie Kearse"
+      },
+      {
+        "matched_phrase": "Kierce",
+        "output": "Kearse"
+      },
+      {
+        "matched_phrase": "Kearce",
+        "output": "Kearse"
+      },
+      {
+        "matched_phrase": "Keirse",
+        "output": "Kearse"
+      },
+      {
+        "matched_phrase": "Kierse",
+        "output": "Kearse"
+      },
+      {
+        "matched_phrase": "Kirse",
+        "output": "Kearse"
+      }
+    ],
+    "transformations": [],
+    "post_processing": {
+      "enabled": false,
+      "prompt": "Rewrite the transcript into clear, natural text while preserving the speaker's intended meaning.",
+      "model": null,
+      "variant": null,
+      "deadline_seconds": 30
+    }
+  }
+}
