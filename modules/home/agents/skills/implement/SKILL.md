@@ -2,18 +2,21 @@
 name: implement
 description: >-
   Implements an agreed change in a jj repository by planning, verifying, and
-  landing one revision at a time, adding new revisions or folding changes into
-  existing ones. Use when the user asks to implement, build, or carry out a
-  change from a request, issue, plan, note, or spec. To implement and then
-  review in one go, use iterate. Not for fixing review findings (use diff-fix),
-  read-only investigation or review, Git-only checkouts, or publication.
+  landing one revision at a time, then reviews and fixes what it built with
+  diff-fix unless the user defers review for a draft. Use when the user asks to
+  implement, build, or carry out a change from a request, issue, plan, note, or
+  spec, to draft or iterate on a change without review yet, or says a draft is
+  ready for review. Not for fixing findings on other finalized work (use
+  diff-fix), read-only investigation or review, Git-only checkouts, or
+  publication.
 ---
 
 # Implement
 
 Turn a described change into finalized, independently valid revisions on the
-user's current branch. This session owns the work and the run record. Agree what
-will change, then plan, build, verify, and land the next revision from the code
+user's current branch, then review and fix them with `diff-fix` unless the user
+defers review. This session owns the work and the run record. Agree what will
+change, then plan, build, verify, and land the next revision from the code
 already landed. Delegate a bounded piece only when it helps.
 
 ## Input
@@ -28,6 +31,22 @@ criteria as the criteria and the complete list of what may become visible,
 a settled decision. A spec with a `Changes` section predates that shape; use it
 as input to `spec` rather than building it as written. Settled decisions count
 as user decisions.
+
+## Review Mode
+
+A run reviews what it builds unless review is deferred. Review is deferred when
+the user asks to defer it, such as for a draft, a spike, or iterating on a
+change before it is ready. It also stays deferred while the branch's bookmark
+has a deferred run and the user does not ask for review. In the run's first
+message to the user, say in one line whether the run will review or defer
+review, and that they can switch it by saying so.
+
+A bookmark's deferred runs are the runs in the run store, which
+`agent-store dir --workspace <workspace-root> implement` prints, whose `run.md`
+header names the bookmark and records `Review: deferred`, and at least one of
+whose recorded revisions is still in `mutable() & ::<bookmark>`. A run whose
+revisions all left that set, such as earlier work under a reused bookmark name
+or a draft that was abandoned or landed, is ignored.
 
 ## Outcomes
 
@@ -64,18 +83,20 @@ authorizes writing them and abandoning attempts that did not land.
 
 ## Run Record
 
-Only this session writes `run.md` in the run directory. Record decisions and
-landed results, not routine steps. On resume, reread it and any skill its
-`Then:` names. Reconcile recorded revisions, the bookmark, and the working copy
-with jj before continuing; do not absorb unaccounted-for work. The record holds:
+Only this session writes `run.md` in the run directory, except where the Review
+section has a later review write there. Record decisions and landed results, not
+routine steps. On resume, reread it. Reconcile recorded revisions, the bookmark,
+and the working copy with jj before continuing; do not absorb unaccounted-for
+work. The record holds:
 
-- a header: workspace path, branch base, bookmark, input source, and, when the
-  invoking skill asks, `Then:` naming the skill that follows;
+- a header: workspace path, branch base, bookmark, input source, and, when
+  review is deferred, `Review: deferred`, which becomes `Review: done` once a
+  review of the run's revisions ends `finished`;
 - `Input`: the outcome, criteria, exclusions, settled decisions, and binding
   requirements verbatim, or, for an input file in the run store's `.agent/`
   directory, its path and which sections hold each;
-- `Decisions`: each user answer, dated, and each decision the skill `Then:`
-  names records, prefixed with the name of the skill that took it;
+- `Decisions`: each user answer, dated, and each decision `diff-fix` takes,
+  prefixed `diff-fix:`;
 - `Spec`: the path of the agreed spec and the date the user agreed it or handed
   it over; otherwise, the visible changes the input settles, with evidence from
   `Input`, or an explanation that the work makes none;
@@ -83,7 +104,8 @@ with jj before continuing; do not absorb unaccounted-for work. The record holds:
   change and commit IDs, criteria served, check commands and results, and
   unsettled suspected defects. If interrupted, record any unfinished attempt and
   where to find it separately from landed results;
-- `Outcome`, written at the end.
+- `Outcome`, written at the end, with `diff-fix`'s outcome appended when a
+  review runs.
 
 ## Loop
 
@@ -122,12 +144,40 @@ with jj before continuing; do not absorb unaccounted-for work. The record holds:
    entries after a fold. Confirm the task bookmark and empty working copy under
    Outcomes. Take the next revision from what is now landed. When no work
    remains, confirm the agreed criteria and follow the Change Review rule for
-   the aggregate change before reporting.
+   the aggregate change before the review.
+
+## Review
+
+Review when the loop ends `done` having created or changed a revision and review
+is not deferred, and, without building, when the user says a draft is ready or
+asks to review it. The review covers the reviewed runs: this run, if any, and
+the bookmark's deferred runs. Follow `diff-fix` on the revisions from the
+earliest mutable one a reviewed run created or changed through the tip, with,
+from every reviewed run combined:
+
+- the criteria: its criteria and binding requirements, and its agreed spec from
+  `Spec`, whose acceptance criteria are the complete list of what the target may
+  make visible, or the visible changes `Spec` records as that list in their
+  place;
+- the context: its exclusions;
+- the user decisions: its settled decisions, its `Decisions` not prefixed
+  `diff-fix:`, and this one: fixes, conflict resolutions, and reshapes change
+  only revisions a reviewed run could change; a finding or conflict in any other
+  revision needs the user;
+- the decisions `diff-fix` took earlier: its `Decisions` prefixed `diff-fix:`.
+
+Record the review in this run's `run.md`, or, when reviewing a ready draft
+without building, in the newest deferred run's. When the review ends `finished`,
+set `Review: done` in the header of every deferred run it covered.
 
 ## Report
 
 A stop before `run.md` exists only says why. Otherwise write `Outcome`: `done`,
-`blocked`, or `stopped by user`. Report the result, landed revisions in branch
-order, the bookmark, checks, and any remaining work, conflicts, or unsettled
-suspected defects. Link the run record and agreed spec, if any. If `Then:` names
-a skill, continue with its next step.
+`blocked`, or `stopped by user`, then append `diff-fix`'s outcome when a review
+ran. Report the result, landed revisions in branch order, the bookmark, checks,
+and any remaining work, conflicts, or unsettled suspected defects, then
+`diff-fix`'s report, or why the review did not run. Link the run record and
+agreed spec, if any. When review stays deferred, end with one line naming the
+revisions a ready review would cover by the change IDs of the earliest and the
+tip, with their count, the bookmark, and the branch base, and saying that
+calling the draft ready reviews it.
