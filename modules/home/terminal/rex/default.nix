@@ -115,8 +115,9 @@ in
   # other block.
   programs.ssh.includes = [ "${config.home.homeDirectory}/.config/rex/ssh_config" ];
 
-  # Rex starts new terminals with the macOS login shell (zsh) unless its
-  # Startup Command setting (Settings > Terminal) says otherwise. init.lua
+  # Rex starts new terminals with the macOS login shell, which stays zsh until
+  # switch-system makes it fish, unless its Startup Command setting
+  # (Settings > Terminal) says otherwise. init.lua
   # cannot set it, so write the app preference directly. The profile path
   # stays valid across fish updates.
   targets.darwin.defaults."com.superlogical.rex" = {
