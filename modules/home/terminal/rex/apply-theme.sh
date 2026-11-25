@@ -8,8 +8,8 @@
 # imports the file only when no custom theme has its name, which also makes it
 # the dark theme, and otherwise points the dark theme at that custom theme.
 # Rex performs both through app actions, which need the app running with
-# Remote Control on; when they fail, this warns and exits 0 so a Home Manager
-# switch still succeeds.
+# Remote Control on; when they fail, this warns with Rex's error and exits 0
+# so a Home Manager switch still succeeds.
 
 rex_cli=$1
 theme_file=$2
@@ -21,8 +21,15 @@ skip() {
 	exit 0
 }
 
+# Runs a Rex CLI command, discarding its output. On failure it returns
+# nonzero with Rex's error message, without its `Error: ` prefix, in
+# `rex_error` for the warning.
 rex_app() {
-	"$rex_cli" --autostart=false --timeout 5s "$@" >/dev/null 2>&1
+	local status=0
+	rex_error=$("$rex_cli" --autostart=false --timeout 5s "$@" 2>&1 >/dev/null) || status=$?
+	rex_error=${rex_error#Error: }
+	rex_error=${rex_error:-the rex CLI exited with status $status}
+	return "$status"
 }
 
 [ -x "$rex_cli" ] || skip "Rex is not installed"
@@ -34,7 +41,7 @@ theme_id=$(
 
 if [ -z "$theme_id" ]; then
 	rex_app "do" client.theme.import path="$theme_file" ||
-		skip "could not import $theme_name (is Rex running with Remote Control on?)"
+		skip "could not import $theme_name: $rex_error"
 	exit 0
 fi
 
@@ -42,4 +49,4 @@ current_id=$(/usr/bin/defaults read com.superlogical.rex Workspace.darkThemeID 2
 [ "$current_id" = "$theme_id" ] && exit 0
 
 rex_app "do" client.setting.themes.dark.palette value="$theme_id" ||
-	skip "could not select $theme_name (is Rex running with Remote Control on?)"
+	skip "could not select $theme_name: $rex_error"
