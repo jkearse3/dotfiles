@@ -11,9 +11,25 @@ let
 
   # Puts `rex` on PATH outside Rex terminals too, for the skill below, which
   # calls bare `rex`, and for `rex-child-watch`.
-  rexWrapper = pkgs.writeShellScriptBin "rex" ''
-    exec ${pkgs.lib.escapeShellArg rexCli} "$@"
-  '';
+  #
+  # Also ships fish completion for `rex`. Rex lives outside the Nix store,
+  # so the build cannot generate the script; instead fish autoloads this
+  # file the first time it completes `rex` and sources what the installed
+  # CLI generates, which keeps completion in step with Rex updates. Without
+  # Rex installed the file does nothing.
+  rexWrapper = pkgs.symlinkJoin {
+    name = "rex";
+    paths = [
+      (pkgs.writeShellScriptBin "rex" ''
+        exec ${lib.escapeShellArg rexCli} "$@"
+      '')
+      (pkgs.writeTextDir "share/fish/vendor_completions.d/rex.fish" ''
+        if test -x ${lib.escapeShellArg rexCli}
+            ${lib.escapeShellArg rexCli} --autostart=false completion fish | source
+        end
+      '')
+    ];
+  };
 
   childWatch = import ./child-watch.nix {
     inherit pkgs rexWrapper;
