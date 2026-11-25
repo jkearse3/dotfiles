@@ -9,6 +9,16 @@ let
   # `Versions/Current`, so this path stays valid across Rex updates.
   rexCli = "${config.home.homeDirectory}/Library/Application Support/com.superlogical.rex/RexServer/Versions/Current/Rex Server.app/Contents/MacOS/rex";
 
+  # Puts `rex` on PATH outside Rex terminals too, for the skill below, which
+  # calls bare `rex`, and for `rex-child-watch`.
+  rexWrapper = pkgs.writeShellScriptBin "rex" ''
+    exec ${pkgs.lib.escapeShellArg rexCli} "$@"
+  '';
+
+  childWatch = import ./child-watch.nix {
+    inherit pkgs rexWrapper;
+  };
+
   applyTheme = pkgs.writeShellApplication {
     name = "rex-apply-theme";
     runtimeInputs = [
@@ -24,12 +34,9 @@ let
 in
 {
   home = {
-    # Puts `rex` on PATH outside Rex terminals too, for the skill below, which
-    # calls bare `rex`.
     packages = [
-      (pkgs.writeShellScriptBin "rex" ''
-        exec ${pkgs.lib.escapeShellArg rexCli} "$@"
-      '')
+      rexWrapper
+      childWatch
     ];
 
     file = {
