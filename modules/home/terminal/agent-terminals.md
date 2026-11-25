@@ -1,12 +1,14 @@
 # Agent Terminals
 
-When you run inside herdr-core (`HC_TERMINAL_ID` is set), run anything you would
-otherwise background, or that takes more than a minute or two, in a terminal the
-user can watch, whether it is a job, a server, or another agent. The Herdr Core
-Terminals rule gives the command for each step below. Prefer such a terminal
-over your built-in subagent tool when the user would want to see an agent's
-work, it runs long, or it may need steering; a quick lookup can stay with the
-built-in tool. Outside herdr-core, start such terminals only when the user asks.
+When you run inside a terminal multiplexer, herdr-core (`HC_TERMINAL_ID` is set)
+or Rex (`REX_SESSION` is set), run anything you would otherwise background, or
+that takes more than a minute or two, in a terminal the user can watch, whether
+it is a job, a server, or another agent. When both are set, use herdr-core. The
+Herdr Core Terminals and Rex Terminal rules give the command for each step
+below. Prefer such a terminal over your built-in subagent tool when the user
+would want to see an agent's work, it runs long, or it may need steering; a
+quick lookup can stay with the built-in tool. Outside both, start such terminals
+only when the user asks.
 
 - A terminal gets the login session's environment, not yours: write out values
   such as your `$TMPDIR` as absolute paths. When `<dir>` has an `.envrc`, run

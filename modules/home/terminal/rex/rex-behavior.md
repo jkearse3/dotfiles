@@ -4,7 +4,8 @@
 Rex behavior below, observed with `rex 0.1.0-preview.21`. Some of it differs
 from `rex --help`. Rex updates itself outside Nix, so after an update rerun the
 reproductions and drop or correct each entry that no longer holds, along with
-whatever relies on it.
+whatever relies on it. The last section lists the gaps the watcher and rules
+leave open because of that behavior.
 
 The examples run in a Rex pane; `$b` is the block ID the previous command
 printed.
@@ -208,3 +209,47 @@ and reports a later one as a turn's end: after `working` or `blocked`, or when
 its `updated_at` is newer than the recorded `idle`'s. A trivial opencode reply
 went from `working` to `idle` in about two seconds, the watcher's check
 interval, so a turn can end before the watcher sees `working`.
+
+## Known limitations
+
+The watcher and rules accept these gaps rather than work around them.
+
+- **pi and opencode parents poll.** Claude Code's Monitor tool turns each line
+  `rex-child-watch` prints into a notification, so a Claude parent ends its turn
+  and still reads the user's messages at once. pi and opencode have no such
+  tool, so they run `rex-child-watch --until-news` as an ordinary command, at
+  most 60 seconds at a time, and see the user's message only when it returns.
+  Each rerun costs a model turn.
+- **opencode's turn end is inferred.** Claude Code reports `done` at a turn's
+  end and pi does too, but opencode reports `idle`, which it also reports at
+  startup and, per the Program Status Protocol, when interrupted. The watcher
+  therefore ignores the first `idle` it records for a child. A turn that ended
+  before the watcher first checked that child is not reported, and an opencode
+  `idle` re-sent without a turn, which was not observed, would be reported as
+  `done`.
+- **A second turn in one child is not reported.** `done` followed by `done`
+  reads the same as a re-sent report. Parents never give a child a second turn
+  under the rules (they resume it in a new pane instead), so this only arises
+  when the user works in the child's tab.
+- **One registry per pane.** The watcher keys its state by the parent's block
+  ID, so a later agent started in the same pane inherits the earlier one's
+  registered children.
+- **Sandboxed parents cannot use it.** A parent under a `nono` profile that does
+  not grant the Rex socket and `~/.local/state/rex-child-watch` cannot reach Rex
+  or keep the watcher's state.
+- **Rex is a preview.** These entries hold for `rex 0.1.0-preview.21` and need
+  rechecking after each Rex update.
+
+Possible improvements, none built:
+
+- Have a child's result file, rather than its status, signal that a turn ended:
+  the parent registers the file's path with the child, and the watcher reports
+  `done` when the file appears. That removes the `idle` inference for every
+  harness and would suit `hc-child-watch` too.
+- Run the watcher as a `rex do` Lua script that handles
+  `terminal.program_status_changed` and `terminal.child_exited` events, so no
+  change falls between two checks while it runs. The fake-`rex` fixtures could
+  no longer test it.
+- Give pi a small extension that runs `rex-child-watch` and steers each line
+  into the session as a new turn, the way Monitor does for Claude Code, so pi
+  parents stop polling.
