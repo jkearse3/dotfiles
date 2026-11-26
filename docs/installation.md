@@ -180,9 +180,11 @@ nix run --accept-flake-config .#switch-system -- --blueprint "$blueprint"
 ```
 
 The activation requests administrator access through `sudo`. It configures
-nix-darwin, makes Fish the user's login shell, enables Touch ID for `sudo`, and
-asks Homebrew to install the declared applications. Homebrew does not
-automatically update, upgrade, or remove other packages during activation.
+nix-darwin, makes Fish the user's login shell, and asks Homebrew to install the
+declared applications. Homebrew does not automatically update, upgrade, or
+remove other packages during activation. `sudo` asks for the user's password in
+the terminal rather than through Touch ID, so a Rex or herdr pane reached from
+another device can answer it.
 
 The Home Manager and nix-darwin outputs are independent, but system-first is the
 documented bootstrap order. The system activation creates the user's
