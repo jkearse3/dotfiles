@@ -13,9 +13,15 @@ let
     '';
   };
 
+  # ssh also runs askpass, with SSH_ASKPASS_PROMPT=none, to show a
+  # notification that needs no answer, such as "Confirm user presence for key"
+  # when a Secure Enclave key signs; that one exits quietly.
   sshAskpass = pkgs.writeShellApplication {
     name = "agent-ssh-askpass-denied";
     text = ''
+      if [[ ''${SSH_ASKPASS_PROMPT-} == none ]]; then
+        exit 0
+      fi
       exec ${denied} ssh askpass "$@"
     '';
   };

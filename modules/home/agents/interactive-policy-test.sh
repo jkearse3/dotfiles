@@ -75,6 +75,19 @@ status=0
 grep -Fq 'blocked ssh askpass in a coding-agent session' "$workdir/ssh-stderr"
 
 status=0
+SSH_ASKPASS_PROMPT=confirm "$ssh_askpass" 'Allow use of key?' >"$workdir/ssh-stdout" 2>"$workdir/ssh-stderr" || status=$?
+[[ $status -eq 1 ]]
+[[ ! -s "$workdir/ssh-stdout" ]]
+grep -Fq 'blocked ssh askpass in a coding-agent session' "$workdir/ssh-stderr"
+
+# ssh marks a notification that needs no answer with SSH_ASKPASS_PROMPT=none.
+status=0
+SSH_ASKPASS_PROMPT=none "$ssh_askpass" 'Confirm user presence for key ECDSA-SK SHA256:test' >"$workdir/ssh-stdout" 2>"$workdir/ssh-stderr" || status=$?
+[[ $status -eq 0 ]]
+[[ ! -s "$workdir/ssh-stdout" ]]
+[[ ! -s "$workdir/ssh-stderr" ]]
+
+status=0
 "$git_askpass" 'credential-looking prompt: secret' >"$workdir/git-stdout" 2>"$workdir/git-stderr" || status=$?
 [[ $status -eq 1 ]]
 [[ ! -s "$workdir/git-stdout" ]]
