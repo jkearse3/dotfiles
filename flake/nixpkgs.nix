@@ -24,7 +24,6 @@
             (import inputs.rust-overlay)
             inputs.nix-index-database.overlays.nix-index
             (import ../overlays/moreutils.nix)
-            (import ../overlays/tokscale.nix)
           ];
         };
       };

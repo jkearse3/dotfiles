@@ -56,7 +56,6 @@ in
         dotfilesPackages.agent-store
         dotfilesPackages.scratch-sweep
         dotfilesPackages.token-count
-        pkgs.tokscale
       ];
 
       extraBuilderCommands = ''
