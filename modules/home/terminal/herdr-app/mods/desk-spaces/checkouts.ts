@@ -242,7 +242,7 @@ export class Checkouts {
           if ((JSON.parse(k) as MachinePath)[0] === m.name) due.add(k);
       this.ready[m.name as string] = ready;
     }
-    if (window().active) {
+    if (window()?.active) {
       // A place whose fallback is due brings every place in its checkout
       // along, so they share one pass and one full lookup of their root, and
       // their clocks line up again.
