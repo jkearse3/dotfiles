@@ -99,6 +99,42 @@ jj repository, including the ones direnv's `use flake` runs, so those commands
 need the same approval; `NIX_SKIP_JJ_SNAPSHOT=1` skips the snapshot (see
 [Working-Copy Snapshots](architecture.md#working-copy-snapshots)).
 
+## Remote Use
+
+Remote work runs on the machine itself, in Rex and herdr sessions reached from
+another computer or a phone: Rex through its own Tailscale pairing, herdr over
+SSH. Commands in those panes use the machine's own 1Password agent, so the
+machine's keys sign and authenticate and no agent is forwarded. Approvals stay
+per application: approve Rex and herdr once at the machine, and a pane opened
+remotely later uses the keys without a prompt for as long as the approval lasts.
+
+1Password must therefore stay unlocked while the user is away. A locked
+1Password can be unlocked only at the machine, and until then every signature
+and SSH connection to GitHub fails, including the snapshot before each Nix
+command. These settings live in the 1Password app, which owns them; set them by
+hand on each machine:
+
+- **Security → Auto-lock:** a timeout longer than the time spent away, and
+  locking on sleep or screensaver turned off.
+- **Developer → Remember key approval:** until 1Password locks, so one approval
+  per application covers the whole session.
+
+`sudo` asks for the password in the terminal (see
+[Installation](installation.md#activate-nix-darwin)), so `switch-system` can be
+answered from a remote pane.
+
+When 1Password cannot answer, a switch can avoid it entirely: the snapshot is
+skipped and `dotfiles-private` is read from the `~/dotfiles-private` checkout
+instead of fetched over SSH. The checkout must be current, and Nix does not see
+files created since the last `jj` command.
+
+```sh
+NIX_SKIP_JJ_SNAPSHOT=1 DOTFILES_PRIVATE_LOCAL=1 nix run .#switch-system
+```
+
+The machine must also stay awake and reachable: Rex and herdr cannot reach a
+sleeping machine's sessions. This configuration does not manage that.
+
 ## Additional GitHub Accounts
 
 Do not add only a signing key for another GitHub account. Provision an

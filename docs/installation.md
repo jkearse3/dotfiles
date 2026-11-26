@@ -184,7 +184,7 @@ nix-darwin, makes Fish the user's login shell, and asks Homebrew to install the
 declared applications. Homebrew does not automatically update, upgrade, or
 remove other packages during activation. `sudo` asks for the user's password in
 the terminal rather than through Touch ID, so a Rex or herdr pane reached from
-another device can answer it.
+another device can answer it (see [Remote Use](ssh.md#remote-use)).
 
 The Home Manager and nix-darwin outputs are independent, but system-first is the
 documented bootstrap order. The system activation creates the user's
