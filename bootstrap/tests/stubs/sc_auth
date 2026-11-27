@@ -1,0 +1,96 @@
+#!/usr/bin/perl
+
+# Stands in for macOS `sc_auth` in the git-key behavior test. Identities live
+# in $GIT_KEY_TEST_STATE/identities as `label|hash|public key file|common name`
+# lines. `list-ctk-identities [-t ssh]` prints them as the real sc_auth does
+# (fixtures/sc_auth-list*.txt): each column padded with spaces to its widest
+# value in characters, then one space; with `-t ssh` the hash column holds the
+# key's SHA256 fingerprint. `create-ctk-identity` takes the next fixture key;
+# `delete-ctk-identity -h` removes one. While $GIT_KEY_TEST_STATE/list-fails
+# or create-fails exists, `list-ctk-identities` or `create-ctk-identity`
+# instead prints a two-line error to stderr and exits 1.
+
+use strict;
+use warnings;
+use utf8;
+use open qw(:std :encoding(UTF-8));
+
+use Encode qw(decode);
+
+@ARGV = map { decode('UTF-8', $_) } @ARGV;
+my $state = $ENV{GIT_KEY_TEST_STATE};
+my $fixtures = $ENV{GIT_KEY_TEST_FIXTURES};
+my $identities = "$state/identities";
+
+open(my $log, '>>', "$state/log") or die;
+print $log 'sc_auth ' . join(' ', @ARGV) . "\n";
+close $log;
+
+sub read_identities {
+    return () unless -e $identities;
+    open(my $in, '<', $identities) or die;
+    my @rows = map { chomp; [ split /\|/, $_, 4 ] } grep { /\S/ } <$in>;
+    close $in;
+    return @rows;
+}
+
+sub fingerprint {
+    my ($file) = @_;
+    my $line = `/usr/bin/ssh-keygen -l -f '$file'`;
+    my (undef, $fingerprint) = split ' ', $line;
+    return $fingerprint;
+}
+
+my $command = shift @ARGV // '';
+for my $failing ([ 'list-ctk-identities', 'list-fails' ], [ 'create-ctk-identity', 'create-fails' ]) {
+    my ($failing_command, $switch) = @$failing;
+    if ($command eq $failing_command && -e "$state/$switch") {
+        print STDERR "Error Domain=CryptoTokenKit Code=-25300\n  (stand-in $failing_command failure)\n";
+        exit 1;
+    }
+}
+if ($command eq 'list-ctk-identities') {
+    my $ssh = @ARGV >= 2 && $ARGV[0] eq '-t' && $ARGV[1] eq 'ssh';
+    my @table = ([ 'Key Type', 'Public Key Hash', 'Prot', 'Label', 'Common Name', 'Email Address', 'Valid To', 'Valid' ]);
+    for my $row (read_identities()) {
+        my ($label, $hash, $key, $common_name) = @$row;
+        push @table, [ 'p-256-ne', $ssh ? fingerprint($key) : $hash, 'none', $label, $common_name, '', "2027-11-27, 12:42\x{202F}PM", 'YES' ];
+    }
+    my @widths = (0) x 8;
+    for my $row (@table) {
+        for my $column (0 .. 7) {
+            my $length = length $row->[$column];
+            $widths[$column] = $length if $length > $widths[$column];
+        }
+    }
+    for my $row (@table) {
+        print join('', map { $row->[$_] . (' ' x ($widths[$_] - length $row->[$_])) . ' ' } 0 .. 7), "\n";
+    }
+    exit 0;
+}
+if ($command eq 'create-ctk-identity') {
+    my %option = @ARGV;
+    my @rows = read_identities();
+    my $number = 1;
+    $number++ while grep { $_->[2] eq "$fixtures/key$number.pub" } @rows;
+    my $hash = $number == 1 ? 'F7D94CA2A0F18E471C38856CD5BAF175A5EBAB96' : sprintf('%040X', $number);
+    open(my $out, '>>', $identities) or die;
+    print $out join('|', $option{'-l'}, $hash, "$fixtures/key$number.pub", $option{'-N'} // $option{'-l'}), "\n";
+    close $out;
+    exit 0;
+}
+if ($command eq 'delete-ctk-identity') {
+    my $hash = $ARGV[1] // '';
+    my @rows = read_identities();
+    my @kept = grep { $_->[1] ne $hash } @rows;
+    if (@kept == @rows) {
+        print STDERR "no identity with hash $hash\n";
+        exit 1;
+    }
+    open(my $out, '>', $identities) or die;
+    print $out join('|', @$_), "\n" for @kept;
+    close $out;
+    exit 0;
+}
+print STDERR "sc_auth stand-in: unsupported $command\n";
+exit 64;

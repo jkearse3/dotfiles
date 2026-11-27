@@ -1,0 +1,2 @@
+Key Type Public Key Hash                                    Prot Label        Common Name                        Email Address Valid To             Valid 
+p-256-ne SHA256:YWzUCewiX7uCUIosWGOD3VB1PBr8QQd8/vtAgDkJ4a0 none git-personal Git - Fixture Mac - Secure Enclave               2027-11-27, 12:42 PM YES   

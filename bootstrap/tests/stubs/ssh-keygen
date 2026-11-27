@@ -1,0 +1,88 @@
+#!/bin/bash
+
+# Stands in for macOS `ssh-keygen` in the git-key behavior test.
+# `-l -f <file>` runs the real /usr/bin/ssh-keygen. `-w <provider> -K -N ""`
+# exports the only Secure Enclave identity in $GIT_KEY_TEST_STATE/identities
+# (see sc_auth) into the current directory as `id_ecdsa_sk_rk` and its `.pub`,
+# printing what the real one printed (fixtures/ssh-keygen-download.out). Like
+# the real one, it first asks for an authenticator PIN, here only through
+# SSH_ASKPASS with SSH_ASKPASS_REQUIRE=force, and it refuses to run with
+# SSH_AUTH_SOCK set or without `-N ""`. In the state directory, `locked` makes
+# the export fail as with a locked screen, `stuck` makes it hang, and
+# `wrong-key` makes it export a key other than the identity's.
+
+set -u
+state=$GIT_KEY_TEST_STATE
+printf 'ssh-keygen %s\n' "$*" >>"$state/log"
+
+mode=
+provider=
+empty_passphrase=
+while [ $# -gt 0 ]; do
+	case $1 in
+	-l) mode=fingerprint ;;
+	-f)
+		file=$2
+		shift
+		;;
+	-K) mode=download ;;
+	-w)
+		provider=$2
+		shift
+		;;
+	-N)
+		[ -z "$2" ] && empty_passphrase=1
+		shift
+		;;
+	esac
+	shift
+done
+
+case $mode in
+fingerprint)
+	exec /usr/bin/ssh-keygen -l -f "$file"
+	;;
+download)
+	[ "$provider" = /usr/lib/ssh-keychain.dylib ] || {
+		echo "ssh-keygen stand-in: unexpected provider $provider" >&2
+		exit 99
+	}
+	[ -n "$empty_passphrase" ] || {
+		echo "ssh-keygen stand-in: export without -N \"\" would ask for a passphrase" >&2
+		exit 99
+	}
+	[ -z "${SSH_AUTH_SOCK+set}" ] || {
+		echo "ssh-keygen stand-in: SSH_AUTH_SOCK is set" >&2
+		exit 99
+	}
+	[ "${SSH_ASKPASS_REQUIRE:-}" = force ] && [ -x "${SSH_ASKPASS:-}" ] || {
+		echo "ssh-keygen stand-in: the PIN prompt would read the terminal" >&2
+		exit 99
+	}
+	pin=$("$SSH_ASKPASS" "Enter PIN for authenticator: ")
+	[ -z "$pin" ] || {
+		echo "ssh-keygen stand-in: expected an empty PIN" >&2
+		exit 99
+	}
+	if [ -e "$state/stuck" ]; then
+		exec sleep 600
+	fi
+	if [ -e "$state/locked" ]; then
+		echo 'Provider "/usr/lib/ssh-keychain.dylib" returned failure -1' >&2
+		echo "Unable to load resident keys: invalid format" >&2
+		exit 255
+	fi
+	key=$(cut -d'|' -f3 "$state/identities")
+	if [ -e "$state/wrong-key" ]; then
+		key=$GIT_KEY_TEST_FIXTURES/key3.pub
+	fi
+	echo "stand-in handle for $key" >id_ecdsa_sk_rk
+	chmod 600 id_ecdsa_sk_rk
+	cp "$key" id_ecdsa_sk_rk.pub
+	cat "$GIT_KEY_TEST_FIXTURES/ssh-keygen-download.out"
+	;;
+*)
+	echo "ssh-keygen stand-in: unsupported arguments" >&2
+	exit 64
+	;;
+esac

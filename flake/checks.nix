@@ -218,6 +218,12 @@ in
             ];
           };
 
+          # Runs `bootstrap/git_key.py` against stand-ins for macOS's `sc_auth`
+          # and `ssh-keygen`.
+          git-key-bootstrap = pkgs.callPackage ../bootstrap/check.nix {
+            handleRelative = ".ssh/git_secure_enclave";
+          };
+
           # Runs the `nix` wrapper that snapshots jj against stub jj and Nix,
           # built with the same nixpkgs as the wrapper the home profile installs.
           nix-jj-snapshot-behavior = pkgs.callPackage ../packages/nix-jj-snapshot/check.nix { };
