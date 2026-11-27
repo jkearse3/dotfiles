@@ -5,15 +5,7 @@
   ...
 }:
 let
-  onePasswordSsh = config.dotfiles.onePasswordSsh;
-  sshSigner = pkgs.writeShellApplication {
-    name = "ssh-sign-with-1password";
-    text = ''
-      export SSH_AUTH_SOCK=${lib.escapeShellArg onePasswordSsh.normalizedSocket}
-      exec ${lib.getExe' pkgs.openssh "ssh-keygen"} "$@"
-    '';
-  };
-  sshSignerProgram = "${sshSigner}/bin/ssh-sign-with-1password";
+  sshSignerProgram = lib.getExe (pkgs.callPackage ./ssh-sign-with-secure-enclave/package.nix { });
 
   identityType = lib.types.submodule {
     options = {
@@ -27,14 +19,15 @@ let
       };
       signingKey = lib.mkOption {
         type = lib.types.nullOr lib.types.nonEmptyStr;
-        # Every identity must state signing intent explicitly. A key selector
-        # signs; an explicit null unsigns. The throwing default forces omission
-        # to fail evaluation instead of silently rendering unsigned: types.nullOr
-        # carries emptyValue = null, so a defaultless option would resolve to
-        # null (unsigned) on its own rather than erroring.
-        default = throw "vcs.identityPolicy identity: signingKey must be set explicitly — a key selector to sign, or null to explicitly disable signing";
+        # Every identity must state signing intent explicitly. A key file or
+        # Secure Enclave key handle signs; an explicit null unsigns. The
+        # throwing default forces omission to fail evaluation instead of
+        # silently rendering unsigned: types.nullOr carries emptyValue = null,
+        # so a defaultless option would resolve to null (unsigned) on its own
+        # rather than erroring.
+        default = throw "vcs.identityPolicy identity: signingKey must be set explicitly — a key file or handle to sign with, or null to explicitly disable signing";
         defaultText = lib.literalMD "none; every identity must set `signingKey` explicitly";
-        description = "Public SSH key used to sign commits, or null to explicitly disable signing";
+        description = "SSH key file or Secure Enclave key handle used to sign commits, or null to explicitly disable signing";
       };
     };
   };

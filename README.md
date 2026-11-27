@@ -5,9 +5,9 @@ Configurations managed with Nix.
 ## Installation
 
 Follow the [fresh Darwin installation guide](docs/installation.md). The flake
-has a private SSH input, so a new machine must commission 1Password and verify
-access to `dotfiles-private` before the first `nix run` or `nix develop`
-invocation.
+has a private SSH input, so a new machine must create its Secure Enclave git key
+with `bootstrap/git-key.sh`, add it on GitHub, and verify access to
+`dotfiles-private` before the first `nix run` or `nix develop` invocation.
 
 After installing the prerequisites and initializing the colocated Jujutsu
 workspace, the activation sequence is:

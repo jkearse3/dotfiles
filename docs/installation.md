@@ -12,7 +12,8 @@ The current blueprints require:
 - A macOS administrator account named `johnnie` with home directory
   `/Users/johnnie`.
 - Network access to GitHub, Nix caches, and Homebrew.
-- GitHub access to `jkearse3/dotfiles-private` through the 1Password SSH agent.
+- A GitHub account with access to `jkearse3/dotfiles-private`, to which the
+  Mac's Secure Enclave key is added.
 
 The configuration does not create the macOS account. Add or change a blueprint
 before installation if the username, home directory, or platform differs.
@@ -44,64 +45,29 @@ cd "$HOME/dotfiles"
 
 ## Provision GitHub SSH Access
 
-The flake includes `dotfiles-private` as an SSH input. Provision access before
-the first `nix run` or `nix develop` invocation; the system configuration cannot
-install and configure 1Password until after Nix has evaluated the flake.
-
-Install 1Password manually for this bootstrap:
-
-```sh
-/opt/homebrew/bin/brew install --cask 1password
-```
-
-In 1Password and GitHub:
-
-1. Sign in to 1Password and enable its SSH agent.
-2. Create a dedicated vault for this machine.
-3. Create separate SSH authentication and signing keys in that vault.
-4. Register the authentication key with the GitHub account that can read
-   `jkearse3/dotfiles-private`.
-5. Register the signing key with GitHub as a signing key.
-6. Configure 1Password to approve keys per application. Never choose **Approve
-   for all applications**.
-
-Create `~/.config/1Password/ssh/agent.toml` with the machine vault UUID:
+The flake includes `dotfiles-private` as an SSH input, and Nix fetches it before
+it evaluates anything, so the Mac needs a key GitHub accepts before the first
+`nix run .#…` or `nix develop` invocation. The Mac's key lives in its Secure
+Enclave (see [Secure Enclave Key](ssh.md#secure-enclave-key)); with the screen
+unlocked, create it:
 
 ```sh
-mkdir -p "$HOME/.ssh" "$HOME/.config/1Password/ssh"
-chmod 700 "$HOME/.ssh"
+bootstrap/git-key.sh
 ```
 
-```toml
-[[ssh-keys]]
-vault = "<machine vault UUID>"
-```
+The script needs only Nix, installed above: it runs with the Python that this
+repository's `flake.lock` pins and does not fetch `dotfiles-private`. It prints
+the public key and two entries to add at <https://github.com/settings/ssh/new>,
+signed in to the GitHub account: the same key once as an `Authentication Key`
+and once as a `Signing Key`, each with a title you choose for this Mac. It ends
+with an `export GIT_SSH_COMMAND=…` line; run that line in the terminal that will
+run the remaining steps, up to Home Manager activation, so Nix fetches
+`dotfiles-private` with the key.
 
-Save the corresponding public keys at these machine-local paths:
-
-```text
-~/.ssh/github_personal_authentication.pub
-~/.ssh/github_personal_signing.pub
-```
-
-Only public keys belong in these files. Private keys remain in 1Password and are
-exposed to OpenSSH through the agent socket. See
-[SSH and commit signing](ssh.md) for the complete key model and recovery
-procedure.
-
-Export the native 1Password agent socket in the terminal that will run the
-bootstrap commands:
+Verify that GitHub accepts the key for the private repository:
 
 ```sh
-export SSH_AUTH_SOCK="$HOME/Library/Group Containers/2BUA8C4S2C.com.1password/t/agent.sock"
-```
-
-Verify that the agent exposes the authentication key and that GitHub authorizes
-it for the private repository:
-
-```sh
-ssh-add -L
-ssh -T git@github.com
+sh -c "$GIT_SSH_COMMAND -T git@github.com"
 git ls-remote git@github.com:jkearse3/dotfiles-private >/dev/null
 ```
 
@@ -111,6 +77,9 @@ before accepting it.
 
 The final command is the decisive access check. A successful `ssh -T` greeting
 from GitHub still exits with status 1 because GitHub does not provide a shell.
+
+A Mac that needs SSH to hosts other than GitHub also needs 1Password; see
+[Provision A Machine](ssh.md#provision-a-machine).
 
 ## Prepare Home Manager Paths
 
@@ -210,8 +179,10 @@ Later build and switch apps read this marker, so they no longer need an explicit
 
 Open a new terminal after activation. Home Manager cannot update the environment
 of the shell that launched it; a new login shell loads the managed profile,
-selects the normalized 1Password agent socket, and puts the `nix` wrapper that
-snapshots the Jujutsu working copy ahead of the real Nix (see
+whose SSH configuration uses the Secure Enclave key for GitHub, so it no longer
+needs the `GIT_SSH_COMMAND` export. The profile also selects the normalized
+1Password agent socket for other hosts and puts the `nix` wrapper that snapshots
+the Jujutsu working copy ahead of the real Nix (see
 [Working-Copy Snapshots](architecture.md#working-copy-snapshots)).
 
 ## Verify The Installation
@@ -244,11 +215,11 @@ ssh -T git@github.com
 git ls-remote git@github.com:jkearse3/dotfiles-private >/dev/null
 ```
 
-The effective GitHub configuration should use user `git`, the normalized
-`~/.1password/agent.sock`, the authentication selector, and
-`IdentitiesOnly yes`.
+The effective GitHub configuration should use user `git`, `identityagent none`,
+`securitykeyprovider /usr/lib/ssh-keychain.dylib`, `IdentitiesOnly yes`, and
+`~/.ssh/git_secure_enclave` as its only `identityfile`.
 
-Verify that Git can use the separate signing key configured by Home Manager:
+Verify that Git signs with the Secure Enclave key configured by Home Manager:
 
 ```sh
 signing_test="$(mktemp -d)"
@@ -258,7 +229,7 @@ git -C "$signing_test" cat-file commit HEAD | grep '^gpgsig '
 rm -rf -- "$signing_test"
 ```
 
-The commit should request 1Password approval and contain a `gpgsig` header.
+The commit should contain a `gpgsig` header and need no 1Password approval.
 Complete the GitHub `Verified` check described in
 [SSH and commit signing](ssh.md#verify) before relying on signing for published
 work. Run `exit` when verification is complete to return to Fish.
@@ -281,9 +252,12 @@ recovery.
 
 ### Private flake access fails
 
-Re-export the native 1Password socket and rerun `ssh-add -L` and the private
-`git ls-remote` check. Confirm that `agent.toml` selects the intended vault and
-that GitHub has the matching authentication public key.
+Private flake access fails until GitHub lists the Mac's Secure Enclave key as an
+authentication key. Rerun `bootstrap/git-key.sh` to print the key, confirm
+GitHub's SSH key settings list it as an `Authentication Key`, rerun the printed
+`export GIT_SSH_COMMAND=…` line in the shell that runs Nix, and rerun the
+private `git ls-remote` check. When the script cannot export the key, follow the
+restore procedure in [Procedures](ssh.md#procedures).
 
 ### No blueprint is selected
 
@@ -301,17 +275,21 @@ usually private flake access: see
 
 `nix run .#switch-system` activates through nh's `darwin switch`. If it fails on
 a machine that has never activated nix-darwin, activate once with nix-darwin
-directly, then return to `nix run .#switch-system`:
+directly, then return to `nix run .#switch-system`. nix-darwin requires system
+activation to run as root, and root cannot use the user's Secure Enclave key, so
+it cannot fetch `dotfiles-private` itself: clone it as the user first, with the
+`GIT_SSH_COMMAND` export in place, and pass the checkout:
 
 ```sh
-sudo nix run nix-darwin/master#darwin-rebuild -- switch --flake .#<darwinConfigurationName>
+git clone git@github.com:jkearse3/dotfiles-private.git "$HOME/dotfiles-private"
+sudo nix run nix-darwin/master#darwin-rebuild -- switch --flake .#<darwinConfigurationName> \
+  --override-input dotfiles-private "path:$HOME/dotfiles-private"
 ```
 
 `nix eval --json .#blueprints` shows each blueprint's `darwinConfigurationName`.
-nix-darwin requires system activation to run as root. On a machine that has
-activated nix-darwin before, run
+On a machine that has activated nix-darwin before, run
 `sudo /run/current-system/sw/bin/darwin-rebuild switch --flake .#<darwinConfigurationName>`
-instead.
+instead, with the same `--override-input`.
 
 ### Home Manager reports an existing file
 

@@ -31,9 +31,10 @@ Never infer the blueprint from the hostname, username, or hardware.
 The `nix` on `PATH` is a wrapper that runs `jj util snapshot` first, because Nix
 reads this flake through Git and sees a new file only after a snapshot. If a
 command misses a new file because the wrapper is not installed yet, run
-`jj status` and retry. When the snapshot fails because 1Password is locked,
-`nix` stops; set `NIX_SKIP_JJ_SNAPSHOT=1` only when evaluating without new files
-is acceptable.
+`jj status` and retry. When the snapshot fails, for example because the Mac does
+not have its Secure Enclave git key yet (`bootstrap/git-key.sh`), `nix` stops;
+set `NIX_SKIP_JJ_SNAPSHOT=1` only when evaluating without new files is
+acceptable.
 
 To build against a local checkout of the `dotfiles-private` input, set
 `DOTFILES_PRIVATE_LOCAL` for the `nix run .#…` apps (`1`, `true`, or `yes` for

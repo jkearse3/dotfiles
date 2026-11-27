@@ -35,8 +35,8 @@ find_jj_repository_root() {
 }
 
 # Shell completion runs `nix` with NIX_GET_COMPLETIONS set on every Tab press;
-# a snapshot there would print into the command line being edited and could ask
-# 1Password to sign, so completions run against the last snapshot.
+# a snapshot there would print into the command line being edited and sign a
+# commit, so completions run against the last snapshot.
 if [[ ${NIX_SKIP_JJ_SNAPSHOT-} != 1 && -z ${NIX_GET_COMPLETIONS-} ]] &&
 	command -v jj >/dev/null 2>&1 &&
 	repository_root="$(find_jj_repository_root)"; then

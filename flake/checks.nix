@@ -22,6 +22,10 @@ let
   neovimStartupBlueprint = config.flake.blueprints.laptop-dev-default;
   neovimStartupHomeConfig =
     config.flake.homeConfigurations.${neovimStartupBlueprint.homeConfigurationName}.config;
+  # A home configuration whose Secure Enclave key handle path
+  # `bootstrap/git-key.sh` must install to; every blueprint shares the path.
+  gitKeyHomeConfig =
+    config.flake.homeConfigurations.${config.flake.blueprints.laptop-dev-default.homeConfigurationName}.config;
 in
 {
   perSystem =
@@ -221,7 +225,7 @@ in
           # Runs `bootstrap/git_key.py` against stand-ins for macOS's `sc_auth`
           # and `ssh-keygen`.
           git-key-bootstrap = pkgs.callPackage ../bootstrap/check.nix {
-            handleRelative = ".ssh/git_secure_enclave";
+            handleRelative = lib.removePrefix "${gitKeyHomeConfig.home.homeDirectory}/" gitKeyHomeConfig.dotfiles.gitKey.handle;
           };
 
           # Runs the `nix` wrapper that snapshots jj against stub jj and Nix,
@@ -232,6 +236,18 @@ in
           secret-wrappers = unstablePkgs.callPackage ../modules/home/secrets/tests/check.nix {
             test = "secret-wrappers";
           };
+
+          # The home build runs this jj config migration's fixture test, but
+          # `nix flake check` does not build a home configuration.
+          migrate-jj-signing-key =
+            unstablePkgs.callPackage ../modules/home/vcs/jj/migrate-jj-signing-key/package.nix
+              { };
+
+          # Runs the signing program git and jj use against a stand-in
+          # `ssh-keygen`.
+          ssh-sign-with-secure-enclave =
+            pkgs.callPackage ../modules/home/vcs/ssh-sign-with-secure-enclave/check.nix
+              { };
 
           # The home build runs this jj config migration's fixture test, but
           # `nix flake check` does not build a home configuration.

@@ -36,8 +36,10 @@ doing so skips the checks or drops the generated lists.
 
 3. Put an empty, undescribed `@` on the base. The command updates in that `@`;
    any other `@` gets a new child, stacking the update on what `@` holds.
-4. Run `jj status`. If it fails because 1Password is locked, ask the user to
-   unlock it: the `nix` wrapper snapshots through jj, and jj signs the commit.
+4. Run `jj status`. If it fails with a signing error, the Mac does not have its
+   Secure Enclave git key: ask the user to run `bootstrap/git-key.sh` (see
+   `docs/ssh.md`), because the `nix` wrapper snapshots through jj, and jj signs
+   the commit.
 
 ## Run
 
@@ -83,8 +85,8 @@ doing so skips the checks or drops the generated lists.
      stop.
    - `files in @ changed while the checks ran`: rerun once nothing else is
      editing the checkout.
-   - `committing the update failed` with a signing error: ask the user to unlock
-     1Password, then rerun.
+   - `committing the update failed` with a signing error: ask the user to give
+     the Mac its Secure Enclave git key with `bootstrap/git-key.sh`, then rerun.
    - `warning: could not build the configurations of @-`: the commit lacks the
      package-version list; mention it in the report.
    - `warning: could not bookmark the dependency update <change-id>`: the update

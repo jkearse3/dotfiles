@@ -3,6 +3,7 @@ project-includes = [
   "bootstrap",
   "modules/home/agents/skills/**/scripts",
   "modules/home/vcs/jj/migrate-jj-sign-on-push",
+  "modules/home/vcs/jj/migrate-jj-signing-key",
   "packages/commit-message",
   "packages/direnv-worktree",
   "packages/herdr-jj-workspaces",

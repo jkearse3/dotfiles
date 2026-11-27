@@ -1,5 +1,7 @@
 """Give this Mac its Secure Enclave git key for GitHub SSH and commit signing.
 
+See docs/ssh.md, "Secure Enclave Key".
+
     bootstrap/git-key.sh
 
 It creates the Secure Enclave identity labeled ``git`` when the Mac has none,
@@ -109,7 +111,7 @@ def give_key(files: KeyFiles, export_seconds: float) -> str:
     if len(identities) > 1 or (len(identities) == 1 and identities[0].label != LABEL):
         raise Failure(
             f"this Mac has Secure Enclave identities other than one labeled {LABEL}, and this script "
-            + "handles only that one; list them with sc_auth list-ctk-identities"
+            + 'handles only that one; list them with sc_auth list-ctk-identities and see docs/ssh.md, "Procedures"'
         )
 
     if len(identities) == 0:

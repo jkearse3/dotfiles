@@ -3,12 +3,13 @@
 # construction and validation.
 { inputs }:
 let
-  # Personal commit identity shared by every blueprint. Signing key resolves from
-  # config, so this is a function of the home module's config.
+  # Personal commit identity shared by every blueprint. It signs with this Mac's
+  # Secure Enclave key, whose handle path resolves from config, so this is a
+  # function of the home module's config.
   personalIdentity = config: {
     name = "Johnnie Kearse III";
     email = "jkearse3@gmail.com";
-    signingKey = config.dotfiles.onePasswordSsh.githubSigningSelector;
+    signingKey = config.dotfiles.gitKey.handle;
   };
 
   workstationHomeModule = {

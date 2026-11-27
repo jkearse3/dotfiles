@@ -21,9 +21,13 @@ let
   );
   onePasswordSsh = config.dotfiles.onePasswordSsh;
   onePasswordSocket = onePasswordSsh.normalizedSocket;
-  sshPublicSelectors = [
-    onePasswordSsh.githubAuthenticationSelector
-    onePasswordSsh.githubSigningSelector
+  # The handle of this Mac's Secure Enclave git key, which GitHub SSH and
+  # commit signing use, and its public key. The handle holds no private key.
+  # nono skips grants for paths that do not exist yet, so a sandbox started
+  # before `bootstrap/git-key.sh` ran must be restarted to see them.
+  gitKeyFiles = [
+    config.dotfiles.gitKey.handle
+    "${config.dotfiles.gitKey.handle}.pub"
   ];
   mkNonoWrapper = import ./mkNonoWrapper.nix {
     pkgs = pkgs // {
@@ -120,18 +124,20 @@ let
         "${config.home.homeDirectory}/.ssh/known_hosts"
         onePasswordSocket
       ]
-      ++ sshPublicSelectors
+      ++ gitKeyFiles
       ++ lib.optionals pkgs.stdenv.hostPlatform.isDarwin [ onePasswordSsh.darwinSocket ];
       read_file = [
         # npm/pnpm need this metadata-only config for cache and prefix discovery.
         "${config.home.homeDirectory}/.npmrc"
 
-        # SSH config is non-secret metadata. Private keys remain denied.
+        # SSH config is non-secret metadata. Private keys remain denied; GitHub
+        # authentication and signing use the granted Secure Enclave key handle.
         "${config.home.homeDirectory}/.ssh/config"
       ]
-      ++ sshPublicSelectors;
+      ++ gitKeyFiles;
       allow_file = [
-        # SSH may append host keys; authentication itself goes through the injected SSH_AUTH_SOCK.
+        # SSH may append host keys. GitHub authentication uses the Secure Enclave key handle;
+        # other hosts authenticate through the injected SSH_AUTH_SOCK.
         "${config.home.homeDirectory}/.ssh/known_hosts"
 
         # No host Docker config paths are granted directly. The daemon socket is still a major

@@ -89,13 +89,14 @@ directory's repository, then the real Nix with the same arguments. Run `nix`
 from inside the repository whose flake it reads: a flake reference to another
 checkout is not snapshotted.
 
-Jujutsu signs every commit it writes, including working-copy snapshots, so a
-snapshot can ask 1Password for approval (see `docs/ssh.md`). When the snapshot
-fails, for example while 1Password is locked, the wrapper stops before running
-Nix; `NIX_SKIP_JJ_SNAPSHOT=1` skips the snapshot. The wrapper's script describes
-when it skips the snapshot on its own, and `modules/home/nix/jj-snapshot.nix`
-how it stays first on `PATH`. Where the wrapper does not run, such as before the
-first Home Manager activation, `jj status` snapshots by hand.
+Jujutsu signs every commit it writes, including working-copy snapshots, with the
+Mac's Secure Enclave key, which needs no approval (see `docs/ssh.md`). When the
+snapshot fails, for example on a Mac that does not have its key yet, the wrapper
+stops before running Nix; `NIX_SKIP_JJ_SNAPSHOT=1` skips the snapshot. The
+wrapper's script describes when it skips the snapshot on its own, and
+`modules/home/nix/jj-snapshot.nix` how it stays first on `PATH`. Where the
+wrapper does not run, such as before the first Home Manager activation,
+`jj status` snapshots by hand.
 
 ## Blueprint Outputs
 

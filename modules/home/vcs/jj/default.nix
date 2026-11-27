@@ -6,9 +6,40 @@
   ...
 }:
 {
-  home.packages = [
-    dotfilesPackages.jjx
-  ];
+  home = {
+    packages = [
+      dotfilesPackages.jjx
+    ];
+
+    # jj 0.47 deprecates `git.sign-on-push` in favor of
+    # `revsets.git-sign-on-push`, which the vcs module's signing settings set, and
+    # warns on every command while a config still sets the old key. Earlier jjx
+    # versions wrote it into each workspace's repository config, so this rewrites
+    # it there on every switch. Delete this step and ./migrate-jj-sign-on-push
+    # once no machine's repository configs set `git.sign-on-push`, or once jj
+    # stops accepting the old name.
+    activation.migrateJjSignOnPush = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
+      run ${lib.getExe (pkgs.callPackage ./migrate-jj-sign-on-push/package.nix { })} \
+        ${lib.escapeShellArg "${config.xdg.configHome}/jj/repos"}
+    '';
+
+    # jjx copies git's `user.signingKey` into each workspace's repository config,
+    # so configs written while commits were signed through 1Password still name
+    # the old 1Password signing selector, which jj can no longer sign with. This
+    # repoints them at the Secure Enclave key handle on every switch; jjx writes
+    # the handle into new and revisited workspaces itself. The program leaves the
+    # configs unchanged and counts them while the handle is missing, a safeguard
+    # a switch never reaches because the ssh module's checkGitKeyHandle step
+    # refuses the switch first.
+    # Delete this step and ./migrate-jj-signing-key once no machine's repository
+    # configs name ~/.ssh/github_personal_signing.pub.
+    activation.migrateJjSigningKey = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
+      run ${lib.getExe (pkgs.callPackage ./migrate-jj-signing-key/package.nix { })} \
+        ${lib.escapeShellArg "${config.xdg.configHome}/jj/repos"} \
+        ${lib.escapeShellArg "${config.home.homeDirectory}/.ssh/github_personal_signing.pub"} \
+        ${lib.escapeShellArg config.dotfiles.gitKey.handle}
+    '';
+  };
 
   programs = {
     jujutsu = {
@@ -85,16 +116,4 @@
       jjbr = "jjx bookmark rebase";
     };
   };
-
-  # jj 0.47 deprecates `git.sign-on-push` in favor of
-  # `revsets.git-sign-on-push`, which the vcs module's signing settings set, and
-  # warns on every command while a config still sets the old key. Earlier jjx
-  # versions wrote it into each workspace's repository config, so this rewrites
-  # it there on every switch. Delete this step and ./migrate-jj-sign-on-push
-  # once no machine's repository configs set `git.sign-on-push`, or once jj
-  # stops accepting the old name.
-  home.activation.migrateJjSignOnPush = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
-    run ${lib.getExe (pkgs.callPackage ./migrate-jj-sign-on-push/package.nix { })} \
-      ${lib.escapeShellArg "${config.xdg.configHome}/jj/repos"}
-  '';
 }
