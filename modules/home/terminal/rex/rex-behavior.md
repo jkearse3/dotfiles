@@ -1,6 +1,6 @@
 # Known Rex behavior
 
-`rex-child-watch` (`child-watch.sh`) and the agent rules' Rex steps rely on the
+`rex-agents` (`packages/rex-agents`) and the agent rules' Rex steps rely on the
 Rex behavior below, observed with `rex 0.1.0-preview.21`. The pane variables and
 default session, `--keep-open`, `rex wait`, and block targeting and closing were
 rechecked with `rex 0.1.0-preview.25`. Some of it differs from `rex --help`. Rex
@@ -212,7 +212,7 @@ $ prev=; for i in $(seq 1 60); do
   `updated_at` for over a minute.
 
 Because pi and opencode report `idle` both at startup and, for opencode, at a
-turn's end, `rex-child-watch` ignores the first `idle` it records for a child
+turn's end, `rex-agents watch` ignores the first `idle` it records for a child
 and reports a later one as a turn's end: after `working` or `blocked`, or when
 its `updated_at` is newer than the recorded `idle`'s. A trivial opencode reply
 went from `working` to `idle` in about two seconds, the watcher's check
@@ -223,41 +223,39 @@ interval, so a turn can end before the watcher sees `working`.
 The watcher and rules accept these gaps rather than work around them.
 
 - **pi and opencode parents poll.** Claude Code's Monitor tool turns each line
-  `rex-child-watch` prints into a notification, so a Claude parent ends its turn
-  and still reads the user's messages at once. pi and opencode have no such
-  tool, so they run `rex-child-watch --until-news` as an ordinary command, at
+  `rex-agents watch` prints into a notification, so a Claude parent ends its
+  turn and still reads the user's messages at once. pi and opencode have no such
+  tool, so they run `rex-agents watch --until-news` as an ordinary command, at
   most 60 seconds at a time, and see the user's message only when it returns.
   Each rerun costs a model turn.
-- **opencode's turn end is inferred.** Claude Code reports `done` at a turn's
-  end and pi does too, but opencode reports `idle`, which it also reports at
-  startup and, per the Program Status Protocol, when interrupted. The watcher
-  therefore ignores the first `idle` it records for a child. A turn that ended
-  before the watcher first checked that child is not reported, and an opencode
-  `idle` re-sent without a turn, which was not observed, would be reported as
-  `done`.
+- **A turn without a result file is inferred for opencode.** The watcher reports
+  `done` when a child's result file is ready, whatever its harness, and falls
+  back to the child's status only for a turn that ends without one. Claude Code
+  reports `done` at a turn's end and pi does too, but opencode reports `idle`,
+  which it also reports at startup and, per the Program Status Protocol, when
+  interrupted. The fallback therefore ignores the first `idle` it records for a
+  child. Such a turn that ended before the watcher first checked that child is
+  not reported, and an opencode `idle` re-sent without a turn, which was not
+  observed, would be reported as `done`.
 - **A second turn in one child is not reported.** `done` followed by `done`
   reads the same as a re-sent report. Parents never give a child a second turn
   under the rules (they resume it in a new pane instead), so this only arises
   when the user works in the child's tab.
-- **One registry per pane.** The watcher keys its state by the parent's block
+- **One registry per pane.** `rex-agents` keys its state by the parent's block
   ID, so a later agent started in the same pane inherits the earlier one's
   registered children.
 - **Sandboxed parents cannot use it.** A parent under a `nono` profile that does
-  not grant the Rex socket and `~/.local/state/rex-child-watch` cannot reach Rex
-  or keep the watcher's state.
+  not grant the Rex socket and `$XDG_STATE_HOME/rex-agents` cannot reach Rex or
+  keep `rex-agents`' state.
 - **Rex is a preview.** These entries hold for the versions named at the top and
   need rechecking after each Rex update.
 
 Possible improvements, none built:
 
-- Have a child's result file, rather than its status, signal that a turn ended:
-  the parent registers the file's path with the child, and the watcher reports
-  `done` when the file appears. That removes the `idle` inference for every
-  harness and would suit `hc-child-watch` too.
-- Run the watcher as a `rex do` Lua script that handles
+- Run `rex-agents watch` as a `rex do` Lua script that handles
   `terminal.program_status_changed` and `terminal.child_exited` events, so no
-  change falls between two checks while it runs. The fake-`rex` fixtures could
-  no longer test it.
-- Give pi a small extension that runs `rex-child-watch` and steers each line
+  change falls between two checks while it runs. The fake-Rex tests could no
+  longer test it.
+- Give pi a small extension that runs `rex-agents watch` and steers each line
   into the session as a new turn, the way Monitor does for Claude Code, so pi
   parents stop polling.

@@ -159,10 +159,10 @@ in
 
   # How agents carry out the Agent Terminals rule (`../agent-terminals.md`) in
   # Rex, as a shared rule in the agent instruction files this repo renders. It
-  # leaves the commands to the `rex` skill's guide and states only where the
-  # workflow departs from it, plus how agents learn of their children's news
-  # through `rex-child-watch`. `rex-behavior.md` records the Rex behavior it
-  # relies on. The rule keys off the REX_BLOCK variable Rex sets in each pane,
-  # so it needs no per-agent hook.
+  # has agents start, watch, resume, and release their helper agents with
+  # `rex-agents`, and leaves jobs and servers to the `rex` skill's guide,
+  # stating only where the workflow departs from it. `rex-behavior.md` records
+  # the Rex behavior it relies on. The rule keys off the REX_BLOCK variable Rex
+  # sets in each pane, so it needs no per-agent hook.
   agents.sharedRules.rex-terminal = ./agent-rule.md;
 }

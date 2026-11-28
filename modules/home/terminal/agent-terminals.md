@@ -37,7 +37,9 @@ pi        start:  pi --session-id <stem> --name <stem> "<task>"
 opencode  start and resume: opencode --session ses_<stem> --prompt "<task>"
 ```
 
-Another directory may stop it at a trust dialog.
+Another directory may stop it at a trust dialog. In Rex, the Rex Terminal rule's
+`rex-agents` command carries out the stem, result-path, instruction, launch, and
+resume steps for you.
 
 - Before each launch, first or resumed, create `$TMPDIR/agent-reports/` and give
   that launch its own result path, `<stem>-<unix time>.md` in it, written out
