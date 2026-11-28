@@ -9,6 +9,7 @@ project-includes = [
   "packages/herdr-jj-workspaces",
   "packages/scratch-sweep",
   "packages/jjx",
+  "packages/rex-agents",
   "packages/token-count",
   "packages/worktree-include",
 ]
@@ -16,6 +17,8 @@ search-path = [
   "packages/commit-message/src",
   "packages/herdr-jj-workspaces/src",
   "packages/jjx/src",
+  "packages/rex-agents",
+  "packages/rex-agents/src",
   "packages/scratch-sweep",
 ]
 

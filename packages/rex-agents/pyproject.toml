@@ -1,0 +1,15 @@
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "rex-agents"
+version = "0.0.0"
+description = "Start, watch, resume, list, and release helper agents in Rex tabs"
+requires-python = ">=3.11"
+
+[project.scripts]
+rex-agents = "rex_agents.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]

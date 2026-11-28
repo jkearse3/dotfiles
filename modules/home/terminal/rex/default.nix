@@ -1,5 +1,6 @@
 {
   config,
+  dotfilesPackages,
   lib,
   pkgs,
   ...
@@ -10,7 +11,7 @@ let
   rexCli = "${config.home.homeDirectory}/Library/Application Support/com.superlogical.rex/RexServer/Versions/Current/Rex Server.app/Contents/MacOS/rex";
 
   # Puts `rex` on PATH outside Rex terminals too, for the skill below, which
-  # calls bare `rex`, and for `rex-child-watch`.
+  # calls bare `rex`, and for `rex-child-watch` and `rex-agents`.
   #
   # Also ships fish completion for `rex`. Rex lives outside the Nix store,
   # so the build cannot generate the script; instead fish autoloads this
@@ -35,6 +36,17 @@ let
     inherit pkgs rexWrapper;
   };
 
+  # `packages/rex-agents` with this module's `rex` on its PATH, since the
+  # package cannot know where Rex is installed.
+  rexAgents = pkgs.symlinkJoin {
+    name = "rex-agents";
+    paths = [ dotfilesPackages.rex-agents ];
+    nativeBuildInputs = [ pkgs.makeWrapper ];
+    postBuild = ''
+      wrapProgram "$out/bin/rex-agents" --prefix PATH : ${lib.makeBinPath [ rexWrapper ]}
+    '';
+  };
+
   applyTheme = pkgs.writeShellApplication {
     name = "rex-apply-theme";
     runtimeInputs = [
@@ -53,6 +65,7 @@ in
     packages = [
       rexWrapper
       childWatch
+      rexAgents
     ];
 
     file = {
