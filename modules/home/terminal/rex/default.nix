@@ -11,7 +11,7 @@ let
   rexCli = "${config.home.homeDirectory}/Library/Application Support/com.superlogical.rex/RexServer/Versions/Current/Rex Server.app/Contents/MacOS/rex";
 
   # Puts `rex` on PATH outside Rex terminals too, for the skill below, which
-  # calls bare `rex`, and for `rex-child-watch` and `rex-agents`.
+  # calls bare `rex`, and for `rex-agents`.
   #
   # Also ships fish completion for `rex`. Rex lives outside the Nix store,
   # so the build cannot generate the script; instead fish autoloads this
@@ -30,10 +30,6 @@ let
         end
       '')
     ];
-  };
-
-  childWatch = import ./child-watch.nix {
-    inherit pkgs rexWrapper;
   };
 
   # `packages/rex-agents` with this module's `rex` on its PATH, since the
@@ -64,7 +60,6 @@ in
   home = {
     packages = [
       rexWrapper
-      childWatch
       rexAgents
     ];
 
