@@ -1,10 +1,10 @@
 # Agent Terminals
 
 When you run inside a terminal multiplexer, herdr-core (`HC_TERMINAL_ID` is set)
-or Rex (`REX_SESSION` is set), run anything you would otherwise background, or
+or Rex (`REX_BLOCK` is set), run anything you would otherwise background, or
 that takes more than a minute or two, in a terminal the user can watch, whether
 it is a job, a server, or another agent. When both are set, use herdr-core. The
-Herdr Core Terminals and Rex Terminal rules give the command for each step
+Herdr Core Terminals and Rex Terminal rules say how to carry out each step
 below. Prefer such a terminal over your built-in subagent tool when the user
 would want to see an agent's work, it runs long, or it may need steering; a
 quick lookup can stay with the built-in tool. Outside both, start such terminals

@@ -144,13 +144,12 @@ in
   # for the guide at use time, so it follows Rex updates without changes here.
   agents.extraSkills.rex = ./skill;
 
-  # What Rex's session-start hooks would tell an agent, plus the Rex commands
-  # for each step of the Agent Terminals rule (`../agent-terminals.md`), as a
-  # shared rule in the agent instruction files this repo renders: starting,
-  # waiting on, reading, and closing panes, launching agents in them, and
-  # learning of their news through `rex-child-watch`. `rex-behavior.md`
-  # records the Rex behavior it relies on. The rule keys off the REX_SESSION
-  # and REX_BLOCK variables Rex sets in each pane, so it needs no per-agent
-  # hook.
+  # How agents carry out the Agent Terminals rule (`../agent-terminals.md`) in
+  # Rex, as a shared rule in the agent instruction files this repo renders. It
+  # leaves the commands to the `rex` skill's guide and states only where the
+  # workflow departs from it, plus how agents learn of their children's news
+  # through `rex-child-watch`. `rex-behavior.md` records the Rex behavior it
+  # relies on. The rule keys off the REX_BLOCK variable Rex sets in each pane,
+  # so it needs no per-agent hook.
   agents.sharedRules.rex-terminal = ./agent-rule.md;
 }

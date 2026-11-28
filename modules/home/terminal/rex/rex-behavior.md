@@ -1,11 +1,13 @@
 # Known Rex behavior
 
 `rex-child-watch` (`child-watch.sh`) and the agent rules' Rex steps rely on the
-Rex behavior below, observed with `rex 0.1.0-preview.21`. Some of it differs
-from `rex --help`. Rex updates itself outside Nix, so after an update rerun the
-reproductions and drop or correct each entry that no longer holds, along with
-whatever relies on it. The last section lists the gaps the watcher and rules
-leave open because of that behavior.
+Rex behavior below, observed with `rex 0.1.0-preview.21`. The pane variables and
+default session, `--keep-open`, `rex wait`, and block targeting and closing were
+rechecked with `rex 0.1.0-preview.25`. Some of it differs from `rex --help`. Rex
+updates itself outside Nix, so after an update rerun the reproductions and drop
+or correct each entry that no longer holds, along with whatever relies on it.
+The last section lists the gaps the watcher and rules leave open because of that
+behavior.
 
 The examples run in a Rex pane; `$b` is the block ID the previous command
 printed.
@@ -13,11 +15,11 @@ printed.
 ## `rex window new` names the tab and returns the full block ID
 
 ```console
-$ rex window new -s "$REX_SESSION" demo -c "$PWD" --keep-open --focus=false --json -- sleep 30
+$ rex window new demo -c "$PWD" --keep-open --focus=false --json -- sleep 30
 {"window_id":"window:01a213bd-…","block_ids":["block:01a213bd-5a44-…"],…}
 $ rex block inspect "$b" --json | jq -c '{session_id, block: .block | {label, window_id}}'
 {"session_id":"session:01a1f160-…","block":{"label":"shell","window_id":"window:01a213bd-…"}}
-$ rex window ls -s "$REX_SESSION" --json | jq -c '[.windows[].label]'
+$ rex window ls --json | jq -c '[.windows[].label]'
 ["Window 1a3b73a8","demo"]
 ```
 
@@ -25,35 +27,41 @@ The tab is labelled `demo`; the block keeps the label `shell`. `rex run` does
 the reverse:
 
 ```console
-$ rex run -s "$REX_SESSION" --label demo --keep-open --focus=false --json -- sleep 30
+$ rex run --label demo --keep-open --focus=false --json -- sleep 30
 {"window_id":"window:01a213e3-…","block_ids":["block:01a213e3-85a3-…"],…}
 $ rex block inspect "$b" --json | jq -c '.block.label'
 "demo"
-$ rex window ls -s "$REX_SESSION" --json | jq -c '[.windows[].label]'
+$ rex window ls --json | jq -c '[.windows[].label]'
 ["Window 1a3b73a8","Window 79ceaac2"]
 ```
 
 `--label demo` labels the block and leaves the tab as `Window <suffix>`.
-`$REX_BLOCK` holds the pane's full block ID, such as
-`block:01a1f160-47ab-7f32-a7ea-ae7d241953e5`.
+
+## A pane knows its block, and commands default to its session
+
+Checked with `rex 0.1.0-preview.25`:
 
 ```console
-$ REX_SESSION=session:00000000-0000-0000-0000-000000000000 rex window ls --json | jq -r '.session_id'
+$ rex window new env-probe --keep-open --focus=false --json -- bash -c 'env | grep "^REX_" | cut -d= -f1 | sort'
+$ rex capture -b "$b" --trim
+REX_BIN_DIR
+REX_BLOCK
+REX_SERVER
+$ rex block inspect "$b" --json | jq -r '.block.session_id // .session_id'
 session:01a1f160-…
-$ rex window ls -A --json; echo "rc=$?"
-Error: rex window ls --json requires one session. Pass -s SESSION
-…
-rc=2
+$ rex whoami --json | jq -r .session_id
+session:01a1f160-…
 ```
 
-Without `-s`, `rex window ls --json` ignores `$REX_SESSION`: with a session ID
-that matches no session, it still lists the only session running. Pass
-`-s "$REX_SESSION"` to list your own session's tabs. With `-A` it exits 2.
+Rex sets no session variable. `$REX_BLOCK` holds the pane's full block ID, such
+as `block:01a1f160-47ab-7f32-a7ea-ae7d241953e5`, and `rex window new` without
+`-s` opens its tab in the session that holds that pane. `rex whoami --json`
+reports the current `session_id` and `block_id`.
 
 ## Arguments reach the program unchanged
 
 ```console
-$ rex window new -s "$REX_SESSION" quote --keep-open --focus=false --json -- printf '[%s]\n' 'Say `no earlier context` and $HOME "quoted" it'\''s
+$ rex window new quote --keep-open --focus=false --json -- printf '[%s]\n' 'Say `no earlier context` and $HOME "quoted" it'\''s
 line2'
 $ rex capture -b "$b" --trim
 [Say `no earlier context` and $HOME "quoted" it's
@@ -66,7 +74,7 @@ that would expand it, so an agent's task text arrives byte for byte.
 ## Panes get the login environment
 
 ```console
-$ rex window new -s "$REX_SESSION" env --keep-open --focus=false --json -- \
+$ rex window new env --keep-open --focus=false --json -- \
     bash -c 'echo "TMPDIR=$TMPDIR DIRENV=${DIRENV_DIR:-unset}"'
 $ rex capture -b "$b" --trim
 TMPDIR=/var/folders/39/…/T/ DIRENV=unset
@@ -78,11 +86,11 @@ project's direnv shell do not carry over.
 ## Without `--keep-open`, a pane takes its exit code with it
 
 ```console
-$ rex run -s "$REX_SESSION" --focus=false --json -- bash -c 'sleep 2; exit 4'
+$ rex run --focus=false --json -- bash -c 'sleep 2; exit 4'
 $ sleep 4; rex wait "$b" --for 5s --json; echo "rc=$?"
 Error: block or window target "block:01a213b6-a868-…" not found
 rc=3
-$ rex run -s "$REX_SESSION" --focus=false --json -- bash -c 'exit 5'
+$ rex run --focus=false --json -- bash -c 'exit 5'
 $ sleep 2; rex wait "$b" --for 5s --json; echo "rc=$?"
 {"exit_code":5,"error":"exit status 5"}
 rc=5
@@ -95,7 +103,7 @@ closes before the wait starts returns 1; here it returned 3.
 ## `rex wait --json` reports through its exit status and stdout
 
 ```console
-$ rex window new -s "$REX_SESSION" job --keep-open --focus=false --json -- bash -c 'sleep 20; exit 2'
+$ rex window new job --keep-open --focus=false --json -- bash -c 'sleep 20; exit 2'
 $ rex wait "$b" --for 2s --json; echo "rc=$?"
 Error: wait timed out after 2s: context deadline exceeded
 rc=1
@@ -103,7 +111,7 @@ $ rex wait "$b" --for 30s --json; echo "rc=$?"
 {"exit_code":2,"error":"exit status 2"}
 Error: exit status 2
 rc=2
-$ rex window new -s "$REX_SESSION" ok --keep-open --focus=false --json -- true
+$ rex window new ok --keep-open --focus=false --json -- true
 $ sleep 1; rex wait "$b" --for 5s --json; echo "rc=$?"
 {"exit_code":0}
 rc=0
@@ -116,10 +124,10 @@ exits 1, which a job's own exit 1 also gives, so only the JSON tells them apart.
 ## Block commands find a full block ID without `-s`; an empty `-b` is your own pane
 
 ```console
-$ env -u REX_SESSION rex capture -b "$b" --trim
-$ env -u REX_SESSION rex wait "$b" --for 2s --json
-$ env -u REX_SESSION rex send-key -b "$b" ctrl+c
-$ env -u REX_SESSION rex block close "$b"
+$ rex capture -b "$b" --trim
+$ rex wait "$b" --for 2s --json
+$ rex send-key -b "$b" ctrl+c
+$ rex block close "$b"
 $ rex block call -b "$b" process; echo "rc=$?"
 Error: block target "block:01a213ca-…" not found
 rc=3
@@ -138,7 +146,7 @@ the agent itself.
 and `rex capture --trim` prints all of it:
 
 ```console
-$ rex window new -s "$REX_SESSION" scroll --keep-open --focus=false --json -- seq 1 200000
+$ rex window new scroll --keep-open --focus=false --json -- seq 1 200000
 $ sleep 3; rex capture -b "$b" --trim | wc -l
 96400
 $ rex capture -b "$b" --trim | head -1
@@ -152,7 +160,7 @@ the 100,000-line limit. `rex block close` ends the program still running in the
 pane:
 
 ```console
-$ rex window new -s "$REX_SESSION" demo --keep-open --focus=false --json -- sleep 30
+$ rex window new demo --keep-open --focus=false --json -- sleep 30
 $ rex block close "$b"; rex block call -b "$b" process; echo "rc=$?"
 Error: block target "block:…" not found
 rc=3
@@ -161,11 +169,11 @@ rc=3
 ## `process` reports how the program ended
 
 ```console
-$ rex window new -s "$REX_SESSION" sig --keep-open --focus=false --json -- sleep 300
+$ rex window new sig --keep-open --focus=false --json -- sleep 300
 $ kill -9 "$(rex block call -b "$b" process | jq -r .child.pid)"
 $ rex block call -b "$b" process | jq -c '{child, last_exit}'
 {"child":null,"last_exit":{"exit_code":-1,"error":"signal: killed"}}
-$ rex window new -s "$REX_SESSION" int --keep-open --focus=false --json -- sleep 300
+$ rex window new int --keep-open --focus=false --json -- sleep 300
 $ rex send-key -b "$b" ctrl+c; sleep 1; rex block call -b "$b" process | jq -c .last_exit
 {"exit_code":-1,"error":"signal: interrupt"}
 ```
@@ -237,8 +245,8 @@ The watcher and rules accept these gaps rather than work around them.
 - **Sandboxed parents cannot use it.** A parent under a `nono` profile that does
   not grant the Rex socket and `~/.local/state/rex-child-watch` cannot reach Rex
   or keep the watcher's state.
-- **Rex is a preview.** These entries hold for `rex 0.1.0-preview.21` and need
-  rechecking after each Rex update.
+- **Rex is a preview.** These entries hold for the versions named at the top and
+  need rechecking after each Rex update.
 
 Possible improvements, none built:
 
