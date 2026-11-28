@@ -150,7 +150,7 @@ in
   # terminals, launching agents in them, and learning of their news through
   # `hc-child-watch` or `hc wait`, so nothing is typed into an input box. The
   # upstream skill loads only on demand and misses or contradicts some of the
-  # `hc` behavior this works around, which `hc-behavior.md` records with
+  # `hc` behavior this works around, which `README.md` records with
   # reproductions.
   agents.sharedRules.herdr-core = ./agent-rule.md;
 }
